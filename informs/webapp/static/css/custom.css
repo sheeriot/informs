@@ -1,0 +1,23 @@
+input.tableedit,
+select.tableedit {
+    font-size: 0.875em;
+    border-color: cadetblue;
+    border-radius: 0;
+}
+
+input.tableeditsm,
+select.tableeditsm {
+    font-size: 0.75em;
+    border-color: cadetblue;
+    border-radius: 0;
+}
+
+div.updated {
+    /* color: red; */
+    border-color: crimson;
+    border-style: solid;
+}
+button.tableedit {
+    margin: 0 !important;
+    padding: 0 !important;
+}

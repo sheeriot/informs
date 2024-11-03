@@ -1,0 +1,101 @@
+body {
+    font-family: Questrial, sans-serif;
+    font-weight: 400;
+    font-size: 18px;
+    font-style: normal;
+    line-height: 1.5em;
+    color: #1a1a1a;
+}
+
+nav.navbar-dark {
+    background-color: #0a1856;
+}
+
+div#logo img {
+	height: 60px;
+}
+
+div#banner-title {
+	color: gold;
+	font-size: 0.7em;
+}
+.messages {
+	border: 1px solid;
+	border-radius:24px;
+	margin: 10px auto;
+	padding: 15px 10px 15px 50px;
+	background-repeat: no-repeat;
+	background-position: 10px center;
+	max-width: 460px;
+	background-color:aquamarine;
+}
+
+#console-messages p {
+    font-size: 0.7rem;
+  }
+
+#div_id_start, #div_id_end{
+	display:inline-block;
+}
+
+.popup {
+	position: relative;
+	display: inline-block;
+	cursor: pointer;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+  }
+
+  /* The actual popup */
+  .popup .popuptext {
+	visibility: hidden;
+	width: 160px;
+	background-color: #555;
+	color: #fff;
+	text-align: center;
+	border-radius: 6px;
+	padding: 8px 0;
+	position: absolute;
+	z-index: 1;
+	bottom: 125%;
+	left: 50%;
+	margin-left: -80px;
+  }
+
+  /* Popup arrow */
+  .popup .popuptext::after {
+	content: "";
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	margin-left: -5px;
+	border-width: 5px;
+	border-style: solid;
+	border-color: #555 transparent transparent transparent;
+  }
+
+  /* Toggle this class - hide and show the popup */
+  .popup .show {
+	visibility: visible;
+	-webkit-animation: fadeIn 1s;
+	animation: fadeIn 1s;
+  }
+
+  .popup .hide {
+	visibility: hidden;
+	-webkit-animation: fadeIn 1s;
+	animation: fadeIn 1s;
+  }
+
+  /* Add animation (fade in the popup) */
+  @-webkit-keyframes fadeIn {
+	from {opacity: 0;}
+	to {opacity: 1;}
+  }
+
+  @keyframes fadeIn {
+	from {opacity: 0;}
+	to {opacity:1 ;}
+  }
