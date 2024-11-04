@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>All Aid Requests</h2>
+    <a href="{% url 'aidrequest_create' %}">Create New Request</a>
+    <ul>
+        {% for aidrequest in object_list %}
+            <li>
+                <a href="{% url 'aidrequest_detail' aidrequest.pk %}">{{ aidrequest }}</a>
+                <a href="{% url 'aidrequest_update' aidrequest.pk %}">Edit</a>
+                <a href="{% url 'aidrequest_delete' aidrequest.pk %}">Delete</a>
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}

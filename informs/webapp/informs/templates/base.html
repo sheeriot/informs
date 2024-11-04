@@ -62,21 +62,15 @@
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                   <li>
-                    <a class="dropdown-item" href="{% url 'home' %}">
+                    <a class="dropdown-item" href="{% url 'aidrequest_list' %}">
                       <img src="{% static 'images/informs-icon1.webp' %}" height="50px" width="50px">
-                      Sites
+                      Aid Request - List
                     </a>
                   </li>
                   <li>
-                    <a class="dropdown-item" href="{% url 'home' %}">
+                    <a class="dropdown-item" href="{% url 'aidrequest_create' %}">
                       <img src="{% static 'images/informs-icon1.webp' %}" height="50px" width="50px">
-                      SiteA - Add a Form
-                    </a>
-                  </li>
-                  <li>
-                    <a class="dropdown-item" href="{% url 'home' %}">
-                      <img src="{% static 'images/informs-icon1.webp' %}" height="50px" width="50px">
-                      SiteB - Add a Form
+                      Aid Request - Create
                     </a>
                   </li>
                   <!-- <li><hr class="dropdown-divider"></li>
@@ -124,31 +118,32 @@
     </nav>
   </header>
   <div class="container">
-
     {% block content %}
     {% endblock %}
-
-    <hr>
   </div>
-
-  <footer class="text-muted py-2">
-    <div class="container text-center">
-      <p>
+  <!-- Footer -->
+  <footer class="text-muted small py-2 border-top">
+    <div class="container d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center">
         {% bs_icon 'person-raised-hand' color='green'%}
         Helping each other in {% now 'Y' %}!
         {% bs_icon 'life-preserver' color='red'%}
-      </p>
-      <p>
+      </div>
+      <div class="d-flex align-items-center">
         Detected time is {% now "jS F Y H:i" %}
-      </p>
-      <p><a href='/admin'>admin</a></p>
-      <p>Web Dev by Austin Voice Data LLC<div>
+      </div>
+      <!-- Admin Link -->
+      <a href="/admin" class="text-reset">Admin</a>
+      <!-- Company Logo and Name -->
+      <div class="d-flex align-items-center">
         <a href="https://austinvoicedata.com">
-          <img src="{% static 'images/AVD_Logo.jpg' %}" width="150px" alt="Austin Voice Data LLC">
+          <img src="{% static 'images/AVD_Logo.jpg' %}" width="100px" alt="Austin Voice Data LLC" class="me-2">
         </a>
-      </p>
+        <span>Austin Voice Data LLC</span>
+      </div>
     </div>
   </footer>
+
   {% tz_detect %}
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
     integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"

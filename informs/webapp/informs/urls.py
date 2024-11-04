@@ -23,6 +23,7 @@ from .views import home
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('accounts.urls')),
+    path('aidrequests/', include('aidrequests.urls')),
     path('', home, name='home'),
     path('tz_detect/', include('tz_detect.urls')),
 ]

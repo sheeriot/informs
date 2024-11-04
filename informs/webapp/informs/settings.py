@@ -53,7 +53,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'accounts.apps.AccountsConfig',
-    # 'rocks.apps.RocksConfig',
+    'aidrequests.apps.AidRequestsConfig',
 ]
 
 MIDDLEWARE = [

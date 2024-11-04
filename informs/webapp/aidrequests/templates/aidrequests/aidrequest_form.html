@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+
+<h2>{% if object %}Edit{% else %}Create{% endif %} Aid Request</h2>
+{% crispy form %}
+
+{% if form.action == "update" %}
+    <a href="{% url 'aidrequest_list' %}">Back to List</a>
+{% endif %}
+{% endblock %}
