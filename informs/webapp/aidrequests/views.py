@@ -2,6 +2,7 @@
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
+from django.db.models import Count
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from .models import AidRequest, RegionResponse
 from .forms import AidRequestForm, RegionResponseForm
@@ -115,6 +116,10 @@ class AidRequestDeleteView(LoginRequiredMixin, DeleteView):
 class RegionResponseListView(LoginRequiredMixin, ListView):
     model = RegionResponse
     template_name = 'aidrequests/regionresponse_list.html'
+
+    def get_queryset(self):
+        queryset = RegionResponse.objects.annotate(aidrequest_count=Count('aidrequest'))
+        return queryset
 
 
 # Detail View for RegionResponse
