@@ -39,6 +39,7 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         regionresponse = get_object_or_404(RegionResponse, slug=rrslug)
         context['regionresponse'] = regionresponse
+        ic(regionresponse)
         return context
 
 

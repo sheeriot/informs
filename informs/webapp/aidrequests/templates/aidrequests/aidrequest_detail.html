@@ -43,7 +43,7 @@
     <h2>Additional Information</h2>
     <p>{{ object.additional_info }}</p>
 
-    <a href="{% url 'aidrequest_update' object.pk %}">Edit</a>
-    <a href="{% url 'aidrequest_delete' object.pk %}">Delete</a>
-    <a href="{% url 'aidrequest_list' %}">Back to List</a>
+    <a href="{% url 'aidrequest_update' pk=object.pk regionresponse=regionresponse.slug %}">Edit</a>
+    <a href="{% url 'aidrequest_delete' pk=object.pk regionresponse=regionresponse.slug %}">Delete</a>
+    <a href="{% url 'aidrequest_list' regionresponse=regionresponse.slug %}">Back to List</a>
 {% endblock %}
