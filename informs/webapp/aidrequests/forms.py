@@ -1,16 +1,39 @@
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Fieldset, Field, Submit, Row, Column
+from crispy_forms.layout import Layout, Fieldset, Submit, Row, Column
 
-from .models import AidRequest
+from .models import AidRequest, RegionResponse
 
-from icecream import ic
+# from icecream import ic
+
+
+class RegionResponseForm(forms.ModelForm):
+    class Meta:
+        model = RegionResponse
+        fields = "__all__"
+
+    def __init__(self, action='create', *args, **kwargs):
+        super(RegionResponseForm, self).__init__(*args, **kwargs)
+        self.action = action
+        self.helper = FormHelper()
+        self.helper.form_method = 'post'
+        self.helper.layout = Layout(
+            Fieldset(
+                'Region Response Details',
+                'name',
+                'slug',
+                'latitude',
+                'longitude',
+            ),
+            Submit('submit', 'Submit', css_class='btn-primary')
+        )
 
 
 class AidRequestForm(forms.ModelForm):
     class Meta:
         model = AidRequest
-        fields = '__all__'
+        exclude = ["region_response"]
+        # fields = "__all__"
 
     def __init__(self, *args, action='create', **kwargs):
         super(AidRequestForm, self).__init__(*args, **kwargs)

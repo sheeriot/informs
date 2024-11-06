@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>All Region Responses</h2>
+    <a href="{% url 'regionresponse_create' %}">Create New Request</a>
+    <ul>
+        {% for regionresponse in object_list %}
+            <li>
+                <a href="{% url 'regionresponse_detail' regionresponse.pk %}">{{ regionresponse }}</a>
+                <a href="{% url 'regionresponse_update' regionresponse.pk %}">Edit</a>
+                <a href="{% url 'regionresponse_delete' regionresponse.pk %}">Delete</a>
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}

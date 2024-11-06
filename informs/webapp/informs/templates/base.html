@@ -62,15 +62,15 @@
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                   <li>
-                    <a class="dropdown-item" href="{% url 'aidrequest_list' %}">
+                    <a class="dropdown-item" href="{% url 'aidrequest_list' regionresponse='parhamcomet24' %}">
                       <img src="{% static 'images/informs-icon1.webp' %}" height="50px" width="50px">
-                      Aid Request - List
+                      Aid Request List - Parham Comet 2024
                     </a>
                   </li>
                   <li>
-                    <a class="dropdown-item" href="{% url 'aidrequest_create' %}">
+                    <a class="dropdown-item" href="{% url 'aidrequest_create' regionresponse='parhamcomet24' %}">
                       <img src="{% static 'images/informs-icon1.webp' %}" height="50px" width="50px">
-                      Aid Request - Create
+                      Aid Request Create - Parham Comet 2024
                     </a>
                   </li>
                   <!-- <li><hr class="dropdown-divider"></li>
@@ -83,6 +83,40 @@
             </ul>
           </div>
         </div>
+
+        <div class="collapse navbar-collapse col-4" id="navbarNavAltMarkup">
+          <div>
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
+                  aria-expanded="false">
+                  <img src="{% static 'images/informs-icon1.webp' %}" alt="FormsIcon" height="60px" width="60px">
+                  <div class="d-inline-block float-left">Region Response</div>
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                  <li>
+                    <a class="dropdown-item" href="{% url 'regionresponse_list' %}">
+                      <img src="{% static 'images/informs-icon1.webp' %}" height="50px" width="50px">
+                      List
+                    </a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="{% url 'regionresponse_create' %}">
+                      <img src="{% static 'images/informs-icon1.webp' %}" height="50px" width="50px">
+                      Create
+                    </a>
+                  </li>
+                  <!-- <li><hr class="dropdown-divider"></li>
+                  <li class="dropdown-header">Beta...</li>
+                  <li>
+                    None
+                  </li> -->
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+
         <div class="col-1"></div>
         <div class="col-2">
           <div class="nav-item nav-link link-secondary d-flex align-items-center" aria-current="page">

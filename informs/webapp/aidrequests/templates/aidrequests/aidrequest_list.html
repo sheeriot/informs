@@ -1,13 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
-    <h2>All Aid Requests</h2>
-    <a href="{% url 'aidrequest_create' %}">Create New Request</a>
+    <h2>Aid Requests: {{ regionresponse.name }}</h2>
     <ul>
         {% for aidrequest in object_list %}
             <li>
-                <a href="{% url 'aidrequest_detail' aidrequest.pk %}">{{ aidrequest }}</a>
-                <a href="{% url 'aidrequest_update' aidrequest.pk %}">Edit</a>
-                <a href="{% url 'aidrequest_delete' aidrequest.pk %}">Delete</a>
+                <a href="{% url 'aidrequest_detail' pk=aidrequest.pk regionresponse=regionresponse.slug %}">{{ aidrequest }}</a>
+                <a href="{% url 'aidrequest_update' pk=aidrequest.pk regionresponse=regionresponse.slug %}">Edit</a>
+                <a href="{% url 'aidrequest_delete' pk=aidrequest.pk regionresponse=regionresponse.slug %}">Delete</a>
             </li>
         {% endfor %}
     </ul>

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+
+{% if form.action == "create" %}
+<div class='form-header mb-5'>
+<h2>Region Response</h2>
+{% else %}
+<div class="form-header">
+    <h2>Update Region Response</h2>
+</div>
+{% endif %}
+<div>Each "Region Response" is a distinct call to support (response) for a region.</div>
+<p>
+    Each "Region Response" will get a unique short name (aka slug), i.e.
+    <strong>
+    <ul>
+        <li>nc2024: North Carolina - 2024 - Hurricane Helene</li>
+        <li>milton2024: Hurricane Milton - Florida 2024</li>
+    </ul>
+    </strong>
+</p>
+<span>
+    <em>
+    This form should only be used to create and update Region Responses. Each intake form will be associated to a distinct Region Response.
+    </em>
+</span>
+<hr>
+</div>
+
+{% crispy form %}
+
+{% if form.action == "update" %}
+    <a href="{% url 'regionresponse_list' %}">Back to List</a>
+{% endif %}
+
+
+{% endblock %}

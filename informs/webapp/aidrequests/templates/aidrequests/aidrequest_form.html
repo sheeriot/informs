@@ -3,10 +3,33 @@
 
 {% block content %}
 
-<h2>{% if object %}Edit{% else %}Create{% endif %} Aid Request</h2>
+{% if form.action == "create" %}
+<div class='form-header mb-5'>
+<h2>Aid Request: {{ regionresponse.name }}</h2>
+<div>Evacuation, Resupply, Welfare Check</div>
+<p>
+    <strong>
+    Please use this form to request aid from Save our Allies.
+    </strong>
+</p>
+<span>
+    <em>
+    This form should only be used for first-hand requests for aid. Please do not relay aid messages from social media that are not first hand information. Thank you!
+    </em>
+</span>
+<hr>
+</div>
+{% else %}
+<div class="form-header">
+    <h2>Update Aid Request</h2>
+</div>
+{% endif %}
+
 {% crispy form %}
 
 {% if form.action == "update" %}
-    <a href="{% url 'aidrequest_list' %}">Back to List</a>
+    <a href="{% url 'aidrequest_list' regionresponse=regionresponse.slug %}">Back to List</a>
 {% endif %}
+
+
 {% endblock %}
