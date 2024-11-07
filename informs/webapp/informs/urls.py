@@ -17,12 +17,20 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from .views import home
-from aidrequests.views import (AidRequestCreateView,
-                               AidRequestListView, AidRequestUpdateView,
-                               AidRequestDeleteView, AidRequestDetailView,
-                               RegionResponseCreateView,
-                               RegionResponseListView, RegionResponseUpdateView,
-                               RegionResponseDeleteView, RegionResponseDetailView,)
+from aidrequests.views.aidrequest import (AidRequestCreateView,
+                                          AidRequestListView,
+                                          AidRequestUpdateView,
+                                          AidRequestDeleteView,
+                                          AidRequestDetailView
+                                          )
+
+from aidrequests.views.regionresponse import (RegionResponseCreateView,
+                                              RegionResponseListView,
+                                              RegionResponseUpdateView,
+                                              RegionResponseDeleteView,
+                                              RegionResponseDetailView
+                                              )
+from aidrequests.views.export_csv import AidRequestCsvView
 # from icecream import ic
 
 
@@ -52,4 +60,6 @@ urlpatterns = [
          AidRequestDetailView.as_view(),
          name='aidrequest_detail'
          ),
+
+    path('<slug:regionresponse>/aidrequest/export-csv/', AidRequestCsvView.as_view(), {'action': 'export_csv'}, name='aidrequests_csv'),
 ]

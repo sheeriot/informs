@@ -14,7 +14,7 @@ RUN mkdir -p /opt/app/db
 RUN mkdir -p /opt/app/static_files
 
 # App Code directory
-RUN mkdir -p /opt/app/intaker/
+RUN mkdir -p /opt/app/informs/
 
 # setup files
 COPY app_version.txt /opt/app/version.txt

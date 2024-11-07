@@ -2,7 +2,7 @@ from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Submit, Row, Column
 
-from .models import AidRequest, RegionResponse
+from ..models import AidRequest, RegionResponse
 
 # from icecream import ic
 
@@ -52,13 +52,15 @@ class AidRequestForm(forms.ModelForm):
                 'requestor_phone',
             ),
             Fieldset(
-                'Contact Details for Party Needing Assistance',
+                'Contact Details for Party Needing Assistance (if different)',
                 Row(
                     Column('assistance_first_name', css_class='form-group col-md-6 mb-0'),
                     Column('assistance_last_name', css_class='form-group col-md-6 mb-0'),
                 ),
                 'assistance_email',
                 'assistance_phone',
+                'contact_methods',
+                'group_size',
             ),
             Fieldset(
                 'Location of Assistance Request',
@@ -76,8 +78,7 @@ class AidRequestForm(forms.ModelForm):
             ),
             Fieldset(
                 'Additional Information',
-                'group_size',
-                'contact_methods',
+
                 'medical_needs',
                 'supplies_needed',
                 'welfare_check_info',

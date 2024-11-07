@@ -9,7 +9,7 @@ services:
       - informs/env/django.env
     # entrypoint: export static_files, migrate DB, then run "command"
     entrypoint: /opt/app/docker-entrypoint.sh
-    command: gunicorn --bind=0.0.0.0:8000 --workers=${WORKERS:-3} intaker.wsgi
+    command: gunicorn --bind=0.0.0.0:8000 --workers=${WORKERS:-3} informs.wsgi
     restart: unless-stopped
     ports:
      - 8000:8000
