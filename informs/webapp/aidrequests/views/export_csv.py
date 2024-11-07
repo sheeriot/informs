@@ -17,15 +17,15 @@ class AidRequestCsvView(View):
             return self.get_csv_export(request, regionresponse=kwargs['regionresponse'])
 
     def get_csv_export(self, request, *args, **kwargs):
-
         # filter by RegionResponse (GroundOp)
-        region_response = RegionResponse.objects.get(slug=kwargs['regionresponse'])
+        rrslug = kwargs['regionresponse']
+        region_response = RegionResponse.objects.get(slug=rrslug)
         aid_requests = AidRequest.objects.filter(region_response=region_response)
 
         # Create the HttpResponse object with the appropriate CSV header.
         response = HttpResponse(content_type='text/csv')
         timestamp = datetime.now().strftime('%Y%m%d-%H%M')
-        response['Content-Disposition'] = f'attachment; filename="aidrequests-{timestamp}.csv"'
+        response['Content-Disposition'] = f'attachment; filename="{rrslug}-aidrequests-{timestamp}.csv"'
 
         # Create a CSV writer object.
         writer = csv.writer(response)
