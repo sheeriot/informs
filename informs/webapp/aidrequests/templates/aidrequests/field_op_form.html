@@ -5,15 +5,15 @@
 
 {% if form.action == "create" %}
 <div class='form-header mb-5'>
-<h2>Region Response</h2>
+<h2>Field Op</h2>
 {% else %}
 <div class="form-header">
-    <h2>Update Region Response</h2>
+    <h2>Update Field Op</h2>
 </div>
 {% endif %}
-<div>Each "Region Response" is a distinct call to support (response) for a region.</div>
+<div>Each "Field Op" is a distinct call to support (response) for a region.</div>
 <p>
-    Each "Region Response" will get a unique short name (aka slug), i.e.
+    Each "Field Op" will get a unique short name (aka slug), i.e.
     <strong>
     <ul>
         <li>nc2024: North Carolina - 2024 - Hurricane Helene</li>
@@ -23,7 +23,7 @@
 </p>
 <span>
     <em>
-    This form should only be used to create and update Region Responses. Each intake form will be associated to a distinct Region Response.
+    This form should only be used to create and update Field Ops. Each intake form will be associated to a distinct Field Op.
     </em>
 </span>
 <hr>
@@ -32,7 +32,7 @@
 {% crispy form %}
 
 {% if form.action == "update" %}
-    <a href="{% url 'regionresponse_list' %}">Back to List</a>
+    <a href="{% url 'field_op_list' %}">Back to List</a>
 {% endif %}
 
 

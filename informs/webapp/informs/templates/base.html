@@ -62,18 +62,18 @@
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                   <li>
-                    <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'regionresponse_list' %}'">
+                    <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_list' %}'">
                       <i class="bi bi-list"></i> All Field Ops
                     </button>
                   </li>
                   <li>
-                    <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'regionresponse_create' %}'">
+                    <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_create' %}'">
                       <i class="bi bi-plus-circle"></i> New Field Op
                     </button>
                   </li>
                   {% for fieldop in fieldops_active %}
                     <li>
-                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'aidrequest_list' regionresponse=fieldop.slug %}'">
+                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'aidrequest_list' field_op=fieldop.slug %}'">
                         <i class="bi bi-life-preserver"></i> {{ fieldop.name }} - Aid Requests
                         </button>
                     </li>
