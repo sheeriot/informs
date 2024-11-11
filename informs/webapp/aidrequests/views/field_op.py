@@ -8,7 +8,7 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from ..models import FieldOp
 from .forms import FieldOpForm
 
-# from icecream import ic
+from icecream import ic
 
 
 # List View for FieldOp
@@ -17,7 +17,9 @@ class FieldOpListView(LoginRequiredMixin, ListView):
     template_name = 'aidrequests/field_op_list.html'
 
     def get_queryset(self):
-        queryset = FieldOp.objects.annotate(aidrequest_count=Count('aidrequest'))
+        # queryset = FieldOp.objects.annotate(aidrequest_count=Count('aid_requests'))
+        queryset = FieldOp.objects.annotate(aidrequest_count=Count('aid_requests'))
+        # ic(queryset)
         return queryset
 
 

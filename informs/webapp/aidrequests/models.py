@@ -13,7 +13,7 @@ class FieldOp(models.Model):
 
 class AidRequest(models.Model):
     # scope to a field operation object
-    field_op = models.ForeignKey(FieldOp, on_delete=models.CASCADE, null=True)
+    field_op = models.ForeignKey(FieldOp, on_delete=models.CASCADE, null=True, related_name='aid_requests')
     # 1. Requestor details
     requestor_first_name = models.CharField(max_length=20)
     requestor_last_name = models.CharField(max_length=30)
