@@ -29,7 +29,10 @@
         </tbody>
     </table>
 </div>
-
+<hr>
+<a href="{% url 'aidrequest_create' field_op=field_op.slug %}" class="btn btn-success">
+    <i class="bi bi-plus-circle"></i> New Aid Request
+</a>
 <a href="{% url 'aidrequests_csv' field_op=field_op.slug %}" class="btn btn-primary">Download CSV</a>
 
 {% endblock %}
