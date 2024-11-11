@@ -1,7 +1,9 @@
 django~=5.1
 gunicorn
-icecream
 django_bootstrap_icons
 django-tz-detect
 crispy-bootstrap5
 django-crispy-forms
+folium
+geopy
+icecream

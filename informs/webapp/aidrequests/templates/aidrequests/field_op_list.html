@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-3">All Field Ops</h2>
+
+    <table class="table table-sm table-striped align-middle">
+        <thead>
+            <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Slug</th>
+                <th scope="col">Aid Requests</th>
+                <th scope="col">Lat,Long</th>
+                <th scope="col">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for field_op in object_list %}
+            <tr>
+                <td><a href="{% url 'field_op_detail' field_op.pk %}">{{ field_op }}</a></td>
+                <td>{{ field_op.slug }}</td>
+                <td><a href="{% url 'aidrequest_list' field_op=field_op.slug %}">
+                    {{ field_op.aidrequest_count }}
+                    </a>
+                </td>
+                <td>{{ field_op.latitude }},{{ field_op.longitude }}</td>
+                <td>
+                    <a href="{% url 'field_op_update' field_op.pk %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-pencil"></i> Edit
+                    </a>
+                    <a href="{% url 'field_op_delete' field_op.pk %}" class="btn btn-outline-danger btn-sm">
+                        <i class="bi bi-trash"></i> Delete
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <hr>
+    <a href="{% url 'field_op_create' %}" class="btn btn-primary btn-sm mb-3">
+        <i class="bi bi-plus-lg"></i> New Field Op
+    </a>
+</div>
+{% endblock %}

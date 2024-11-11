@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container mt-4">
-    <h2 class="mb-3">Aid Requests: {{ regionresponse.name }}</h2>
+    <h2 class="mb-3">Aid Requests: {{ field_op.name }}</h2>
     
     <table class="table table-sm table-striped align-middle">
         <thead>
@@ -16,20 +16,23 @@
         <tbody>
             {% for aidrequest in object_list %}
             <tr>
-                <td><a href="{% url 'aidrequest_detail' pk=aidrequest.pk regionresponse=regionresponse.slug %}">{{ aidrequest.pk }}</a></td>
+                <td><a href="{% url 'aidrequest_detail' pk=aidrequest.pk field_op=field_op.slug %}">{{ aidrequest.pk }}</a></td>
                 <td>{{ aidrequest.assistance_type }}</a></td>
                 <td>{{ aidrequest.requestor_first_name }} {{ aidrequest.requestor_last_name }}</a></td>
                 <td>{{ aidrequest.street_address }} {{ aidrequest.street_address }} {{ aidrequest.state }}</a></td>
                 <td>
-                    <a href="{% url 'aidrequest_update' pk=aidrequest.pk regionresponse=regionresponse.slug %}" class="btn btn-outline-secondary btn-sm">Edit</a>
-                    <a href="{% url 'aidrequest_delete' pk=aidrequest.pk regionresponse=regionresponse.slug %}" class="btn btn-outline-danger btn-sm">Delete</a>
+                    <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-outline-secondary btn-sm">Edit</a>
+                    <a href="{% url 'aidrequest_delete' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-outline-danger btn-sm">Delete</a>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
-
-<a href="{% url 'aidrequests_csv' regionresponse=regionresponse.slug %}" class="btn btn-primary">Download CSV</a>
+<hr>
+<a href="{% url 'aidrequest_create' field_op=field_op.slug %}" class="btn btn-success">
+    <i class="bi bi-plus-circle"></i> New Aid Request
+</a>
+<a href="{% url 'aidrequests_csv' field_op=field_op.slug %}" class="btn btn-primary">Download CSV</a>
 
 {% endblock %}

@@ -1,7 +1,7 @@
 from django.db import models
 
 
-class RegionResponse(models.Model):
+class FieldOp(models.Model):
     slug = models.SlugField(unique=True)
     name = models.CharField(max_length=50)
     latitude = models.DecimalField(max_digits=4, decimal_places=2)
@@ -12,8 +12,8 @@ class RegionResponse(models.Model):
 
 
 class AidRequest(models.Model):
-    # scope to a region response object
-    region_response = models.ForeignKey(RegionResponse, on_delete=models.CASCADE, null=True)
+    # scope to a field operation object
+    field_op = models.ForeignKey(FieldOp, on_delete=models.CASCADE, null=True)
     # 1. Requestor details
     requestor_first_name = models.CharField(max_length=20)
     requestor_last_name = models.CharField(max_length=30)

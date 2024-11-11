@@ -3,10 +3,59 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
-from ..models import AidRequest, RegionResponse
+
+import folium
+from geopy.distance import geodesic
+
+from ..models import AidRequest, FieldOp
 from .forms import AidRequestForm
 
 # from icecream import ic
+
+
+def geodist(aid_request):
+    if any([aid_request.latitude, aid_request.longitude, aid_request.field_op.latitude,
+            aid_request.field_op.longitude]) is None:
+        return None
+    return round(geodesic(
+                 (aid_request.latitude, aid_request.longitude),
+                 (aid_request.field_op.latitude, aid_request.field_op.longitude)
+                 ).km,
+                 1)
+
+
+def generate_map(rocks=None):
+    # Create a map centered around the first rock's location
+    if rocks is not None:
+        lake = rocks.first().lake
+
+        map = folium.Map(
+            location=([lake.latitude, lake.longitude]),
+            zoom_start=lake.zoom_level,
+            scrollWheelZoom=False,
+            control_scale=True,
+            # tiles="cartodbpositron",
+            # tiles="MapQuest Open Aerial",
+            # tiles='stamenterrain',
+            attr='Map data © <a href="https://www.mapquest.com/">MapQuest</a>'
+        )
+        # Add markers for each rock
+        for rock in rocks:
+
+            folium.CircleMarker(
+                location=[rock.latitude, rock.longitude],
+                radius=5,
+                color='red',
+                fill=True,
+                fill_color='red',
+                fill_opacity=0.8,
+                popup=f'{rock.marker_id}:{rock.name}<br>({rock.latitude},{rock.longitude})'
+                      f'<br>Diameter: {rock.size}<br>SPONSOR: XXX'
+            ).add_to(map)
+
+        return map._repr_html_()
+    else:
+        return None
 
 
 # List View for AidRequests
@@ -15,16 +64,17 @@ class AidRequestListView(LoginRequiredMixin, ListView):
     template_name = 'aidrequests/aidrequest_list.html'
 
     def get_context_data(self, **kwargs):
-        rrslug = self.kwargs['regionresponse']
+        rrslug = self.kwargs['field_op']
         context = super().get_context_data(**kwargs)
-        regionresponse = get_object_or_404(RegionResponse, slug=rrslug)
-        context['regionresponse'] = regionresponse
+        field_op = get_object_or_404(FieldOp, slug=rrslug)
+        context['field_op'] = field_op
+        # context['map'] = generate_map(self.get_queryset())
         return context
 
     def get_queryset(self):
-        rrslug = self.kwargs['regionresponse']
-        regionresponse = get_object_or_404(RegionResponse, slug=rrslug)
-        aidrequests = AidRequest.objects.filter(region_response_id=regionresponse.id)
+        rrslug = self.kwargs['field_op']
+        field_op = get_object_or_404(FieldOp, slug=rrslug)
+        aidrequests = AidRequest.objects.filter(field_op_id=field_op.id)
         return aidrequests
 
 
@@ -34,10 +84,10 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
     template_name = 'aidrequests/aidrequest_detail.html'
 
     def get_context_data(self, **kwargs):
-        rrslug = self.kwargs['regionresponse']
+        rrslug = self.kwargs['field_op']
         context = super().get_context_data(**kwargs)
-        regionresponse = get_object_or_404(RegionResponse, slug=rrslug)
-        context['regionresponse'] = regionresponse
+        field_op = get_object_or_404(FieldOp, slug=rrslug)
+        context['field_op'] = field_op
         return context
 
 
@@ -49,10 +99,10 @@ class AidRequestCreateView(CreateView):
     success_url = reverse_lazy('home')
 
     def get_context_data(self, **kwargs):
-        rrslug = self.kwargs['regionresponse']
+        rrslug = self.kwargs['field_op']
         context = super().get_context_data(**kwargs)
-        regionresponse = get_object_or_404(RegionResponse, slug=rrslug)
-        context['regionresponse'] = regionresponse
+        field_op = get_object_or_404(FieldOp, slug=rrslug)
+        context['field_op'] = field_op
         # context['form'] = AidRequestForm()
         return context
 
@@ -63,9 +113,13 @@ class AidRequestCreateView(CreateView):
 
     def form_valid(self, form):
         self.object = form.save()
-        rrslug = self.kwargs['regionresponse']
-        region_response = RegionResponse.objects.get(slug=rrslug)
-        self.object.region_response = region_response
+        rrslug = self.kwargs['field_op']
+        field_op = FieldOp.objects.get(slug=rrslug)
+        self.object.field_op = field_op
+        # distance = geodist(self.object)
+        # if distance is not None and distance > 200:
+        #     form.add_error(None, 'The Aid Request is more than 200 km away from the Field Op.')
+        #     return self.form_invalid(form)
         self.object.save()
         return super().form_valid(form)
 
@@ -83,14 +137,26 @@ class AidRequestUpdateView(LoginRequiredMixin, UpdateView):
         return kwargs
 
     def get_success_url(self):
-        return reverse_lazy('aidrequest_list', kwargs={'regionresponse': self.kwargs['regionresponse']})
+        return reverse_lazy('aidrequest_list', kwargs={'field_op': self.kwargs['field_op']})
 
     def get_context_data(self, **kwargs):
-        rrslug = self.kwargs['regionresponse']
+        rrslug = self.kwargs['field_op']
         context = super().get_context_data(**kwargs)
-        regionresponse = get_object_or_404(RegionResponse, slug=rrslug)
-        context['regionresponse'] = regionresponse
+        field_op = get_object_or_404(FieldOp, slug=rrslug)
+        context['field_op'] = field_op
         return context
+
+    def form_valid(self, form):
+        self.object = form.save()
+        rrslug = self.kwargs['field_op']
+        field_op = FieldOp.objects.get(slug=rrslug)
+        self.object.field_op = field_op
+        # distance = geodist(self.object)
+        # if distance is not None and distance > 200:
+        #     form.add_error(None, 'The Aid Request is more than 200 km away from the Field Op.')
+        #     return self.form_invalid(form)
+        self.object.save()
+        return super().form_valid(form)
 
 
 # Delete View for AidRequest
@@ -100,11 +166,11 @@ class AidRequestDeleteView(LoginRequiredMixin, DeleteView):
     # success_url = reverse_lazy('aidrequest_list')
 
     def get_success_url(self):
-        return reverse_lazy('aidrequest_list', kwargs={'regionresponse': self.kwargs['regionresponse']})
+        return reverse_lazy('aidrequest_list', kwargs={'field_op': self.kwargs['field_op']})
 
     def get_context_data(self, **kwargs):
-        rrslug = self.kwargs['regionresponse']
+        rrslug = self.kwargs['field_op']
         context = super().get_context_data(**kwargs)
-        regionresponse = get_object_or_404(RegionResponse, slug=rrslug)
-        context['regionresponse'] = regionresponse
+        field_op = get_object_or_404(FieldOp, slug=rrslug)
+        context['field_op'] = field_op
         return context

@@ -38,19 +38,19 @@
   <header>
     <nav class="navbar navbar-expand-md navbar-dark">
       <div class="container mx-1">
-        <div class="col-2" id="logo">
-            <img src="{% static 'images/SoA-Logo_GlobeWhite500.png' %}" alt="Intaker App Icon">
-        </div>
-        <div class="col-2 text-center d-inline fw-bold lh-1 navbar-brand">
+        <div class="col-3 text-center d-inline fw-bold lh-1 navbar-brand">
+          <div class="d-inline" id="logo">
+            <img src="{% static 'images/SoA-Logo_GlobeWhite500.png' %}" alt="Intaker App Icon" class="me-1">
+          </div>
           <div class="d-inline" id="banner-title">
-            {% bs_icon 'box-arrow-in-down' color='gold' %}Intake Forms
+             InForms 
           </div>
         </div>
+        {% if user.is_authenticated %}
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup"
           aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
-        {% if user.is_authenticated %}
         <div class="collapse navbar-collapse col-4" id="navbarNavAltMarkup">
           <div>
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
@@ -58,21 +58,26 @@
                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
                   aria-expanded="false">
                   <img src="{% static 'images/informs-icon1.webp' %}" alt="FormsIcon" height="60px" width="60px">
-                  <div class="d-inline-block float-left">Forms</div>
+                  <div class="d-inline-block float-left">Field Ops</div>
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                   <li>
-                    <a class="dropdown-item" href="{% url 'aidrequest_list' regionresponse='parhamcomet24' %}">
-                      <img src="{% static 'images/informs-icon1.webp' %}" height="50px" width="50px">
-                      Aid Request List - Parham Comet 2024
-                    </a>
+                    <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_list' %}'">
+                      <i class="bi bi-list"></i> All Field Ops
+                    </button>
                   </li>
                   <li>
-                    <a class="dropdown-item" href="{% url 'aidrequest_create' regionresponse='parhamcomet24' %}">
-                      <img src="{% static 'images/informs-icon1.webp' %}" height="50px" width="50px">
-                      Aid Request Create - Parham Comet 2024
-                    </a>
+                    <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_create' %}'">
+                      <i class="bi bi-plus-circle"></i> New Field Op
+                    </button>
                   </li>
+                  {% for fieldop in fieldops_active %}
+                    <li>
+                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'aidrequest_list' field_op=fieldop.slug %}'">
+                        <i class="bi bi-life-preserver"></i> {{ fieldop.name }} - Aid Requests
+                        </button>
+                    </li>
+                  {% endfor %}
                   <!-- <li><hr class="dropdown-divider"></li>
                   <li class="dropdown-header">Beta...</li>
                   <li>
@@ -91,21 +96,10 @@
                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
                   aria-expanded="false">
                   <img src="{% static 'images/informs-icon1.webp' %}" alt="FormsIcon" height="60px" width="60px">
-                  <div class="d-inline-block float-left">Region Response</div>
+                  <div class="d-inline-block float-left">Inactive Menu</div>
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                  <li>
-                    <a class="dropdown-item" href="{% url 'regionresponse_list' %}">
-                      <img src="{% static 'images/informs-icon1.webp' %}" height="50px" width="50px">
-                      List
-                    </a>
-                  </li>
-                  <li>
-                    <a class="dropdown-item" href="{% url 'regionresponse_create' %}">
-                      <img src="{% static 'images/informs-icon1.webp' %}" height="50px" width="50px">
-                      Create
-                    </a>
-                  </li>
+                  <ul>Next Menu</ul>
                   <!-- <li><hr class="dropdown-divider"></li>
                   <li class="dropdown-header">Beta...</li>
                   <li>

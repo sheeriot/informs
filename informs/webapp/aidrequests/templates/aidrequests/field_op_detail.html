@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h2>Region Response</h2>
+    <h2>Field Op</h2>
 
     <p>Name: {{ object.name }}</p>
     <p>Slug: {{ object.slug }}</p>
@@ -13,7 +13,7 @@
         <li>Longitude: {{ object.logitude }}</li>
     </ul>
 
-    <a href="{% url 'regionresponse_update' object.pk %}">Edit</a>
-    <a href="{% url 'regionresponse_delete' object.pk %}">Delete</a>
-    <a href="{% url 'regionresponse_list' %}">Back to List</a>
+    <a href="{% url 'field_op_update' object.pk %}">Edit</a>
+    <a href="{% url 'field_op_delete' object.pk %}">Delete</a>
+    <a href="{% url 'field_op_list' %}">Back to List</a>
 {% endblock %}

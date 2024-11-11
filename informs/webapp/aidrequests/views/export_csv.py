@@ -3,7 +3,7 @@ from django.views import View
 import csv
 from datetime import datetime
 
-from ..models import AidRequest, RegionResponse
+from ..models import AidRequest, FieldOp
 
 # from icecream import ic
 
@@ -14,13 +14,13 @@ class AidRequestCsvView(View):
 
     def get(self, request, *args, **kwargs):
         if kwargs['action'] == 'export_csv':
-            return self.get_csv_export(request, regionresponse=kwargs['regionresponse'])
+            return self.get_csv_export(request, field_op=kwargs['field_op'])
 
     def get_csv_export(self, request, *args, **kwargs):
-        # filter by RegionResponse (GroundOp)
-        rrslug = kwargs['regionresponse']
-        region_response = RegionResponse.objects.get(slug=rrslug)
-        aid_requests = AidRequest.objects.filter(region_response=region_response)
+        # filter by FieldOp (GroundOp)
+        rrslug = kwargs['field_op']
+        field_op = FieldOp.objects.get(slug=rrslug)
+        aid_requests = AidRequest.objects.filter(field_op=field_op)
 
         # Create the HttpResponse object with the appropriate CSV header.
         response = HttpResponse(content_type='text/csv')
@@ -62,7 +62,7 @@ class AidRequestCsvView(View):
         for obj in aid_requests:
             writer.writerow([
                              obj.pk,
-                             obj.region_response.slug if obj.region_response else None,
+                             obj.field_op.slug if obj.field_op else None,
                              obj.assistance_type,
                              obj.requestor_first_name,
                              obj.requestor_last_name,

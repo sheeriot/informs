@@ -9,6 +9,6 @@
     <form method="post">
         {% csrf_token %}
         <button type="submit">Yes, delete</button>
-        <a href="{% url 'aidrequest_list' regionresponse=regionresponse.slug %}">Cancel</a>
+        <a href="{% url 'aidrequest_list' field_op=field_op.slug %}">Cancel</a>
     </form>
 {% endblock %}

@@ -2,24 +2,24 @@ from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Submit, Row, Column
 
-from ..models import AidRequest, RegionResponse
+from ..models import AidRequest, FieldOp
 
 # from icecream import ic
 
 
-class RegionResponseForm(forms.ModelForm):
+class FieldOpForm(forms.ModelForm):
     class Meta:
-        model = RegionResponse
+        model = FieldOp
         fields = "__all__"
 
     def __init__(self, action='create', *args, **kwargs):
-        super(RegionResponseForm, self).__init__(*args, **kwargs)
+        super(FieldOpForm, self).__init__(*args, **kwargs)
         self.action = action
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         self.helper.layout = Layout(
             Fieldset(
-                'Region Response Details',
+                'Field Op Details',
                 'name',
                 'slug',
                 'latitude',
@@ -32,7 +32,7 @@ class RegionResponseForm(forms.ModelForm):
 class AidRequestForm(forms.ModelForm):
     class Meta:
         model = AidRequest
-        exclude = ["region_response"]
+        exclude = ["field_op"]
         # fields = "__all__"
 
     def __init__(self, *args, action='create', **kwargs):
