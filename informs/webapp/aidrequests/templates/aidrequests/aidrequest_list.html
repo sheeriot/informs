@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load bootstrap_icons %}
 {% block content %}
 <div class="container mt-4">
     <h2 class="mb-3">Aid Requests: {{ field_op.name }}</h2>
@@ -21,8 +22,18 @@
                 <td>{{ aidrequest.requestor_first_name }} {{ aidrequest.requestor_last_name }}</a></td>
                 <td>{{ aidrequest.street_address }} {{ aidrequest.street_address }} {{ aidrequest.state }}</a></td>
                 <td>
-                    <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-outline-secondary btn-sm">Edit</a>
-                    <a href="{% url 'aidrequest_delete' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-outline-danger btn-sm">Delete</a>
+                    <div class="d-flex">
+                        <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}">
+                            <button class="btn btn-warning btn-sm me-2">
+                                {% bs_icon "pencil" %}
+                            </button>
+                        </a>
+                        <a href="{% url 'aidrequest_delete' pk=aidrequest.pk field_op=field_op.slug %}">
+                            <button class="btn btn-danger btn-sm">
+                                {% bs_icon "trash" %}
+                            </button>
+                        </a>
+                    </div>
                 </td>
             </tr>
             {% endfor %}
@@ -30,9 +41,22 @@
     </table>
 </div>
 <hr>
-<a href="{% url 'aidrequest_create' field_op=field_op.slug %}" class="btn btn-success">
-    <i class="bi bi-plus-circle"></i> New Aid Request
-</a>
-<a href="{% url 'aidrequests_csv' field_op=field_op.slug %}" class="btn btn-primary">Download CSV</a>
-
+<div class="d-flex justify-content-between">
+    <div class="me-2">
+        <a href="{% url 'aidrequest_create' field_op=field_op.slug %}">
+            <button class="btn btn-success p-1">
+            {% bs_icon "plus-circle" %}
+            Add
+            </button>
+        </a>
+    </div>
+    <div class="d-flex justify-content-end">
+        <a href="{% url 'aidrequests_csv' field_op=field_op.slug %}">
+            <button class="btn btn-info p-1">
+            {% bs_icon "download" %}
+            Export
+            </button>
+        </a>
+    </div>
+</div>
 {% endblock %}

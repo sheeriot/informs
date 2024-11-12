@@ -40,7 +40,7 @@
       <div class="container mx-1">
         <div class="col-3 text-center d-inline fw-bold lh-1 navbar-brand">
           <div class="d-inline" id="logo">
-            <img src="{% static 'images/SoA-Logo_GlobeWhite500.png' %}" alt="Intaker App Icon" class="me-1">
+            <img src="{% static 'images/SoA-Logo_GlobeWhite500.png' %}" alt="Save our Allies Logo" class="me-1">
           </div>
           <div class="d-inline" id="banner-title">
              InForms 
@@ -149,25 +149,37 @@
     {% block content %}
     {% endblock %}
   </div>
+  <p />
   <!-- Footer -->
-  <footer class="text-muted small py-2 border-top">
+  <footer class="text-muted small py-1 border-top">
     <div class="container d-flex justify-content-between align-items-center">
       <div class="d-flex align-items-center">
-        {% bs_icon 'person-raised-hand' color='green'%}
-        Helping each other in {% now 'Y' %}!
-        {% bs_icon 'life-preserver' color='red'%}
+        <div class="d-flex justify-content-center align-items-center pe-1 mb-1">
+          {% bs_icon 'life-preserver' color='red' size='1em' %}
+        </div>
+        <div class="d-flex justify-content-center align-items-center>
+          <a href="https://saveourallies.org">
+            <button type="button" class="btn btn-link p-0">
+              <small>SaveOurAllies.org</small>
+            </button>
+          </a>
+        </div>
+        <div class="d-flex justify-content-center align-items-center p-0 mb-1">
+          {% bs_icon 'person-raised-hand' color='green' size='1em' %}
+        </div>
       </div>
       <div class="d-flex align-items-center">
-        Detected time is {% now "jS F Y H:i" %}
+        <small class="text-muted">local:{% now "Ymd-Hi" %}</small>
       </div>
-      <!-- Admin Link -->
-      <a href="/admin" class="text-reset">Admin</a>
-      <!-- Company Logo and Name -->
       <div class="d-flex align-items-center">
         <a href="https://austinvoicedata.com">
-          <img src="{% static 'images/AVD_Logo.jpg' %}" width="100px" alt="Austin Voice Data LLC" class="me-2">
+          <img src="{% static 'images/AVD_Logo.jpg' %}" width="60px" alt="Austin Voice Data LLC" class="me-1">
         </a>
-        <span>Austin Voice Data LLC</span>
+      </div>
+      <div class="d-flex align-items-center">
+        <a href="/admin" class="text-reset">
+          <button class="btn btn-link">admin</button>
+        </a>
       </div>
     </div>
   </footer>
