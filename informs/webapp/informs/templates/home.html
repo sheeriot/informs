@@ -1,20 +1,25 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load bootstrap_icons %}
 
 {% block content %}
-<p />
-<div class="d-flex flex-column justify-content-center centerit">
-    <div><h2>Welcome to the Informs Tool!</h2></div>
-    <div><img src="{% static 'images/informs-icon1.webp' %}" alt="Informs Icon" height="120px"/></div>
+<div class="d-flex flex-column justify-content-center align-items-center centerit">
+    <p />
+    <h2 class="d-flex align-items-center">
+        <div class="d-flex justify-content-center align-items-center p-0 me-2">
+            {% bs_icon 'life-preserver' color='red' size='1.5em' %}
+        </div>
+        Welcome to the InForms Tool!
+        <div class="d-flex justify-content-center align-items-center p-0 me-2">
+            {% bs_icon 'person-raised-hand' color='green' size='1.5em' %}
+        </div>
+    </h2>
 </div>
 {% if user.is_authenticated %}
 <hr>
 <p>Please report defects and enhancement requests to Kris Thompson.</p>
 <hr>
 
-<!-- <div class="d-flex justify-content-center">
-    <img src="{% static 'images/box-arrow-in-right.svg' %}" />
-</div> -->
 <p />
 <p />
 <div class="row">
@@ -29,17 +34,10 @@
 <hr>
 <p />
 <p />
-<div class="d-flex justify-content-center">
-    <img src="{% static 'images/form-inputs-1024x512.png.webp' %}" height="400px" />
-</div>
-<p />
-<p />
-<div class="row">
-    <div class="col-sm-8 mx-auto d-flex justify-content-center">
-        <p>
-            <a href="https://en.wikipedia.org/wiki/Endless_knot">Random Link</a>.
-        </p>
+    <div class="d-flex justify-content-center">
+        <img src="{% static 'images/form-inputs-1024x512.png.webp' %}" height="400px" />
     </div>
+
 </div>
 {% endif %}
 {% endblock %}

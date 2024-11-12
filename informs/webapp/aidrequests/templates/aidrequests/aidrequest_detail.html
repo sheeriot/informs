@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load bootstrap_icons %}
 
 {% block content %}
     <h1>Aid Request Details</h1>
@@ -43,7 +44,28 @@
     <h2>Additional Information</h2>
     <p>{{ object.additional_info }}</p>
 
-    <a href="{% url 'aidrequest_update' pk=object.pk field_op=field_op.slug %}">Edit</a>
-    <a href="{% url 'aidrequest_delete' pk=object.pk field_op=field_op.slug %}">Delete</a>
-    <a href="{% url 'aidrequest_list' field_op=field_op.slug %}">Back to List</a>
+    <hr>
+    <div class="d-flex justify-content-between">
+        <div class="d-flex">
+            <div class="m-0 p-0">
+                <a href="{% url 'aidrequest_list' field_op=field_op.slug %}">
+                    <button class="btn btn-info btn-sm mx-1 p-1">
+                        {% bs_icon "list" %} List
+                    </button>
+                </a>
+            </div>
+            <div class="m-0 p-0">
+                <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}">
+                    <button class="btn btn-warning btn-sm mx-1 p-1">
+                        {% bs_icon "pencil" %} Edit
+                    </button>
+                </a>
+            </div>
+        </div>
+        <a href="{% url 'aidrequest_delete' pk=aidrequest.pk field_op=field_op.slug %}">
+            <button class="btn btn-danger btn-sm mx-1 p-1">
+                {% bs_icon "trash" %} Delete
+            </button>
+        </a>
+    </div>
 {% endblock %}
