@@ -23,15 +23,14 @@
                 <td>{{ aidrequest.street_address }} {{ aidrequest.street_address }} {{ aidrequest.state }}</a></td>
                 <td>
                     <div class="d-flex">
-                        <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}">
-                            <button class="btn btn-warning btn-sm me-2">
-                                {% bs_icon "pencil" %}
-                            </button>
+                        <a href="{% url 'aidrequest_detail' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-info btn-sm me-2">
+                            {% bs_icon "list" %}
                         </a>
-                        <a href="{% url 'aidrequest_delete' pk=aidrequest.pk field_op=field_op.slug %}">
-                            <button class="btn btn-danger btn-sm">
-                                {% bs_icon "trash" %}
-                            </button>
+                        <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm me-2">
+                            {% bs_icon "pencil" %}
+                        </a>
+                        <a href="{% url 'aidrequest_delete' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-danger btn-sm">
+                            {% bs_icon "trash" %}
                         </a>
                     </div>
                 </td>

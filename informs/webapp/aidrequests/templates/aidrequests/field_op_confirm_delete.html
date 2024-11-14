@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load bootstrap_icons %}
 
 {% block content %}
     <h1>Confirm Deletion</h1>
@@ -8,7 +9,23 @@
     
     <form method="post">
         {% csrf_token %}
-        <button type="submit">Yes, delete</button>
-        <a href="{% url 'field_op_list' %}">Cancel</a>
+        <a href="#" onclick="this.closest('form').submit(); return false;" style="color: white; text-decoration: none;" class="btn btn-danger">Yes, delete</a>
+        <a href="{% url 'field_op_list' %}" class="btn btn-secondary">
+            {% bs_icon "x-circle" %} Cancel
+        </a>
     </form>
+<hr>
+<h2>Field Op</h2>
+
+<p>Name: {{ object.name }}</p>
+<p>Slug: {{ object.slug }}</p>
+
+<h2>Location</h2>
+<p>GPS Center:</p>
+<ul>
+    <li>Latitude: {{ object.latitude }}</li>
+    <li>Longitude: {{ object.longitude }}</li>
+</ul>
+
+
 {% endblock %}

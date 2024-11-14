@@ -1,16 +1,19 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
+{% load bootstrap_icons %}
 
 {% block content %}
 
 {% if form.action == "create" %}
-<div class='form-header mb-5'>
-<h2>Field Op</h2>
+    <div class='form-header mb-5'>
+        <h2>Field Op</h2>
+    </div>
 {% else %}
-<div class="form-header">
-    <h2>Update Field Op</h2>
-</div>
+    <div class="form-header">
+        <h2>Update Field Op</h2>
+    </div>
 {% endif %}
+
 <div>Each "Field Op" is a distinct call to support (response) for a region.</div>
 <p>
     Each "Field Op" will get a unique short name (aka slug), i.e.
@@ -27,12 +30,33 @@
     </em>
 </span>
 <hr>
+
+
+<div>
+    {% crispy form %}
 </div>
 
-{% crispy form %}
-
 {% if form.action == "update" %}
-    <a href="{% url 'field_op_list' %}">Back to List</a>
+<hr />
+<div class="d-flex justify-content-between">
+
+        <div class="d-flex">
+            <div class="m-0 p-0">
+                <a href="{% url 'field_op_detail' pk=object.pk %}" class="btn btn-secondary btn-sm mx-1 p-1">
+                    {% bs_icon "x-circle" %} Cancel
+                </a>
+            </div>
+            <div class="m-0 p-0">
+                <a href="{% url 'field_op_list' %}" class="btn btn-info btn-sm mx-1 p-1">
+                    {% bs_icon "list" %} List
+                </a>
+            </div>
+        </div>
+        <a href="{% url 'field_op_delete' pk=object.pk %}" class="btn btn-danger btn-sm mx-1 p-1">
+            {% bs_icon "trash" %} Delete
+        </a>
+    </div>
+</div>
 {% endif %}
 
 

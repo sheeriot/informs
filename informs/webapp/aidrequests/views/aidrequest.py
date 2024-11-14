@@ -4,7 +4,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 
-import folium
 from geopy.distance import geodesic
 
 from ..models import AidRequest, FieldOp
@@ -24,42 +23,9 @@ def geodist(aid_request):
                  1)
 
 
-def generate_map(rocks=None):
-    # Create a map centered around the first rock's location
-    if rocks is not None:
-        lake = rocks.first().lake
-
-        map = folium.Map(
-            location=([lake.latitude, lake.longitude]),
-            zoom_start=lake.zoom_level,
-            scrollWheelZoom=False,
-            control_scale=True,
-            # tiles="cartodbpositron",
-            # tiles="MapQuest Open Aerial",
-            # tiles='stamenterrain',
-            attr='Map data © <a href="https://www.mapquest.com/">MapQuest</a>'
-        )
-        # Add markers for each rock
-        for rock in rocks:
-
-            folium.CircleMarker(
-                location=[rock.latitude, rock.longitude],
-                radius=5,
-                color='red',
-                fill=True,
-                fill_color='red',
-                fill_opacity=0.8,
-                popup=f'{rock.marker_id}:{rock.name}<br>({rock.latitude},{rock.longitude})'
-                      f'<br>Diameter: {rock.size}<br>SPONSOR: XXX'
-            ).add_to(map)
-
-        return map._repr_html_()
-    else:
-        return None
-
-
 # List View for AidRequests
 class AidRequestListView(LoginRequiredMixin, ListView):
+    """ list the aid requests"""
     model = AidRequest
     template_name = 'aidrequests/aidrequest_list.html'
 
@@ -93,6 +59,7 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
 
 # Create View for AidRequest
 class AidRequestCreateView(CreateView):
+    """ Aid Request - Create """
     model = AidRequest
     form_class = AidRequestForm
     template_name = 'aidrequests/aidrequest_form.html'
