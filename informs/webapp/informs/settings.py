@@ -88,7 +88,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'informs.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
@@ -101,7 +100,6 @@ DATABASES = {
         'NAME': SQLITE_FILE
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -136,7 +134,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
@@ -168,3 +165,5 @@ BOOTSTRAP5 = {
     },
 }
 LOGIN_REDIRECT_URL = '/'
+
+AZURE_MAPS_KEY = os.environ.get('AZURE_MAPS_KEY')

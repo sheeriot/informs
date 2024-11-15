@@ -32,27 +32,33 @@
 <div class="d-flex justify-content-between">
     <div class="d-flex">
         <div class="m-0 p-0">
-            <a href="{% url 'aidrequest_detail' pk=aidrequest.pk field_op=field_op.slug %}">
-                <button class="btn btn-secondary btn-sm mx-1 p-1">
-                    {% bs_icon "x-circle" %} Cancel
-                </button>
+            <a href="{% url 'aidrequest_detail' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-secondary btn-sm mx-1 p-1">
+                {% bs_icon "x-circle" %} Cancel
             </a>
         </div>
         <div class="m-0 p-0">
-            <a href="{% url 'aidrequest_list' field_op=field_op.slug %}">
-                <button class="btn btn-info btn-sm mx-1 p-1">
-                    {% bs_icon "list" %} List
-                </button>
+            <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-info btn-sm mx-1 p-1">
+                {% bs_icon "list" %} List
             </a>
         </div>
     </div>
-    <a href="{% url 'aidrequest_delete' pk=aidrequest.pk field_op=field_op.slug %}">
-        <button class="btn btn-danger btn-sm mx-1 p-1">
-            {% bs_icon "trash" %} Delete
-        </button>
+    <a href="{% url 'aidrequest_delete' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-danger btn-sm mx-1 p-1">
+        {% bs_icon "trash" %} Delete
     </a>
 </div>
 {% endif %}
 
+<script>
+    function differentContact() {
+        const fieldset = document.getElementById("different_contact_fieldset");
+        const checkbox = document.getElementById("different_contact");
+        // Toggle visibility based on the checkbox state
+        if (checkbox.checked) {
+            fieldset.classList.remove("d-none");
+        } else {
+            fieldset.classList.add("d-none");
+        }
+    }
+</script>
 
 {% endblock %}

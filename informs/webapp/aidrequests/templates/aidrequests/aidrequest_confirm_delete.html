@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load bootstrap_icons %}
 
 {% block content %}
     <h1>Confirm Deletion</h1>
@@ -8,7 +9,52 @@
     
     <form method="post">
         {% csrf_token %}
-        <button type="submit">Yes, delete</button>
-        <a href="{% url 'aidrequest_list' field_op=field_op.slug %}">Cancel</a>
+        <a href="#" onclick="this.closest('form').submit(); return false;" style="color: white; text-decoration: none;" class="btn btn-danger">Yes, delete</a>
+        <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-secondary">
+            {% bs_icon "x-circle" %} Cancel
+        </a>
     </form>
+
+<hr>
+
+<h2>Requestor Details</h2>
+<p>First Name: {{ object.requestor_first_name }}</p>
+<p>Last Name: {{ object.requestor_last_name }}</p>
+<p>Email Address: {{ object.requestor_email }}</p>
+<p>Phone Number: {{ object.requestor_phone }}</p>
+
+<h2>Contact Details for Party Needing Assistance</h2>
+<p>First Name: {{ object.assistance_first_name }}</p>
+<p>Last Name: {{ object.assistance_last_name }}</p>
+<p>Email Address: {{ object.assistance_email }}</p>
+<p>Phone Number: {{ object.assistance_phone }}</p>
+
+<h2>Location of Assistance Request</h2>
+<p>Street Address: {{ object.street_address }}</p>
+<p>City: {{ object.city }}</p>
+<p>State: {{ object.state }}</p>
+<p>Zip Code: {{ object.zip_code }}</p>
+
+<h2>Type of Assistance Requested</h2>
+<p>Type: {{ object.get_assistance_type_display }}</p>
+<p>Description: {{ object.assistance_description }}</p>
+
+<h2>Group Size</h2>
+<p>{{ object.group_size }}</p>
+
+<h2>Preferred Contact Methods</h2>
+<p>{{ object.contact_methods }}</p>
+
+<h2>Emergency Medical Needs</h2>
+<p>{{ object.medical_needs }}</p>
+
+<h2>Supplies Needed</h2>
+<p>{{ object.supplies_needed }}</p>
+
+<h2>Welfare Check Information</h2>
+<p>{{ object.welfare_check_info }}</p>
+
+<h2>Additional Information</h2>
+<p>{{ object.additional_info }}</p>
+
 {% endblock %}

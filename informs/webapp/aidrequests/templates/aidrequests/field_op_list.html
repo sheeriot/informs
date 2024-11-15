@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
+{% load bootstrap_icons %}
+
 {% block content %}
 <div class="container mt-4">
     <h2 class="mb-3">All Field Ops</h2>
@@ -25,12 +27,17 @@
                 </td>
                 <td>{{ field_op.latitude }},{{ field_op.longitude }}</td>
                 <td>
-                    <a href="{% url 'field_op_update' field_op.pk %}" class="btn btn-outline-secondary btn-sm">
-                        <i class="bi bi-pencil"></i> Edit
-                    </a>
-                    <a href="{% url 'field_op_delete' field_op.pk %}" class="btn btn-outline-danger btn-sm">
-                        <i class="bi bi-trash"></i> Delete
-                    </a>
+                    <div class="d-flex">
+                        <a href="{% url 'field_op_detail' pk=field_op.pk %}" class="btn btn-info btn-sm me-2">
+                            {% bs_icon "binoculars-fill" %}
+                        </a>
+                        <a href="{% url 'field_op_update' field_op.pk %}" class="btn btn-warning btn-sm me-2">
+                            {% bs_icon "pencil" %}
+                        </a>
+                        <a href="{% url 'field_op_delete' field_op.pk %}" class="btn btn-danger btn-sm">
+                            {% bs_icon "trash" %}
+                        </a>
+                    </div>
                 </td>
             </tr>
             {% endfor %}

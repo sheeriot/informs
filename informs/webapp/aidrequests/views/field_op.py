@@ -8,7 +8,7 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from ..models import FieldOp
 from .forms import FieldOpForm
 
-from icecream import ic
+# from icecream import ic
 
 
 # List View for FieldOp

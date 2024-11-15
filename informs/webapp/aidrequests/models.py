@@ -1,19 +1,27 @@
+"""
+This module  for AidRequests and FieldOps
+"""
+
 from django.db import models
 
 
+# Module providing a function printing python version."""
+
 class FieldOp(models.Model):
+    """Field Ops"""
     slug = models.SlugField(unique=True)
     name = models.CharField(max_length=50)
     latitude = models.DecimalField(max_digits=4, decimal_places=2)
     longitude = models.DecimalField(max_digits=5, decimal_places=2)
 
     def __str__(self):
-        return self.name
+        return str(self.name)
 
 
 class AidRequest(models.Model):
-    # scope to a field operation object
-    field_op = models.ForeignKey(FieldOp, on_delete=models.CASCADE, null=True, related_name='aid_requests')
+    """ scope to a field operation object"""
+    field_op = models.ForeignKey(FieldOp, on_delete=models.CASCADE,
+                                 null=True, related_name='aid_requests')
     # 1. Requestor details
     requestor_first_name = models.CharField(max_length=20)
     requestor_last_name = models.CharField(max_length=30)
@@ -62,4 +70,5 @@ class AidRequest(models.Model):
     additional_info = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return f"AidRequest by {self.requestor_first_name} {self.requestor_last_name} - {self.assistance_type}"
+        return f"""AidRequest by {self.requestor_first_name} {self.requestor_last_name}
+               - {self.assistance_type}"""
