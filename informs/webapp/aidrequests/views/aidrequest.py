@@ -49,10 +49,14 @@ class AddressValidationView(LoginRequiredMixin, DetailView):
             return {"error": "Azure Maps key is not configured."}
 
         endpoint = "https://atlas.microsoft.com/search/address/json"
+
+        query_address = f"{self.object.street_address}, {self.object.city}"
+        query_address += f", {self.object.state}, {self.object.zip_code}, {self.object.country}"
+
         params = {
             "api-version": "1.0",
             "subscription-key": azure_maps_key,
-            "query": self.object.street_address + ", " + self.object.city + ", " + self.object.state,
+            "query": query_address,
             "lat": self.object.field_op.latitude,
             "lon": self.object.field_op.longitude
         }
