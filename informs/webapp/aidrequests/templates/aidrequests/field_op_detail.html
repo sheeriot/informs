@@ -4,8 +4,14 @@
 {% block content %}
     <h2>Field Op</h2>
 
-    <p>Name: {{ object.name }}</p>
-    <p>Slug: {{ object.slug }}</p>
+    <div class="d-flex mb-3">
+        <div class="mx-4">
+            <strong>Name:</strong> <span class="fs-4 text-danger">{{ object.name }}</span>
+        </div>
+        <div>
+            <strong>Slug:</strong> <span class="text-secondary">{{ object.slug }}</span>
+        </div>
+    </div>
 
     <h2>Location</h2>
     <div class="d-flex">

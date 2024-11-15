@@ -19,6 +19,7 @@ div#banner-title {
 	color: #FFD700;
 	font-size: 0.85em;
 }
+
 .messages {
 	border: 1px solid;
 	border-radius:24px;
@@ -32,7 +33,7 @@ div#banner-title {
 
 #console-messages p {
     font-size: 0.7rem;
-  }
+}
 
 #div_id_start, #div_id_end{
 	display:inline-block;
@@ -46,10 +47,10 @@ div#banner-title {
 	-moz-user-select: none;
 	-ms-user-select: none;
 	user-select: none;
-  }
+}
 
-  /* The actual popup */
-  .popup .popuptext {
+/* The actual popup */
+.popup .popuptext {
 	visibility: hidden;
 	width: 160px;
 	background-color: #555;
@@ -62,10 +63,10 @@ div#banner-title {
 	bottom: 125%;
 	left: 50%;
 	margin-left: -80px;
-  }
+}
 
-  /* Popup arrow */
-  .popup .popuptext::after {
+/* Popup arrow */
+.popup .popuptext::after {
 	content: "";
 	position: absolute;
 	top: 100%;
@@ -74,28 +75,36 @@ div#banner-title {
 	border-width: 5px;
 	border-style: solid;
 	border-color: #555 transparent transparent transparent;
-  }
+}
 
-  /* Toggle this class - hide and show the popup */
-  .popup .show {
+/* Toggle this class - hide and show the popup */
+.popup .show {
 	visibility: visible;
 	-webkit-animation: fadeIn 1s;
 	animation: fadeIn 1s;
-  }
+}
 
-  .popup .hide {
+.popup .hide {
 	visibility: hidden;
 	-webkit-animation: fadeIn 1s;
 	animation: fadeIn 1s;
-  }
+}
 
-  /* Add animation (fade in the popup) */
-  @-webkit-keyframes fadeIn {
+/* Add animation (fade in the popup) */
+@-webkit-keyframes fadeIn {
 	from {opacity: 0;}
 	to {opacity: 1;}
-  }
+}
 
-  @keyframes fadeIn {
+@keyframes fadeIn {
 	from {opacity: 0;}
 	to {opacity:1 ;}
-  }
+}
+
+.fieldset-box {
+	border: 1px solid #ccc;        /* Light gray border */
+	padding: 15px;                 /* Padding inside the fieldset */
+	margin-bottom: 15px;           /* Space between fieldsets */
+	border-radius: 5px;            /* Optional: rounded corners */
+	background-color: #f9f9f9;     /* Optional: light background color */
+}
