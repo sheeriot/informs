@@ -11,20 +11,20 @@
                 <th scope="col">Type</th>
                 <th scope="col">Requester</th>
                 <th scope="col">Address</th>
-                <th scope="col">Actions</th>
+                <th scope="col" class="text-end">Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for aidrequest in object_list %}
             <tr>
                 <td><a href="{% url 'aidrequest_detail' pk=aidrequest.pk field_op=field_op.slug %}">{{ aidrequest.pk }}</a></td>
-                <td>{{ aidrequest.assistance_type }}</a></td>
-                <td>{{ aidrequest.requestor_first_name }} {{ aidrequest.requestor_last_name }}</a></td>
-                <td>{{ aidrequest.street_address }} {{ aidrequest.street_address }} {{ aidrequest.state }}</a></td>
+                <td>{{ aidrequest.assistance_type }}</td>
+                <td>{{ aidrequest.requestor_first_name }} {{ aidrequest.requestor_last_name }}</td>
+                <td>{{ aidrequest.street_address }},{{ aidrequest.state }}</td>
                 <td>
-                    <div class="d-flex">
+                    <div class="d-flex justify-content-end">
                         <a href="{% url 'aidrequest_detail' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-info btn-sm me-2">
-                            {% bs_icon "list" %}
+                            {% bs_icon "binoculars-fill" %}
                         </a>
                         <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm me-2">
                             {% bs_icon "pencil" %}

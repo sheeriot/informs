@@ -119,9 +119,10 @@ class AidRequestForm(forms.ModelForm):
                 'Location of Assistance Request',
                 Row('street_address', css_class='col-12 mb-2'),
                 Row(
-                    Column('city', css_class='col-md-6 mb-2'),
+                    Column('city', css_class='col-md-4 mb-2'),
                     Column('state', css_class='col-md-3 mb-2'),
                     Column('zip_code', css_class='col-md-3 mb-2'),
+                   Column('country', css_class='col-md-2 mb-2'),
                 ),
                 css_class="fieldset-box p-3 border rounded"
             ),

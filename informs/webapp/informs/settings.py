@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'tz_detect',
     'crispy_forms',
     'crispy_bootstrap5',
+    'mathfilters',
     'accounts.apps.AccountsConfig',
     'aidrequests.apps.AidRequestsConfig',
 ]

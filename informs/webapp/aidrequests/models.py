@@ -38,8 +38,9 @@ class AidRequest(models.Model):
     # 3. Location of assistance request
     street_address = models.CharField(max_length=50)
     city = models.CharField(max_length=25)
-    state = models.CharField(max_length=2)  # Use two-letter state abbreviations
-    zip_code = models.CharField(max_length=5)
+    state = models.CharField(max_length=20)
+    zip_code = models.CharField(max_length=10, blank=True)
+    country = models.CharField(max_length=30, blank=True)
 
     # 4. Type of assistance requested
     ASSISTANCE_CHOICES = [
@@ -52,7 +53,7 @@ class AidRequest(models.Model):
     assistance_description = models.TextField(blank=True, null=True)
 
     # 5. Group size
-    group_size = models.IntegerField(blank=True, null=True)
+    group_size = models.PositiveIntegerField(blank=True, null=True)
 
     # 6. Preferred contact methods
     contact_methods = models.TextField(blank=True, null=True)

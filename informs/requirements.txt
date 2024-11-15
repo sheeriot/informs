@@ -4,6 +4,7 @@ django_bootstrap_icons
 django-tz-detect
 crispy-bootstrap5
 django-crispy-forms
+django-mathfilters
 folium
 geopy
 icecream

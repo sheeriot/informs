@@ -2,25 +2,90 @@
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
+from django.conf import settings
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+# from django.http import JsonResponse
 
+import requests
+# import json
 from geopy.distance import geodesic
 
 from ..models import AidRequest, FieldOp
 from .forms import AidRequestForm
 
-# from icecream import ic
+from icecream import ic
 
 
 def geodist(aid_request):
     if any([aid_request.latitude, aid_request.longitude, aid_request.field_op.latitude,
             aid_request.field_op.longitude]) is None:
         return None
-    return round(geodesic(
-                 (aid_request.latitude, aid_request.longitude),
-                 (aid_request.field_op.latitude, aid_request.field_op.longitude)
-                 ).km,
-                 1)
+
+    return round(
+        geodesic(
+            (aid_request.latitude, aid_request.longitude),
+            (aid_request.field_op.latitude, aid_request.field_op.longitude)
+            ).km,
+        1)
+
+
+class AddressValidationView(LoginRequiredMixin, DetailView):
+    model = AidRequest
+    template_name = 'aidrequests/aidrequest_addresser.html'
+    """
+    A Django class-based view for validating addresses using Azure Maps.
+    """
+
+    def check_address_azure(self):
+        """
+        Validate an address using Azure Maps API.
+
+        :param address: The address string to validate.
+        :return: A dictionary containing the response from Azure Maps.
+        """
+        azure_maps_key = settings.AZURE_MAPS_KEY
+        # ic(azure_maps_key)
+        if not azure_maps_key:
+            return {"error": "Azure Maps key is not configured."}
+
+        endpoint = "https://atlas.microsoft.com/search/address/json"
+
+        query_address = f"{self.object.street_address}, {self.object.city}"
+        query_address += f", {self.object.state}, {self.object.zip_code}, {self.object.country}"
+
+        params = {
+            "api-version": "1.0",
+            "subscription-key": azure_maps_key,
+            "query": query_address,
+            "lat": self.object.field_op.latitude,
+            "lon": self.object.field_op.longitude
+        }
+
+        try:
+            response = requests.get(endpoint, params=params)
+            response.raise_for_status()  # Raise an exception for HTTP errors
+
+            return response.json()
+        except requests.RequestException as e:
+            return {"error": str(e)}
+
+    def get_context_data(self, **kwargs):
+        """ Add Action and Field_Op """
+
+        context = super().get_context_data(**kwargs)
+        action = self.request.GET.get('action') or None
+        field_op_slug = self.kwargs['field_op']
+        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
+        context['field_op'] = field_op
+        context['action'] = action
+
+        action_results = self.check_address_azure()
+        ic(action_results['results'])
+        context['action_summary'] = action_results['summary']
+        context['action_results'] = action_results['results']
+        ic(action_results['results'])
+
+        return context
 
 
 # List View for AidRequests
@@ -30,16 +95,16 @@ class AidRequestListView(LoginRequiredMixin, ListView):
     template_name = 'aidrequests/aidrequest_list.html'
 
     def get_context_data(self, **kwargs):
-        rrslug = self.kwargs['field_op']
+        field_op_slug = self.kwargs['field_op']
         context = super().get_context_data(**kwargs)
-        field_op = get_object_or_404(FieldOp, slug=rrslug)
+        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
         context['field_op'] = field_op
         # context['map'] = generate_map(self.get_queryset())
         return context
 
     def get_queryset(self):
-        rrslug = self.kwargs['field_op']
-        field_op = get_object_or_404(FieldOp, slug=rrslug)
+        field_op_slug = self.kwargs['field_op']
+        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
         aidrequests = AidRequest.objects.filter(field_op_id=field_op.id)
         return aidrequests
 
@@ -50,9 +115,9 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
     template_name = 'aidrequests/aidrequest_detail.html'
 
     def get_context_data(self, **kwargs):
-        rrslug = self.kwargs['field_op']
+        field_op_slug = self.kwargs['field_op']
         context = super().get_context_data(**kwargs)
-        field_op = get_object_or_404(FieldOp, slug=rrslug)
+        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
         context['field_op'] = field_op
         return context
 
@@ -66,9 +131,9 @@ class AidRequestCreateView(CreateView):
     success_url = reverse_lazy('home')
 
     def get_context_data(self, **kwargs):
-        rrslug = self.kwargs['field_op']
+        field_op_slug = self.kwargs['field_op']
         context = super().get_context_data(**kwargs)
-        field_op = get_object_or_404(FieldOp, slug=rrslug)
+        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
         context['field_op'] = field_op
         # context['form'] = AidRequestForm()
         return context
@@ -80,8 +145,8 @@ class AidRequestCreateView(CreateView):
 
     def form_valid(self, form):
         self.object = form.save()
-        rrslug = self.kwargs['field_op']
-        field_op = FieldOp.objects.get(slug=rrslug)
+        field_op_slug = self.kwargs['field_op']
+        field_op = FieldOp.objects.get(slug=field_op_slug)
         self.object.field_op = field_op
         # distance = geodist(self.object)
         # if distance is not None and distance > 200:
@@ -107,16 +172,16 @@ class AidRequestUpdateView(LoginRequiredMixin, UpdateView):
         return reverse_lazy('aidrequest_list', kwargs={'field_op': self.kwargs['field_op']})
 
     def get_context_data(self, **kwargs):
-        rrslug = self.kwargs['field_op']
+        field_op_slug = self.kwargs['field_op']
         context = super().get_context_data(**kwargs)
-        field_op = get_object_or_404(FieldOp, slug=rrslug)
+        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
         context['field_op'] = field_op
         return context
 
     def form_valid(self, form):
         self.object = form.save()
-        rrslug = self.kwargs['field_op']
-        field_op = FieldOp.objects.get(slug=rrslug)
+        field_op_slug = self.kwargs['field_op']
+        field_op = FieldOp.objects.get(slug=field_op_slug)
         self.object.field_op = field_op
         # distance = geodist(self.object)
         # if distance is not None and distance > 200:
@@ -136,8 +201,8 @@ class AidRequestDeleteView(LoginRequiredMixin, DeleteView):
         return reverse_lazy('aidrequest_list', kwargs={'field_op': self.kwargs['field_op']})
 
     def get_context_data(self, **kwargs):
-        rrslug = self.kwargs['field_op']
+        field_op_slug = self.kwargs['field_op']
         context = super().get_context_data(**kwargs)
-        field_op = get_object_or_404(FieldOp, slug=rrslug)
+        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
         context['field_op'] = field_op
         return context

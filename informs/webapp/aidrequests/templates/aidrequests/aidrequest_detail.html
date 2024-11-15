@@ -2,64 +2,104 @@
 {% load bootstrap_icons %}
 
 {% block content %}
-    <h1>Aid Request Details</h1>
+<h2>Aid Request Details</h2>
 
-    <h2>Requestor Details</h2>
-    <p>First Name: {{ object.requestor_first_name }}</p>
-    <p>Last Name: {{ object.requestor_last_name }}</p>
-    <p>Email Address: {{ object.requestor_email }}</p>
-    <p>Phone Number: {{ object.requestor_phone }}</p>
+<table class="table table-bordered w-auto caption-top">
+    <caption>Aid Summary</caption>
+    <tr>
+        <th class="col-auto">ID</th>
+        <th class="col-auto">Field Op</th>
+        <th class="col-auto">Aid Type</th>
+        <th class="col-auto">Group Size</th>
+    </tr>
+    <tr>
+        <td class="col-auto">{{ object.pk }}</td>
+        <td class="col-auto">{{ field_op.name }}</td>
+        <td class="col-auto">{{ object.get_assistance_type_display }}</td>
+        <td class="col-auto text-center">{{ object.group_size }}</td>
+    </tr>
+</table>
 
-    <h2>Contact Details for Party Needing Assistance</h2>
-    <p>First Name: {{ object.assistance_first_name }}</p>
-    <p>Last Name: {{ object.assistance_last_name }}</p>
-    <p>Email Address: {{ object.assistance_email }}</p>
-    <p>Phone Number: {{ object.assistance_phone }}</p>
+<p>Description: {{ object.assistance_description }}</p>
 
-    <h2>Location of Assistance Request</h2>
-    <p>Street Address: {{ object.street_address }}</p>
-    <p>City: {{ object.city }}</p>
-    <p>State: {{ object.state }}</p>
-    <p>Zip Code: {{ object.zip_code }}</p>
+<hr>
+<table class="table table-bordered w-auto caption-top">
+    <caption>Contact Information</caption>
+    <tr>
+        <th class="col col-auto">Requestor Name</th>
+        <th class="col col-auto">Requestor Phone</th>
+        <th class="col col-auto">Requestor Email</th>
+    </tr>
+    <tr>
+        <td class="col col-auto">{{ object.requestor_first_name }} {{ object.requestor_last_name }}</td>
+        <td class="col col-auto">{{ object.requestor_phone }}</td>
+        <td class="col col-auto">{{ object.requestor_email }}</td>
+    </tr>
+    <tr>
+        <th class="col col-auto">Contact Name</th>
+        <th class="col col-auto">Contact Phone</th>
+        <th class="col col-auto">Contact Email</th>
+    </tr>
+    <tr>
+        <td class="col col-auto">{{ object.assistance_first_name }} {{ object.assistance_last_name }}</td>
+        <td class="col col-auto">{{ object.assistance_phone }} </td>
+        <td class="col col-auto">{{ object.assistance_email }}</td>
+    </tr>
+</table>
 
-    <h2>Type of Assistance Requested</h2>
-    <p>Type: {{ object.get_assistance_type_display }}</p>
-    <p>Description: {{ object.assistance_description }}</p>
+<p>Contact Methods:<br>{{ object.contact_methods }}</p>
+<hr>
 
-    <h2>Group Size</h2>
-    <p>{{ object.group_size }}</p>
+<h2>Location of Assistance Request</h2>
+<table class="table table-bordered w-auto caption-top">
+    <caption>Location Details</caption>
+    <tr>
+        <th class="col-auto">Street Address</th>
+        <th class="col-auto">City</th>
+        <th class="col-auto">State</th>
+        <th class="col-auto">Zip Code</th>
+    </tr>
+    <tr>
+        <td class="col-auto">{{ object.street_address }}</td>
+        <td class="col-auto">{{ object.city }}</td>
+        <td class="col-auto">{{ object.state }}</td>
+        <td class="col-auto">{{ object.zip_code }}</td>
+    </tr>
+</table>
+<div class="d-flex justify-content-start">
+    <a href="{% url 'aidrequest_addresser' pk=object.pk field_op=field_op.slug %}" class="btn btn-success btn-sm mx-1 p-1">
+        {% bs_icon "globe2" %} Locate
+    </a>
+</div>
+<hr>
+<h2>Emergency Medical Needs</h2>
+<p>{{ object.medical_needs }}</p>
 
-    <h2>Preferred Contact Methods</h2>
-    <p>{{ object.contact_methods }}</p>
+<h2>Supplies Needed</h2>
+<p>{{ object.supplies_needed }}</p>
 
-    <h2>Emergency Medical Needs</h2>
-    <p>{{ object.medical_needs }}</p>
+<h2>Welfare Check Information</h2>
+<p>{{ object.welfare_check_info }}</p>
 
-    <h2>Supplies Needed</h2>
-    <p>{{ object.supplies_needed }}</p>
+<h2>Additional Information</h2>
+<p>{{ object.additional_info }}</p>
 
-    <h2>Welfare Check Information</h2>
-    <p>{{ object.welfare_check_info }}</p>
-
-    <h2>Additional Information</h2>
-    <p>{{ object.additional_info }}</p>
-
-    <hr>
-    <div class="d-flex justify-content-between">
-        <div class="d-flex">
-            <div class="m-0 p-0">
-                <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-info btn-sm mx-1 p-1">
-                    {% bs_icon "list" %} List
-                </a>
-            </div>
-            <div class="m-0 p-0">
-                <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
-                    {% bs_icon "pencil" %} Edit
-                </a>
-            </div>
+<hr>
+<div class="d-flex justify-content-between">
+    <div class="d-flex">
+        <div class="m-0 p-0">
+            <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-info btn-sm mx-1 p-1">
+                {% bs_icon "list" %} List
+            </a>
         </div>
-        <a href="{% url 'aidrequest_delete' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-danger btn-sm mx-1 p-1">
-            {% bs_icon "trash" %} Delete
-        </a>
+        <div class="m-0 p-0">
+            <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
+                {% bs_icon "pencil" %} Edit
+            </a>
+        </div>
     </div>
+    <a href="{% url 'aidrequest_delete' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-danger btn-sm mx-1 p-1">
+        {% bs_icon "trash" %} Delete
+    </a>
+</div>
 {% endblock %}
