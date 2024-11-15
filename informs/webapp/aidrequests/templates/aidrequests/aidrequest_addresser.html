@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load bootstrap_icons %}
+{% load mathfilters %}
 
 {% block content %}
 <h2>Aid Request - Address Checker</h2>
@@ -9,7 +10,8 @@
         <th class="col-auto">Street Address</th>
         <th class="col-auto">City</th>
         <th class="col-auto">State</th>
-        <th class="col-auto">Zip Code</th>
+        <th class="col-auto">Zip</th>
+        <th class="col-auto">Country</th>
         <th class="col-auto">Actions</th>
     </tr>
     <tr>
@@ -17,6 +19,7 @@
         <td class="col-auto">{{ object.city }}</td>
         <td class="col-auto">{{ object.state }}</td>
         <td class="col-auto">{{ object.zip_code }}</td>
+        <td class="col-auto">{{ object.country }}</td>
         <td class="col-auto">
             <a href="{% url 'aidrequest_addresser' pk=object.pk field_op=field_op.slug %}?action=search" class="btn btn-info btn-sm mx-1 p-1">
                 {% bs_icon "search" %} Search
@@ -27,58 +30,59 @@
         </td>
     </tr>
 </table>
-
 {% if action %}
-    <div class="alert alert-info">
-        <strong>Action: {{ action }}</strong> <br>
-        <table class="table table-bordered w-auto caption-top">
-            <caption>Summary</caption>
-            <thead>
-                <tr>
-                    <th class="col-auto">Query</th>
-                    <th class="col-auto">Total Results</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="col-auto">{{ action_summary.query }}</td>
-                    <td class="col-auto">{{ action_summary.totalResults }}</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    <div class="alert alert-warning">
-        <table class="table table-bordered w-auto caption-top">
-            <caption>Action Results</caption>
-            <thead>
+<div class="alert alert-info">
+    <table class="table table-bordered w-auto caption-top">
+        <caption>Summary: {{ action }}</caption>
+        <thead>
             <tr>
-                <th class="col-auto">Confidence</th>
-                <th class="col-auto">Address</th>
-                <th class="col-auto">Co-ords</th>
-                <th class="col-auto">Map-it</th>
-                <th class="col-auto">Entry Points</th>
-                <!-- <th class="col-auto">Viewport</th> -->
+                <th class="col-auto">Query</th>
+                <th class="col-auto">Total Results</th>
             </tr>
-            </thead>
-            <tbody>
-            {% for result in action_results %}
+        </thead>
+        <tbody>
             <tr>
-                <td class="col-auto">{{ result.matchConfidence.score }}</td>
-                <td class="col-auto">{{ result.address.streetNumber }} {{ result.address.streetName }},{{ result.address.countrySubdivisionName }} {{ result.address.countryCodeISO3 }}</td>
-                <td class="col-auto">{{ result.position.lat }},{{ result.position.lon }}</td>
-                <td class="col-auto">
-                    <a href="https://www.google.com/maps/@{{ result.position.lat }},{{ result.position.lon }},15z" target="_blank" class="btn btn-primary btn-sm">
-                        Google Map
-                    </a>
-                </td>
-                <td class="col-auto">{{ result.entryPoints|length }}</td>
-                <!-- <td class="col-auto">{{ result.viewport }}</td> -->
+                <td class="col-auto">{{ action_summary.query }}</td>
+                <td class="col-auto">{{ action_summary.totalResults }}</td>
             </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+        </tbody>
+    </table>
+    Field Op: {{ object.field_op.name }} ({{ object.field_op.slug}})
+    <div class="d-flex">
+        Center: {{ object.field_op.latitude }},{{ object.field_op.longitude }}
     </div>
-
+</div>
+<div class="alert alert-warning">
+    <table class="table table-bordered w-auto caption-top">
+        <caption>Action Results</caption>
+        <thead>
+        <tr>
+            <th class="col-auto">Score</th>
+            <th class="col-auto">Dist</th>
+            <th class="col-auto">Address</th>
+            <th class="col-auto">Co-ords</th>
+            <th class="col-auto">Map-it</th>
+            <th class="col-auto">Entry Points</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for result in action_results %}
+        <tr>
+            <td class="col-auto">{{ result.matchConfidence.score|floatformat:2 }}</td>
+            <td class="col-auto">{{ result.dist|div:1000|floatformat:1 }}</td>
+            <td class="col-auto">{{ result.address.freeformAddress }} {{ result.address.countryCodeISO3 }}</td>
+            <td class="col-auto">{{ result.position.lat }},{{ result.position.lon }}</td>
+            <td class="col-auto">
+                <a href="https://google.com/maps/@{{ result.position.lat }},{{ result.position.lon }},16z" target="_blank" class="btn btn-primary btn-sm">
+                    Google Map
+                </a>
+            </td>
+            <td class="col-auto">{{ result.entryPoints|length }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endif %}
 
 <hr>

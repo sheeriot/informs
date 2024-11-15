@@ -7,7 +7,7 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 # from django.http import JsonResponse
 
 import requests
-import json
+# import json
 from geopy.distance import geodesic
 
 from ..models import AidRequest, FieldOp
@@ -20,11 +20,13 @@ def geodist(aid_request):
     if any([aid_request.latitude, aid_request.longitude, aid_request.field_op.latitude,
             aid_request.field_op.longitude]) is None:
         return None
-    return round(geodesic(
-                 (aid_request.latitude, aid_request.longitude),
-                 (aid_request.field_op.latitude, aid_request.field_op.longitude)
-                 ).km,
-                 1)
+
+    return round(
+        geodesic(
+            (aid_request.latitude, aid_request.longitude),
+            (aid_request.field_op.latitude, aid_request.field_op.longitude)
+            ).km,
+        1)
 
 
 class AddressValidationView(LoginRequiredMixin, DetailView):
@@ -50,7 +52,9 @@ class AddressValidationView(LoginRequiredMixin, DetailView):
         params = {
             "api-version": "1.0",
             "subscription-key": azure_maps_key,
-            "query": self.object.street_address + " " + self.object.city + " " + self.object.state,
+            "query": self.object.street_address + ", " + self.object.city + ", " + self.object.state,
+            "lat": self.object.field_op.latitude,
+            "lon": self.object.field_op.longitude
         }
 
         try:
@@ -71,10 +75,11 @@ class AddressValidationView(LoginRequiredMixin, DetailView):
         context['field_op'] = field_op
         context['action'] = action
 
-        action_result = self.check_address_azure()
-
-        context['action_summary'] = action_result['summary']
-        context['action_results'] = action_result['results']
+        action_results = self.check_address_azure()
+        ic(action_results['results'])
+        context['action_summary'] = action_results['summary']
+        context['action_results'] = action_results['results']
+        ic(action_results['results'])
 
         return context
 
