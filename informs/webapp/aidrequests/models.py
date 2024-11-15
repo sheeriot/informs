@@ -52,7 +52,7 @@ class AidRequest(models.Model):
     assistance_description = models.TextField(blank=True, null=True)
 
     # 5. Group size
-    group_size = models.IntegerField(blank=True, null=True)
+    group_size = models.PositiveIntegerField(blank=True, null=True)
 
     # 6. Preferred contact methods
     contact_methods = models.TextField(blank=True, null=True)
