@@ -10,7 +10,6 @@ from aidrequests.views.aidrequest import (AidRequestCreateView,
                                           AidRequestUpdateView,
                                           AidRequestDeleteView,
                                           AidRequestDetailView,
-                                          AddressValidationView
                                           )
 
 from aidrequests.views.field_op import (FieldOpCreateView,
@@ -21,6 +20,9 @@ from aidrequests.views.field_op import (FieldOpCreateView,
                                         )
 
 from aidrequests.views.export_csv import AidRequestCsvView
+
+from aidrequests.views.mapper import AddressValidationView
+
 
 from .views import home
 
