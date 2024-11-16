@@ -82,17 +82,17 @@ class AddressValidationView(LoginRequiredMixin, DetailView):
 
         endpoint = "https://atlas.microsoft.com/geocode"
 
-        query_address = f"{self.object.street_address}, {self.object.city}"
-        query_address += f", {self.object.state}, {self.object.zip_code}"
-        ic(query_address)
+        query_address = f"{self.object.street_address} {self.object.city}"
+
+        # ic(query_address)
 
         params = {
             "api-version": "2023-06-01",
             "query": query_address,
             "coordinates": str(self.object.field_op.latitude) + "," + str(self.object.field_op.longitude)
         }
-        ic(params)
-        
+        # ic(params)
+
         headers = {
             "Subscription-Key": azure_maps_key
         }
@@ -118,10 +118,10 @@ class AddressValidationView(LoginRequiredMixin, DetailView):
             action_results = self.check_address_azure()
             context['action_summary'] = action_results['summary']
             results = sorted(action_results['results'], key=lambda x: x['score'], reverse=True)
-            context['action_results'] = results
+            context['results'] = results
+            ic(results)
 
         elif action == 'geocode':
             action_results = self.geocode_address_azure()
-            ic(action_results)
-
+            context['features'] = action_results['features']
         return context
