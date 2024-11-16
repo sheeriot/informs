@@ -108,8 +108,23 @@
 {% endif %}
 
 {% if action == 'geocode' %}
-    <div class="alert alert-info">
 
+    <div class="alert alert-info">
+        <table class="table table-bordered w-auto caption-top">
+            <caption>Summary: {{ action }}</caption>
+            <thead>
+                <tr>
+                    <th class="col-auto">Query Address</th>
+                    <!-- <th class="col-auto">Total Results</th> -->
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="col-auto">{{ query_address }}</td>
+                    <!-- <td class="col-auto">{{ action_summary.totalResults }}</td> -->
+                </tr>
+            </tbody>
+        </table>
         Field Op: {{ object.field_op.name }} ({{ object.field_op.slug}})
         <div class="d-flex">
             <div class="me-2">
@@ -141,6 +156,7 @@
             <thead>
                 <tr>
                     <th class="col-auto">Confidence</th>
+                    <th class="col-auto">Dist</th>    
                     <th class="col-auto">Type</th>
                     <th class="col-auto">Address</th>
                     <th class="col-auto">Coords</th>
@@ -148,20 +164,27 @@
                 </tr>
             </thead>
             <tbody>
-                {% for feature in features %}
-                    <tr>
-                        <td class="col-auto">{{ feature.properties.confidence }}</td>
-                        <td class="col-auto">{{ feature.properties.type }}</td>
-                        <td class="col-auto">{{ feature.properties.address.addressLine }}, {{ feature.properties.address.locality }}</td>
-                        <td class="col-auto">{{ feature.geometry.coordinates.1|floatformat:5 }},{{ feature.geometry.coordinates.0|floatformat:5 }} ({{ feature.geometry.type }})</td>
-                        <td class="col-auto">
-                            <a href="https://google.com/maps/place/{{ feature.geometry.coordinates.1|floatformat:5 }},{{ feature.geometry.coordinates.0|floatformat:5 }}/@{{ feature.geometry.coordinates.1|floatformat:5 }},{{ feature.geometry.coordinates.0|floatformat:5 }},13z"
-                            target="_blank" class="btn btn-success btn-sm">
-                            {% bs_icon "geo-alt" %} gMap
-                        </a>
-                        </td>
-                    </tr>
-                {% endfor %}
+                {% if results %}
+                    {% for result in results %}
+                        <tr>
+                            <td class="col-auto">{{ result.properties.confidence }}</td>
+                            <td class="col-auto">{{ result.dist|floatformat:1 }}</td>
+                            <td class="col-auto">{{ result.properties.type }}</td>
+                            <td class="col-auto">{{ result.properties.address.addressLine }}, {{ result.properties.address.locality }}</td>
+                            <td class="col-auto">{{ result.geometry.coordinates.1|floatformat:5 }},{{ result.geometry.coordinates.0|floatformat:5 }} ({{ result.geometry.type }})</td>
+                            <td class="col-auto">
+                                <a href="https://google.com/maps/place/{{ result.geometry.coordinates.1|floatformat:5 }},{{ result.geometry.coordinates.0|floatformat:5 }}/@{{ result.geometry.coordinates.1|floatformat:5 }},{{ result.geometry.coordinates.0|floatformat:5 }},13z"
+                                target="_blank" class="btn btn-success btn-sm">
+                                {% bs_icon "geo-alt" %} gMap
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center">No results found</td>
+                </tr>
+            {% endif %}
             </tbody>
         </table>
     </div>

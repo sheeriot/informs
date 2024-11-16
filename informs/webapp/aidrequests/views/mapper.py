@@ -82,25 +82,23 @@ class AddressValidationView(LoginRequiredMixin, DetailView):
 
         endpoint = "https://atlas.microsoft.com/geocode"
 
-        query_address = f"{self.object.street_address} {self.object.city}"
-
-        # ic(query_address)
+        query_address = f"{self.object.street_address} {self.object.city} {self.object.state} {self.object.country}"
 
         params = {
             "api-version": "2023-06-01",
             "query": query_address,
-            "coordinates": str(self.object.field_op.latitude) + "," + str(self.object.field_op.longitude)
+            "coordinates": str(self.object.field_op.longitude) + "," + str(self.object.field_op.latitude)
         }
-        # ic(params)
 
         headers = {
             "Subscription-Key": azure_maps_key
         }
+
         try:
             response = requests.get(endpoint, params=params, headers=headers)
             response.raise_for_status()  # Raise an exception for HTTP errors
 
-            return response.json()
+            return response.json(), query_address
 
         except requests.RequestException as e:
             return {"error": str(e)}
@@ -119,9 +117,19 @@ class AddressValidationView(LoginRequiredMixin, DetailView):
             context['action_summary'] = action_results['summary']
             results = sorted(action_results['results'], key=lambda x: x['score'], reverse=True)
             context['results'] = results
-            ic(results)
+            # ic(results)
 
         elif action == 'geocode':
-            action_results = self.geocode_address_azure()
-            context['features'] = action_results['features']
+            action_results, query_address = self.geocode_address_azure()
+            context["query_address"] = query_address
+            # ic(action_results)
+            results = action_results['features']
+            for result in results:
+                lat1 = self.object.field_op.latitude
+                lon1 = self.object.field_op.longitude
+                lat2 = result['geometry']['coordinates'][1]
+                lon2 = result['geometry']['coordinates'][0]
+                result['dist'] = geodesic((lat1, lon1), (lat2, lon2)).km
+
+            context['results'] = results
         return context
