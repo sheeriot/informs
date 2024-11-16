@@ -24,8 +24,8 @@
             <a href="{% url 'aidrequest_addresser' pk=object.pk field_op=field_op.slug %}?action=search" class="btn btn-info btn-sm mx-1 p-1">
                 {% bs_icon "search" %} Search
             </a>
-            <a href="{% url 'aidrequest_addresser' pk=object.pk field_op=field_op.slug %}?action=check" class="btn btn-success btn-sm mx-1 p-1">
-                {% bs_icon "check" %} Check
+            <a href="{% url 'aidrequest_addresser' pk=object.pk field_op=field_op.slug %}?action=geocode" class="btn btn-success btn-sm mx-1 p-1">
+                {% bs_icon "check" %} Geocode
             </a>
         </td>
     </tr>
@@ -49,7 +49,27 @@
     </table>
     Field Op: {{ object.field_op.name }} ({{ object.field_op.slug}})
     <div class="d-flex">
-        Center: {{ object.field_op.latitude }},{{ object.field_op.longitude }}
+        <div class="me-2">
+            Center: {{ object.field_op.latitude }},{{ object.field_op.longitude }}
+        </div>
+        <div class="mx-2">
+            <a href="https://google.com/maps/place/{{ object.field_op.latitude }},{{ object.field_op.longitude }}/@{{ object.field_op.latitude }},{{ object.field_op.longitude }},10z"
+             target="_blank" class="btn btn-success btn-sm">
+                {% bs_icon "geo-alt" %} Zoom10
+            </a>
+        </div>
+        <div class="mx-2">
+            <a href="https://google.com/maps/place/{{ object.field_op.latitude }},{{ object.field_op.longitude }}/@{{ object.field_op.latitude }},{{ object.field_op.longitude }},12z"
+             target="_blank" class="btn btn-success btn-sm">
+                {% bs_icon "geo-alt" %} Zoom12
+            </a>
+        </div>
+        <div class="mx-2">
+            <a href="https://google.com/maps/place/{{ object.field_op.latitude }},{{ object.field_op.longitude }}/@{{ object.field_op.latitude }},{{ object.field_op.longitude }},14z"
+             target="_blank" class="btn btn-success btn-sm">
+                {% bs_icon "geo-alt" %} Zoom14
+            </a>
+        </div>
     </div>
 </div>
 <div class="alert alert-warning">
@@ -60,9 +80,9 @@
             <th class="col-auto">Score</th>
             <th class="col-auto">Dist</th>
             <th class="col-auto">Address</th>
+            <th class="col-auto">Type (Entries)</th>
             <th class="col-auto">Coords</th>
             <th class="col-auto">Map-it</th>
-            <th class="col-auto">Entry Points</th>
         </tr>
         </thead>
         <tbody>
@@ -71,13 +91,14 @@
             <td class="col-auto">{{ result.matchConfidence.score|floatformat:2 }}</td>
             <td class="col-auto">{{ result.dist|div:1000|floatformat:1 }}</td>
             <td class="col-auto">{{ result.address.freeformAddress }} {{ result.address.countryCodeISO3 }}</td>
+            <td class="col-auto">{{ result.type}} ({{ result.entryPoints|length }})</td>
             <td class="col-auto">{{ result.position.lat }},{{ result.position.lon }}</td>
             <td class="col-auto">
-                <a href="https://google.com/maps/@{{ result.position.lat }},{{ result.position.lon }},16z" target="_blank" class="btn btn-primary btn-sm">
-                    Google Map
-                </a>
+                <a href="https://google.com/maps/place/{{ result.position.lat }},{{ result.position.lon }}/@{{ result.position.lat }},{{ result.position.lon }},13z"
+                target="_blank" class="btn btn-success btn-sm">
+                   {% bs_icon "geo-alt" %} gMap
+               </a>
             </td>
-            <td class="col-auto">{{ result.entryPoints|length }}</td>
         </tr>
         {% endfor %}
         </tbody>
