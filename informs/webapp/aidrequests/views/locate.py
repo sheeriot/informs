@@ -135,7 +135,7 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
                 results['confidence'] = query_results['features'][0]['properties']['confidence']
                 results['found_address'] = query_results['features'][0]['properties']['address']['formattedAddress']
                 results['locality'] = query_results['features'][0]['properties']['address']['locality']
-                results['neighborhood'] = query_results['features'][0]['properties']['address']['neighborhood']
+                # results['neighborhood'] = query_results['features'][0]['properties']['address']['neighborhood']
                 results['match_codes'] = query_results['features'][0]['properties']['matchCodes']
                 results['match_type'] = query_results['features'][0]['properties']['type']
                 return results
@@ -217,7 +217,7 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
             f"Found Address:\n{self.geocode_results['found_address']}\n"
             f"Distance: {self.geocode_distance}km\n"
             f"Locality: {self.geocode_results['locality']}\n"
-            f"Neighborhood: {self.geocode_results['neighborhood']}\n"
+            # f"Neighborhood: {self.geocode_results['neighborhood']}\n"
             f"Match Type: {self.geocode_results['match_type']}\n"
             f"Match Codes: {self.geocode_results['match_codes']}\n"
         )
