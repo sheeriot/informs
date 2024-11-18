@@ -24,9 +24,11 @@ class FieldOpAdmin(admin.ModelAdmin):
     """fieldops admin"""
     list_display = ('pk', 'slug', 'name')
 
+
 class AidLocationAdmin(admin.ModelAdmin):
     """AidLocation admin"""
     list_display = ('aid_request', 'status', 'source', 'latitude', 'longitude')
+
 
 admin.site.register(AidRequest, AidRequestAdmin)
 admin.site.register(FieldOp, FieldOpAdmin)
