@@ -3,8 +3,7 @@ AidRequests Admin
 """
 
 from django.contrib import admin
-from .models import AidRequest
-from .models import FieldOp
+from .models import AidRequest, FieldOp, AidLocation
 
 # Register your models here.
 
@@ -25,6 +24,10 @@ class FieldOpAdmin(admin.ModelAdmin):
     """fieldops admin"""
     list_display = ('pk', 'slug', 'name')
 
+class AidLocationAdmin(admin.ModelAdmin):
+    """AidLocation admin"""
+    list_display = ('aid_request', 'status', 'source', 'latitude', 'longitude')
 
 admin.site.register(AidRequest, AidRequestAdmin)
 admin.site.register(FieldOp, FieldOpAdmin)
+admin.site.register(AidLocation, AidLocationAdmin)
