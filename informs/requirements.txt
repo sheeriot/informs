@@ -5,6 +5,9 @@ django-tz-detect
 crispy-bootstrap5
 django-crispy-forms
 django-mathfilters
-folium
+# folium
 geopy
+azure-core
+azure-maps-search
+azure-maps-render
 icecream

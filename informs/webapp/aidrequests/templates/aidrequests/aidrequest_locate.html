@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% load bootstrap_icons %}
+{% load mathfilters %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<h2>Aid Request - Address Locator</h2>
+<hr>
+<div class="d-flex justify-content-between">
+    <div class="d-flex">
+        <strong>Action:</strong>
+        <div class="mx-2 p-0">
+            <a href="{% url 'aidrequest_detail' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-info btn-sm mx-1 p-1">
+                {% bs_icon "binoculars" %} Details
+            </a>
+            <a href="{% url 'aidrequest_update' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
+                {% bs_icon "pencil" %} Edit
+            </a>
+        </div>
+    </div>
+    <a href="{% url 'aidrequest_delete' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-danger btn-sm mx-1 p-1">
+        {% bs_icon "trash" %} Delete
+    </a>
+</div>
+<hr>
+<div class="d-flex justify-content-between font-monospace">
+    <table class="table table-bordered w-auto caption-top me-2 border border-3 border-success">
+        <caption>Aid Summary</caption>
+        <tr>
+            <th class="col-auto">ID</th>
+            <th class="col-auto">Field Op</th>
+            <th class="col-auto">Aid Type</th>
+            <th class="col-auto">Group Size</th>
+        </tr>
+        <tr>
+            <td class="col-auto">{{ aid_request.pk }}</td>
+            <td class="col-auto">
+                {{ field_op.name }}
+                <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm mx-1 p-1">
+                    {% bs_icon "list" %} Requests
+                </a>
+            </td>
+            <td class="col-auto">{{ aid_request.get_assistance_type_display }}</td>
+            <td class="col-auto text-center">{{ aid_request.group_size }}</td>
+        </tr>
+        <tr>
+            <td colspan="4">
+                <strong>Description</strong>:<br> {{ aid_request.assistance_description }}
+            </td>
+        </tr>
+    </table>
+    <table class="table table-bordered border border-3 border-info w-auto caption-top mb-1">
+        <caption>Contact Information</caption>
+        <tr>
+            <th class="col col-auto">Requestor Name</th>
+            <th class="col col-auto">Requestor Phone</th>
+            <th class="col col-auto">Requestor Email</th>
+        </tr>
+        <tr>
+            <td class="col col-auto">{{ aid_request.requestor_first_name }} {{ aid_request.requestor_last_name }}</td>
+            <td class="col col-auto">{{ aid_request.requestor_phone }}</td>
+            <td class="col col-auto">{{ aid_request.requestor_email }}</td>
+        </tr>
+        <tr>
+            <th class="col col-auto">Contact Name</th>
+            <th class="col col-auto">Contact Phone</th>
+            <th class="col col-auto">Contact Email</th>
+        </tr>
+        <tr>
+            <td class="col col-auto">{{ aid_request.assistance_first_name|default:"None" }} {{ aid_request.assistance_last_name }}</td>
+            <td class="col col-auto">{{ aid_request.assistance_phone|default:"None" }}</td>
+            <td class="col col-auto">{{ aid_request.assistance_email|default:"None" }}</td>
+        </tr>
+        <tr>
+            <td colspan="3">
+                <strong>Methods</strong>:<br>{{ aid_request.contact_methods }}
+            </td>
+        </tr>
+    </table>
+</div>
+<hr>
+<table class="table table-bordered w-auto caption-top w-auto border border-3 border-warning font-monospace">
+    <caption>Address Locator</caption>
+    <tr>
+        <th class="col-auto">Provided</th>
+        <th class="col-auto">Geocode</th>
+        <th class="col-auto">Distance</th>
+        <th class="col-auto">More Info</th>
+    </tr>
+    <tr>
+        <td class="col-auto">
+            {{ aid_request.street_address }}<br>
+            {{ aid_request.city }}, {{ aid_request.state }} {{ aid_request.zip_code }}
+        </td>
+        <!-- <td class="col-auto">
+            {{ latitude|floatformat:5 }},{{ longitude|floatformat:5 }}
+            <a href="{% url 'aidrequest_locate' pk=aidrequest.pk field_op=field_op.slug %?action=confirm" class="btn btn-warning btn-sm mx-1 p-1">
+                {% bs_icon "bullseye" %} Confirm
+            </a>
+
+            <hr>
+            Confidence: <strong>{{ confidence }}</strong><br>
+            {{ found_address }}
+        </td> -->
+        <td class="col-auto">
+            {% crispy form %}
+        </td>
+        <td class="col-auto">{{ distance|floatformat:1 }}</td>
+        <td class="col-auto">
+            <a href="{% url 'aidrequest_locate' pk=aid_request.pk field_op=field_op.slug %}?action=search" class="btn btn-info btn-sm m-1 p-1">
+                {% bs_icon "search" %} Search
+            </a>
+            <a href="{% url 'aidrequest_locate' pk=aid_request.pk field_op=field_op.slug %}?action=geocode" class="btn btn-outline-primary btn-sm m-1 p-1">
+                {% bs_icon "globe2" color="blue" %} Geocodes
+            </a>
+            <a href="https://google.com/maps/place/{{ latitude }},{{ longitude }}/@{{ latitude }},{{ longitude }},13z"
+                target="_blank" class="btn btn-outline-success btn-sm">
+                {% bs_icon "geo-alt" %} gMap
+            </a>
+        </td>
+    </tr>
+</table>
+{% if action == 'search' %}
+    <div class="alert alert-info">
+        <table class="table table-bordered w-auto caption-top">
+            <caption>Summary: {{ action }}</caption>
+            <thead>
+                <tr>
+                    <th class="col-auto">Query</th>
+                    <th class="col-auto">Total Results</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="col-auto">{{ action_summary.query }}</td>
+                    <td class="col-auto">{{ action_summary.totalResults }}</td>
+                </tr>
+            </tbody>
+        </table>
+        Field Op: {{ field_op.name }} ({{ field_op.slug}})
+        <div class="d-flex">
+            <div class="me-2">
+                Center: {{ field_op.latitude }},{{ field_op.longitude }}
+            </div>
+            <div class="mx-2">
+                <a href="https://google.com/maps/place/{{ field_op.latitude }},{{ field_op.longitude }}/@{{ field_op.latitude }},{{ field_op.longitude }},10z"
+                target="_blank" class="btn btn-success btn-sm">
+                    {% bs_icon "geo-alt" %} Zoom10
+                </a>
+            </div>
+            <div class="mx-2">
+                <a href="https://google.com/maps/place/{{ field_op.latitude }},{{ field_op.longitude }}/@{{ field_op.latitude }},{{ field_op.longitude }},12z"
+                target="_blank" class="btn btn-success btn-sm">
+                    {% bs_icon "geo-alt" %} Zoom12
+                </a>
+            </div>
+            <div class="mx-2">
+                <a href="https://google.com/maps/place/{{ field_op.latitude }},{{ field_op.longitude }}/@{{ field_op.latitude }},{{ field_op.longitude }},14z"
+                target="_blank" class="btn btn-success btn-sm">
+                    {% bs_icon "geo-alt" %} Zoom14
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-warning">
+        <table class="table table-bordered w-auto caption-top">
+            <caption>{{ action }} results</caption>
+            <thead>
+                <tr>
+                    <th class="col-auto">Score</th>
+                    <th class="col-auto">Dist</th>
+                    <th class="col-auto">Address</th>
+                    <th class="col-auto">Type (Entries)</th>
+                    <th class="col-auto">Coords</th>
+                    <th class="col-auto">Map-it</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for result in results %}
+                <tr>
+                    <td class="col-auto">{{ result.matchConfidence.score|floatformat:2 }}</td>
+                    <td class="col-auto">{{ result.dist|div:1000|floatformat:1 }}</td>
+                    <td class="col-auto">{{ result.address.freeformAddress }} {{ result.address.countryCodeISO3 }}</td>
+                    <td class="col-auto">{{ result.type}} ({{ result.entryPoints|length }})</td>
+                    <td class="col-auto">{{ result.position.lat }},{{ result.position.lon }}</td>
+                    <td class="col-auto">
+                        <a href="https://google.com/maps/place/{{ result.position.lat }},{{ result.position.lon }}/@{{ result.position.lat }},{{ result.position.lon }},13z"
+                        target="_blank" class="btn btn-success btn-sm">
+                        {% bs_icon "geo-alt" %} gMap
+                    </a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endif %}
+
+{% if action == 'geocode' %}
+
+    <div class="alert alert-info">
+        <table class="table table-bordered w-auto caption-top">
+            <caption>Summary: {{ action }}</caption>
+            <thead>
+                <tr>
+                    <th class="col-auto">Query Address</th>
+                    <!-- <th class="col-auto">Total Results</th> -->
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="col-auto">{{ query_address }}</td>
+                    <!-- <td class="col-auto">{{ action_summary.totalResults }}</td> -->
+                </tr>
+            </tbody>
+        </table>
+        Field Op: {{ field_op.name }} ({{ field_op.slug}})
+        <div class="d-flex">
+            <div class="me-2">
+                Center: {{ field_op.latitude }},{{ field_op.longitude }}
+            </div>
+            <div class="mx-2">
+                <a href="https://google.com/maps/place/{{ field_op.latitude }},{{ field_op.longitude }}/@{{ field_op.latitude }},{{ field_op.longitude }},10z"
+                target="_blank" class="btn btn-success btn-sm">
+                    {% bs_icon "geo-alt" %} Zoom10
+                </a>
+            </div>
+            <div class="mx-2">
+                <a href="https://google.com/maps/place/{{ field_op.latitude }},{{ field_op.longitude }}/@{{ field_op.latitude }},{{ field_op.longitude }},12z"
+                target="_blank" class="btn btn-success btn-sm">
+                    {% bs_icon "geo-alt" %} Zoom12
+                </a>
+            </div>
+            <div class="mx-2">
+                <a href="https://google.com/maps/place/{{ field_op.latitude }},{{ field_op.longitude }}/@{{ field_op.latitude }},{{ field_op.longitude }},14z"
+                target="_blank" class="btn btn-success btn-sm">
+                    {% bs_icon "geo-alt" %} Zoom14
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="alert alert-warning">
+        <table class="table table-bordered w-auto caption-top">
+            <caption>{{ action }} results</caption>
+            <thead>
+                <tr>
+                    <th class="col-auto">Confidence</th>
+                    <th class="col-auto">Distance</th>    
+                    <th class="col-auto">Type</th>
+                    <th class="col-auto">Address</th>
+                    <th class="col-auto">Coords</th>
+                    <th class="col-auto">Maps</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if features %}
+                    {% for feature in features %}
+                        <tr>
+                            <td class="col-auto">{{ feature.properties.confidence }}</td>
+                            <td class="col-auto">{{ feature.distance|floatformat:1 }}</td>
+                            <td class="col-auto">{{ feature.properties.type }}</td>
+                            <td class="col-auto">{{ feature.properties.address.addressLine }}, {{ feature.properties.address.locality }}</td>
+                            <td class="col-auto">{{ feature.geometry.coordinates.1|floatformat:5 }},{{ feature.geometry.coordinates.0|floatformat:5 }} ({{ feature.geometry.type }})</td>
+                            <td class="col-auto">
+                                <a href="https://google.com/maps/place/{{ feature.geometry.coordinates.1|floatformat:5 }},{{ feature.geometry.coordinates.0|floatformat:5 }}/@{{ feature.geometry.coordinates.1|floatformat:5 }},{{ feature.geometry.coordinates.0|floatformat:5 }},13z"
+                                target="_blank" class="btn btn-success btn-sm">
+                                {% bs_icon "geo-alt" %} gMap
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center">No results found</td>
+                </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+{% endif %}
+<hr>
+
+{% endblock %}

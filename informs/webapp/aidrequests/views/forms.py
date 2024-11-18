@@ -122,7 +122,7 @@ class AidRequestForm(forms.ModelForm):
                     Column('city', css_class='col-md-4 mb-2'),
                     Column('state', css_class='col-md-3 mb-2'),
                     Column('zip_code', css_class='col-md-3 mb-2'),
-                   Column('country', css_class='col-md-2 mb-2'),
+                    Column('country', css_class='col-md-2 mb-2'),
                 ),
                 css_class="fieldset-box p-3 border rounded"
             ),

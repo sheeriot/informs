@@ -73,3 +73,31 @@ class AidRequest(models.Model):
     def __str__(self):
         return f"""AidRequest by {self.requestor_first_name} {self.requestor_last_name}
                - {self.assistance_type}"""
+
+
+class AidLocation(models.Model):
+    """Location details for AidRequest"""
+    aid_request = models.ForeignKey(AidRequest, on_delete=models.CASCADE, related_name='locations')
+
+    STATUS_CHOICES = [
+        ('new', 'New'),
+        ('confirmed', 'Confirmed'),
+        ('rejected', 'Rejected'),
+        ('candidate', 'Candidate'),
+        ('other', 'Other'),
+    ]
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES)
+
+    latitude = models.DecimalField(max_digits=8, decimal_places=5)
+    longitude = models.DecimalField(max_digits=9, decimal_places=5)
+
+    SOURCE_CHOICES = [
+        ('manual', 'Manual'),
+        ('azure_maps', 'Azure Maps'),
+        ('other', 'Other'),
+    ]
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
+    notes = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Location ({self.latitude}, {self.longitude}) - {self.status}"
