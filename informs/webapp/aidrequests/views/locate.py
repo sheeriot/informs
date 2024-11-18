@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.conf import settings
-from django.views.generic import DetailView
+from django.views.generic import CreateView
 
 from azure.core.credentials import AzureKeyCredential
 from azure.maps.search import MapsSearchClient
@@ -11,6 +11,7 @@ import requests
 from geopy.distance import geodesic
 
 from ..models import AidRequest, FieldOp
+from .location_form import AidLocationForm
 
 from icecream import ic
 
@@ -28,9 +29,10 @@ def geodist(aid_request):
         1)
 
 
-class AddressValidationView(LoginRequiredMixin, DetailView):
+class AidLocationCreateView(LoginRequiredMixin, CreateView):
     model = AidRequest
-    template_name = 'aidrequests/aidrequest_addresser.html'
+    form_class = AidLocationForm
+    template_name = 'aidrequests/aidrequest_locate.html'
     """
     A Django class-based view for validating addresses using Azure Maps.
     """
@@ -82,12 +84,17 @@ class AddressValidationView(LoginRequiredMixin, DetailView):
 
         endpoint = "https://atlas.microsoft.com/geocode"
 
-        query_address = f"{self.object.street_address} {self.object.city} {self.object.state} {self.object.country}"
-        ic(query_address)
+        query_address = (
+            f"{self.aid_request.street_address} "
+            f"{self.aid_request.city} "
+            f"{self.aid_request.state} "
+            f"{self.aid_request.country}"
+        )
+        # ic(query_address)
         params = {
             "api-version": "2023-06-01",
             "query": query_address,
-            "coordinates": str(self.object.field_op.longitude) + "," + str(self.object.field_op.latitude)
+            "coordinates": str(self.field_op.longitude) + "," + str(self.field_op.latitude)
         }
 
         headers = {
@@ -106,21 +113,31 @@ class AddressValidationView(LoginRequiredMixin, DetailView):
     def getAddressGeocode(self):
         map_cred = AzureKeyCredential(settings.AZURE_MAPS_KEY)
         maps_search_client = MapsSearchClient(credential=map_cred,)
-        query_address = f"{self.object.street_address} {self.object.city} {self.object.state} {self.object.country}"
-        # ic(query_address)
-        field_op_coords = [self.object.field_op.longitude,self.object.field_op.latitude]
+        query_address = (
+            f"{self.aid_request.street_address} "
+            f"{self.aid_request.city} "
+            f"{self.aid_request.state} "
+            f"{self.aid_request.country}"
+        )
+        ic('Geocoding...')
+        field_op_coords = [self.field_op.longitude, self.field_op.latitude]
         results = {"status": None}
         try:
-            query_results = maps_search_client.get_geocoding(query=query_address, coordinates = field_op_coords)
+            query_results = maps_search_client.get_geocoding(query=query_address, coordinates=field_op_coords)
 
             if query_results.get('features', False):
                 results['status'] = "Success"
                 coordinates = query_results['features'][0]['geometry']['coordinates']
-                results['latitude'] = coordinates[1]
-                results['longitude'] = coordinates[0]
+                results['latitude'] = round(coordinates[1], 5)
+                results['longitude'] = round(coordinates[0], 5)
                 results['features'] = query_results['features']
+                ic(results['features'])
                 results['confidence'] = query_results['features'][0]['properties']['confidence']
                 results['found_address'] = query_results['features'][0]['properties']['address']['formattedAddress']
+                results['locality'] = query_results['features'][0]['properties']['address']['locality']
+                results['neighborhood'] = query_results['features'][0]['properties']['address']['neighborhood']
+                results['match_codes'] = query_results['features'][0]['properties']['matchCodes']
+                results['match_type'] = query_results['features'][0]['properties']['type']
                 return results
             else:
                 results['status'] = "No Matches"
@@ -134,25 +151,43 @@ class AddressValidationView(LoginRequiredMixin, DetailView):
             results['error_message'] = exception.error.message
             return results
 
+    def setup(self, request, *args, **kwargs):
+        field_op_slug = kwargs['field_op']
+        self.field_op = get_object_or_404(FieldOp, slug=field_op_slug)
+        pk = kwargs['pk']
+        self.aid_request = get_object_or_404(AidRequest, pk=pk)
+        self.geocode_results = self.getAddressGeocode()
+        self.geocode_distance = round(geodesic(
+            (self.geocode_results['latitude'], self.geocode_results['longitude']),
+            (self.field_op.latitude, self.field_op.longitude)
+            ).km, 1)
+
+        return super().setup(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         """ Add Action and Field_Op """
-
         context = super().get_context_data(**kwargs)
         action = self.request.GET.get('action') or None
-        field_op_slug = self.kwargs['field_op']
-        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
-        context['field_op'] = field_op
+        context['field_op'] = self.field_op
+        context['aid_request'] = self.aid_request
         context['action'] = action
 
-        # Geocode this address
-        geocode_results = self.getAddressGeocode()
-        dist = geodesic((geocode_results['latitude'], geocode_results['longitude']), (self.object.field_op.latitude, self.object.field_op.longitude)).km
-        context['latitude'] = geocode_results['latitude']
-        context['longitude'] = geocode_results['longitude']
-        context['confidence'] = geocode_results['confidence']
-        context['distance'] = dist
-        context['found_address'] = geocode_results['found_address']
-        ic(geocode_results['features'])
+        # calculate distance to center of  Field Op
+
+        context['distance'] = self.geocode_distance
+
+        self.geocode_latitude = self.geocode_results['latitude']
+        context['latitude'] = self.geocode_latitude
+        self.geocode_longitude = self.geocode_results['longitude']
+        context['longitude'] = self.geocode_longitude
+
+        self.geocode_confidence = self.geocode_results['confidence']
+        context['confidence'] = self.geocode_confidence
+
+        self.geocode_foundaddress = self.geocode_results['found_address']
+        context['found_address'] = self.geocode_foundaddress
+
+        self.geocode_source = 'azure_maps'
 
         if action == 'search':
             action_results = self.check_address_azure()
@@ -167,9 +202,37 @@ class AddressValidationView(LoginRequiredMixin, DetailView):
             for feature in features:
                 lat1 = feature['geometry']['coordinates'][1]
                 lon1 = feature['geometry']['coordinates'][0]
-                lat2 = self.object.field_op.latitude
-                lon2 = self.object.field_op.longitude
+                lat2 = self.field_op.latitude
+                lon2 = self.field_op.longitude
                 feature['distance'] = geodesic((lat1, lon1), (lat2, lon2)).km
             context['features'] = features
 
         return context
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+
+        notes = (
+            f"Confidence: {self.geocode_results['confidence']}\n"
+            f"Found Address:\n{self.geocode_results['found_address']}\n"
+            f"Distance: {self.geocode_distance}km\n"
+            f"Locality: {self.geocode_results['locality']}\n"
+            f"Neighborhood: {self.geocode_results['neighborhood']}\n"
+            f"Match Type: {self.geocode_results['match_type']}\n"
+            f"Match Codes: {self.geocode_results['match_codes']}\n"
+        )
+
+        kwargs['initial'] = {
+                'latitude': self.geocode_results['latitude'],
+                'longitude': self.geocode_results['longitude'],
+                'status': 'new',
+                'source': 'azure_maps',
+                'notes': notes
+            }
+        return kwargs
+
+    def form_valid(self, form):
+        self.object = form.save()
+        self.object.aid_request = self.aid_request
+        self.object.save()
+        return super().form_valid(form)

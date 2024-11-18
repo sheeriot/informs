@@ -53,3 +53,12 @@ search_client = MapsSearchClient(
         credential=credential,
 )
 
+## What is Geocoding
+
+https://www.mapbox.com/insights/geocoding
+
+<a href="https://google.com/maps/place/{{ latitude }},{{ longitude }}/@{{ latitude }},{{ longitude }},13z"
+target="_blank" class="btn btn-outline-success btn-sm">
+{% bs_icon "geo-alt" %} gMap
+</a>
+

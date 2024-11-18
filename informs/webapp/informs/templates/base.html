@@ -149,9 +149,8 @@
     {% block content %}
     {% endblock %}
   </div>
-  <p />
   <!-- Footer -->
-  <footer class="text-muted small py-1 border-top">
+  <footer class="text-muted small py-1 border-top my-4">
     <div class="container d-flex justify-content-between align-items-center">
       <div class="d-flex align-items-center">
         <div class="d-flex justify-content-center align-items-center pe-1 mb-1">
@@ -168,17 +167,17 @@
           {% bs_icon 'person-raised-hand' color='green' size='1em' %}
         </div>
       </div>
-      <div class="d-flex align-items-center">
-        <small class="text-muted">local:{% now "Ymd-Hi" %}</small>
+      <div class="d-flex align-items-center font-monospace">
+        <small class="text-muted">t:{% now "Ymd-Hi" %}</small>
       </div>
       <div class="d-flex align-items-center">
         <a href="https://austinvoicedata.com">
           <img src="{% static 'images/AVD_Logo.jpg' %}" width="60px" alt="Austin Voice Data LLC" class="me-1">
         </a>
       </div>
-      <div class="d-flex align-items-center">
+      <div class="d-flex align-items-center font-monospace">
         <a href="/admin" class="text-reset">
-          <button class="btn btn-link">admin</button>
+          <button class="btn btn-sm btn-outline-info">admin</button>
         </a>
       </div>
     </div>
@@ -190,5 +189,4 @@
     crossorigin="anonymous">
   </script>
 </body>
-
 </html>

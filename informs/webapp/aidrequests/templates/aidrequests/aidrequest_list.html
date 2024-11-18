@@ -14,18 +14,22 @@
                 <th scope="col" class="text-end">Actions</th>
             </tr>
         </thead>
+
         <tbody>
             {% for aidrequest in object_list %}
             <tr>
-                <td><a href="{% url 'aidrequest_detail' pk=aidrequest.pk field_op=field_op.slug %}">{{ aidrequest.pk }}</a></td>
+                <td>
+                    <div class="d-flex">
+                        <a href="{% url 'aidrequest_detail' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-info btn-sm me-2">
+                            {{ aidrequest.pk }} {% bs_icon "binoculars" %}
+                        </a>
+                    </div>
+                </td>
                 <td>{{ aidrequest.assistance_type }}</td>
                 <td>{{ aidrequest.requestor_first_name }} {{ aidrequest.requestor_last_name }}</td>
                 <td>{{ aidrequest.street_address }},{{ aidrequest.state }}</td>
                 <td>
                     <div class="d-flex justify-content-end">
-                        <a href="{% url 'aidrequest_detail' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-info btn-sm me-2">
-                            {% bs_icon "binoculars-fill" %}
-                        </a>
                         <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm me-2">
                             {% bs_icon "pencil" %}
                         </a>

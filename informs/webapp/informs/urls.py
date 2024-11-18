@@ -21,7 +21,7 @@ from aidrequests.views.field_op import (FieldOpCreateView,
 
 from aidrequests.views.export_csv import AidRequestCsvView
 
-from aidrequests.views.mapper import AddressValidationView
+from aidrequests.views.locate import AidLocationCreateView
 
 
 from .views import home
@@ -62,8 +62,8 @@ urlpatterns = [
          {'action': 'export_csv'},
          name='aidrequests_csv'
          ),
-    path('<slug:field_op>/aidrequest/<int:pk>/addresser',
-         AddressValidationView.as_view(),
-         name='aidrequest_addresser'
+    path('<slug:field_op>/aidrequest/<int:pk>/locate',
+         AidLocationCreateView.as_view(),
+         name='aidrequest_locate'
          ),
 ]
