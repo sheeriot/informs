@@ -1,13 +1,13 @@
-# from django.shortcuts import render, redirect
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
-# from django.urls import reverse_lazy
 from django.conf import settings
 from django.views.generic import DetailView
-# from django.http import JsonResponse
 
+from azure.core.credentials import AzureKeyCredential
+from azure.maps.search import MapsSearchClient
+from azure.core.exceptions import HttpResponseError
 import requests
-# import json
+
 from geopy.distance import geodesic
 
 from ..models import AidRequest, FieldOp
@@ -83,7 +83,7 @@ class AddressValidationView(LoginRequiredMixin, DetailView):
         endpoint = "https://atlas.microsoft.com/geocode"
 
         query_address = f"{self.object.street_address} {self.object.city} {self.object.state} {self.object.country}"
-
+        ic(query_address)
         params = {
             "api-version": "2023-06-01",
             "query": query_address,
@@ -103,6 +103,37 @@ class AddressValidationView(LoginRequiredMixin, DetailView):
         except requests.RequestException as e:
             return {"error": str(e)}
 
+    def getAddressGeocode(self):
+        map_cred = AzureKeyCredential(settings.AZURE_MAPS_KEY)
+        maps_search_client = MapsSearchClient(credential=map_cred,)
+        query_address = f"{self.object.street_address} {self.object.city} {self.object.state} {self.object.country}"
+        # ic(query_address)
+        field_op_coords = [self.object.field_op.longitude,self.object.field_op.latitude]
+        results = {"status": None}
+        try:
+            query_results = maps_search_client.get_geocoding(query=query_address, coordinates = field_op_coords)
+
+            if query_results.get('features', False):
+                results['status'] = "Success"
+                coordinates = query_results['features'][0]['geometry']['coordinates']
+                results['latitude'] = coordinates[1]
+                results['longitude'] = coordinates[0]
+                results['features'] = query_results['features']
+                results['confidence'] = query_results['features'][0]['properties']['confidence']
+                results['found_address'] = query_results['features'][0]['properties']['address']['formattedAddress']
+                return results
+            else:
+                results['status'] = "No Matches"
+                return results
+
+        except HttpResponseError as exception:
+            if exception.error is not None:
+                return exception.error.code, exception.error.message
+            results['status'] = "HttpError"
+            results['error_code'] = exception.error.code
+            results['error_message'] = exception.error.message
+            return results
+
     def get_context_data(self, **kwargs):
         """ Add Action and Field_Op """
 
@@ -112,24 +143,33 @@ class AddressValidationView(LoginRequiredMixin, DetailView):
         field_op = get_object_or_404(FieldOp, slug=field_op_slug)
         context['field_op'] = field_op
         context['action'] = action
+
+        # Geocode this address
+        geocode_results = self.getAddressGeocode()
+        dist = geodesic((geocode_results['latitude'], geocode_results['longitude']), (self.object.field_op.latitude, self.object.field_op.longitude)).km
+        context['latitude'] = geocode_results['latitude']
+        context['longitude'] = geocode_results['longitude']
+        context['confidence'] = geocode_results['confidence']
+        context['distance'] = dist
+        context['found_address'] = geocode_results['found_address']
+        ic(geocode_results['features'])
+
         if action == 'search':
             action_results = self.check_address_azure()
             context['action_summary'] = action_results['summary']
             results = sorted(action_results['results'], key=lambda x: x['score'], reverse=True)
             context['results'] = results
-            # ic(results)
 
         elif action == 'geocode':
             action_results, query_address = self.geocode_address_azure()
             context["query_address"] = query_address
-            # ic(action_results)
-            results = action_results['features']
-            for result in results:
-                lat1 = self.object.field_op.latitude
-                lon1 = self.object.field_op.longitude
-                lat2 = result['geometry']['coordinates'][1]
-                lon2 = result['geometry']['coordinates'][0]
-                result['dist'] = geodesic((lat1, lon1), (lat2, lon2)).km
+            features = action_results['features']
+            for feature in features:
+                lat1 = feature['geometry']['coordinates'][1]
+                lon1 = feature['geometry']['coordinates'][0]
+                lat2 = self.object.field_op.latitude
+                lon2 = self.object.field_op.longitude
+                feature['distance'] = geodesic((lat1, lon1), (lat2, lon2)).km
+            context['features'] = features
 
-            context['results'] = results
         return context
