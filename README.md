@@ -62,3 +62,4 @@ target="_blank" class="btn btn-outline-success btn-sm">
 {% bs_icon "geo-alt" %} gMap
 </a>
 
+https://www.brennantymrak.com/articles/comprehending-class-based-views-view-base-class

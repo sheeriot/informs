@@ -97,7 +97,7 @@ class AidLocation(models.Model):
         ('other', 'Other'),
     ]
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
-    notes = models.TextField(blank=True, null=True)
+    note = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"Location ({self.latitude}, {self.longitude}) - {self.status}"

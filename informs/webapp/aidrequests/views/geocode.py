@@ -2,11 +2,13 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.conf import settings
 from django.views.generic import CreateView
+from django.urls import reverse
 
 from azure.core.credentials import AzureKeyCredential
 from azure.maps.search import MapsSearchClient
 from azure.core.exceptions import HttpResponseError
 import requests
+
 
 from geopy.distance import geodesic
 
@@ -90,7 +92,7 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
             f"{self.aid_request.state} "
             f"{self.aid_request.country}"
         )
-        # ic(query_address)
+
         params = {
             "api-version": "2023-06-01",
             "query": query_address,
@@ -119,7 +121,6 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
             f"{self.aid_request.state} "
             f"{self.aid_request.country}"
         )
-        ic('Geocoding...')
         field_op_coords = [self.field_op.longitude, self.field_op.latitude]
         results = {"status": None}
         try:
@@ -131,7 +132,7 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
                 results['latitude'] = round(coordinates[1], 5)
                 results['longitude'] = round(coordinates[0], 5)
                 results['features'] = query_results['features']
-                ic(results['features'])
+
                 results['confidence'] = query_results['features'][0]['properties']['confidence']
                 results['found_address'] = query_results['features'][0]['properties']['address']['formattedAddress']
                 results['locality'] = query_results['features'][0]['properties']['address']['locality']
@@ -152,17 +153,24 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
             return results
 
     def setup(self, request, *args, **kwargs):
-        field_op_slug = kwargs['field_op']
-        self.field_op = get_object_or_404(FieldOp, slug=field_op_slug)
-        pk = kwargs['pk']
-        self.aid_request = get_object_or_404(AidRequest, pk=pk)
+        """Initialize attributes shared by all view methods."""
+        if hasattr(self, "get") and not hasattr(self, "head"):
+            self.head = self.get
+        self.request = request
+        self.args = args
+        self.kwargs = kwargs
+        # custom setup
+        self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
+        self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
         self.geocode_results = self.getAddressGeocode()
         self.geocode_distance = round(geodesic(
             (self.geocode_results['latitude'], self.geocode_results['longitude']),
             (self.field_op.latitude, self.field_op.longitude)
             ).km, 1)
-
-        return super().setup(request, *args, **kwargs)
+        self.geocode_latitude = self.geocode_results['latitude']
+        self.geocode_longitude = self.geocode_results['longitude']
+        self.geocode_confidence = self.geocode_results['confidence']
+        self.geocode_source = 'azure_maps'
 
     def get_context_data(self, **kwargs):
         """ Add Action and Field_Op """
@@ -171,21 +179,12 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         context['field_op'] = self.field_op
         context['aid_request'] = self.aid_request
         context['action'] = action
-
         context['distance'] = self.geocode_distance
 
-        self.geocode_latitude = self.geocode_results['latitude']
-        context['latitude'] = self.geocode_latitude
-        self.geocode_longitude = self.geocode_results['longitude']
-        context['longitude'] = self.geocode_longitude
-
-        self.geocode_confidence = self.geocode_results['confidence']
-        context['confidence'] = self.geocode_confidence
-
-        self.geocode_foundaddress = self.geocode_results['found_address']
-        context['found_address'] = self.geocode_foundaddress
-
-        self.geocode_source = 'azure_maps'
+        context['latitude'] = self.geocode_results['latitude']
+        context['longitude'] = self.geocode_results['longitude']
+        context['confidence'] = self.geocode_results['confidence']
+        context['found_address'] = self.geocode_results['found_address']
 
         if action == 'search':
             action_results = self.check_address_azure()
@@ -204,30 +203,25 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
                 lon2 = self.field_op.longitude
                 feature['distance'] = geodesic((lat1, lon1), (lat2, lon2)).km
             context['features'] = features
-
         return context
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-
-        notes = (
-            f"Confidence: {self.geocode_results['confidence']}\n"
-            f"Found Address:\n{self.geocode_results['found_address']}\n"
-            f"Distance: {self.geocode_distance}km\n"
-            f"Locality: {self.geocode_results['locality']}\n"
-            # f"Neighborhood: {self.geocode_results['neighborhood']}\n"
+        note = (
+            f"{self.geocode_results['found_address']}\n"
+            f"Distance: {self.geocode_distance} km\n"
+            f"Confidence: {self.geocode_confidence}\n"
             f"Match Type: {self.geocode_results['match_type']}\n"
             f"Match Codes: {self.geocode_results['match_codes']}\n"
         )
-
         kwargs['initial'] = {
-                'latitude': self.geocode_results['latitude'],
-                'longitude': self.geocode_results['longitude'],
+                'aid_request': self.aid_request.pk,
+                'latitude': self.geocode_latitude,
+                'longitude': self.geocode_longitude,
                 'status': 'confirmed',
                 'source': 'azure_maps',
-                'notes': notes
+                'note': note,
             }
-
         return kwargs
 
     def form_valid(self, form):
@@ -235,3 +229,13 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         self.object.aid_request = self.aid_request
         self.object.save()
         return super().form_valid(form)
+
+    def form_invalid(self, form):
+        """If the form is invalid, render the invalid form."""
+        ic(form.errors)
+        return self.render_to_response(self.get_context_data(form=form))
+
+    def get_success_url(self):
+        field_op_slug = self.field_op.slug
+        pk = self.aid_request.pk
+        return reverse('aidrequest_detail', kwargs={'field_op': field_op_slug, 'pk': pk})

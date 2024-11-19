@@ -4,11 +4,11 @@ Location Form
 
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Submit, Row, Column, HTML, Div
+from crispy_forms.layout import Layout, Submit, Row, Column, HTML, Div, Hidden
 
 from ..models import AidLocation
 
-# from icecream import ic
+from icecream import ic
 
 
 class AidLocationForm(forms.ModelForm):
@@ -17,20 +17,29 @@ class AidLocationForm(forms.ModelForm):
     class Meta:
         """ meta """
         model = AidLocation
-        exclude = ('aidrequest',)
+        fields = (
+            'aid_request',
+            'latitude',
+            'longitude',
+            'source',
+            'status',
+            'note',
+        )
+        success_url = 'aidrequest_detail'
 
     def __init__(self, *args, **kwargs):
         super(AidLocationForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_method = 'post'
-        self.fields['latitude'].widget = forms.HiddenInput()
-        self.fields['longitude'].widget = forms.HiddenInput()
-        self.fields['source'].widget = forms.HiddenInput()
-        self.fields['status'].widget = forms.HiddenInput()
-        self.fields['notes'].widget = forms.HiddenInput()
         kwargs_initial = kwargs['initial']
 
         self.helper.layout = Layout(
+            Hidden('aid_request', kwargs_initial.get('aid_request', '')),
+            Hidden('latitude', kwargs_initial.get('latitude', '')),
+            Hidden('longitude', kwargs_initial.get('longitude', '')),
+            Hidden('source', kwargs_initial.get('source', '')),
+            Hidden('status', kwargs_initial.get('status', '')),
+            Hidden('note', kwargs_initial.get('note', '')),
             Row(
                 Column(
                     Div(
@@ -48,7 +57,7 @@ class AidLocationForm(forms.ModelForm):
                         ),
                         css_class="ms-2"
                     ),
-                    css_class="d-flex col col-auto border rounded align-items-center ms-2"
+                    css_class="d-flex col col-auto border rounded bg-light align-items-center ms-2"
                 ),
                 Column(
                     Submit('submit', 'Confirm', css_class='btn btn-warning'),
@@ -59,9 +68,9 @@ class AidLocationForm(forms.ModelForm):
                 Column(
                     Div(
                         HTML(
-                            f"<h4>Geocode Notes</h4>"
-                            f"<hr>"
-                            f"<pre>{kwargs_initial['notes']}</pre>"
+                            f"Match"
+                            f"<hr class='m-0'>"
+                            f"<pre>{kwargs_initial['note']}</pre>"
                         ),
                     ),
                     css_class="d-flex col col-auto border rounded align-items-center m-2"

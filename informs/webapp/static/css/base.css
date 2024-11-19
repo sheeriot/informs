@@ -111,8 +111,10 @@ div#banner-title {
 
 table.table-data th {
 	font-weight: normal;
+	padding: 0.25rem;
 }
 
 table.table-data td {
 	font-weight: bold;
+	padding: 0.25rem;
 }
