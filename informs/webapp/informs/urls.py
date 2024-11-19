@@ -15,13 +15,13 @@ from aidrequests.views.aidrequest import (AidRequestCreateView,
 from aidrequests.views.field_op import (FieldOpCreateView,
                                         FieldOpListView,
                                         FieldOpUpdateView,
-                                        FieldOpDeleteView,
+                                        # FieldOpDeleteView,
                                         FieldOpDetailView
                                         )
 
 from aidrequests.views.export_csv import AidRequestCsvView
 
-from aidrequests.views.locate import AidLocationCreateView
+from aidrequests.views.geocode import AidLocationCreateView
 
 
 from .views import home
@@ -31,6 +31,7 @@ from .views import home
 
 
 urlpatterns = [
+    path('', home, name='home'),
     path('admin/', admin.site.urls),
     path('accounts/', include('accounts.urls')),
     # path('aidrequests/', include('aidrequests.urls')),
@@ -38,8 +39,7 @@ urlpatterns = [
     path('field_op/<int:pk>/', FieldOpDetailView.as_view(), name='field_op_detail'),
     path('field_op/create/', FieldOpCreateView.as_view(), name='field_op_create'),
     path('field_op/<int:pk>/update/', FieldOpUpdateView.as_view(), name='field_op_update'),
-    path('field_op/<int:pk>/delete/', FieldOpDeleteView.as_view(), name='field_op_delete'),
-    path('', home, name='home'),
+    # path('field_op/<int:pk>/delete/', FieldOpDeleteView.as_view(), name='field_op_delete'),
     path('tz_detect/', include('tz_detect.urls')),
     path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aidrequest_new'),
     path('<slug:field_op>/aidrequest/', AidRequestCreateView.as_view(), name='aidrequest_create'),
@@ -62,8 +62,8 @@ urlpatterns = [
          {'action': 'export_csv'},
          name='aidrequests_csv'
          ),
-    path('<slug:field_op>/aidrequest/<int:pk>/locate',
+    path('<slug:field_op>/aidrequest/<int:pk>/geocode',
          AidLocationCreateView.as_view(),
-         name='aidrequest_locate'
+         name='aidrequest_geocode'
          ),
 ]

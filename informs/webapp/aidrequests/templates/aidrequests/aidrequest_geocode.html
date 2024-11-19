@@ -4,7 +4,7 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
-<h2>Aid Request - Address Locator</h2>
+<h2>Aid Request - Address Geocoder</h2>
 <hr>
 <div class="d-flex justify-content-between">
     <div class="d-flex">
@@ -13,111 +13,97 @@
             <a href="{% url 'aidrequest_detail' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-info btn-sm mx-1 p-1">
                 {% bs_icon "binoculars" %} Details
             </a>
-            <a href="{% url 'aidrequest_update' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
-                {% bs_icon "pencil" %} Edit
-            </a>
         </div>
     </div>
-    <a href="{% url 'aidrequest_delete' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-danger btn-sm mx-1 p-1">
-        {% bs_icon "trash" %} Delete
+    <a href="{% url 'aidrequest_update' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
+        {% bs_icon "pencil" %} Edit
     </a>
 </div>
 <hr>
-<div class="d-flex justify-content-between font-monospace">
-    <table class="table table-bordered w-auto caption-top me-2 border border-3 border-success">
-        <caption>Aid Summary</caption>
-        <tr>
-            <th class="col-auto">ID</th>
-            <th class="col-auto">Field Op</th>
-            <th class="col-auto">Aid Type</th>
-            <th class="col-auto">Group Size</th>
-        </tr>
-        <tr>
-            <td class="col-auto">{{ aid_request.pk }}</td>
-            <td class="col-auto">
-                {{ field_op.name }}
-                <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm mx-1 p-1">
-                    {% bs_icon "list" %} Requests
-                </a>
-            </td>
-            <td class="col-auto">{{ aid_request.get_assistance_type_display }}</td>
-            <td class="col-auto text-center">{{ aid_request.group_size }}</td>
-        </tr>
-        <tr>
-            <td colspan="4">
-                <strong>Description</strong>:<br> {{ aid_request.assistance_description }}
-            </td>
-        </tr>
-    </table>
-    <table class="table table-bordered border border-3 border-info w-auto caption-top mb-1">
-        <caption>Contact Information</caption>
-        <tr>
-            <th class="col col-auto">Requestor Name</th>
-            <th class="col col-auto">Requestor Phone</th>
-            <th class="col col-auto">Requestor Email</th>
-        </tr>
-        <tr>
-            <td class="col col-auto">{{ aid_request.requestor_first_name }} {{ aid_request.requestor_last_name }}</td>
-            <td class="col col-auto">{{ aid_request.requestor_phone }}</td>
-            <td class="col col-auto">{{ aid_request.requestor_email }}</td>
-        </tr>
-        <tr>
-            <th class="col col-auto">Contact Name</th>
-            <th class="col col-auto">Contact Phone</th>
-            <th class="col col-auto">Contact Email</th>
-        </tr>
-        <tr>
-            <td class="col col-auto">{{ aid_request.assistance_first_name|default:"None" }} {{ aid_request.assistance_last_name }}</td>
-            <td class="col col-auto">{{ aid_request.assistance_phone|default:"None" }}</td>
-            <td class="col col-auto">{{ aid_request.assistance_email|default:"None" }}</td>
-        </tr>
-        <tr>
-            <td colspan="3">
-                <strong>Methods</strong>:<br>{{ aid_request.contact_methods }}
-            </td>
-        </tr>
-    </table>
+<div class="container font-monospace mt-1">
+    <div class="d-flex flex-column flex-lg-row gap-3">
+        <div class="table-responsive">
+            <table class="table table-bordered table-data w-auto caption-top me-2 border border-3 border-success">
+                <caption>Aid Summary</caption>
+                <tr>
+                    <th class="col-auto">ID</th>
+                    <th class="col-auto">Field Op</th>
+                    <th class="col-auto">Aid Type</th>
+                    <th class="col-auto">Group Size</th>
+                </tr>
+                <tr>
+                    <td class="col-auto">{{ aid_request.pk }}</td>
+                    <td class="col-auto">
+                        {{ field_op.name }}
+                        <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm mx-1 p-1">
+                            {% bs_icon "list" %} Requests
+                        </a>
+                    </td>
+                    <td class="col-auto">{{ aid_request.get_assistance_type_display }}</td>
+                    <td class="col-auto text-center">{{ aid_request.group_size }}</td>
+                </tr>
+                <tr>
+                    <td colspan="4">
+                        <strong>Description</strong>:<br> {{ aid_request.assistance_description }}
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-data border border-3 border-info w-auto caption-top mb-1">
+                <caption>Contact Information</caption>
+                <tr>
+                    <th class="col col-auto">Requestor Name</th>
+                    <th class="col col-auto">Requestor Phone</th>
+                    <th class="col col-auto">Requestor Email</th>
+                </tr>
+                <tr>
+                    <td class="col col-auto">{{ aid_request.requestor_first_name }} {{ aid_request.requestor_last_name }}</td>
+                    <td class="col col-auto">{{ aid_request.requestor_phone }}</td>
+                    <td class="col col-auto">{{ aid_request.requestor_email }}</td>
+                </tr>
+                <tr>
+                    <th class="col col-auto">Contact Name</th>
+                    <th class="col col-auto">Contact Phone</th>
+                    <th class="col col-auto">Contact Email</th>
+                </tr>
+                <tr>
+                    <td class="col col-auto">{{ aid_request.assistance_first_name|default:"None" }} {{ aid_request.assistance_last_name }}</td>
+                    <td class="col col-auto">{{ aid_request.assistance_phone|default:"None" }}</td>
+                    <td class="col col-auto">{{ aid_request.assistance_email|default:"None" }}</td>
+                </tr>
+                <tr>
+                    <td colspan="3">
+                        <strong>Methods</strong>:<br>{{ aid_request.contact_methods }}
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
 </div>
 <hr>
 <table class="table table-bordered w-auto caption-top w-auto border border-3 border-warning font-monospace">
-    <caption>Address Locator</caption>
+    <caption>Address Geocoder</caption>
     <tr>
         <th class="col-auto">Provided</th>
-        <th class="col-auto">Geocode</th>
-        <th class="col-auto">Distance</th>
-        <th class="col-auto">More Info</th>
+        <th class="col-auto">Geocode Result</th>
     </tr>
     <tr>
         <td class="col-auto">
             {{ aid_request.street_address }}<br>
             {{ aid_request.city }}, {{ aid_request.state }} {{ aid_request.zip_code }}
-        </td>
-        <!-- <td class="col-auto">
-            {{ latitude|floatformat:5 }},{{ longitude|floatformat:5 }}
-            <a href="{% url 'aidrequest_locate' pk=aidrequest.pk field_op=field_op.slug %?action=confirm" class="btn btn-warning btn-sm mx-1 p-1">
-                {% bs_icon "bullseye" %} Confirm
-            </a>
-
             <hr>
-            Confidence: <strong>{{ confidence }}</strong><br>
-            {{ found_address }}
-        </td> -->
+            <a href="{% url 'aidrequest_geocode' pk=aid_request.pk field_op=field_op.slug %}?action=search" class="btn btn-info btn-sm m-1 p-1">
+                {% bs_icon "search" %} Search
+            </a>
+            <a href="{% url 'aidrequest_geocode' pk=aid_request.pk field_op=field_op.slug %}?action=geocode" class="btn btn-outline-primary btn-sm m-1 p-1">
+                {% bs_icon "globe2" color="blue" %} Geocodes
+            </a>
+        </td>
         <td class="col-auto">
             {% crispy form %}
         </td>
-        <td class="col-auto">{{ distance|floatformat:1 }}</td>
-        <td class="col-auto">
-            <a href="{% url 'aidrequest_locate' pk=aid_request.pk field_op=field_op.slug %}?action=search" class="btn btn-info btn-sm m-1 p-1">
-                {% bs_icon "search" %} Search
-            </a>
-            <a href="{% url 'aidrequest_locate' pk=aid_request.pk field_op=field_op.slug %}?action=geocode" class="btn btn-outline-primary btn-sm m-1 p-1">
-                {% bs_icon "globe2" color="blue" %} Geocodes
-            </a>
-            <a href="https://google.com/maps/place/{{ latitude }},{{ longitude }}/@{{ latitude }},{{ longitude }},13z"
-                target="_blank" class="btn btn-outline-success btn-sm">
-                {% bs_icon "geo-alt" %} gMap
-            </a>
-        </td>
+
     </tr>
 </table>
 {% if action == 'search' %}

@@ -11,7 +11,7 @@ import requests
 from geopy.distance import geodesic
 
 from ..models import AidRequest, FieldOp
-from .location_form import AidLocationForm
+from .geocode_form import AidLocationForm
 
 from icecream import ic
 
@@ -32,7 +32,7 @@ def geodist(aid_request):
 class AidLocationCreateView(LoginRequiredMixin, CreateView):
     model = AidRequest
     form_class = AidLocationForm
-    template_name = 'aidrequests/aidrequest_locate.html'
+    template_name = 'aidrequests/aidrequest_geocode.html'
     """
     A Django class-based view for validating addresses using Azure Maps.
     """
@@ -51,15 +51,15 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
 
         endpoint = "https://atlas.microsoft.com/search/address/json"
 
-        query_address = f"{self.object.street_address}, {self.object.city}"
-        query_address += f", {self.object.state}, {self.object.zip_code}, {self.object.country}"
+        query_address = f"{self.aid_request.street_address}, {self.aid_request.city}"
+        query_address += f", {self.aid_request.state}, {self.aid_request.zip_code}, {self.aid_request.country}"
 
         params = {
             "api-version": "1.0",
             "subscription-key": azure_maps_key,
             "query": query_address,
-            "lat": self.object.field_op.latitude,
-            "lon": self.object.field_op.longitude
+            "lat": self.geocode_latitude,
+            "lon": self.geocode_longitude
         }
 
         try:
@@ -172,8 +172,6 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         context['aid_request'] = self.aid_request
         context['action'] = action
 
-        # calculate distance to center of  Field Op
-
         context['distance'] = self.geocode_distance
 
         self.geocode_latitude = self.geocode_results['latitude']
@@ -225,10 +223,11 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         kwargs['initial'] = {
                 'latitude': self.geocode_results['latitude'],
                 'longitude': self.geocode_results['longitude'],
-                'status': 'new',
+                'status': 'confirmed',
                 'source': 'azure_maps',
                 'notes': notes
             }
+
         return kwargs
 
     def form_valid(self, form):
