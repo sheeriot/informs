@@ -13,29 +13,30 @@
                 <th scope="col">Slug</th>
                 <th scope="col">Aid Requests</th>
                 <th scope="col">Lat,Long</th>
-                <th scope="col">Actions</th>
+                <th scope="col"><div class="d-flex justify-content-end">Actions</div></th>
             </tr>
         </thead>
         <tbody>
             {% for field_op in object_list %}
             <tr>
-                <td><a href="{% url 'field_op_detail' field_op.pk %}">{{ field_op }}</a></td>
+                <td>
+                    <a href="{% url 'field_op_detail' pk=field_op.pk %}" class="btn btn-outline-primary btn-sm">
+                        {% bs_icon "binoculars" %}
+                        {{ field_op }}
+                    </a>
+                </td>
                 <td>{{ field_op.slug }}</td>
-                <td><a href="{% url 'aidrequest_list' field_op=field_op.slug %}">
-                    {{ field_op.aidrequest_count }}
+                <td>
+                    <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm">
+                        {% bs_icon "list" %}
+                        {{ field_op.aidrequest_count }}
                     </a>
                 </td>
                 <td>{{ field_op.latitude }},{{ field_op.longitude }}</td>
                 <td>
-                    <div class="d-flex">
-                        <a href="{% url 'field_op_detail' pk=field_op.pk %}" class="btn btn-info btn-sm me-2">
-                            {% bs_icon "binoculars-fill" %}
-                        </a>
+                    <div class="d-flex justify-content-end">
                         <a href="{% url 'field_op_update' field_op.pk %}" class="btn btn-warning btn-sm me-2">
                             {% bs_icon "pencil" %}
-                        </a>
-                        <a href="{% url 'field_op_delete' field_op.pk %}" class="btn btn-danger btn-sm">
-                            {% bs_icon "trash" %}
                         </a>
                     </div>
                 </td>

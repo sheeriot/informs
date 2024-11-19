@@ -56,7 +56,7 @@ class FieldOpUpdateView(LoginRequiredMixin, UpdateView):
 
 
 # Delete View for FieldOp
-class FieldOpDeleteView(LoginRequiredMixin, DeleteView):
-    model = FieldOp
-    template_name = 'aidrequests/field_op_confirm_delete.html'
-    success_url = reverse_lazy('field_op_list')
+# class FieldOpDeleteView(LoginRequiredMixin, DeleteView):
+#     model = FieldOp
+#     template_name = 'aidrequests/field_op_confirm_delete.html'
+#     success_url = reverse_lazy('field_op_list')

@@ -8,73 +8,81 @@
     <div class="d-flex">
     <strong>Action:</strong>
         <div class="mx-2 p-0">
-            <a href="{% url 'aidrequest_locate' pk=object.pk field_op=field_op.slug %}" class="btn btn-success btn-sm mx-1 p-1">
-                {% bs_icon "globe2" %} Locate
-            </a>
-            <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
-                {% bs_icon "pencil" %} Edit
+            <a href="{% url 'aidrequest_geocode' pk=object.pk field_op=field_op.slug %}" class="btn btn-success btn-sm mx-1 p-1">
+                {% bs_icon "globe2" %} Geocode
             </a>
         </div>
     </div>
-    <a href="{% url 'aidrequest_delete' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-danger btn-sm mx-1 p-1">
-        {% bs_icon "trash" %} Delete
+    <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
+        {% bs_icon "pencil" %} Edit
     </a>
 </div>
 <hr>
-<div class="d-flex justify-content-between font-monospace">
-    <table class="table table-bordered w-auto caption-top me-2 border border-3 border-success">
-        <caption>Aid Summary</caption>
-        <tr>
-            <th class="col-auto">ID</th>
-            <th class="col-auto">Field Op</th>
-            <th class="col-auto">Aid Type</th>
-            <th class="col-auto">Group Size</th>
-        </tr>
-        <tr>
-            <td class="col-auto">{{ object.pk }}</td>
-            <td class="col-auto">
-                {{ field_op.name }}
-                <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm mx-1 p-1">
-                    {% bs_icon "list" %} Requests
-                </a>
-            </td>
-            <td class="col-auto">{{ object.get_assistance_type_display }}</td>
-            <td class="col-auto text-center">{{ object.group_size }}</td>
-        </tr>
-        <tr>
-            <td colspan="4">
-                <strong>Description</strong>:<br> {{ object.assistance_description }}
-            </td>
-        </tr>
-    </table>
-    <table class="table table-bordered border border-3 border-info w-auto caption-top mb-1">
-        <caption>Contact Information</caption>
-        <tr>
-            <th class="col col-auto">Requestor Name</th>
-            <th class="col col-auto">Requestor Phone</th>
-            <th class="col col-auto">Requestor Email</th>
-        </tr>
-        <tr>
-            <td class="col col-auto">{{ object.requestor_first_name }} {{ object.requestor_last_name }}</td>
-            <td class="col col-auto">{{ object.requestor_phone }}</td>
-            <td class="col col-auto">{{ object.requestor_email }}</td>
-        </tr>
-        <tr>
-            <th class="col col-auto">Contact Name</th>
-            <th class="col col-auto">Contact Phone</th>
-            <th class="col col-auto">Contact Email</th>
-        </tr>
-        <tr>
-            <td class="col col-auto">{{ object.assistance_first_name|default:"None" }} {{ object.assistance_last_name }}</td>
-            <td class="col col-auto">{{ object.assistance_phone|default:"None" }}</td>
-            <td class="col col-auto">{{ object.assistance_email|default:"None" }}</td>
-        </tr>
-        <tr>
-            <td colspan="3">
-                <strong>Methods</strong>:<br>{{ object.contact_methods }}
-            </td>
-        </tr>
-    </table>
+<div class="container font-monospace mt-1">
+    <div class="d-flex flex-column flex-lg-row">
+        <div class="table-responsive">
+            <table class="table table-bordered table-data w-auto caption-top me-2 border border-3 border-success">
+                <caption>Aid Summary</caption>
+                <tr>
+                    <th class="col-auto">ID</th>
+                    <th class="col-auto">Field Op</th>
+                    <th class="col-auto">Aid Type</th>
+                    <th class="col-auto">Group Size</th>
+                </tr>
+                <tr>
+                    <td class="col-auto">
+                        <a href="{% url 'aidrequest_detail' pk=object.pk field_op=field_op.slug %}" class="btn btn-outline-info btn-sm mx-1 p-1">
+                            {% bs_icon "binoculars-fill" %} {{ object.pk }}
+                        </a>
+                    </td>
+                    <td class="col-auto">
+                        
+                        <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm mx-1 p-1">
+                            {% bs_icon "list" %} {{ field_op.name }}
+                        </a>
+                    </td>
+                    <td class="col-auto">{{ object.get_assistance_type_display }}</td>
+                    <td class="col-auto text-center">{{ object.group_size }}</td>
+                </tr>
+                <tr>
+                    <tr><th colspan="4">Descripton</th></tr>
+                    <td colspan="4">
+                        {{ object.assistance_description }}
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-data border border-3 border-info w-auto caption-top mb-1">
+                <caption>Contact Information</caption>
+                <tr>
+                    <th class="col col-auto">Requestor Name</th>
+                    <th class="col col-auto">Requestor Phone</th>
+                    <th class="col col-auto">Requestor Email</th>
+                </tr>
+                <tr>
+                    <td class="col col-auto">{{ object.requestor_first_name }} {{ object.requestor_last_name }}</td>
+                    <td class="col col-auto">{{ object.requestor_phone }}</td>
+                    <td class="col col-auto">{{ object.requestor_email }}</td>
+                </tr>
+                <tr>
+                    <th class="col col-auto">Contact Name</th>
+                    <th class="col col-auto">Contact Phone</th>
+                    <th class="col col-auto">Contact Email</th>
+                </tr>
+                <tr>
+                    <td class="col col-auto">{{ object.assistance_first_name|default:"None" }} {{ object.assistance_last_name }}</td>
+                    <td class="col col-auto">{{ object.assistance_phone|default:"None" }}</td>
+                    <td class="col col-auto">{{ object.assistance_email|default:"None" }}</td>
+                </tr>
+                <tr>
+                    <td colspan="3">
+                        <strong>Methods</strong>:<br>{{ object.contact_methods }}
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
 </div>
 <hr>
 <table class="table table-bordered w-auto caption-top">

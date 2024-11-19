@@ -108,3 +108,13 @@ div#banner-title {
 	border-radius: 5px;            /* Optional: rounded corners */
 	background-color: #f9f9f9;     /* Optional: light background color */
 }
+
+table.table-data th {
+	font-weight: normal;
+	padding: 0.25rem;
+}
+
+table.table-data td {
+	font-weight: bold;
+	padding: 0.25rem;
+}

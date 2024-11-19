@@ -27,6 +27,7 @@ class FieldOpAdmin(admin.ModelAdmin):
 
 class AidLocationAdmin(admin.ModelAdmin):
     """AidLocation admin"""
+    readonly_fields = ('aid_request', 'source', 'latitude', 'longitude')
     list_display = ('aid_request', 'status', 'source', 'latitude', 'longitude')
 
 
