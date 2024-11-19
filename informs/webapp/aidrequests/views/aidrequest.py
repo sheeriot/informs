@@ -12,8 +12,10 @@ from geopy.distance import geodesic
 
 from ..models import AidRequest, FieldOp
 from .forms import AidRequestForm
+from .geocode_form import AidLocationForm
+from .getAzureGeocode import getAddressGeocode
 
-# from icecream import ic
+from icecream import ic
 
 
 def geodist(aid_request):
@@ -54,12 +56,52 @@ class AidRequestListView(LoginRequiredMixin, ListView):
 class AidRequestDetailView(LoginRequiredMixin, DetailView):
     model = AidRequest
     template_name = 'aidrequests/aidrequest_detail.html'
+    location_form = 'geocode_form.'
+
+    def setup(self, request, *args, **kwargs):
+        """Initialize attributes shared by all view methods."""
+        if hasattr(self, "get") and not hasattr(self, "head"):
+            self.head = self.get
+        self.request = request
+        self.args = args
+        self.kwargs = kwargs
+        # custom setup
+        self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
+        self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
+
+        self.geocode_results = getAddressGeocode(self.aid_request)
+        self.kwargs['distance'] = round(geodesic(
+            (self.geocode_results['latitude'], self.geocode_results['longitude']),
+            (self.field_op.latitude, self.field_op.longitude)
+            ).km, 1)
+        self.kwargs['latitude'] = self.geocode_results['latitude']
+        self.kwargs['longitude'] = self.geocode_results['longitude']
+        note = (
+            f"{self.geocode_results['found_address']}\n"
+            f"Distance: {self.kwargs['distance']} km\n"
+            f"Confidence: {self.geocode_results['confidence']}\n"
+            f"Match Type: {self.geocode_results['match_type']}\n"
+            f"Match Codes: {self.geocode_results['match_codes']}\n"
+        )
+        self.kwargs['note'] = note
+        self.kwargs['status'] = 'confirmed'
+        self.kwargs['source'] = 'azure_maps'
+        ic(self.kwargs)
 
     def get_context_data(self, **kwargs):
-        field_op_slug = self.kwargs['field_op']
         context = super().get_context_data(**kwargs)
-        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
-        context['field_op'] = field_op
+        context['field_op'] = self.field_op
+        context['aid_request'] = self.aid_request
+        context['locations'] = self.aid_request.locations.all()
+        initial_data = {
+            'aid_request': self.aid_request.pk,
+            'latitude': self.kwargs['latitude'],
+            'longitude': self.kwargs['longitude'],
+            'status': self.kwargs['status'],
+            'source': self.kwargs['source'],
+            'note': self.kwargs['note'],
+        }
+        context['geocode_form'] = AidLocationForm(initial=initial_data)
         return context
 
 

@@ -32,7 +32,7 @@ class AidLocationForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         kwargs_initial = kwargs['initial']
-
+        # ic(kwargs)
         self.helper.layout = Layout(
             Hidden('aid_request', kwargs_initial.get('aid_request', '')),
             Hidden('latitude', kwargs_initial.get('latitude', '')),
