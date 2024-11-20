@@ -3,8 +3,39 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
-<h2>Aid Request Details</h2>
-<hr>
+<div class="row flex-row align-items-center my-1">
+    <div class="col-auto display-6 font-monospace">
+        Aid Request Detail
+    </div>
+    <div class="col-auto font-monospace bg-light mx-1 p-0" style="font-size: 0.75rem;">
+        <table class="table border border-1 m-0 p-0">
+            <tr>
+                <td class="border border-info bg-transparent m-0 px-1 py-0">
+                    priority:
+                    {{ object.priority }}
+                </td>
+                <td class="border border-info bg-transparent m-0 px-1 py-0">
+                    created:
+                    {{ object.created_at|date:"Y-m-d H:i" }}
+                    ({{ object.created_by }})
+                </td>
+            </tr>
+            <tr>
+                <td class="border border-info bg-transparent m-0 px-1 py-0">
+                    status:
+                    {{ object.status }}
+                </td>
+                <td class="border border-info bg-transparent m-0 px-1 py-0">
+                    updated:
+                    {{ object.updated_at|date:"Y-m-d H:i" }}
+                    ({{ object.updated_by }})
+                </td>
+
+            </tr>
+        </table>
+    </div>
+</div>
+<hr class="m-0" />
 <div class="container font-monospace mt-1">
     <div class="d-flex flex-column flex-lg-row">
         <div class="table-responsive">
@@ -128,7 +159,7 @@
                     <div>
                         <small>{{ location.updated_at|date:"Y-m-d H:i" }}</small>
                     </div>
-                    <div class="d-inline-flex border bg-warning rounded align-items-center p-1">
+                    <div class="d-inline-flex border bg-warning-subtle border-warning border-2 rounded align-items-center p-1">
                         <small class="me-2">{{ location.source }}</small>
                         <a href="{% url 'aid_location_delete' field_op=field_op.slug aid_request=object.pk pk=location.pk  %}" class="btn btn-danger btn-sm w-auto">
                             {% bs_icon "trash" %}

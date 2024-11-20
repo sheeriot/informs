@@ -10,25 +10,75 @@ from .models import AidRequest, FieldOp, AidLocation
 
 class AidRequestAdmin(admin.ModelAdmin):
     """aid request admin"""
-    list_display = ('pk', 'field_op', 'assistance_type',
-                    'requestor_first_name', 'requestor_last_name', 'group_size')
+    list_display = (
+        'pk', 'field_op', 'assistance_type',
+        'requestor_first_name', 'requestor_last_name',
+        'group_size', 'created_by', 'updated_by')
     list_filter = ('field_op', 'assistance_type',)
-    search_fields = ('requestor_first_name',
-                     'requestor_last_name',
-                     'street_address',
-                     'city',
-                     'assistance_description')
+    search_fields = (
+        'requestor_first_name',
+        'requestor_last_name',
+        'street_address',
+        'city',
+        'assistance_description'
+        )
+    readonly_fields = (
+        'field_op',
+        'created_at',
+        'updated_at',
+        'created_by',
+        'updated_by'
+        )
+
+    def save_model(self, request, obj, form, change):
+        # Set created_by only when creating a new object
+        if not obj.pk:
+            obj.created_by = request.user
+        # Set updated_by on every save
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 class FieldOpAdmin(admin.ModelAdmin):
     """fieldops admin"""
     list_display = ('pk', 'slug', 'name')
+    readonly_fields = (
+        'created_at',
+        'updated_at',
+        'created_by',
+        'updated_by'
+        )
+
+    def save_model(self, request, obj, form, change):
+        # Set created_by only when creating a new object
+        if not obj.pk:
+            obj.created_by = request.user
+        # Set updated_by on every save
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 class AidLocationAdmin(admin.ModelAdmin):
     """AidLocation admin"""
-    readonly_fields = ('aid_request', 'source', 'latitude', 'longitude')
-    list_display = ('aid_request', 'status', 'source', 'latitude', 'longitude')
+    list_display = ('aid_request', 'status', 'source', 'latitude', 'longitude', 'created_at')
+    readonly_fields = (
+        'aid_request',
+        'latitude',
+        'longitude',
+        'source',
+        'created_at',
+        'updated_at',
+        'created_by',
+        'updated_by'
+        )
+
+    def save_model(self, request, obj, form, change):
+        # Set created_by only when creating a new object
+        if not obj.pk:
+            obj.created_by = request.user
+        # Set updated_by on every save
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 admin.site.register(AidRequest, AidRequestAdmin)

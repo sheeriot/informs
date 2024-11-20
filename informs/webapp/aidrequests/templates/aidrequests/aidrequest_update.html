@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% load bootstrap_icons %}
+{% block content %}
+
+{% if form.action == "create" %}
+<div class='form-header mb-5'>
+<h2>Aid Request: {{ field_op.name }}</h2>
+<div>Evacuation, Resupply, Welfare Check</div>
+<p>
+    <strong>
+    Please use this form to request aid from Save our Allies.
+    </strong>
+</p>
+<span>
+    <em>
+    This form should only be used for first-hand requests for aid. Please do not relay aid messages from social media that are not first hand information. Thank you!
+    </em>
+</span>
+<hr>
+</div>
+{% else %}
+<div class="form-header">
+    <h2>Update Aid Request</h2>
+</div>
+{% endif %}
+
+{% crispy form %}
+
+{% if form.action == "update" %}
+<hr />
+<div class="d-flex justify-content-between">
+    <div class="d-flex">
+        <div class="m-0 p-0">
+            <a href="{% url 'aidrequest_detail' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-secondary btn-sm mx-1 p-1">
+                {% bs_icon "x-circle" %} Cancel
+            </a>
+        </div>
+        <div class="m-0 p-0">
+            <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-info btn-sm mx-1 p-1">
+                {% bs_icon "list" %} List
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    function differentContact() {
+        const fieldset = document.getElementById("different_contact_fieldset");
+        const checkbox = document.getElementById("different_contact");
+        // Toggle visibility based on the checkbox state
+        if (checkbox.checked) {
+            fieldset.classList.remove("d-none");
+        } else {
+            fieldset.classList.add("d-none");
+        }
+    }
+</script>
+
+{% endblock %}

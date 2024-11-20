@@ -13,8 +13,12 @@
             <tr>
                 <th scope="col">ID</th>
                 <th scope="col">Type</th>
+                <th scope="col">Priority</th>
+                <th scope="col">Status</th>
                 <th scope="col">Requester</th>
                 <th scope="col">Address</th>
+                <th scope="col">Created At</th>
+                <th scope="col">Updated At</th>
                 <th scope="col" class="text-end">Actions</th>
             </tr>
         </thead>
@@ -30,8 +34,12 @@
                     </div>
                 </td>
                 <td>{{ aidrequest.assistance_type }}</td>
+                <td>{{ aidrequest.priority }}</td>
+                <td>{{ aidrequest.status }}</td>
                 <td>{{ aidrequest.requestor_first_name }} {{ aidrequest.requestor_last_name }}</td>
                 <td>{{ aidrequest.street_address }},{{ aidrequest.state }}</td>
+                <td>{{ aidrequest.created_at|date:"Ymd-Hi" }}</td>
+                <td>{{ aidrequest.updated_at|date:"Ymd-Hi" }}</td>
                 <td>
                     <div class="d-flex justify-content-end">
                         <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm me-2">

@@ -11,11 +11,11 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from geopy.distance import geodesic
 
 from ..models import AidRequest, FieldOp
-from .forms import AidRequestForm
+from .aid_request_forms import AidRequestCreateForm, AidRequestUpdateForm
 from .geocode_form import AidLocationForm
 from .getAzureGeocode import getAddressGeocode
 
-from icecream import ic
+# from icecream import ic
 
 
 def has_confirmed_location(aid_request):
@@ -128,7 +128,7 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
 class AidRequestCreateView(CreateView):
     """ Aid Request - Create """
     model = AidRequest
-    form_class = AidRequestForm
+    form_class = AidRequestCreateForm
     template_name = 'aidrequests/aidrequest_form.html'
     success_url = reverse_lazy('home')
 
@@ -172,8 +172,8 @@ class AidRequestCreateView(CreateView):
 # Update View for AidRequest
 class AidRequestUpdateView(LoginRequiredMixin, UpdateView):
     model = AidRequest
-    form_class = AidRequestForm
-    template_name = 'aidrequests/aidrequest_form.html'
+    form_class = AidRequestUpdateForm
+    template_name = 'aidrequests/aidrequest_update.html'
     # success_url = reverse_lazy('aidrequest_list')
 
     def get_form_kwargs(self):

@@ -87,6 +87,37 @@ class AidRequest(TimeStampedModel):
         User, related_name='aid_requests_updated', on_delete=models.SET_NULL, null=True, blank=True
     )
 
+    PRIORITY_CHOICES = [
+        (None, 'None'),
+        ('high', 'High'),
+        ('medium', 'Medium'),
+        ('low', 'Low'),
+    ]
+
+    priority = models.CharField(
+        max_length=10,
+        choices=PRIORITY_CHOICES,
+        default=None,
+        null=True,
+        blank=True,
+    )
+
+    STATUS_CHOICES = [
+        ('new', 'New'),
+        ('assigned', 'Assigned'),
+        ('resolved', 'Resolved'),
+        ('closed', 'Closed'),
+        ('rejected', 'Rejected'),
+        ('other', 'Other'),
+    ]
+    
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='new',
+    )
+
+    
 
     def __str__(self):
         return f"""AidRequest by {self.requestor_first_name} {self.requestor_last_name}
@@ -117,7 +148,6 @@ class AidLocation(TimeStampedModel):
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
     note = models.TextField(blank=True, null=True)
 
-
     created_by = models.ForeignKey(
         User, related_name='aid_locations_created', on_delete=models.SET_NULL, null=True, blank=True
     )
@@ -126,4 +156,4 @@ class AidLocation(TimeStampedModel):
     )
 
     def __str__(self):
-        return f"Location ({self.latitude}, {self.longitude}) - {self.status}"
+        return f"Location ({self.latitude}, {self.longitude}) - {self.status} - {self.source}"
