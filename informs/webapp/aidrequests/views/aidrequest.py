@@ -81,10 +81,10 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
         self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
 
         if has_confirmed_location(self.aid_request):
-            ic('location confirmed')
+            # ic('location confirmed')
             self.confirmed = True
         else:
-            ic('no geocoded address')
+            # ic('no geocoded address')
             self.geocode_results = getAddressGeocode(self.aid_request)
 
     def get_context_data(self, **kwargs):
@@ -120,7 +120,7 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
                 }
             context['geocode_form'] = AidLocationForm(initial=initial_data)
 
-        ic(context)
+        # ic(context)
         return context
 
 
