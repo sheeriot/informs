@@ -205,10 +205,8 @@ class AidRequestUpdateView(LoginRequiredMixin, UpdateView):
             return self.form_invalid(form)
         user = self.request.user
         if user.is_authenticated:
-            form.instance.created_by = user
             form.instance.updated_by = user
         else:
-            form.instance.created_by = None
             form.instance.updated_by = None
         self.object.save()
         return super().form_valid(form)
