@@ -3,22 +3,32 @@ This module  for AidRequests and FieldOps
 """
 
 from django.db import models
+from .timestamped_model import TimeStampedModel
+# from django.conf import settings
+from django.contrib.auth.models import User
 
 
 # Module providing a function printing python version."""
 
-class FieldOp(models.Model):
+class FieldOp(TimeStampedModel):
     """Field Ops"""
     slug = models.SlugField(unique=True)
     name = models.CharField(max_length=50)
     latitude = models.DecimalField(max_digits=4, decimal_places=2)
     longitude = models.DecimalField(max_digits=5, decimal_places=2)
 
+    created_by = models.ForeignKey(
+        User, related_name='field_ops_created', on_delete=models.SET_NULL, null=True, blank=True
+    )
+    updated_by = models.ForeignKey(
+        User, related_name='field_ops_updated', on_delete=models.SET_NULL, null=True, blank=True
+    )
+
     def __str__(self):
         return str(self.name)
 
 
-class AidRequest(models.Model):
+class AidRequest(TimeStampedModel):
     """ scope to a field operation object"""
     field_op = models.ForeignKey(FieldOp, on_delete=models.CASCADE,
                                  null=True, related_name='aid_requests')
@@ -26,8 +36,8 @@ class AidRequest(models.Model):
     requestor_first_name = models.CharField(max_length=20)
     requestor_last_name = models.CharField(max_length=30)
 
-    requestor_email = models.EmailField()
-    requestor_phone = models.CharField(max_length=12)  # Format: 555-555-5555
+    requestor_email = models.EmailField(blank=True)
+    requestor_phone = models.CharField(blank=True, max_length=12)  # Format: 555-555-5555
 
     # 2. Contact details for party needing assistance
     assistance_first_name = models.CharField(max_length=20, blank=True)
@@ -70,12 +80,20 @@ class AidRequest(models.Model):
     # 10. Additional information
     additional_info = models.TextField(blank=True, null=True)
 
+    created_by = models.ForeignKey(
+        User, related_name='aid_requests_created', on_delete=models.SET_NULL, null=True, blank=True
+    )
+    updated_by = models.ForeignKey(
+        User, related_name='aid_requests_updated', on_delete=models.SET_NULL, null=True, blank=True
+    )
+
+
     def __str__(self):
         return f"""AidRequest by {self.requestor_first_name} {self.requestor_last_name}
                - {self.assistance_type}"""
 
 
-class AidLocation(models.Model):
+class AidLocation(TimeStampedModel):
     """Location details for AidRequest"""
     aid_request = models.ForeignKey(AidRequest, on_delete=models.CASCADE, related_name='locations')
 
@@ -98,6 +116,14 @@ class AidLocation(models.Model):
     ]
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
     note = models.TextField(blank=True, null=True)
+
+
+    created_by = models.ForeignKey(
+        User, related_name='aid_locations_created', on_delete=models.SET_NULL, null=True, blank=True
+    )
+    updated_by = models.ForeignKey(
+        User, related_name='aid_locations_updated', on_delete=models.SET_NULL, null=True, blank=True
+    )
 
     def __str__(self):
         return f"Location ({self.latitude}, {self.longitude}) - {self.status}"

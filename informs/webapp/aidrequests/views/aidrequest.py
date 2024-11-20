@@ -154,6 +154,17 @@ class AidRequestCreateView(CreateView):
         # if distance is not None and distance > 200:
         #     form.add_error(None, 'The Aid Request is more than 200 km away from the Field Op.')
         #     return self.form_invalid(form)
+        if not self.object.requestor_email and not self.object.requestor_phone:
+            form.add_error(None, 'Provide one of phone or email.')
+            return self.form_invalid(form)
+        user = self.request.user
+        if user.is_authenticated:
+            form.instance.created_by = user
+            form.instance.updated_by = user
+        else:
+            form.instance.created_by = None
+            form.instance.updated_by = None
+        return super().form_valid(form)
         self.object.save()
         return super().form_valid(form)
 
@@ -189,6 +200,14 @@ class AidRequestUpdateView(LoginRequiredMixin, UpdateView):
         # if distance is not None and distance > 200:
         #     form.add_error(None, 'The Aid Request is more than 200 km away from the Field Op.')
         #     return self.form_invalid(form)
+        if not self.object.requestor_email and not self.object.requestor_phone:
+            form.add_error(None, 'Provide one of phone or email.')
+            return self.form_invalid(form)
+        user = self.request.user
+        if user.is_authenticated:
+            form.instance.updated_by = user
+        else:
+            form.instance.updated_by = None
         self.object.save()
         return super().form_valid(form)
 

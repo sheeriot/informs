@@ -105,22 +105,35 @@
         <thead>
             <tr>
                 <th scope="col-auto">Location</th>
-                <th scope="col-auto">Note</th>
+                <th scope="col-auto">Notes</th>
+                </th>
             </tr>
         </thead>
         <tbody>
             {% for location in locations %}
             <tr>
-                <td>
-                    {{ location.latitude }},{{ location.longitude }}
-                    <a href="href="https://google.com/maps/place/{{ location.latitude }},{{ location.longitude }}/@{{ location.latitude }},{{ location.longitude }},13z"" target="_blank" class="btn btn-outline-success btn-sm">
-                        {% bs_icon "globe2" %}
-                    </a><br>
-                    Status: {{ location.status }}<br>
-                    Source: {{ location.source }}
-                    <a href="{% url 'aid_location_delete' field_op=field_op.slug aid_request=object.pk pk=location.pk  %}" class="btn btn-danger btn-sm">
-                        {% bs_icon "trash" %}
-                    </a>
+                <td class="ps-2">
+                    <div class="d-inline-flex">
+                        <div class=" px-1 mx-1">
+                            {{ location.latitude }},{{ location.longitude }}
+                        </div>
+                        <a href="https://google.com/maps/place/{{ location.latitude }},{{ location.longitude }}/@{{ location.latitude }},{{ location.longitude }},13z"
+                                                            target="_blank" class="btn btn-outline-success btn-sm">
+                            {% bs_icon "globe2" %}
+                        </a>
+                    </div>
+                    <div>
+                        Status: {{ location.status }}<br>
+                    </div>
+                    <div>
+                        <small>{{ location.updated_at|date:"Y-m-d H:i" }}</small>
+                    </div>
+                    <div class="d-inline-flex border bg-warning rounded align-items-center p-1">
+                        <small class="me-2">{{ location.source }}</small>
+                        <a href="{% url 'aid_location_delete' field_op=field_op.slug aid_request=object.pk pk=location.pk  %}" class="btn btn-danger btn-sm w-auto">
+                            {% bs_icon "trash" %}
+                        </a>
+                    </div>
                 </td>
                 <td>
                     <pre>{{ location.note }}</pre>
@@ -143,5 +156,25 @@
 
 <h2>Additional Information</h2>
 <p>{{ object.additional_info|default:"None" }}</p>
+<hr>
+<table class="table table-bordered table-data w-auto caption-top border border-3 border-primary font-monospace">
+    <caption>Ticket Info</caption>
+    <tr>
+        <th class="col-auto">Created At</th>
+        <th class="col-auto">Updated At</th>
+        <th class="col-auto">Locations</th>
+    </tr>
+    <tr>
+        <td class="col-auto">{{ object.created_at|date:"Y-m-d H:i" }}</td>
+        <td class="col-auto">{{ object.updated_at|date:"Y-m-d H:i" }}</td>
+        <td class="col-auto">{{ locations|length }}
+            {% if location_confirmed %}
+            <span class="text-success">{% bs_icon "check" %} ok</span>
+        {% else %}
+            <span class="text-danger">{% bs_icon "exclamation" color="red" %} NOT CONFIRMED</span>
+        {% endif %}
+        </td>
+    </tr>
+</table>
 
 {% endblock %}

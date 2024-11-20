@@ -222,6 +222,13 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         self.object = form.save()
         self.object.aid_request = self.aid_request
+        user = self.request.user
+        if user.is_authenticated:
+            form.instance.created_by = user
+            form.instance.updated_by = user
+        else:
+            form.instance.created_by = None
+            form.instance.updated_by = None
         self.object.save()
         return super().form_valid(form)
 
