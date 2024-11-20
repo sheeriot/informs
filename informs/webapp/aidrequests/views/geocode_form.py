@@ -3,6 +3,8 @@ Location Form
 """
 
 from django import forms
+from django.urls import reverse
+
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, HTML, Div, Hidden
 
@@ -28,31 +30,39 @@ class AidLocationForm(forms.ModelForm):
         success_url = 'aidrequest_detail'
 
     def __init__(self, *args, **kwargs):
-        super(AidLocationForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
+        ic(kwargs)
+        initial = kwargs['initial']
         self.helper = FormHelper()
         self.helper.form_method = 'post'
-        kwargs_initial = kwargs['initial']
-        # ic(kwargs)
+        self.helper.form_action = reverse(
+            'aidrequest_geocode',
+            kwargs={
+                'field_op': initial['field_op'],
+                'pk': initial['aid_request']
+                }
+            )
+
         self.helper.layout = Layout(
-            Hidden('aid_request', kwargs_initial.get('aid_request', '')),
-            Hidden('latitude', kwargs_initial.get('latitude', '')),
-            Hidden('longitude', kwargs_initial.get('longitude', '')),
-            Hidden('source', kwargs_initial.get('source', '')),
-            Hidden('status', kwargs_initial.get('status', '')),
-            Hidden('note', kwargs_initial.get('note', '')),
+            Hidden('aid_request', initial['aid_request']),
+            Hidden('latitude', initial['latitude']),
+            Hidden('longitude', initial['longitude']),
+            Hidden('source', initial['source']),
+            Hidden('status', initial['status']),
+            Hidden('note', initial['note']),
             Row(
                 Column(
                     Div(
                         HTML(
-                            f"latitude,longitude<br><strong>{kwargs_initial['latitude']},"
-                            f"{kwargs_initial['longitude']}</strong>"
+                            f"latitude,longitude<br><strong>{initial['latitude']},"
+                            f"{initial['longitude']}</strong>"
                         ),
                     ),
                     Div(
                         HTML(
-                            f"<a href='https://google.com/maps/place/{kwargs_initial['latitude']},"
-                            f"{kwargs_initial['longitude']}/@{kwargs_initial['latitude']},"
-                            f"{kwargs_initial['longitude']},13z' target='_blank' "
+                            f"<a href='https://google.com/maps/place/{initial['latitude']},"
+                            f"{initial['longitude']}/@{initial['latitude']},"
+                            f"{initial['longitude']},13z' target='_blank' "
                             f"class='btn btn-success btn-sm'>gMap</a>"
                         ),
                         css_class="ms-2"
@@ -70,7 +80,7 @@ class AidLocationForm(forms.ModelForm):
                         HTML(
                             f"Match"
                             f"<hr class='m-0'>"
-                            f"<pre>{kwargs_initial['note']}</pre>"
+                            f"<pre>{initial['note']}</pre>"
                         ),
                     ),
                     css_class="d-flex col col-auto border rounded align-items-center m-2"

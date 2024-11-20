@@ -32,12 +32,15 @@ def geodist(aid_request):
 
 
 class AidLocationCreateView(LoginRequiredMixin, CreateView):
+    """
+    A Django class-based view for saving azure maps geocoded location
+    """
     model = AidRequest
     form_class = AidLocationForm
     template_name = 'aidrequests/aidrequest_geocode.html'
-    """
-    A Django class-based view for validating addresses using Azure Maps.
-    """
+
+    def get_success_url(self):
+        return reverse('aidrequest_detail', kwargs={'field_op': self.field_op.slug, 'pk': self.aid_request.pk})
 
     def check_address_azure(self):
         """
@@ -214,14 +217,17 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
             f"Match Type: {self.geocode_results['match_type']}\n"
             f"Match Codes: {self.geocode_results['match_codes']}\n"
         )
+
         kwargs['initial'] = {
                 'aid_request': self.aid_request.pk,
+                'field_op': self.field_op.slug,
                 'latitude': self.geocode_latitude,
                 'longitude': self.geocode_longitude,
                 'status': 'confirmed',
                 'source': 'azure_maps',
                 'note': note,
             }
+        # ic(kwargs)
         return kwargs
 
     def form_valid(self, form):
@@ -234,8 +240,3 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         """If the form is invalid, render the invalid form."""
         ic(form.errors)
         return self.render_to_response(self.get_context_data(form=form))
-
-    def get_success_url(self):
-        field_op_slug = self.field_op.slug
-        pk = self.aid_request.pk
-        return reverse('aidrequest_detail', kwargs={'field_op': field_op_slug, 'pk': pk})

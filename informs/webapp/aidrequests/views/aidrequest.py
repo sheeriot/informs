@@ -86,7 +86,6 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
         self.kwargs['note'] = note
         self.kwargs['status'] = 'confirmed'
         self.kwargs['source'] = 'azure_maps'
-        ic(self.kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -94,6 +93,7 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
         context['aid_request'] = self.aid_request
         context['locations'] = self.aid_request.locations.all()
         initial_data = {
+            'field_op': self.field_op.slug,
             'aid_request': self.aid_request.pk,
             'latitude': self.kwargs['latitude'],
             'longitude': self.kwargs['longitude'],
@@ -103,7 +103,6 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
         }
         context['geocode_form'] = AidLocationForm(initial=initial_data)
         return context
-
 
 # Create View for AidRequest
 class AidRequestCreateView(CreateView):

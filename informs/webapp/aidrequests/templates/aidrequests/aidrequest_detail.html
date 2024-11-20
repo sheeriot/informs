@@ -5,20 +5,6 @@
 {% block content %}
 <h2>Aid Request Details</h2>
 <hr>
-<div class="d-flex justify-content-between">
-    <div class="d-flex">
-    <strong>Action:</strong>
-        <div class="mx-2 p-0">
-            <a href="{% url 'aidrequest_geocode' pk=object.pk field_op=field_op.slug %}" class="btn btn-success btn-sm mx-1 p-1">
-                {% bs_icon "globe2" %} Geocode
-            </a>
-        </div>
-    </div>
-    <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
-        {% bs_icon "pencil" %} Edit
-    </a>
-</div>
-<hr>
 <div class="container font-monospace mt-1">
     <div class="d-flex flex-column flex-lg-row">
         <div class="table-responsive">
@@ -32,11 +18,13 @@
                 </tr>
                 <tr>
                     <td class="col-auto">
-                        {{ object.pk }}
+                        <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
+                            {% bs_icon "pencil" %} {{ object.pk }}
+                        </a>
                     </td>
                     <td class="col-auto">                     
                         <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm mx-1 p-1">
-                            {% bs_icon "life-preserver" %} {{ field_op.name }}
+                            {% bs_icon "truck" %} {{ field_op.name }}
                         </a>
                     </td>
                     <td class="col-auto">{{ object.get_assistance_type_display }}</td>
@@ -82,25 +70,6 @@
         </div>
     </div>
 </div>
-<hr>
-<table class="table table-bordered w-auto caption-top">
-    <caption>Requested Address</caption>
-    <tr>
-        <th class="col-auto">Address</th>
-        <th class="col-auto">Location</th>
-    </tr>
-    <tr>
-        <td class="col-auto">
-            {{ object.street_address }}<br>
-            {{ object.city }}, {{ object.state }} {{ object.zip_code }}<br>
-            {{ object.country }}
-        </td>
-        <td class="col-auto">
-            Location
-        </td>
-    </tr>
-</table>
-
 <hr>
 <table class="table table-bordered table-data w-auto caption-top w-auto border border-3 border-warning font-monospace">
     <caption>Address Geocoder</caption>
