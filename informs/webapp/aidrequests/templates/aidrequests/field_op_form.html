@@ -37,9 +37,8 @@
 </div>
 
 {% if form.action == "update" %}
-<hr />
+<hr class="my-1" />
 <div class="d-flex justify-content-between">
-
         <div class="d-flex">
             <a href="{% url 'field_op_detail' pk=object.pk %}" class="btn btn-secondary btn-sm m-2">
                 {% bs_icon "x-circle" %} Cancel

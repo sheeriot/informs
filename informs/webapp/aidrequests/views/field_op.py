@@ -62,7 +62,14 @@ class FieldOpUpdateView(LoginRequiredMixin, UpdateView):
     model = FieldOp
     form_class = FieldOpForm
     template_name = 'aidrequests/field_op_form.html'
-    success_url = reverse_lazy('field_op_list')
+
+    def get_success_url(self):
+        return reverse_lazy(
+            'field_op_detail',
+            kwargs={
+                'pk': self.kwargs['pk'],
+            }
+        )
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()

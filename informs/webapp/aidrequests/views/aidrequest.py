@@ -15,7 +15,7 @@ from .forms import AidRequestForm
 from .geocode_form import AidLocationForm
 from .getAzureGeocode import getAddressGeocode
 
-from icecream import ic
+# from icecream import ic
 
 
 def has_confirmed_location(aid_request):
