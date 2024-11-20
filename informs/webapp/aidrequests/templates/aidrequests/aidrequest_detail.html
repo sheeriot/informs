@@ -11,6 +11,10 @@
         <table class="table border border-1 m-0 p-0">
             <tr>
                 <td class="border border-info bg-transparent m-0 px-1 py-0">
+                    priority:
+                    {{ object.priority }}
+                </td>
+                <td class="border border-info bg-transparent m-0 px-1 py-0">
                     created:
                     {{ object.created_at|date:"Y-m-d H:i" }}
                     ({{ object.created_by }})
@@ -18,10 +22,15 @@
             </tr>
             <tr>
                 <td class="border border-info bg-transparent m-0 px-1 py-0">
+                    status:
+                    {{ object.status }}
+                </td>
+                <td class="border border-info bg-transparent m-0 px-1 py-0">
                     updated:
                     {{ object.updated_at|date:"Y-m-d H:i" }}
                     ({{ object.updated_by }})
                 </td>
+
             </tr>
         </table>
     </div>

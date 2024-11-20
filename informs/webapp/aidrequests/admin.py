@@ -23,6 +23,7 @@ class AidRequestAdmin(admin.ModelAdmin):
         'assistance_description'
         )
     readonly_fields = (
+        'field_op',
         'created_at',
         'updated_at',
         'created_by',
