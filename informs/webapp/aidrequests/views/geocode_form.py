@@ -31,6 +31,7 @@ class AidLocationForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        ic('form init')
         ic(kwargs)
         initial = kwargs['initial']
         self.helper = FormHelper()

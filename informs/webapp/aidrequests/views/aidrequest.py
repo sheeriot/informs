@@ -18,6 +18,16 @@ from .getAzureGeocode import getAddressGeocode
 from icecream import ic
 
 
+def has_confirmed_location(aid_request):
+    """
+    Check if any of the aid_request locations has status 'confirmed'.
+
+    :param aid_request: The AidRequest instance to check.
+    :return: True if any location has status 'confirmed', False otherwise.
+    """
+    return aid_request.locations.filter(status='confirmed').exists()
+
+
 def geodist(aid_request):
     if any([aid_request.latitude, aid_request.longitude, aid_request.field_op.latitude,
             aid_request.field_op.longitude]) is None:
@@ -56,7 +66,7 @@ class AidRequestListView(LoginRequiredMixin, ListView):
 class AidRequestDetailView(LoginRequiredMixin, DetailView):
     model = AidRequest
     template_name = 'aidrequests/aidrequest_detail.html'
-    location_form = 'geocode_form.'
+    location_form = 'geocode_form'
 
     def setup(self, request, *args, **kwargs):
         """Initialize attributes shared by all view methods."""
@@ -65,44 +75,54 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
         self.request = request
         self.args = args
         self.kwargs = kwargs
+
         # custom setup
         self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
         self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
 
-        self.geocode_results = getAddressGeocode(self.aid_request)
-        self.kwargs['distance'] = round(geodesic(
-            (self.geocode_results['latitude'], self.geocode_results['longitude']),
-            (self.field_op.latitude, self.field_op.longitude)
-            ).km, 1)
-        self.kwargs['latitude'] = self.geocode_results['latitude']
-        self.kwargs['longitude'] = self.geocode_results['longitude']
-        note = (
-            f"{self.geocode_results['found_address']}\n"
-            f"Distance: {self.kwargs['distance']} km\n"
-            f"Confidence: {self.geocode_results['confidence']}\n"
-            f"Match Type: {self.geocode_results['match_type']}\n"
-            f"Match Codes: {self.geocode_results['match_codes']}\n"
-        )
-        self.kwargs['note'] = note
-        self.kwargs['status'] = 'confirmed'
-        self.kwargs['source'] = 'azure_maps'
+        if has_confirmed_location(self.aid_request):
+            ic('location confirmed')
+            self.confirmed = True
+        else:
+            ic('no geocoded address')
+            self.geocode_results = getAddressGeocode(self.aid_request)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['field_op'] = self.field_op
-        context['aid_request'] = self.aid_request
+        context['aid_request'] = object
         context['locations'] = self.aid_request.locations.all()
-        initial_data = {
-            'field_op': self.field_op.slug,
-            'aid_request': self.aid_request.pk,
-            'latitude': self.kwargs['latitude'],
-            'longitude': self.kwargs['longitude'],
-            'status': self.kwargs['status'],
-            'source': self.kwargs['source'],
-            'note': self.kwargs['note'],
-        }
-        context['geocode_form'] = AidLocationForm(initial=initial_data)
+
+        context['location_confirmed'] = getattr(self, 'confirmed', False)
+
+        if hasattr(self, 'geocode_results'):
+            distance = round(geodesic(
+                (self.geocode_results['latitude'], self.geocode_results['longitude']),
+                (self.field_op.latitude, self.field_op.longitude)
+                ).km, 1)
+
+            note = (
+                f"{self.geocode_results['found_address']}\n"
+                f"Distance: {distance} km\n"
+                f"Confidence: {self.geocode_results['confidence']}\n"
+                f"Match Type: {self.geocode_results['match_type']}\n"
+                f"Match Codes: {self.geocode_results['match_codes']}\n"
+                )
+
+            initial_data = {
+                'field_op': self.field_op.slug,
+                'aid_request': self.aid_request.pk,
+                'latitude': self.geocode_results['latitude'],
+                'longitude': self.geocode_results['longitude'],
+                'status': 'confirmed',
+                'source': 'azure_maps',
+                'note': note,
+                }
+            context['geocode_form'] = AidLocationForm(initial=initial_data)
+
+        ic(context)
         return context
+
 
 # Create View for AidRequest
 class AidRequestCreateView(CreateView):

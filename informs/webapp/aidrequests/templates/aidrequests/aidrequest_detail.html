@@ -72,64 +72,64 @@
 </div>
 <hr>
 <table class="table table-bordered table-data w-auto caption-top w-auto border border-3 border-warning font-monospace">
-    <caption>Address Geocoder</caption>
+    <caption>Aid Location</caption>
     <tr>
         <th class="col-auto">Address Provided</th>
-        <th class="col-auto">Geocode Result</th>
+        {% if not location_confirmed %}
+            <th class="col-auto">Geocoder</th>
+        {% endif %}
     </tr>
     <tr>
         <td class="col-auto">
-            {{ aid_request.street_address }}<br>
-            {{ aid_request.city }}, {{ aid_request.state }} {{ aid_request.zip_code }}
+            {{ object.street_address }}<br>
+            {{ object.city }}, {{ object.state }} {{ object.zip_code }}
             <hr>
-            <a href="{% url 'aidrequest_geocode' pk=aid_request.pk field_op=field_op.slug %}?action=search" class="btn btn-info btn-sm m-1 p-1">
-                {% bs_icon "search" %} Search
-            </a>
-            <a href="{% url 'aidrequest_geocode' pk=aid_request.pk field_op=field_op.slug %}?action=geocode" class="btn btn-outline-primary btn-sm m-1 p-1">
-                {% bs_icon "globe2" color="blue" %} Geocodes
-            </a>
+            Status:<br>
+            {% if location_confirmed %}
+                <span class="text-success">{% bs_icon "check" %}Confirmed</span>
+            {% else %}
+                <span class="text-danger">Not Confirmed</span>
+            {% endif %}
         </td>
-        <td class="col-auto">
-            {% crispy geocode_form %}
-        </td>
-
+        {% if not location_confirmed %}
+            <td>
+                {% if geocode_form %}
+                    {% crispy geocode_form %}
+                {% endif %}
+            </td>
+        {% endif %}
     </tr>
 </table>
-<div class="container">
-    <table class="table table-sm table-data table-info table-striped align-middle">
+<div class="container font-monospace">
+    <table class="table table-sm table-data table-success table-striped">
         <thead>
             <tr>
-                <th scope="col-auto">Source</th>
-                <th scope="col-auto">Status</th>
-                <th scope="col-auto">Latitude,Longitude</th>
+                <th scope="col-auto">Location</th>
                 <th scope="col-auto">Note</th>
-                <th scope="col"><div class="d-flex justify-content-end">Actions</div></th>
             </tr>
         </thead>
         <tbody>
             {% for location in locations %}
             <tr>
                 <td>
-                    {{ location.source }}
-                </td>
-                <td>
-                    {{ location.status }}
-                </td>
-                <td>
                     {{ location.latitude }},{{ location.longitude }}
+                    <a href="href="https://google.com/maps/place/{{ location.latitude }},{{ location.longitude }}/@{{ location.latitude }},{{ location.longitude }},13z"" target="_blank" class="btn btn-outline-success btn-sm">
+                        {% bs_icon "globe2" %}
+                    </a><br>
+                    Status: {{ location.status }}<br>
+                    Source: {{ location.source }}
+                    <a href="{% url 'aid_location_delete' field_op=field_op.slug aid_request=object.pk pk=location.pk  %}" class="btn btn-danger btn-sm">
+                        {% bs_icon "trash" %}
+                    </a>
                 </td>
                 <td>
-                    {{ location.note }}
-                </td>
-                <td>
-                    Delete, View
+                    <pre>{{ location.note }}</pre>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
-
 
 <hr>
 <h2>Emergency Medical Needs</h2>

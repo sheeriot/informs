@@ -5,23 +5,28 @@ URLs
 from django.contrib import admin
 from django.urls import path, include
 
-from aidrequests.views.aidrequest import (AidRequestCreateView,
-                                          AidRequestListView,
-                                          AidRequestUpdateView,
-                                          AidRequestDeleteView,
-                                          AidRequestDetailView,
-                                          )
+from aidrequests.views.aidrequest import (
+     AidRequestCreateView,
+     AidRequestListView,
+     AidRequestUpdateView,
+     AidRequestDeleteView,
+     AidRequestDetailView,
+     )
 
-from aidrequests.views.field_op import (FieldOpCreateView,
-                                        FieldOpListView,
-                                        FieldOpUpdateView,
-                                        # FieldOpDeleteView,
-                                        FieldOpDetailView
-                                        )
+from aidrequests.views.field_op import (
+     FieldOpCreateView,
+     FieldOpListView,
+     FieldOpUpdateView,
+     # FieldOpDeleteView,
+     FieldOpDetailView
+     )
 
 from aidrequests.views.export_csv import AidRequestCsvView
 
-from aidrequests.views.geocode import AidLocationCreateView
+from aidrequests.views.aid_location import (
+     AidLocationCreateView,
+     AidLocationDeleteView
+     )
 
 
 from .views import home
@@ -31,39 +36,49 @@ from .views import home
 
 
 urlpatterns = [
-    path('', home, name='home'),
-    path('admin/', admin.site.urls),
-    path('accounts/', include('accounts.urls')),
-    # path('aidrequests/', include('aidrequests.urls')),
-    path('field_op/', FieldOpListView.as_view(), name='field_op_list'),
-    path('field_op/<int:pk>/', FieldOpDetailView.as_view(), name='field_op_detail'),
-    path('field_op/create/', FieldOpCreateView.as_view(), name='field_op_create'),
-    path('field_op/<int:pk>/update/', FieldOpUpdateView.as_view(), name='field_op_update'),
-    # path('field_op/<int:pk>/delete/', FieldOpDeleteView.as_view(), name='field_op_delete'),
-    path('tz_detect/', include('tz_detect.urls')),
-    path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aidrequest_new'),
-    path('<slug:field_op>/aidrequest/', AidRequestCreateView.as_view(), name='aidrequest_create'),
-    path('<slug:field_op>/aidrequest/list/', AidRequestListView.as_view(), name='aidrequest_list'),
-    path('<slug:field_op>/aidrequest/<int:pk>/update/',
-         AidRequestUpdateView.as_view(),
-         name='aidrequest_update'
-         ),
-    path('<slug:field_op>/aidrequest/<int:pk>/delete/',
-         AidRequestDeleteView.as_view(),
-         name='aidrequest_delete'
-         ),
-    path('<slug:field_op>/aidrequest/<int:pk>/',
-         AidRequestDetailView.as_view(),
-         name='aidrequest_detail'
-         ),
+     path('', home, name='home'),
+     path('admin/', admin.site.urls),
+     path('accounts/', include('accounts.urls')),
+     # path('aidrequests/', include('aidrequests.urls')),
+     path('field_op/', FieldOpListView.as_view(), name='field_op_list'),
+     path('field_op/<int:pk>/', FieldOpDetailView.as_view(), name='field_op_detail'),
+     path('field_op/create/', FieldOpCreateView.as_view(), name='field_op_create'),
+     path('field_op/<int:pk>/update/', FieldOpUpdateView.as_view(), name='field_op_update'),
+     # path('field_op/<int:pk>/delete/', FieldOpDeleteView.as_view(), name='field_op_delete'),
+     path('tz_detect/', include('tz_detect.urls')),
+     path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aidrequest_new'),
+     path('<slug:field_op>/aidrequest/', AidRequestCreateView.as_view(), name='aidrequest_create'),
+     path('<slug:field_op>/aidrequest/list/', AidRequestListView.as_view(), name='aidrequest_list'),
+     path(
+          '<slug:field_op>/aidrequest/<int:pk>/update/',
+          AidRequestUpdateView.as_view(),
+          name='aidrequest_update'
+          ),
+     path(
+          '<slug:field_op>/aidrequest/<int:pk>/delete/',
+          AidRequestDeleteView.as_view(),
+          name='aidrequest_delete'
+          ),
+     path(
+          '<slug:field_op>/aidrequest/<int:pk>/',
+          AidRequestDetailView.as_view(),
+          name='aidrequest_detail'
+          ),
 
-    path('<slug:field_op>/aidrequest/export-csv/',
-         AidRequestCsvView.as_view(),
-         {'action': 'export_csv'},
-         name='aidrequests_csv'
-         ),
-    path('<slug:field_op>/aidrequest/<int:pk>/geocode',
-         AidLocationCreateView.as_view(),
-         name='aidrequest_geocode'
-         ),
+     path(
+          '<slug:field_op>/aidrequest/export-csv/',
+          AidRequestCsvView.as_view(),
+          {'action': 'export_csv'},
+          name='aidrequests_csv'
+          ),
+     path(
+          '<slug:field_op>/aidrequest/<int:pk>/geocode',
+          AidLocationCreateView.as_view(),
+          name='aidrequest_geocode'
+          ),
+     path(
+          '<slug:field_op>/aidrequest/<int:aid_request>/location/<int:pk>/delete',
+          AidLocationDeleteView.as_view(),
+          name='aid_location_delete'
+          )
 ]
