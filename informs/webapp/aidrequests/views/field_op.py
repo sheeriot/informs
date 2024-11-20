@@ -3,7 +3,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.db.models import Count
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, DetailView, CreateView, UpdateView
 
 from ..models import FieldOp
 from .forms import FieldOpForm
@@ -46,6 +46,16 @@ class FieldOpCreateView(LoginRequiredMixin, CreateView):
         kwargs['action'] = 'create'  # Pass 'create' action to the form
         return kwargs
 
+    def form_valid(self, form):
+        user = self.request.user
+        if user.is_authenticated:
+            form.instance.created_by = user
+            form.instance.updated_by = user
+        else:
+            form.instance.created_by = None
+            form.instance.updated_by = None
+        return super().form_valid(form)
+
 
 # Update View for FieldOp
 class FieldOpUpdateView(LoginRequiredMixin, UpdateView):
@@ -59,9 +69,10 @@ class FieldOpUpdateView(LoginRequiredMixin, UpdateView):
         kwargs['action'] = 'update'  # Pass 'update' action to the form
         return kwargs
 
-
-# Delete View for FieldOp
-# class FieldOpDeleteView(LoginRequiredMixin, DeleteView):
-#     model = FieldOp
-#     template_name = 'aidrequests/field_op_confirm_delete.html'
-#     success_url = reverse_lazy('field_op_list')
+    def form_valid(self, form):
+        user = self.request.user
+        if user.is_authenticated:
+            form.instance.updated_by = user
+        else:
+            form.instance.updated_by = None
+        return super().form_valid(form)
