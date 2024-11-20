@@ -12,32 +12,24 @@ import requests
 
 from geopy.distance import geodesic
 
-from ..models import AidRequest, FieldOp
+from ..models import FieldOp, AidRequest, AidLocation
 from .geocode_form import AidLocationForm
 
 from icecream import ic
-
-
-def geodist(aid_request):
-    if any([aid_request.latitude, aid_request.longitude, aid_request.field_op.latitude,
-            aid_request.field_op.longitude]) is None:
-        return None
-
-    return round(
-        geodesic(
-            (aid_request.latitude, aid_request.longitude),
-            (aid_request.field_op.latitude, aid_request.field_op.longitude)
-            ).km,
-        1)
+from django.views.generic import DeleteView
+from django.urls import reverse_lazy
 
 
 class AidLocationCreateView(LoginRequiredMixin, CreateView):
+    """
+    A Django class-based view for saving azure maps geocoded location
+    """
     model = AidRequest
     form_class = AidLocationForm
     template_name = 'aidrequests/aidrequest_geocode.html'
-    """
-    A Django class-based view for validating addresses using Azure Maps.
-    """
+
+    def get_success_url(self):
+        return reverse('aidrequest_detail', kwargs={'field_op': self.field_op.slug, 'pk': self.aid_request.pk})
 
     def check_address_azure(self):
         """
@@ -214,14 +206,17 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
             f"Match Type: {self.geocode_results['match_type']}\n"
             f"Match Codes: {self.geocode_results['match_codes']}\n"
         )
+
         kwargs['initial'] = {
                 'aid_request': self.aid_request.pk,
+                'field_op': self.field_op.slug,
                 'latitude': self.geocode_latitude,
                 'longitude': self.geocode_longitude,
                 'status': 'confirmed',
                 'source': 'azure_maps',
                 'note': note,
             }
+        # ic(kwargs)
         return kwargs
 
     def form_valid(self, form):
@@ -235,7 +230,35 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         ic(form.errors)
         return self.render_to_response(self.get_context_data(form=form))
 
+
+class AidLocationDeleteView(LoginRequiredMixin, DeleteView):
+    model = AidLocation
+    template_name = 'aidrequests/aid_location_confirm_delete.html'
+    context_object_name = 'aid_location'
+
     def get_success_url(self):
-        field_op_slug = self.field_op.slug
-        pk = self.aid_request.pk
-        return reverse('aidrequest_detail', kwargs={'field_op': field_op_slug, 'pk': pk})
+        return reverse_lazy(
+            'aidrequest_detail',
+            kwargs={
+                'field_op': self.field_op.slug,
+                'pk': self.aid_request.pk
+                }
+            )
+
+    def setup(self, request, *args, **kwargs):
+        """Initialize attributes shared by all view methods."""
+        if hasattr(self, "get") and not hasattr(self, "head"):
+            self.head = self.get
+        self.request = request
+        self.args = args
+        self.kwargs = kwargs
+        # self.aid_location = get_object_or_404(AidLocation, pk=kwargs['pk'])
+        self.aid_request = get_object_or_404(AidRequest, pk=kwargs['aid_request'])
+        self.field_op = self.aid_request.field_op
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['field_op'] = self.field_op
+        context['aid_request'] = self.aid_request
+        # ic(context)
+        return context

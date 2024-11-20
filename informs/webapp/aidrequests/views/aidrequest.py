@@ -12,8 +12,20 @@ from geopy.distance import geodesic
 
 from ..models import AidRequest, FieldOp
 from .forms import AidRequestForm
+from .geocode_form import AidLocationForm
+from .getAzureGeocode import getAddressGeocode
 
-# from icecream import ic
+from icecream import ic
+
+
+def has_confirmed_location(aid_request):
+    """
+    Check if any of the aid_request locations has status 'confirmed'.
+
+    :param aid_request: The AidRequest instance to check.
+    :return: True if any location has status 'confirmed', False otherwise.
+    """
+    return aid_request.locations.filter(status='confirmed').exists()
 
 
 def geodist(aid_request):
@@ -54,12 +66,61 @@ class AidRequestListView(LoginRequiredMixin, ListView):
 class AidRequestDetailView(LoginRequiredMixin, DetailView):
     model = AidRequest
     template_name = 'aidrequests/aidrequest_detail.html'
+    location_form = 'geocode_form'
+
+    def setup(self, request, *args, **kwargs):
+        """Initialize attributes shared by all view methods."""
+        if hasattr(self, "get") and not hasattr(self, "head"):
+            self.head = self.get
+        self.request = request
+        self.args = args
+        self.kwargs = kwargs
+
+        # custom setup
+        self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
+        self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
+
+        if has_confirmed_location(self.aid_request):
+            # ic('location confirmed')
+            self.confirmed = True
+        else:
+            # ic('no geocoded address')
+            self.geocode_results = getAddressGeocode(self.aid_request)
 
     def get_context_data(self, **kwargs):
-        field_op_slug = self.kwargs['field_op']
         context = super().get_context_data(**kwargs)
-        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
-        context['field_op'] = field_op
+        context['field_op'] = self.field_op
+        context['aid_request'] = object
+        context['locations'] = self.aid_request.locations.all()
+
+        context['location_confirmed'] = getattr(self, 'confirmed', False)
+
+        if hasattr(self, 'geocode_results'):
+            distance = round(geodesic(
+                (self.geocode_results['latitude'], self.geocode_results['longitude']),
+                (self.field_op.latitude, self.field_op.longitude)
+                ).km, 1)
+
+            note = (
+                f"{self.geocode_results['found_address']}\n"
+                f"Distance: {distance} km\n"
+                f"Confidence: {self.geocode_results['confidence']}\n"
+                f"Match Type: {self.geocode_results['match_type']}\n"
+                f"Match Codes: {self.geocode_results['match_codes']}\n"
+                )
+
+            initial_data = {
+                'field_op': self.field_op.slug,
+                'aid_request': self.aid_request.pk,
+                'latitude': self.geocode_results['latitude'],
+                'longitude': self.geocode_results['longitude'],
+                'status': 'confirmed',
+                'source': 'azure_maps',
+                'note': note,
+                }
+            context['geocode_form'] = AidLocationForm(initial=initial_data)
+
+        # ic(context)
         return context
 
 

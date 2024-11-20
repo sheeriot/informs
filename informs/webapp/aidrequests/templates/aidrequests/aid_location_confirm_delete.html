@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load bootstrap_icons %}
+
+{% block content %}
+<h2>Confirm Deletion</h2>
+<p>Are you sure you want to delete this aid location?</p>
+<p>
+{{ aid_location }}
+</p>
+<table class="table table-data table-danger caption-top">
+    <caption>Aid Location Details</caption>
+    <thead>
+        <tr>
+            <th>Source</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ aid_location.source }}</td>
+            <td>{{ aid_location.latitude }}</td>
+            <td>{{ aid_location.longitude }}</td>
+            <td>{{ aid_location.status }}</td>
+        </tr>
+        <tr>
+            <th colspan="4">Note</th>
+        </tr>
+        <tr>
+            <td colspan="4">{{ aid_location.note }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<form method="post">
+    {% csrf_token %}
+    <a href="#" onclick="this.closest('form').submit(); return false;" style="color: white; text-decoration: none;" class="btn btn-danger">
+        {% bs_icon "trash" %} Delete
+    </a>
+    <a href="{% url 'aidrequest_detail' field_op=field_op.slug pk=aid_request.pk %}" class="btn btn-secondary">
+        {% bs_icon "x-circle" %} Cancel
+    </a>
+</form>
+{% endblock %}

@@ -63,18 +63,18 @@
                 <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                   <li>
                     <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_list' %}'">
-                      <i class="bi bi-list"></i> All Field Ops
+                      {% bs_icon 'truck' %} {% bs_icon 'truck' %} All Field Ops
                     </button>
                   </li>
                   <li>
                     <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_create' %}'">
-                      <i class="bi bi-plus-circle"></i> New Field Op
+                      {% bs_icon 'plus-circle' %}</i> New Field Op{% bs_icon 'truck' %}
                     </button>
                   </li>
                   {% for fieldop in fieldops_active %}
                     <li>
                         <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'aidrequest_list' field_op=fieldop.slug %}'">
-                        <i class="bi bi-life-preserver"></i> {{ fieldop.name }} - Aid Requests
+                          {% bs_icon 'life-preserver' %} {{ fieldop.name }} - Aid Requests
                         </button>
                     </li>
                   {% endfor %}

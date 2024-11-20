@@ -1,22 +1,9 @@
 {% extends "base.html" %}
 {% load bootstrap_icons %}
+{% load crispy_forms_tags %}
 
 {% block content %}
 <h2>Aid Request Details</h2>
-<hr>
-<div class="d-flex justify-content-between">
-    <div class="d-flex">
-    <strong>Action:</strong>
-        <div class="mx-2 p-0">
-            <a href="{% url 'aidrequest_geocode' pk=object.pk field_op=field_op.slug %}" class="btn btn-success btn-sm mx-1 p-1">
-                {% bs_icon "globe2" %} Geocode
-            </a>
-        </div>
-    </div>
-    <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
-        {% bs_icon "pencil" %} Edit
-    </a>
-</div>
 <hr>
 <div class="container font-monospace mt-1">
     <div class="d-flex flex-column flex-lg-row">
@@ -31,14 +18,13 @@
                 </tr>
                 <tr>
                     <td class="col-auto">
-                        <a href="{% url 'aidrequest_detail' pk=object.pk field_op=field_op.slug %}" class="btn btn-outline-info btn-sm mx-1 p-1">
-                            {% bs_icon "binoculars-fill" %} {{ object.pk }}
+                        <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
+                            {% bs_icon "pencil" %} {{ object.pk }}
                         </a>
                     </td>
-                    <td class="col-auto">
-                        
+                    <td class="col-auto">                     
                         <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm mx-1 p-1">
-                            {% bs_icon "list" %} {{ field_op.name }}
+                            {% bs_icon "truck" %} {{ field_op.name }}
                         </a>
                     </td>
                     <td class="col-auto">{{ object.get_assistance_type_display }}</td>
@@ -85,23 +71,65 @@
     </div>
 </div>
 <hr>
-<table class="table table-bordered w-auto caption-top">
-    <caption>Requested Address</caption>
+<table class="table table-bordered table-data w-auto caption-top w-auto border border-3 border-warning font-monospace">
+    <caption>Aid Location</caption>
     <tr>
-        <th class="col-auto">Address</th>
-        <th class="col-auto">Location</th>
+        <th class="col-auto">Address Provided</th>
+        {% if not location_confirmed %}
+            <th class="col-auto">Geocoder</th>
+        {% endif %}
     </tr>
     <tr>
         <td class="col-auto">
             {{ object.street_address }}<br>
-            {{ object.city }}, {{ object.state }} {{ object.zip_code }}<br>
-            {{ object.country }}
+            {{ object.city }}, {{ object.state }} {{ object.zip_code }}
+            <hr>
+            Status:<br>
+            {% if location_confirmed %}
+                <span class="text-success">{% bs_icon "check" %}Confirmed</span>
+            {% else %}
+                <span class="text-danger">Not Confirmed</span>
+            {% endif %}
         </td>
-        <td class="col-auto">
-            Location
-        </td>
+        {% if not location_confirmed %}
+            <td>
+                {% if geocode_form %}
+                    {% crispy geocode_form %}
+                {% endif %}
+            </td>
+        {% endif %}
     </tr>
 </table>
+<div class="container font-monospace">
+    <table class="table table-sm table-data table-success table-striped">
+        <thead>
+            <tr>
+                <th scope="col-auto">Location</th>
+                <th scope="col-auto">Note</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for location in locations %}
+            <tr>
+                <td>
+                    {{ location.latitude }},{{ location.longitude }}
+                    <a href="href="https://google.com/maps/place/{{ location.latitude }},{{ location.longitude }}/@{{ location.latitude }},{{ location.longitude }},13z"" target="_blank" class="btn btn-outline-success btn-sm">
+                        {% bs_icon "globe2" %}
+                    </a><br>
+                    Status: {{ location.status }}<br>
+                    Source: {{ location.source }}
+                    <a href="{% url 'aid_location_delete' field_op=field_op.slug aid_request=object.pk pk=location.pk  %}" class="btn btn-danger btn-sm">
+                        {% bs_icon "trash" %}
+                    </a>
+                </td>
+                <td>
+                    <pre>{{ location.note }}</pre>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
 <hr>
 <h2>Emergency Medical Needs</h2>

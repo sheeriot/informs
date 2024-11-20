@@ -30,10 +30,10 @@
 <hr>
 <div class="d-flex">
     <a href="{% url 'field_op_list' %}" class="btn btn-outline-info mx-2">
-        {% bs_icon "list" %} Field Op List
+        {% bs_icon "truck" %} {% bs_icon "truck" %} Field Op List
     </a>
     <a href="{% url 'aidrequest_list' field_op=object.slug %}" class="btn btn-outline-success mx-2">
-        {% bs_icon "list" %} Aid Request List
+        {% bs_icon "life-preserver" %} Aid Request List ({{ aid_request_count }})
     </a>
 </div>
 

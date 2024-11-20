@@ -26,20 +26,23 @@ class FieldOpForm(forms.ModelForm):
         self.helper.form_method = 'post'
         self.fields['latitude'].help_text = "max 2 decimal points"
         self.fields['longitude'].help_text = "max 2 decimal points"
+        if self.action == 'update':
+            self.fields['name'].widget.attrs['readonly'] = True
+            self.fields['slug'].widget.attrs['readonly'] = True
 
         self.helper.layout = Layout(
             Fieldset(
                 'Field Op Details',
                 Row(
-                    Column('name', css_class='form-group col-md-6 mb-0'),
-                    Column('slug', css_class='form-group col-md-4 mb-0'),
+                    Column('name', css_class='col-auto'),
+                    Column('slug', css_class='col-auto'),
                 ),
                 Row(
-                    Column('latitude', css_class='form-group col-md-2 mb-0'),
-                    Column('longitude', css_class='form-group col-md-2 mb-0'),
+                    Column('latitude', css_class='col-auto'),
+                    Column('longitude', css_class='col-auto'),
                 ),
             ),
-            Submit('submit', 'Submit', css_class='btn-primary')
+            Submit('submit', 'Update', css_class='btn-warning')
         )
 
 
