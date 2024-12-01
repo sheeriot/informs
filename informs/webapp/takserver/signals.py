@@ -30,8 +30,8 @@ class CotSender(pytak.QueueWorker):
             ic(e)
         finally:
             data = tak_activityReport(
-                uuid=f'al{aid_location_id}',
-                name=f'ar{aid_location.aid_request.pk}',
+                uuid=f'AidLocation.{aid_location_id}',
+                name=f'AidRequest.{aid_location.aid_request.pk}',
                 lat=aid_location.latitude,
                 lon=aid_location.longitude
             )
@@ -46,15 +46,13 @@ class CotSender(pytak.QueueWorker):
                 await asyncio.sleep(1)
 
     async def handle_data(self, event):
-        ic(vars(self))
         ic(event)
         try:
             await self.put_queue(event)
         except Exception as e:
             ic(e)
         finally:
-            ic(vars(self))
-
+            ic('data in queue')
 
 @receiver(post_save, sender=AidLocation)
 def aid_location_post_save(sender, instance, created, **kwargs):
