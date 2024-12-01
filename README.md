@@ -63,3 +63,9 @@ target="_blank" class="btn btn-outline-success btn-sm">
 </a>
 
 https://www.brennantymrak.com/articles/comprehending-class-based-views-view-base-class
+
+## Pytak
+
+Sample of PyTak in wild
+
+[PyTak Citizen to COT](https://github.com/gncnpk/CitizentoCOT/blob/master/main.py)

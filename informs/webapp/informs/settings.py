@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'mathfilters',
     'accounts.apps.AccountsConfig',
     'aidrequests.apps.AidRequestsConfig',
+    'takserver.apps.TakServerConfig'
 ]
 
 MIDDLEWARE = [
@@ -168,3 +169,26 @@ BOOTSTRAP5 = {
 LOGIN_REDIRECT_URL = '/'
 
 AZURE_MAPS_KEY = os.environ.get('AZURE_MAPS_KEY')
+
+TAKSERVER_DNS = os.environ.get('TAKSERVER_DNS')
+
+PYTAK_TLS_CLIENT_CERT=os.environ.get('PYTAK_TLS_CLIENT_CERT')
+PYTAK_TLS_CLIENT_PASSWORD=os.environ.get('PYTAK_TLS_CLIENT_PASSWORD')
+PYTAK_TLS_CLIENT_CAFILE=os.environ.get('PYTAK_TLS_CLIENT_CAFILE')
+
+
+LOGGING = {
+    'version': 1,
+    "handlers": {
+        "null": {
+            "class": "logging.NullHandler",
+        },
+    },
+    "loggers": {
+        "django.security.DisallowedHost": {
+            "handlers": ["null"],
+            "propagate": False,
+        },
+    },
+    # ...
+}

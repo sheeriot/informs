@@ -1,5 +1,8 @@
 FROM python:3.12-slim-bookworm 
 
+RUN apt update && \
+    apt-get install net-tools vim less zip unzip procps -y
+
 ARG UID=1000 \
     GID=1000
 
@@ -11,6 +14,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 ## mount points
 RUN mkdir -p /opt/app/db
+RUN mkdir -p /opt/app/certs
 RUN mkdir -p /opt/app/static_files
 
 # App Code directory
