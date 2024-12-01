@@ -110,14 +110,12 @@ class AidRequest(TimeStampedModel):
         ('rejected', 'Rejected'),
         ('other', 'Other'),
     ]
-    
+
     status = models.CharField(
         max_length=10,
         choices=STATUS_CHOICES,
         default='new',
     )
-
-    
 
     def __str__(self):
         return f"""AidRequest by {self.requestor_first_name} {self.requestor_last_name}

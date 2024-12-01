@@ -16,9 +16,11 @@ services:
     volumes:
       - informs_staticfiles:/opt/app/static_files
       - local-db:/opt/app/db
+      - certs:/opt/app/certs:z
 
 volumes:
   local-db:
+  certs:
   informs_staticfiles:
 
 networks:
