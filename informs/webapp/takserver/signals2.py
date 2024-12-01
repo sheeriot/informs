@@ -4,15 +4,15 @@ import pytak
 from icecream import ic
 
 
-def tak_activityReport(lat=0.0, lon=0.0, uuid="dummy", name="dummy-name",
-                       updates=None, icon_color="-256", poll_interval="1800"):
+def tak_activityReport(lat=0.0, lon=0.0, uuid="test101", name="name101",
+                       updates=None, icon_color="-256", poll_interval="60"):
     ic('creating event tak_activityReport')
     event_uuid = uuid
     root = ET.Element("event")
     root.set("version", "2.0")
     root.set("type", "a-u-G")
     root.set("uid", event_uuid)
-    root.set("how", "h-g-i-g-o")
+    root.set("how", "m-g")
     root.set("time", pytak.cot_time())
     root.set("start", pytak.cot_time())
     root.set("stale", pytak.cot_time(int(poll_interval)))

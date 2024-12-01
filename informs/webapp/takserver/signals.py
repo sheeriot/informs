@@ -6,7 +6,7 @@ from django.conf import settings
 import pytak
 import asyncio
 import xml.etree.ElementTree as ET
-# import ast
+import ast
 from configparser import ConfigParser
 
 from aidrequests.models import AidLocation
@@ -21,26 +21,29 @@ class CotSender(pytak.QueueWorker):
     From there it adds the CoT Events to a queue for TX to a COT_URL.
     """
     async def run(self):
-        # notices = ast.literal_eval(self.config['NOTICES'])
-        # for notice in notices:
-        #     ic('handling notices loop')
-        #     # action = notice[0]
-        #     try:
-        #         # aid_location = await AidLocation.objects.aget(pk=notice[1])
-        #         # data = gen_cot(action, aid_location)
-        #         data = gen_cot0()
-        #         await self.handle_data(data)
-        #     except Exception as e:
-        #         ic(e)
+        notice = ast.literal_eval(self.config['NOTICE'])
+        aid_location_id = notice[1]
         try:
-            data = tak_activityReport()
-            ic('tak activity report')
-            ic(data)
+            aid_location = await AidLocation.objects.select_related('aid_request').aget(pk=aid_location_id)
+
+        except Exception as e:
+            ic(e)
+        finally:
+            data = tak_activityReport(
+                uuid=f'al{aid_location_id}',
+                name=f'ar{aid_location.aid_request.pk}',
+                lat=aid_location.latitude,
+                lon=aid_location.longitude
+            )
+
+        try:
             await self.handle_data(data)
         except Exception as e:
             ic(e)
         finally:
-            ic('all notices handled')
+            ic('notice handled')
+            while not self.queue.empty():
+                await asyncio.sleep(1)
 
     async def handle_data(self, event):
         ic(vars(self))
@@ -50,7 +53,7 @@ class CotSender(pytak.QueueWorker):
         except Exception as e:
             ic(e)
         finally:
-            pass
+            ic(vars(self))
 
 
 @receiver(post_save, sender=AidLocation)
@@ -76,9 +79,7 @@ async def send_cot(instance=None):
 
 async def setup_cotqueues(instance=None):
     COT_URL = f'tls://{settings.TAKSERVER_DNS}:8089'
-    NOTICES = [
-        ["created", instance.pk],
-    ]
+    NOTICE = ["created", instance.pk]
     cot_config = ConfigParser()
 
     cot_config["civtakdev"] = {
@@ -87,7 +88,7 @@ async def setup_cotqueues(instance=None):
         "PYTAK_TLS_CLIENT_CERT": str(settings.PYTAK_TLS_CLIENT_CERT),
         "PYTAK_TLS_CLIENT_PASSWORD": str(settings.PYTAK_TLS_CLIENT_PASSWORD),
         "PYTAK_TLS_CLIENT_CAFILE": str(settings.PYTAK_TLS_CLIENT_CAFILE),
-        "NOTICES":  NOTICES
+        "NOTICE":  NOTICE
     }
     cot_config = cot_config["civtakdev"]
     cot_queues = pytak.CLITool(cot_config)
