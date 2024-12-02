@@ -9,8 +9,9 @@ from aidrequests.views.aidrequest import (
      AidRequestCreateView,
      AidRequestListView,
      AidRequestUpdateView,
-     AidRequestDeleteView,
+     # AidRequestDeleteView,
      AidRequestDetailView,
+     AidRequestLogCreateView
      )
 
 from aidrequests.views.field_op import (
@@ -27,7 +28,6 @@ from aidrequests.views.aid_location import (
      AidLocationCreateView,
      AidLocationDeleteView
      )
-
 
 from .views import home
 
@@ -54,17 +54,16 @@ urlpatterns = [
           AidRequestUpdateView.as_view(),
           name='aidrequest_update'
           ),
-     path(
-          '<slug:field_op>/aidrequest/<int:pk>/delete/',
-          AidRequestDeleteView.as_view(),
-          name='aidrequest_delete'
-          ),
+     # path(
+     #      '<slug:field_op>/aidrequest/<int:pk>/delete/',
+     #      AidRequestDeleteView.as_view(),
+     #      name='aidrequest_delete'
+     #      ),
      path(
           '<slug:field_op>/aidrequest/<int:pk>/',
           AidRequestDetailView.as_view(),
           name='aidrequest_detail'
           ),
-
      path(
           '<slug:field_op>/aidrequest/export-csv/',
           AidRequestCsvView.as_view(),
@@ -80,5 +79,10 @@ urlpatterns = [
           '<slug:field_op>/aidrequest/<int:aid_request>/location/<int:pk>/delete',
           AidLocationDeleteView.as_view(),
           name='aid_location_delete'
-          )
+          ),
+     path(
+          '<slug:field_op>/aidrequest/<int:pk>/addlog',
+          AidRequestLogCreateView.as_view(),
+          name='aidrequest_addlog'
+          ),
 ]

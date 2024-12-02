@@ -10,7 +10,7 @@ from crispy_forms.layout import Layout, Submit, Row, Column, HTML, Div, Hidden
 
 from ..models import AidLocation
 
-from icecream import ic
+# from icecream import ic
 
 
 class AidLocationForm(forms.ModelForm):
@@ -31,8 +31,6 @@ class AidLocationForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # ic('form init')
-        # ic(kwargs)
         initial = kwargs['initial']
         self.helper = FormHelper()
         self.helper.form_method = 'post'

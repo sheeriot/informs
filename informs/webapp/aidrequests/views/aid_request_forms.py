@@ -1,10 +1,11 @@
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Fieldset, Field, Submit, Row, Column, Div
+from crispy_forms.layout import Layout, Fieldset, Field, Submit, Row, Column, Div, Hidden
+from django.urls import reverse
 
-from ..models import AidRequest
+from ..models import AidRequest, AidRequestLog
 
-# from icecream import ic
+from icecream import ic
 
 
 class AidRequestCreateForm(forms.ModelForm):
@@ -122,6 +123,7 @@ class AidRequestCreateForm(forms.ModelForm):
             Submit('submit', button_text, css_class='btn btn-primary')
         )
 
+
 class AidRequestUpdateForm(forms.ModelForm):
     """ Aid Request Form """
 
@@ -153,7 +155,6 @@ class AidRequestUpdateForm(forms.ModelForm):
             'welfare_check_info',
             'additional_info'
         ]
-
 
     different_contact = forms.BooleanField(
         required=False,
@@ -243,6 +244,39 @@ class AidRequestUpdateForm(forms.ModelForm):
                 'supplies_needed',
                 'welfare_check_info',
                 'additional_info',
+                css_class="fieldset-box p-3 border rounded"
+            ),
+            Submit('submit', button_text, css_class='btn btn-primary')
+        )
+
+
+class AidRequestLogForm(forms.ModelForm):
+    """ Activity Log Form """
+
+    class Meta:
+        """ meta """
+        model = AidRequestLog
+        fields = ('log_entry', 'aid_request')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        initial = kwargs['initial']
+        self.helper = FormHelper()
+        self.helper.form_method = 'post'
+        self.helper.form_action = reverse(
+            'aidrequest_addlog',
+            kwargs={
+                'field_op': initial['field_op'],
+                'pk': initial['aid_request']
+                }
+            )
+        self.fields['log_entry'].widget.attrs['rows'] = 4
+        button_text = 'Add Log'
+        self.helper.layout = Layout(
+            Hidden('aid_request', initial['aid_request']),
+            Fieldset(
+                'Add an Activity Log',
+                'log_entry',
                 css_class="fieldset-box p-3 border rounded"
             ),
             Submit('submit', button_text, css_class='btn btn-primary')
