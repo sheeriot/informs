@@ -6,9 +6,10 @@ from django.db import models
 from .timestamped_model import TimeStampedModel
 # from django.conf import settings
 from django.contrib.auth.models import User
-
+from auditlog.registry import auditlog
 
 # Module providing a function printing python version."""
+
 
 class FieldOp(TimeStampedModel):
     """Field Ops"""
@@ -118,7 +119,7 @@ class AidRequest(TimeStampedModel):
     )
 
     def __str__(self):
-        return f"""AidRequest by {self.requestor_first_name} {self.requestor_last_name}
+        return f"""AidRequest-{self.pk}: {self.requestor_first_name} {self.requestor_last_name}
                - {self.assistance_type}"""
 
 
@@ -155,3 +156,43 @@ class AidLocation(TimeStampedModel):
 
     def __str__(self):
         return f"Location ({self.latitude}, {self.longitude}) - {self.status} - {self.source}"
+
+
+class AidRequestLog(TimeStampedModel):
+    aid_request = models.ForeignKey(
+        'AidRequest',
+        on_delete=models.CASCADE,
+        related_name='logs'
+    )
+    log_entry = models.TextField()
+    created_by = models.ForeignKey(
+        User, related_name='aid_request_logs_created', on_delete=models.SET_NULL, null=True, blank=True
+    )
+    updated_by = models.ForeignKey(
+        User, related_name='aid_request_logs_updated', on_delete=models.SET_NULL, null=True, blank=True
+    )
+
+    def __str__(self):
+        return f"{self.updated_at}({self.updated_by}): {self.log_entry}"
+
+
+auditlog.register(FieldOp,
+                  exclude_fields=['updated_by', 'updated_at'],
+                  serialize_data=True,
+                  serialize_auditlog_fields_only=True
+                  )
+auditlog.register(AidRequest,
+                  exclude_fields=['updated_by', 'updated_at'],
+                  serialize_data=True,
+                  serialize_auditlog_fields_only=True
+                  )
+auditlog.register(AidLocation,
+                  exclude_fields=['updated_by', 'updated_at'],
+                  serialize_data=True,
+                  serialize_auditlog_fields_only=True
+                  )
+auditlog.register(AidRequestLog,
+                  exclude_fields=['updated_by', 'updated_at'],
+                  serialize_data=True,
+                  serialize_auditlog_fields_only=True
+                  )

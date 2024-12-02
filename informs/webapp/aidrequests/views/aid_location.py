@@ -29,7 +29,10 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
     template_name = 'aidrequests/aidrequest_geocode.html'
 
     def get_success_url(self):
-        return reverse('aidrequest_detail', kwargs={'field_op': self.field_op.slug, 'pk': self.aid_request.pk})
+        return reverse('aidrequest_detail',
+                       kwargs={'field_op': self.field_op.slug,
+                               'pk': self.aid_request.pk}
+                       )
 
     def check_address_azure(self):
         """
@@ -233,8 +236,6 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        """If the form is invalid, render the invalid form."""
-        ic(form.errors)
         return self.render_to_response(self.get_context_data(form=form))
 
 

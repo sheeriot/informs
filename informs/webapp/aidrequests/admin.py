@@ -3,7 +3,7 @@ AidRequests Admin
 """
 
 from django.contrib import admin
-from .models import AidRequest, FieldOp, AidLocation
+from .models import AidRequest, FieldOp, AidLocation, AidRequestLog
 
 # Register your models here.
 
@@ -82,6 +82,27 @@ class AidLocationAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
+
+class AidRequestLogAdmin(admin.ModelAdmin):
+    """AidRequestLog admin"""
+    list_display = ('aid_request', 'log_entry', 'created_at', 'created_by', 'updated_at', 'updated_by')
+    list_filter = ('aid_request',)
+    readonly_fields = (
+        'created_at',
+        'updated_at',
+        'created_by',
+        'updated_by'
+        )
+
+    def save_model(self, request, obj, form, change):
+        # Set created_by only when creating a new object
+        if not obj.pk:
+            obj.created_by = request.user
+        # Set updated_by on every save
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+
 admin.site.register(AidRequest, AidRequestAdmin)
 admin.site.register(FieldOp, FieldOpAdmin)
 admin.site.register(AidLocation, AidLocationAdmin)
+admin.site.register(AidRequestLog, AidRequestLogAdmin)

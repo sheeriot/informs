@@ -73,24 +73,24 @@
             <table class="table table-bordered table-data border border-3 border-info w-auto caption-top mb-1">
                 <caption>Contact Information</caption>
                 <tr>
-                    <th class="col col-auto">Requestor Name</th>
-                    <th class="col col-auto">Requestor Phone</th>
-                    <th class="col col-auto">Requestor Email</th>
+                    <th class="col-auto">Requestor Name</th>
+                    <th class="col-auto">Requestor Phone</th>
+                    <th class="col-auto">Requestor Email</th>
                 </tr>
                 <tr>
-                    <td class="col col-auto">{{ object.requestor_first_name }} {{ object.requestor_last_name }}</td>
-                    <td class="col col-auto">{{ object.requestor_phone }}</td>
-                    <td class="col col-auto">{{ object.requestor_email }}</td>
+                    <td class="col-auto">{{ object.requestor_first_name }} {{ object.requestor_last_name }}</td>
+                    <td class="col-auto">{{ object.requestor_phone }}</td>
+                    <td class="col-auto">{{ object.requestor_email }}</td>
                 </tr>
                 <tr>
-                    <th class="col col-auto">Contact Name</th>
-                    <th class="col col-auto">Contact Phone</th>
-                    <th class="col col-auto">Contact Email</th>
+                    <th class="col-auto">Contact Name</th>
+                    <th class="col-auto">Contact Phone</th>
+                    <th class="col-auto">Contact Email</th>
                 </tr>
                 <tr>
-                    <td class="col col-auto">{{ object.assistance_first_name|default:"None" }} {{ object.assistance_last_name }}</td>
-                    <td class="col col-auto">{{ object.assistance_phone|default:"None" }}</td>
-                    <td class="col col-auto">{{ object.assistance_email|default:"None" }}</td>
+                    <td class="col-auto">{{ object.assistance_first_name|default:"None" }} {{ object.assistance_last_name }}</td>
+                    <td class="col-auto">{{ object.assistance_phone|default:"None" }}</td>
+                    <td class="col-auto">{{ object.assistance_email|default:"None" }}</td>
                 </tr>
                 <tr>
                     <td colspan="3">
@@ -102,7 +102,7 @@
     </div>
 </div>
 <hr>
-<table class="table table-bordered table-data w-auto caption-top w-auto border border-3 border-warning font-monospace">
+<table class="table table-bordered table-data w-auto caption-top w-auto border border-3 border-warning font-monospace ms-4">
     <caption>Aid Location</caption>
     <tr>
         <th class="col-auto">Address Provided</th>
@@ -188,7 +188,43 @@
 <h2>Additional Information</h2>
 <p>{{ object.additional_info|default:"None" }}</p>
 <hr>
-<table class="table table-bordered table-data w-auto caption-top border border-3 border-primary font-monospace">
+<h4>Activity Logs</h4>
+<div class="container font-monospace">
+    <table class="table table-sm table-warning table-striped table-bordered w-100" style="font-size: 0.75rem;">
+        <thead>
+            <tr>
+                <th class="col-2">Updated</th>
+                <th class="col">Log</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td class="col-2">
+                    <div class="d-inline-flex">
+                        {{ log.updated_at|date:"Y-m-d H:i" }}
+                        ({{ log.updated_by }})
+                    </div>
+                </td>
+                <td class="col">
+                    <div>
+                        <pre>{{ log.log_entry }}</pre>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<h6>Add Notes</h6>
+<div class="container font-monospace">
+    {% if log_form %}
+        {% crispy log_form %}
+    {% endif %}
+</div>
+<hr>
+<table class="table table-bordered table-data w-auto caption-top border border-3 border-primary font-monospace"
+                style="font-size: 0.75rem;">
     <caption>Ticket Info</caption>
     <tr>
         <th class="col-auto">Created At</th>

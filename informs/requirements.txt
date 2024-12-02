@@ -5,6 +5,8 @@ django-tz-detect
 crispy-bootstrap5
 django-crispy-forms
 django-mathfilters
+django-auditlog
+
 geopy
 azure-core
 azure-maps-search

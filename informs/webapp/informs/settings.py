@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_bootstrap_icons',
+    'auditlog',
     'tz_detect',
     'crispy_forms',
     'crispy_bootstrap5',
@@ -66,6 +67,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'auditlog.middleware.AuditlogMiddleware',
     'tz_detect.middleware.TimezoneMiddleware',
 ]
 
@@ -172,9 +174,9 @@ AZURE_MAPS_KEY = os.environ.get('AZURE_MAPS_KEY')
 
 TAKSERVER_DNS = os.environ.get('TAKSERVER_DNS')
 
-PYTAK_TLS_CLIENT_CERT=os.environ.get('PYTAK_TLS_CLIENT_CERT')
-PYTAK_TLS_CLIENT_PASSWORD=os.environ.get('PYTAK_TLS_CLIENT_PASSWORD')
-PYTAK_TLS_CLIENT_CAFILE=os.environ.get('PYTAK_TLS_CLIENT_CAFILE')
+PYTAK_TLS_CLIENT_CERT = os.environ.get('PYTAK_TLS_CLIENT_CERT')
+PYTAK_TLS_CLIENT_PASSWORD = os.environ.get('PYTAK_TLS_CLIENT_PASSWORD')
+PYTAK_TLS_CLIENT_CAFILE = os.environ.get('PYTAK_TLS_CLIENT_CAFILE')
 
 
 LOGGING = {

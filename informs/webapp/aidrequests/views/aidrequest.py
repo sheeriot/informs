@@ -1,21 +1,21 @@
 # from django.shortcuts import render, redirect
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 # from django.conf import settings
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, DetailView, CreateView, UpdateView
 # from django.http import JsonResponse
 
 # import requests
 # import json
 from geopy.distance import geodesic
 
-from ..models import AidRequest, FieldOp
-from .aid_request_forms import AidRequestCreateForm, AidRequestUpdateForm
+from ..models import AidRequest, FieldOp, AidRequestLog
+from .aid_request_forms import AidRequestCreateForm, AidRequestUpdateForm, AidRequestLogForm
 from .geocode_form import AidLocationForm
 from .getAzureGeocode import getAddressGeocode
 
-# from icecream import ic
+from icecream import ic
 
 
 def has_confirmed_location(aid_request):
@@ -66,7 +66,6 @@ class AidRequestListView(LoginRequiredMixin, ListView):
 class AidRequestDetailView(LoginRequiredMixin, DetailView):
     model = AidRequest
     template_name = 'aidrequests/aidrequest_detail.html'
-    location_form = 'geocode_form'
 
     def setup(self, request, *args, **kwargs):
         """Initialize attributes shared by all view methods."""
@@ -92,8 +91,12 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
         context['field_op'] = self.field_op
         context['aid_request'] = object
         context['locations'] = self.aid_request.locations.all()
-
-        context['location_confirmed'] = getattr(self, 'confirmed', False)
+        context['logs'] = self.aid_request.logs.all().order_by('-updated_at')
+        log_init = {
+            'field_op': self.field_op.slug,
+            'aid_request': self.aid_request.pk,
+            }
+        context['log_form'] = AidRequestLogForm(initial=log_init)
 
         if hasattr(self, 'geocode_results'):
             distance = round(geodesic(
@@ -119,8 +122,8 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
                 'note': note,
                 }
             context['geocode_form'] = AidLocationForm(initial=initial_data)
+        context['location_confirmed'] = getattr(self, 'confirmed', False)
 
-        # ic(context)
         return context
 
 
@@ -212,18 +215,69 @@ class AidRequestUpdateView(LoginRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-# Delete View for AidRequest
-class AidRequestDeleteView(LoginRequiredMixin, DeleteView):
-    model = AidRequest
-    template_name = 'aidrequests/aidrequest_confirm_delete.html'
-    # success_url = reverse_lazy('aidrequest_list')
+# # Delete View for AidRequest
+# class AidRequestDeleteView(LoginRequiredMixin, DeleteView):
+#     model = AidRequest
+#     template_name = 'aidrequests/aidrequest_confirm_delete.html'
+#     # success_url = reverse_lazy('aidrequest_list')
+
+#     def get_success_url(self):
+#         return reverse_lazy('aidrequest_list', kwargs={'field_op': self.kwargs['field_op']})
+
+#     def get_context_data(self, **kwargs):
+#         field_op_slug = self.kwargs['field_op']
+#         context = super().get_context_data(**kwargs)
+#         field_op = get_object_or_404(FieldOp, slug=field_op_slug)
+#         context['field_op'] = field_op
+#         return context
+
+
+# Create View for AidRequestLog
+class AidRequestLogCreateView(LoginRequiredMixin, CreateView):
+    """ Aid Request Log - Create """
+    model = AidRequestLog
+    form_class = AidRequestLogForm
 
     def get_success_url(self):
-        return reverse_lazy('aidrequest_list', kwargs={'field_op': self.kwargs['field_op']})
+        return reverse('aidrequest_detail',
+                       kwargs={
+                           'field_op': self.field_op.slug,
+                           'pk': self.aid_request.pk}
+                       )
 
-    def get_context_data(self, **kwargs):
+    def setup(self, request, *args, **kwargs):
+        """Initialize attributes shared by all view methods."""
+        self.request = request
+        self.args = args
+        self.kwargs = kwargs
+        # custom setup
+        self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
+        self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
+
+    def form_valid(self, form):
+        self.object = form.save()
         field_op_slug = self.kwargs['field_op']
-        context = super().get_context_data(**kwargs)
-        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
-        context['field_op'] = field_op
-        return context
+        field_op = FieldOp.objects.get(slug=field_op_slug)
+        self.object.field_op = field_op
+        # distance = geodist(self.object)
+        # if distance is not None and distance > 200:
+        #     form.add_error(None, 'The Aid Request is more than 200 km away from the Field Op.')
+        #     return self.form_invalid(form)
+        user = self.request.user
+        if user.is_authenticated:
+            form.instance.created_by = user
+            form.instance.updated_by = user
+        else:
+            form.instance.created_by = None
+            form.instance.updated_by = None
+        return super().form_valid(form)
+        self.object.save()
+        return super().form_valid(form)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['initial'] = {
+                'aid_request': self.aid_request.pk,
+                'field_op': self.field_op.slug,
+        }
+        return kwargs
