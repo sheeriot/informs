@@ -30,6 +30,10 @@ class FieldOpDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['notifies_email'] = self.object.notify.filter(type__startswith='email')
+        context['notifies_sms'] = self.object.notify.filter(type='sms')
+        
+        # ic(context['notifies'])
         context['aid_request_count'] = self.object.aid_requests.count()
         return context
 

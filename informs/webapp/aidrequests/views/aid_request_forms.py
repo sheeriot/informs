@@ -15,6 +15,7 @@ class AidRequestCreateForm(forms.ModelForm):
         """ meta """
         model = AidRequest
         fields = [
+            'field_op',
             'requestor_first_name',
             'requestor_last_name',
             'requestor_email',
@@ -44,7 +45,7 @@ class AidRequestCreateForm(forms.ModelForm):
         widget=forms.CheckboxInput(attrs={"onclick": "differentContact()"})
     )
 
-    def __init__(self, *args, action='create', **kwargs):
+    def __init__(self, *args, action='create', field_op_pk=None, **kwargs):
         super(AidRequestCreateForm, self).__init__(*args, **kwargs)
         self.action = action
         self.helper = FormHelper()
@@ -56,6 +57,7 @@ class AidRequestCreateForm(forms.ModelForm):
         self.fields['welfare_check_info'].widget.attrs['rows'] = 4
         self.fields['additional_info'].widget.attrs['rows'] = 4
         self.helper.layout = Layout(
+            Hidden('field_op', field_op_pk),
             Fieldset(
                 'Requestor Details',
                 Row(

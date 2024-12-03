@@ -1,5 +1,5 @@
 from django.apps import AppConfig
-from icecream import ic
+# from icecream import ic
 
 
 class TakServerConfig(AppConfig):
@@ -7,4 +7,4 @@ class TakServerConfig(AppConfig):
     name = 'takserver'
 
     def ready(self):
-        import takserver.signals
+        import takserver.signals  # noqa: F401
