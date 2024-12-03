@@ -142,7 +142,6 @@ class AidRequestCreateView(CreateView):
         self.request = request
         self.args = args
         self.kwargs = kwargs
-        ic(self.kwargs)
         # custom setup
         self.field_op = get_object_or_404(FieldOp, slug=self.kwargs['field_op'])
 
@@ -162,7 +161,6 @@ class AidRequestCreateView(CreateView):
         return kwargs
 
     def form_valid(self, form):
-        ic('Save the Form to an Object')
         self.object = form.save()
 
         if not self.object.requestor_email and not self.object.requestor_phone:
@@ -177,8 +175,6 @@ class AidRequestCreateView(CreateView):
             form.instance.created_by = None
             form.instance.updated_by = None
 
-        ic('save the object')
-        ic(self.object)
         self.object.save()
         return super().form_valid(form)
 

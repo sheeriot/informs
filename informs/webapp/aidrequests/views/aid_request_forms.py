@@ -47,7 +47,6 @@ class AidRequestCreateForm(forms.ModelForm):
 
     def __init__(self, *args, action='create', field_op_pk=None, **kwargs):
         super(AidRequestCreateForm, self).__init__(*args, **kwargs)
-        ic(field_op_pk)
         self.action = action
         self.helper = FormHelper()
         self.helper.form_method = 'post'
