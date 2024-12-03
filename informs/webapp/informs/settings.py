@@ -194,3 +194,11 @@ LOGGING = {
     },
     # ...
 }
+
+# Email Setup
+MAIL_FROM_DOMAIN = os.environ.get('MAIL_FROM_DOMAIN')
+MAIL_FROM_USER = os.environ.get('MAIL_FROM_USER')
+MAIL_FROM_KEY = os.environ.get('MAIL_FROM_KEY')
+MAIL_FROM = f'{MAIL_FROM_USER}@{MAIL_FROM_DOMAIN}'
+MAIL_TO_TEST = os.environ.get('MAIL_TO_TEST')
+MAIL_ENDPOINT = 'informs-dev-email.unitedstates.communication.azure.com'

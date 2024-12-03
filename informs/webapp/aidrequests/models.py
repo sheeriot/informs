@@ -5,10 +5,9 @@ This module  for AidRequests and FieldOps
 from django.db import models
 from .timestamped_model import TimeStampedModel
 # from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from auditlog.registry import auditlog
-
-# Module providing a function printing python version."""
 
 
 class FieldOp(TimeStampedModel):
@@ -24,6 +23,10 @@ class FieldOp(TimeStampedModel):
     updated_by = models.ForeignKey(
         User, related_name='field_ops_updated', on_delete=models.SET_NULL, null=True, blank=True
     )
+
+    class Meta:
+        verbose_name = 'Field Operation'
+        verbose_name_plural = 'Field Operations'
 
     def __str__(self):
         return str(self.name)
@@ -118,6 +121,10 @@ class AidRequest(TimeStampedModel):
         default='new',
     )
 
+    class Meta:
+        verbose_name = 'Aid Request'
+        verbose_name_plural = 'Aid Requests'
+
     def __str__(self):
         return f"""AidRequest-{self.pk}: {self.requestor_first_name} {self.requestor_last_name}
                - {self.assistance_type}"""
@@ -154,6 +161,10 @@ class AidLocation(TimeStampedModel):
         User, related_name='aid_locations_updated', on_delete=models.SET_NULL, null=True, blank=True
     )
 
+    class Meta:
+        verbose_name = 'Aid Location'
+        verbose_name_plural = 'Aid Locations'
+
     def __str__(self):
         return f"Location ({self.latitude}, {self.longitude}) - {self.status} - {self.source}"
 
@@ -172,8 +183,41 @@ class AidRequestLog(TimeStampedModel):
         User, related_name='aid_request_logs_updated', on_delete=models.SET_NULL, null=True, blank=True
     )
 
+    class Meta:
+        verbose_name = 'Aid Request Log'
+        verbose_name_plural = 'Aid Request Logs'
+
     def __str__(self):
         return f"{self.updated_at}({self.updated_by}): {self.log_entry}"
+
+
+class FieldOpNotify(TimeStampedModel):
+    """Notification details for FieldOp"""
+    name = models.CharField(max_length=50)
+    TYPE_CHOICES = [
+        ('email-individual', 'Email Individual'),
+        ('email-group', 'Email Group'),
+        ('sms', 'SMS'),
+    ]
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    email = models.EmailField(blank=True, null=True)
+    sms_number = models.CharField(max_length=15, blank=True, null=True)
+
+    class Meta:
+        verbose_name = 'Notify Address'
+        verbose_name_plural = 'Notify Addresses'
+
+    def __str__(self):
+        address = self.email if self.email else self.sms_number
+        return f"{self.name}:{self.type}:{address}"
+
+    def clean(self):
+        if (self.email and self.sms_number):
+            raise ValidationError('Must provide EMAIL -or- SMS, not both')
+        if self.type.startswith('email') and not self.email:
+            raise ValidationError('Email address must be provided for email notifications')
+        if self.type.startswith('email') and not self.sms:
+            raise ValidationError('SMS address must be provided for sms notifications')
 
 
 auditlog.register(FieldOp,

@@ -10,6 +10,7 @@ django-auditlog
 geopy
 azure-core
 azure-maps-search
+azure-communication-email
 pytak
 cryptography
 

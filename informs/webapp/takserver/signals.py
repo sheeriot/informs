@@ -54,6 +54,7 @@ class CotSender(pytak.QueueWorker):
         finally:
             ic('data in queue')
 
+
 @receiver(post_save, sender=AidLocation)
 def aid_location_post_save(sender, instance, created, **kwargs):
     if created:
