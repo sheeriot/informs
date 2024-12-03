@@ -135,6 +135,17 @@ class AidRequestCreateView(CreateView):
     template_name = 'aidrequests/aidrequest_form.html'
     success_url = reverse_lazy('home')
 
+    def setup(self, request, *args, **kwargs):
+        """Initialize attributes shared by all view methods."""
+        if hasattr(self, "get") and not hasattr(self, "head"):
+            self.head = self.get
+        self.request = request
+        self.args = args
+        self.kwargs = kwargs
+        ic(self.kwargs)
+        # custom setup
+        self.field_op = get_object_or_404(FieldOp, slug=self.kwargs['field_op'])
+
     def get_context_data(self, **kwargs):
         field_op_slug = self.kwargs['field_op']
         context = super().get_context_data(**kwargs)
@@ -146,20 +157,18 @@ class AidRequestCreateView(CreateView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['action'] = 'create'  # Pass 'create' action to the form
+        # ic(self)
+        kwargs['field_op_pk'] = self.field_op.pk
         return kwargs
 
     def form_valid(self, form):
+        ic('Save the Form to an Object')
         self.object = form.save()
-        field_op_slug = self.kwargs['field_op']
-        field_op = FieldOp.objects.get(slug=field_op_slug)
-        self.object.field_op = field_op
-        # distance = geodist(self.object)
-        # if distance is not None and distance > 200:
-        #     form.add_error(None, 'The Aid Request is more than 200 km away from the Field Op.')
-        #     return self.form_invalid(form)
+
         if not self.object.requestor_email and not self.object.requestor_phone:
             form.add_error(None, 'Provide one of phone or email.')
             return self.form_invalid(form)
+
         user = self.request.user
         if user.is_authenticated:
             form.instance.created_by = user
@@ -167,7 +176,9 @@ class AidRequestCreateView(CreateView):
         else:
             form.instance.created_by = None
             form.instance.updated_by = None
-        return super().form_valid(form)
+
+        ic('save the object')
+        ic(self.object)
         self.object.save()
         return super().form_valid(form)
 

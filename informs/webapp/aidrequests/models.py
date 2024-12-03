@@ -10,6 +10,36 @@ from django.contrib.auth.models import User
 from auditlog.registry import auditlog
 
 
+class FieldOpNotify(TimeStampedModel):
+    """Notify contacts for Field Operations"""
+    name = models.CharField(max_length=50)
+
+    TYPE_CHOICES = [
+        ('email-individual', 'Email Individual'),
+        ('email-group', 'Email Group'),
+        ('sms', 'SMS'),
+    ]
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    email = models.EmailField(blank=True, null=True)
+    sms_number = models.CharField(max_length=15, blank=True, null=True)
+
+    class Meta:
+        verbose_name = 'Notify Address'
+        verbose_name_plural = 'Notify Addresses'
+
+    def __str__(self):
+        address = self.email if self.email else self.sms_number
+        return f"{self.name}:{self.type}:{address}"
+
+    def clean(self):
+        if (self.email and self.sms_number):
+            raise ValidationError('Must provide EMAIL -or- SMS, not both')
+        if self.type.startswith('email') and not self.email:
+            raise ValidationError('Email address must be provided for email notifications')
+        if self.type.startswith('email') and not self.sms:
+            raise ValidationError('SMS address must be provided for sms notifications')
+
+
 class FieldOp(TimeStampedModel):
     """Field Ops"""
     slug = models.SlugField(unique=True)
@@ -23,6 +53,8 @@ class FieldOp(TimeStampedModel):
     updated_by = models.ForeignKey(
         User, related_name='field_ops_updated', on_delete=models.SET_NULL, null=True, blank=True
     )
+
+    notify = models.ManyToManyField(FieldOpNotify)
 
     class Meta:
         verbose_name = 'Field Operation'
@@ -189,35 +221,6 @@ class AidRequestLog(TimeStampedModel):
 
     def __str__(self):
         return f"{self.updated_at}({self.updated_by}): {self.log_entry}"
-
-
-class FieldOpNotify(TimeStampedModel):
-    """Notification details for FieldOp"""
-    name = models.CharField(max_length=50)
-    TYPE_CHOICES = [
-        ('email-individual', 'Email Individual'),
-        ('email-group', 'Email Group'),
-        ('sms', 'SMS'),
-    ]
-    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
-    email = models.EmailField(blank=True, null=True)
-    sms_number = models.CharField(max_length=15, blank=True, null=True)
-
-    class Meta:
-        verbose_name = 'Notify Address'
-        verbose_name_plural = 'Notify Addresses'
-
-    def __str__(self):
-        address = self.email if self.email else self.sms_number
-        return f"{self.name}:{self.type}:{address}"
-
-    def clean(self):
-        if (self.email and self.sms_number):
-            raise ValidationError('Must provide EMAIL -or- SMS, not both')
-        if self.type.startswith('email') and not self.email:
-            raise ValidationError('Email address must be provided for email notifications')
-        if self.type.startswith('email') and not self.sms:
-            raise ValidationError('SMS address must be provided for sms notifications')
 
 
 auditlog.register(FieldOp,
