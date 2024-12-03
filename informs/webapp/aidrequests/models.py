@@ -36,7 +36,7 @@ class FieldOpNotify(TimeStampedModel):
             raise ValidationError('Must provide EMAIL -or- SMS, not both')
         if self.type.startswith('email') and not self.email:
             raise ValidationError('Email address must be provided for email notifications')
-        if self.type.startswith('email') and not self.sms:
+        if self.type == 'sms' and not self.sms_number:
             raise ValidationError('SMS address must be provided for sms notifications')
 
 
@@ -224,22 +224,27 @@ class AidRequestLog(TimeStampedModel):
 
 
 auditlog.register(FieldOp,
-                  exclude_fields=['updated_by', 'updated_at'],
+                  exclude_fields=['created_by', 'created_at', 'updated_by', 'updated_at'],
                   serialize_data=True,
                   serialize_auditlog_fields_only=True
                   )
 auditlog.register(AidRequest,
-                  exclude_fields=['updated_by', 'updated_at'],
+                  exclude_fields=['created_by', 'created_at', 'updated_by', 'updated_at'],
                   serialize_data=True,
                   serialize_auditlog_fields_only=True
                   )
 auditlog.register(AidLocation,
-                  exclude_fields=['updated_by', 'updated_at'],
+                  exclude_fields=['created_by', 'created_at', 'updated_by', 'updated_at'],
                   serialize_data=True,
                   serialize_auditlog_fields_only=True
                   )
 auditlog.register(AidRequestLog,
-                  exclude_fields=['updated_by', 'updated_at'],
+                  exclude_fields=['created_by', 'created_at', 'updated_by', 'updated_at'],
+                  serialize_data=True,
+                  serialize_auditlog_fields_only=True
+                  )
+auditlog.register(FieldOpNotify,
+                  exclude_fields=['created_by', 'created_at', 'updated_by', 'updated_at'],
                   serialize_data=True,
                   serialize_auditlog_fields_only=True
                   )
