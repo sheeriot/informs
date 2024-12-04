@@ -4,7 +4,7 @@ from azure.core.exceptions import HttpResponseError
 
 from django.conf import settings
 
-# from icecream import ic
+from icecream import ic
 
 
 def getAddressGeocode(self):
@@ -22,6 +22,7 @@ def getAddressGeocode(self):
         query_results = maps_search_client.get_geocoding(query=query_address, coordinates=field_op_coords)
 
         if query_results.get('features', False):
+            ic(query_results['features'][0]['properties'])
             results['status'] = "Success"
             coordinates = query_results['features'][0]['geometry']['coordinates']
             results['latitude'] = round(coordinates[1], 5)
@@ -32,7 +33,8 @@ def getAddressGeocode(self):
             results['found_address'] = query_results['features'][0]['properties']['address']['formattedAddress']
             results['locality'] = query_results['features'][0]['properties']['address']['locality']
             # results['neighborhood'] = query_results['features'][0]['properties']['address']['neighborhood']
-            results['match_codes'] = query_results['features'][0]['properties']['matchCodes']
+            # results['match_codes'] = query_results['features'][0]['properties']['matchCodes']
+            results['match_codes'] = query_results['features'][0]['properties'].get('match_codes', None)
             results['match_type'] = query_results['features'][0]['properties']['type']
             return results
         else:

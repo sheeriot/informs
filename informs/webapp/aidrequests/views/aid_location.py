@@ -15,7 +15,7 @@ from geopy.distance import geodesic
 from ..models import FieldOp, AidRequest, AidLocation
 from .geocode_form import AidLocationForm
 
-from icecream import ic
+# from icecream import ic
 from django.views.generic import DeleteView
 from django.urls import reverse_lazy
 
@@ -132,7 +132,7 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
                 results['found_address'] = query_results['features'][0]['properties']['address']['formattedAddress']
                 results['locality'] = query_results['features'][0]['properties']['address']['locality']
                 # results['neighborhood'] = query_results['features'][0]['properties']['address']['neighborhood']
-                results['match_codes'] = query_results['features'][0]['properties']['matchCodes']
+                results['match_codes'] = query_results['features'][0]['properties'].get('matchCodes', None)
                 results['match_type'] = query_results['features'][0]['properties']['type']
                 return results
             else:

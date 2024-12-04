@@ -68,9 +68,6 @@ class AidLocationForm(forms.ModelForm):
                     ),
                     css_class="d-flex col col-auto border rounded bg-light align-items-center ms-2"
                 ),
-                Column(
-                    Submit('submit', 'Confirm', css_class='btn btn-warning'),
-                ),
                 css_class="d-flex align-items-center"
             ),
             Row(
@@ -85,4 +82,10 @@ class AidLocationForm(forms.ModelForm):
                     css_class="d-flex col col-auto border rounded align-items-center m-2"
                 ),
             ),
+            Row(
+                Column(
+                    Submit('submit', 'Confirm', css_class='btn btn-warning'),
+                ),
+                css_class="d-flex align-items-center"
+            )
         )

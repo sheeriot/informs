@@ -13,5 +13,6 @@ azure-maps-search
 azure-communication-email
 pytak
 cryptography
+httpx
 
 icecream
