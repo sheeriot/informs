@@ -4,9 +4,9 @@ Forms
 
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Fieldset, Field, Submit, Row, Column, Div
+from crispy_forms.layout import Layout, Fieldset, Submit, Row, Column
 
-from ..models import AidRequest, FieldOp
+from ..models import FieldOp
 
 # from icecream import ic
 
@@ -17,7 +17,7 @@ class FieldOpForm(forms.ModelForm):
     class Meta:
         """ meta """
         model = FieldOp
-        fields = "__all__"
+        fields = ('name', 'slug', 'latitude', 'longitude')
 
     def __init__(self, *args, action='create', **kwargs):
         super(FieldOpForm, self).__init__(*args, **kwargs)
@@ -29,7 +29,9 @@ class FieldOpForm(forms.ModelForm):
         if self.action == 'update':
             self.fields['name'].widget.attrs['readonly'] = True
             self.fields['slug'].widget.attrs['readonly'] = True
-
+            button_text = 'Update'
+        elif self.action == 'create':
+            button_text = 'Create'
         self.helper.layout = Layout(
             Fieldset(
                 'Field Op Details',
@@ -42,7 +44,5 @@ class FieldOpForm(forms.ModelForm):
                     Column('longitude', css_class='col-auto'),
                 ),
             ),
-            Submit('submit', 'Update', css_class='btn-warning')
+            Submit('submit', button_text, css_class='btn-warning')
         )
-
-

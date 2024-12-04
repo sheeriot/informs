@@ -12,7 +12,7 @@ from .geocode_form import AidLocationForm
 from .getAzureGeocode import getAddressGeocode
 from .maps import staticmap_aid, calculate_zoom
 
-from icecream import ic
+# from icecream import ic
 
 
 def has_confirmed_location(aid_request):
@@ -68,6 +68,7 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
 
     def setup(self, request, *args, **kwargs):
         """Initialize attributes shared by all view methods."""
+        super().setup(request, *args, **kwargs)
         if hasattr(self, "get") and not hasattr(self, "head"):
             self.head = self.get
         self.request = request

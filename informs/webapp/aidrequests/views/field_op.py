@@ -8,7 +8,7 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from ..models import FieldOp
 from .forms import FieldOpForm
 
-# from icecream import ic
+from icecream import ic
 
 
 # List View for FieldOp
@@ -32,7 +32,7 @@ class FieldOpDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context['notifies_email'] = self.object.notify.filter(type__startswith='email')
         context['notifies_sms'] = self.object.notify.filter(type='sms')
-        
+
         # ic(context['notifies'])
         context['aid_request_count'] = self.object.aid_requests.count()
         return context
@@ -44,6 +44,10 @@ class FieldOpCreateView(LoginRequiredMixin, CreateView):
     form_class = FieldOpForm
     template_name = 'aidrequests/field_op_form.html'
     success_url = reverse_lazy('field_op_list')
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        ic(self, request, args, kwargs)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
