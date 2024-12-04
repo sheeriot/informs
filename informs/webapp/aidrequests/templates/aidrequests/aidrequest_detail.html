@@ -102,35 +102,56 @@
     </div>
 </div>
 <hr>
-<table class="table table-bordered table-data w-auto caption-top w-auto border border-3 border-warning font-monospace ms-4">
-    <caption>Aid Location</caption>
-    <tr>
-        <th class="col-auto">Address Provided</th>
-        {% if not location_confirmed %}
-            <th class="col-auto">Geocoder</th>
-        {% endif %}
-    </tr>
-    <tr>
-        <td class="col-auto">
-            {{ object.street_address }}<br>
-            {{ object.city }}, {{ object.state }} {{ object.zip_code }}
-            <hr>
-            Status:<br>
-            {% if location_confirmed %}
-                <span class="text-success">{% bs_icon "check" %}Confirmed</span>
-            {% else %}
-                <span class="text-danger">Not Confirmed</span>
-            {% endif %}
-        </td>
-        {% if not location_confirmed %}
-            <td>
-                {% if geocode_form %}
-                    {% crispy geocode_form %}
+<div class="row flex-row align-items-center my-1">
+    <div class="col-auto font-monospace">
+        <table class="table table-bordered table-data w-auto caption-top w-auto border border-3 border-warning font-monospace ms-4">
+            <caption>Aid Location</caption>
+            <tr>
+                <th class="col-auto">Address Provided</th>
+                {% if not location_confirmed %}
+                    <th class="col-auto">Geocoder</th>
                 {% endif %}
-            </td>
-        {% endif %}
-    </tr>
-</table>
+                {% if map_image %}
+                    <th class="col-auto">Azure Map</th>
+                {% endif %}
+            </tr>
+            <tr>
+                <td class="col-auto">
+                    {{ object.street_address }}<br>
+                    {{ object.city }}, {{ object.state }} {{ object.zip_code }}
+                    <hr>
+                    Status:<br>
+                    {% if location_confirmed %}
+                        <span class="text-success">{% bs_icon "check" %}Confirmed</span>
+                    {% else %}
+                        <span class="text-danger">Not Confirmed</span>
+                    {% endif %}
+                </td>
+                {% if not location_confirmed %}
+                    <td>
+                        {% if geocode_form %}
+                            {% crispy geocode_form %}
+                        {% endif %}
+                    </td>
+                {% endif %}
+                {% if map_image %}
+                    <td class="col-auto">
+                        <div>Field Op: {{fieldop_lat}},{{fieldop_lon}}</div>
+                        <div>Aid Location: {{aid_lat}},{{aid_lon}}</div>
+                        <div>
+                            <div id="map-image">
+                                <img src="{{ map_image }}" alt="Aid Request - Location Map">
+                            </div>
+                        </div>
+                    </td>
+                {% endif %}
+            </tr>
+        </table>
+    </div>
+    <div class="col-auto ms-4 p-0">
+
+    </div>
+</div>
 <div class="container font-monospace">
     <table class="table table-sm table-data table-success table-striped">
         <thead>

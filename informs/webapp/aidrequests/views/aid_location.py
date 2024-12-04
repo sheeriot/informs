@@ -15,7 +15,7 @@ from geopy.distance import geodesic
 from ..models import FieldOp, AidRequest, AidLocation
 from .geocode_form import AidLocationForm
 
-from icecream import ic
+# from icecream import ic
 from django.views.generic import DeleteView
 from django.urls import reverse_lazy
 

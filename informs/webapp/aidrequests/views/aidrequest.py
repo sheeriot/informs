@@ -1,19 +1,16 @@
-# from django.shortcuts import render, redirect
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy, reverse
-# from django.conf import settings
 from django.views.generic import ListView, DetailView, CreateView, UpdateView
-# from django.http import JsonResponse
 
-# import requests
-# import json
 from geopy.distance import geodesic
+import base64
 
 from ..models import AidRequest, FieldOp, AidRequestLog
 from .aid_request_forms import AidRequestCreateForm, AidRequestUpdateForm, AidRequestLogForm
 from .geocode_form import AidLocationForm
 from .getAzureGeocode import getAddressGeocode
+from .maps import staticmap_aid
 
 from icecream import ic
 
@@ -92,6 +89,11 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
         context['aid_request'] = object
         context['locations'] = self.aid_request.locations.all()
         context['logs'] = self.aid_request.logs.all().order_by('-updated_at')
+        context['fieldop_lat'] = self.field_op.latitude
+        context['fieldop_lon'] = self.field_op.longitude
+        # show the static map. Current, it runs in every context.
+        # should be saved locally and updated as needed
+
         log_init = {
             'field_op': self.field_op.slug,
             'aid_request': self.aid_request.pk,
@@ -103,7 +105,6 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
                 (self.geocode_results['latitude'], self.geocode_results['longitude']),
                 (self.field_op.latitude, self.field_op.longitude)
                 ).km, 1)
-
             note = (
                 f"{self.geocode_results['found_address']}\n"
                 f"Distance: {distance} km\n"
@@ -111,7 +112,6 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
                 f"Match Type: {self.geocode_results['match_type']}\n"
                 f"Match Codes: {self.geocode_results['match_codes']}\n"
                 )
-
             initial_data = {
                 'field_op': self.field_op.slug,
                 'aid_request': self.aid_request.pk,
@@ -121,7 +121,21 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
                 'source': 'azure_maps',
                 'note': note,
                 }
+
             context['geocode_form'] = AidLocationForm(initial=initial_data)
+            context['aid_lat'] = self.geocode_results['latitude']
+            context['aid_lon'] = self.geocode_results['longitude']
+
+            staticmap_data = staticmap_aid(
+                width=600, height=300, zoom=10,
+                fieldop_lat=self.field_op.latitude,
+                fieldop_lon=self.field_op.longitude,
+                aid1_lat=self.geocode_results['latitude'],
+                aid1_lon=self.geocode_results['longitude'],
+                )
+            image_data = base64.b64encode(staticmap_data).decode('utf-8')
+            context['map_image'] = f"data:image/png;base64,{image_data}"
+
         context['location_confirmed'] = getattr(self, 'confirmed', False)
 
         return context
