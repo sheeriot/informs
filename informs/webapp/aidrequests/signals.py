@@ -11,16 +11,11 @@ from icecream import ic
 @receiver(post_save, sender=AidRequest)
 def send_aid_request_email(sender, instance, created, **kwargs):
     if created:
-        # ic('handle email on Created Aid Request')
         notify_email = instance.field_op.notify.filter(type__startswith='email')
         for notify in notify_email:
-            # ic(f'Notify: {notify}')
             message = email_creator(instance, notify)
-            ic(message)
-            # ic(message)
             try:
                 connect_string = email_connect_string()
-                ic(connect_string)
                 client = EmailClient.from_connection_string(connect_string)
                 poller = client.begin_send(message)
                 result = poller.result()

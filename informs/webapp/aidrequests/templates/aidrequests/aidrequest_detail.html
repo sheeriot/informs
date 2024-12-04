@@ -119,10 +119,15 @@
                 <td class="col-auto">
                     {{ object.street_address }}<br>
                     {{ object.city }}, {{ object.state }} {{ object.zip_code }}
-                    <hr>
+                    <hr class="my-1 py-0">
                     Status:<br>
                     {% if location_confirmed %}
                         <span class="text-success">{% bs_icon "check" %}Confirmed</span>
+                        <hr class="my-1 py-0">
+                        <div>Field Op: {{fieldop_lat}},{{fieldop_lon}}</div>
+                        <div>Aid Location: {{aid_lat}},{{aid_lon}}</div>
+                        <hr class="my-1 py-0">
+                        <div style="font-weight: normal;"><pre>{{ note }}</pre></div>
                     {% else %}
                         <span class="text-danger">Not Confirmed</span>
                     {% endif %}
@@ -136,8 +141,6 @@
                 {% endif %}
                 {% if map_image %}
                     <td class="col-auto">
-                        <div>Field Op: {{fieldop_lat}},{{fieldop_lon}}</div>
-                        <div>Aid Location: {{aid_lat}},{{aid_lon}}</div>
                         <div>
                             <div id="map-image">
                                 <img src="{{ map_image }}" alt="Aid Request - Location Map">

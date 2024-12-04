@@ -41,18 +41,19 @@ class CotSender(pytak.QueueWorker):
         except Exception as e:
             ic(e)
         finally:
-            ic('notice handled')
+            # ic('notice handled')
             while not self.queue.empty():
                 await asyncio.sleep(1)
 
     async def handle_data(self, event):
-        ic(event)
+        # ic(event)
         try:
             await self.put_queue(event)
         except Exception as e:
             ic(e)
         finally:
-            ic('data in queue')
+            # ic('data in queue')
+            pass
 
 
 @receiver(post_save, sender=AidLocation)
@@ -70,7 +71,7 @@ async def send_cot(instance=None):
     cot_config, cot_queues = await setup_cotqueues(instance)
     cot_queues.add_tasks(set([CotSender(cot_queues.tx_queue, cot_config)]))
     try:
-        ic('queues setup, run the worker')
+        # ic('queues setup, run the worker')
         await cot_queues.run()
     except Exception as e:
         ic(e)

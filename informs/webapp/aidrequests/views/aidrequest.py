@@ -10,7 +10,7 @@ from ..models import AidRequest, FieldOp, AidRequestLog
 from .aid_request_forms import AidRequestCreateForm, AidRequestUpdateForm, AidRequestLogForm
 from .geocode_form import AidLocationForm
 from .getAzureGeocode import getAddressGeocode
-from .maps import staticmap_aid
+from .maps import staticmap_aid, calculate_zoom
 
 from icecream import ic
 
@@ -22,7 +22,9 @@ def has_confirmed_location(aid_request):
     :param aid_request: The AidRequest instance to check.
     :return: True if any location has status 'confirmed', False otherwise.
     """
-    return aid_request.locations.filter(status='confirmed').exists()
+    status = aid_request.locations.filter(status='confirmed').exists()
+    locations = aid_request.locations.filter(status='confirmed')
+    return status, locations
 
 
 def geodist(aid_request):
@@ -76,21 +78,25 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
         self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
         self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
 
-        if has_confirmed_location(self.aid_request):
-            # ic('location confirmed')
+        confirmed_location, locations = has_confirmed_location(self.aid_request)
+        if confirmed_location:
             self.confirmed = True
+            self.aid1_lat = locations.first().latitude
+            self.aid1_lon = locations.first().longitude
+            self.aid1_note = locations.first().note
         else:
-            # ic('no geocoded address')
             self.geocode_results = getAddressGeocode(self.aid_request)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['location_confirmed'] = getattr(self, 'confirmed', False)
         context['field_op'] = self.field_op
         context['aid_request'] = object
         context['locations'] = self.aid_request.locations.all()
         context['logs'] = self.aid_request.logs.all().order_by('-updated_at')
         context['fieldop_lat'] = self.field_op.latitude
         context['fieldop_lon'] = self.field_op.longitude
+
         # show the static map. Current, it runs in every context.
         # should be saved locally and updated as needed
 
@@ -105,6 +111,8 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
                 (self.geocode_results['latitude'], self.geocode_results['longitude']),
                 (self.field_op.latitude, self.field_op.longitude)
                 ).km, 1)
+            zoom = calculate_zoom(distance)
+            # ic(zoom)
             note = (
                 f"{self.geocode_results['found_address']}\n"
                 f"Distance: {distance} km\n"
@@ -125,9 +133,9 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
             context['geocode_form'] = AidLocationForm(initial=initial_data)
             context['aid_lat'] = self.geocode_results['latitude']
             context['aid_lon'] = self.geocode_results['longitude']
-
+            context['distance'] = distance
             staticmap_data = staticmap_aid(
-                width=600, height=300, zoom=10,
+                width=600, height=600, zoom=zoom,
                 fieldop_lat=self.field_op.latitude,
                 fieldop_lon=self.field_op.longitude,
                 aid1_lat=self.geocode_results['latitude'],
@@ -135,8 +143,26 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
                 )
             image_data = base64.b64encode(staticmap_data).decode('utf-8')
             context['map_image'] = f"data:image/png;base64,{image_data}"
-
-        context['location_confirmed'] = getattr(self, 'confirmed', False)
+        else:
+            distance = round(geodesic(
+                (self.aid1_lat, self.aid1_lon),
+                (self.field_op.latitude, self.field_op.longitude)
+                ).km, 1)
+            zoom = calculate_zoom(distance)
+            # ic(zoom)
+            context['distance'] = distance
+            staticmap_data = staticmap_aid(
+                width=600, height=600, zoom=zoom,
+                fieldop_lat=self.field_op.latitude,
+                fieldop_lon=self.field_op.longitude,
+                aid1_lat=self.aid1_lat,
+                aid1_lon=self.aid1_lon,
+                )
+            image_data = base64.b64encode(staticmap_data).decode('utf-8')
+            context['map_image'] = f"data:image/png;base64,{image_data}"
+            context['aid_lat'] = self.aid1_lat
+            context['aid_lon'] = self.aid1_lon
+            context['note'] = self.aid1_note
 
         return context
 
