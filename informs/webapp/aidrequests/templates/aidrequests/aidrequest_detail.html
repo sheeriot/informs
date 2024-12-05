@@ -19,6 +19,9 @@
                     {{ object.created_at|date:"Y-m-d H:i" }}
                     ({{ object.created_by }})
                 </td>
+                <th class="border border-info bg-transparent m-0 px-1 py-0">
+                    Locations
+                </th>
             </tr>
             <tr>
                 <td class="border border-info bg-transparent m-0 px-1 py-0">
@@ -29,6 +32,13 @@
                     updated:
                     {{ object.updated_at|date:"Y-m-d H:i" }}
                     ({{ object.updated_by }})
+                </td>
+                <td class="border border-info bg-transparent m-0 px-1 py-0">{{ locations|length }}
+                    {% if location_confirmed %}
+                    <span class="text-success">{% bs_icon "check" %} ok</span>
+                {% else %}
+                    <span class="text-danger">{% bs_icon "exclamation" color="red" %} NOT CONFIRMED</span>
+                {% endif %}
                 </td>
 
             </tr>
@@ -127,6 +137,7 @@
                         <div>Field Op: {{fieldop_lat}},{{fieldop_lon}}</div>
                         <div>Aid Location: {{aid_lat}},{{aid_lon}}</div>
                         <hr class="my-1 py-0">
+                        <strong>Geocoded:</strong>
                         <div style="font-weight: normal;"><pre>{{ note }}</pre></div>
                     {% else %}
                         <span class="text-danger">Not Confirmed</span>

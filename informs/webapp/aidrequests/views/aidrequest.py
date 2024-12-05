@@ -118,9 +118,17 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
                 f"{self.geocode_results['found_address']}\n"
                 f"Distance: {distance} km\n"
                 f"Confidence: {self.geocode_results['confidence']}\n"
-                f"Match Type: {self.geocode_results['match_type']}\n"
-                f"Match Codes: {self.geocode_results['match_codes']}\n"
-                )
+            )
+            if self.geocode_results['match_type'] is not None:
+                note += f"Match Type: {self.geocode_results['match_type']}\n"
+            if self.geocode_results['locality'] is not None:
+                note += f"Locality: {self.geocode_results['locality']}\n"
+            if self.geocode_results['neighborhood'] is not None:
+                note += f"Neighborhood: {self.geocode_results['neighborhood']}\n"
+            if self.geocode_results['districts'] is not None:
+                note += f"Districts: {str(self.geocode_results['districts'])}\n"
+            if self.geocode_results['match_codes'] is not None:
+                note += f"Match Codes: {self.geocode_results['match_codes']}\n"
             initial_data = {
                 'field_op': self.field_op.slug,
                 'aid_request': self.aid_request.pk,
@@ -142,8 +150,11 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
                 aid1_lat=self.geocode_results['latitude'],
                 aid1_lon=self.geocode_results['longitude'],
                 )
-            image_data = base64.b64encode(staticmap_data).decode('utf-8')
-            context['map_image'] = f"data:image/png;base64,{image_data}"
+            if staticmap_data is not None:
+                image_data = base64.b64encode(staticmap_data).decode('utf-8')
+                context['map_image'] = f"data:image/png;base64,{image_data}"
+            else:
+                context['map_image'] = None
         else:
             distance = round(geodesic(
                 (self.aid1_lat, self.aid1_lon),
