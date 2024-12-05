@@ -12,7 +12,7 @@ from .geocode_form import AidLocationForm
 from .getAzureGeocode import getAddressGeocode
 from .maps import staticmap_aid, calculate_zoom
 
-from icecream import ic
+# from icecream import ic
 
 
 def has_confirmed_location(aid_request):
@@ -118,9 +118,17 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
                 f"{self.geocode_results['found_address']}\n"
                 f"Distance: {distance} km\n"
                 f"Confidence: {self.geocode_results['confidence']}\n"
-                f"Match Type: {self.geocode_results['match_type']}\n"
-                f"Match Codes: {self.geocode_results['match_codes']}\n"
-                )
+            )
+            if self.geocode_results['match_type'] is not None:
+                note += f"Match Type: {self.geocode_results['match_type']}\n"
+            if self.geocode_results['locality'] is not None:
+                note += f"Locality: {self.geocode_results['locality']}\n"
+            if self.geocode_results['neighborhood'] is not None:
+                note += f"Neighborhood: {self.geocode_results['neighborhood']}\n"
+            if self.geocode_results['districts'] is not None:
+                note += f"Districts: {str(self.geocode_results['districts'])}\n"
+            if self.geocode_results['match_codes'] is not None:
+                note += f"Match Codes: {self.geocode_results['match_codes']}\n"
             initial_data = {
                 'field_op': self.field_op.slug,
                 'aid_request': self.aid_request.pk,

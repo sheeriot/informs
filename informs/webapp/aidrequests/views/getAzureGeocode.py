@@ -22,19 +22,21 @@ def getAddressGeocode(self):
         query_results = maps_search_client.get_geocoding(query=query_address, coordinates=field_op_coords)
 
         if query_results.get('features', False):
-            ic(query_results['features'][0]['properties'])
             results['status'] = "Success"
-            coordinates = query_results['features'][0]['geometry']['coordinates']
+            feature0 = query_results['features'][0]
+            ic(feature0)
+            coordinates = feature0['geometry']['coordinates']
             results['latitude'] = round(coordinates[1], 5)
             results['longitude'] = round(coordinates[0], 5)
             results['features'] = query_results['features']
-
-            results['confidence'] = query_results['features'][0]['properties']['confidence']
-            results['found_address'] = query_results['features'][0]['properties']['address']['formattedAddress']
-            results['locality'] = query_results['features'][0]['properties']['address'].get('locality', None)
-            results['neighborhood'] = query_results['features'][0]['properties']['address'].get('neighborhood', None)
-            results['match_codes'] = query_results['features'][0]['properties'].get('match_codes', None)
-            results['match_type'] = query_results['features'][0]['properties'].get('type', None)
+            results['confidence'] = feature0['properties']['confidence']
+            results['found_address'] = feature0['properties']['address']['formattedAddress']
+            results['locality'] = feature0['properties']['address'].get('locality', None)
+            results['neighborhood'] = feature0['properties']['address'].get('neighborhood', None)
+            results['match_codes'] = feature0['properties'].get('match_codes', None)
+            results['match_type'] = feature0['properties'].get('type', None)
+            districts = feature0['properties']['address'].get('adminDistricts', None)
+            results['districts'] = [district['shortName'] for district in districts][::-1]
             return results
         else:
             results['status'] = "No Matches"

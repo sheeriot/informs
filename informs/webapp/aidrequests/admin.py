@@ -4,8 +4,8 @@ AidRequests Admin
 
 from django.contrib import admin
 from .models import FieldOp, FieldOpNotify, AidRequest, AidRequestLog, AidLocation
-
-# Register your models here.
+from .views.aid_location_forms import AidLocationInline
+from .views.aid_request_forms import AidRequestInline
 
 
 class AidRequestAdmin(admin.ModelAdmin):
@@ -29,6 +29,7 @@ class AidRequestAdmin(admin.ModelAdmin):
         'created_by',
         'updated_by'
         )
+    inlines = [AidLocationInline]
 
     def save_model(self, request, obj, form, change):
         # Set created_by only when creating a new object
@@ -48,6 +49,7 @@ class FieldOpAdmin(admin.ModelAdmin):
         'created_by',
         'updated_by'
         )
+    inlines = [AidRequestInline]
 
     def save_model(self, request, obj, form, change):
         # Set created_by only when creating a new object

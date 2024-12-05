@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib import admin
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Field, Submit, Row, Column, Div, Hidden
 from django.urls import reverse
@@ -283,3 +284,10 @@ class AidRequestLogForm(forms.ModelForm):
             ),
             Submit('submit', button_text, css_class='btn btn-primary')
         )
+
+
+class AidRequestInline(admin.TabularInline):
+    model = AidRequest
+    extra = 0
+    readonly_fields = ('requestor_first_name', 'requestor_last_name', 'street_address')
+    fields = ('status', 'priority', 'requestor_first_name', 'requestor_last_name', 'street_address')
