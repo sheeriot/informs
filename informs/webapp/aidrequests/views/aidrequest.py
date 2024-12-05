@@ -12,7 +12,7 @@ from .geocode_form import AidLocationForm
 from .getAzureGeocode import getAddressGeocode
 from .maps import staticmap_aid, calculate_zoom
 
-# from icecream import ic
+from icecream import ic
 
 
 def has_confirmed_location(aid_request):
@@ -142,8 +142,11 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
                 aid1_lat=self.geocode_results['latitude'],
                 aid1_lon=self.geocode_results['longitude'],
                 )
-            image_data = base64.b64encode(staticmap_data).decode('utf-8')
-            context['map_image'] = f"data:image/png;base64,{image_data}"
+            if staticmap_data is not None:
+                image_data = base64.b64encode(staticmap_data).decode('utf-8')
+                context['map_image'] = f"data:image/png;base64,{image_data}"
+            else:
+                context['map_image'] = None
         else:
             distance = round(geodesic(
                 (self.aid1_lat, self.aid1_lon),

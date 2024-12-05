@@ -31,11 +31,10 @@ def getAddressGeocode(self):
 
             results['confidence'] = query_results['features'][0]['properties']['confidence']
             results['found_address'] = query_results['features'][0]['properties']['address']['formattedAddress']
-            results['locality'] = query_results['features'][0]['properties']['address']['locality']
-            # results['neighborhood'] = query_results['features'][0]['properties']['address']['neighborhood']
-            # results['match_codes'] = query_results['features'][0]['properties']['matchCodes']
+            results['locality'] = query_results['features'][0]['properties']['address'].get('locality', None)
+            results['neighborhood'] = query_results['features'][0]['properties']['address'].get('neighborhood', None)
             results['match_codes'] = query_results['features'][0]['properties'].get('match_codes', None)
-            results['match_type'] = query_results['features'][0]['properties']['type']
+            results['match_type'] = query_results['features'][0]['properties'].get('type', None)
             return results
         else:
             results['status'] = "No Matches"

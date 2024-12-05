@@ -25,14 +25,16 @@ def staticmap_aid(width=600, height=400, zoom=13,
         'pins': pin_instances,
         'path': f'lcFF1493||{fieldop_lon} {fieldop_lat}|{aid1_lon} {aid1_lat}'
     }
+    # ic(params)
     try:
         response = httpx.get(url, params=params)
+        # ic(response)
     except Exception as e:
         ic(f"Error: {e}")
 
     if response.content.startswith(b'\x89PNG'):
-        content_length = response.headers['content-length']
-        content_type = response.headers['content-type']
+        # content_length = response.headers['content-length']
+        # content_type = response.headers['content-type']
         return response.content
     else:
         return None
@@ -43,25 +45,25 @@ def calculate_zoom(distance=0):
         return 14
     elif distance <= 2:
         return 13
-    elif distance <= 4:
+    elif distance <= 5:
         return 12
     elif distance <= 12:
-        return 11  
-    elif distance <= 25:
+        return 11
+    elif distance <= 17:
         return 10
-    elif distance <= 40:
+    elif distance <= 30:
         return 9
-    elif distance <= 100:
+    elif distance <= 80:
         return 8
-    elif distance <= 150:
+    elif distance <= 200:
         return 7
-    elif distance <= 300:
+    elif distance <= 250:
         return 6
-    elif distance <= 600:
+    elif distance <= 550:
         return 5
-    elif distance <= 1000:
+    elif distance <= 1100:
         return 4
-    elif distance <= 2000:
+    elif distance <= 2600:
         return 3
     else:
         return 2
