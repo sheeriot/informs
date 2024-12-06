@@ -20,7 +20,6 @@ def send_aid_request_email(sender, instance, created, **kwargs):
     if created:
         notify_email = instance.field_op.notify.filter(type__startswith='email')
         for notify in notify_email:
-            ic('creating email')
             message = email_creator_html(instance, geocode_results, notify)
             results = ""
             try:

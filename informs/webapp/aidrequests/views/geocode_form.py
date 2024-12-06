@@ -29,7 +29,6 @@ class AidLocationForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         data = kwargs.get('data', None)
         if data:
-            ic('form with data')
             field_vals = data
         else:
             initial = kwargs.get('initial', False)
