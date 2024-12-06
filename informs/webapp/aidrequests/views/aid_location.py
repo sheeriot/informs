@@ -16,7 +16,7 @@ from ..models import FieldOp, AidRequest, AidLocation
 from .geocode_form import AidLocationForm
 # from .getAzureGeocode import getAddressGeocode
 
-from icecream import ic
+# from icecream import ic
 
 
 class AidLocationCreateView(LoginRequiredMixin, CreateView):
