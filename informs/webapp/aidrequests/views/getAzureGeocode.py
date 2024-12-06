@@ -4,7 +4,9 @@ from azure.core.exceptions import HttpResponseError
 
 from django.conf import settings
 
-from icecream import ic
+from geopy.distance import geodesic
+
+# from icecream import ic
 
 
 def getAddressGeocode(self):
@@ -24,7 +26,7 @@ def getAddressGeocode(self):
         if query_results.get('features', False):
             results['status'] = "Success"
             feature0 = query_results['features'][0]
-            ic(feature0)
+            # ic(feature0)
             coordinates = feature0['geometry']['coordinates']
             results['latitude'] = round(coordinates[1], 5)
             results['longitude'] = round(coordinates[0], 5)
@@ -37,6 +39,14 @@ def getAddressGeocode(self):
             results['match_type'] = feature0['properties'].get('type', None)
             districts = feature0['properties']['address'].get('adminDistricts', None)
             results['districts'] = [district['shortName'] for district in districts][::-1]
+
+            distance = round(geodesic(
+                                (self.field_op.latitude, self.field_op.longitude),
+                                (results['latitude'], results['longitude'])
+                                ).km, 1)
+            results['distance'] = distance
+            note = geocode_note(results)
+            results['note'] = note
             return results
         else:
             results['status'] = "No Matches"
@@ -49,3 +59,22 @@ def getAddressGeocode(self):
         results['error_code'] = exception.error.code
         results['error_message'] = exception.error.message
         return results
+
+
+def geocode_note(geocode_results):
+    note = (
+        f"Found: {geocode_results['found_address']}\n"
+        f"Distance: {geocode_results['distance']} km\n"
+        f"Confidence: {geocode_results['confidence']}\n"
+    )
+    if geocode_results['match_type'] is not None:
+        note += f"Match Type: {geocode_results['match_type']}\n"
+    if geocode_results['locality'] is not None:
+        note += f"Locality: {geocode_results['locality']}\n"
+    if geocode_results['neighborhood'] is not None:
+        note += f"Neighborhood: {geocode_results['neighborhood']}\n"
+    if geocode_results['districts'] is not None:
+        note += f"Districts: {str(geocode_results['districts'])}\n"
+    if geocode_results['match_codes'] is not None:
+        note += f"Match Codes: {geocode_results['match_codes']}\n"
+    return note

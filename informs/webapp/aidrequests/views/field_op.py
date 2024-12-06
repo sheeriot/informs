@@ -8,7 +8,7 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from ..models import FieldOp
 from .forms import FieldOpForm
 
-from icecream import ic
+# from icecream import ic
 
 
 # List View for FieldOp
@@ -47,7 +47,7 @@ class FieldOpCreateView(LoginRequiredMixin, CreateView):
 
     def setup(self, request, *args, **kwargs):
         super().setup(request, *args, **kwargs)
-        ic(self, request, args, kwargs)
+        # ic(self, request, args, kwargs)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()

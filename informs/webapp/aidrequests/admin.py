@@ -3,6 +3,8 @@ AidRequests Admin
 """
 
 from django.contrib import admin
+from django.db.models import Count
+
 from .models import FieldOp, FieldOpNotify, AidRequest, AidRequestLog, AidLocation
 from .views.aid_location_forms import AidLocationInline
 from .views.aid_request_forms import AidRequestInline
@@ -42,14 +44,27 @@ class AidRequestAdmin(admin.ModelAdmin):
 
 class FieldOpAdmin(admin.ModelAdmin):
     """fieldops admin"""
-    list_display = ('pk', 'slug', 'name')
+    list_display = ('slug', 'name', 'notify_count', 'latitude', 'longitude')
     readonly_fields = (
+        'latitude',
+        'longitude',
         'created_at',
         'updated_at',
         'created_by',
         'updated_by'
         )
     inlines = [AidRequestInline]
+    # formfield_overrides = {
+    #     models.ManyToManyField: {'widget': CheckboxSelectMultiple},
+    # }
+    filter_vertical = ('notify',)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.annotate(notify_count=Count("notify"))
+
+    def notify_count(self, inst):
+        return inst.notify_count
 
     def save_model(self, request, obj, form, change):
         # Set created_by only when creating a new object

@@ -60,7 +60,7 @@ class CotSender(pytak.QueueWorker):
 def aid_location_post_save(sender, instance, created, **kwargs):
     if created:
         try:
-            ic('created record, send notify')
+            ic('created record, send TAK notify')
             asyncio.run(send_cot(instance))
         except Exception as e:
             ic(e)

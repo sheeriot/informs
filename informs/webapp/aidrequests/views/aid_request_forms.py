@@ -6,7 +6,7 @@ from django.urls import reverse
 
 from ..models import AidRequest, AidRequestLog
 
-# from icecream import ic
+from icecream import ic
 
 
 class AidRequestCreateForm(forms.ModelForm):
@@ -46,19 +46,18 @@ class AidRequestCreateForm(forms.ModelForm):
         widget=forms.CheckboxInput(attrs={"onclick": "differentContact()"})
     )
 
-    def __init__(self, *args, action='create', field_op_pk=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(AidRequestCreateForm, self).__init__(*args, **kwargs)
-        self.action = action
         self.helper = FormHelper()
         self.helper.form_method = 'post'
-        button_text = 'Update' if action == 'update' else 'Create'
         self.fields['contact_methods'].widget.attrs['rows'] = 4
         self.fields['medical_needs'].widget.attrs['rows'] = 4
         self.fields['supplies_needed'].widget.attrs['rows'] = 4
         self.fields['welfare_check_info'].widget.attrs['rows'] = 4
         self.fields['additional_info'].widget.attrs['rows'] = 4
+
         self.helper.layout = Layout(
-            Hidden('field_op', field_op_pk),
+            Hidden('field_op', kwargs['initial']['field_op']),
             Fieldset(
                 'Requestor Details',
                 Row(
@@ -123,7 +122,7 @@ class AidRequestCreateForm(forms.ModelForm):
                 'additional_info',
                 css_class="fieldset-box p-3 border rounded"
             ),
-            Submit('submit', button_text, css_class='btn btn-primary')
+            Submit('submit', 'Create Aid Request', css_class='btn btn-primary')
         )
 
 

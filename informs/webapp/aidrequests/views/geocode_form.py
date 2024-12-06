@@ -34,9 +34,8 @@ class AidLocationForm(forms.ModelForm):
         else:
             initial = kwargs.get('initial', False)
             if initial:
-                ic('form with initial data')
                 field_vals = initial
-        ic(field_vals)
+        # ic(field_vals)
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         self.helper.form_action = reverse(
