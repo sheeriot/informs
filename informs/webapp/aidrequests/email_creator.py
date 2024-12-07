@@ -99,7 +99,7 @@ def email_creator_html(aid_request, geocode_results, notify, map_file):
         </tr>
         <tr>
             <td style="font-weight: bold;">
-                <a href="{reverse('aidrequest_detail',
+                <a href="{protocol}://{domain}{reverse('aidrequest_detail',
                                   kwargs={
                                     'pk': aid_request.pk,
                                     'field_op': aid_request.field_op.slug
@@ -161,13 +161,14 @@ def email_creator_html(aid_request, geocode_results, notify, map_file):
             </strong>
         </div>
         <div>
-            <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: auto;">
+            <table border="1" cellpadding="5" cellspacing="0"
+                   style="border-collapse: collapse; width: auto;">
                 <tr>
                     <th>Aid Location</th>
                     <th>Map</th>
                 </tr>
                 <tr>
-                    <td>
+                    <td style="vertical-align:text-top">
                         <div>Provided Address:</div>
                         <div style="font-weight: bold; margin-left: 10px;">
                             <div>{aid_request.street_address}</div>
