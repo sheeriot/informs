@@ -1,9 +1,6 @@
 from django.conf import settings
 from django.urls import reverse
-
-import base64
-
-from .views.maps import staticmap_aid, calculate_zoom
+from django.contrib.sites.models import Site
 
 # from icecream import ic
 
@@ -13,7 +10,7 @@ def email_connectstring():
     return connect_string
 
 
-def email_creator_plain(aid_request, geocode_results, notify):
+def email_creator_plain(aid_request, geocode_results, notify, map_file):
     subject = (
         f"SOA:{aid_request.field_op.slug}:"
         f"New Aid Request #{aid_request.pk}:"
@@ -79,7 +76,9 @@ def email_creator_plain(aid_request, geocode_results, notify):
     return message
 
 
-def email_creator_html(aid_request, geocode_results, notify):
+def email_creator_html(aid_request, geocode_results, notify, map_file):
+    domain = Site.objects.get_current().domain
+    protocol = 'https'
 
     subject = (
         f"SOA:{aid_request.field_op.slug}:"
@@ -93,18 +92,23 @@ def email_creator_html(aid_request, geocode_results, notify):
     <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: auto;">
         <caption style="text-align: left;"><strong>Aid Summary</strong></caption>
         <tr>
-            <th style="font-weight: normal;">
-                <a href="{reverse('aidrequest_detail',
-                                  kwargs={'pk': aid_request.pk, 'field_op': aid_request.field_op.slug})}">
-                    ID
-                </a>
-            </th>
+            <th style="font-weight: normal;">ID</th>
             <th style="font-weight: normal;">Field Op</th>
             <th style="font-weight: normal;">Aid Type</th>
             <th style="font-weight: normal;">Group Size</th>
         </tr>
         <tr>
-            <td style="font-weight: bold;">{aid_request.pk}</td>
+            <td style="font-weight: bold;">
+                <a href="{reverse('aidrequest_detail',
+                                  kwargs={
+                                    'pk': aid_request.pk,
+                                    'field_op': aid_request.field_op.slug
+                                    }
+                                  )
+                          }">
+                    {aid_request.pk}
+                </a>
+            </td>
             <td style="font-weight: bold;">{aid_request.field_op.name}</td>
             <td style="font-weight: bold;">{aid_request.assistance_type}</td>
             <td style="font-weight: bold;">{aid_request.group_size}</td>
@@ -147,6 +151,7 @@ def email_creator_html(aid_request, geocode_results, notify):
     </table>
     """
 
+    map_url = f"{protocol}://{domain}/{map_file}"
     location_html = f"""
         <hr>
         <div>
@@ -157,9 +162,8 @@ def email_creator_html(aid_request, geocode_results, notify):
         </div>
         <div>
             <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: auto;">
-                <caption style="text-align: left;"><strong>Aid Location</strong></caption>
                 <tr>
-                    <th>Location</th>
+                    <th>Aid Location</th>
                     <th>Map</th>
                 </tr>
                 <tr>
@@ -183,7 +187,7 @@ def email_creator_html(aid_request, geocode_results, notify):
                     <td class="col-auto">
                         <div>
                             <div id="map-image">
-                                <img src="map_image" alt="Aid Request - Location Map">
+                                <img src="{map_url}" alt="Aid Request - Preview Map">
                             </div>
                         </div>
                     </td>
@@ -205,30 +209,6 @@ def email_creator_html(aid_request, geocode_results, notify):
 
     html += f"<pre>{additional_info_html}</pre>"
 
-    # ----- Map Time
-    zoom = calculate_zoom(geocode_results['distance'])
-    staticmap_data = staticmap_aid(
-        width=600, height=600, zoom=zoom,
-        fieldop_lat=aid_request.field_op.latitude,
-        fieldop_lon=aid_request.field_op.longitude,
-        aid1_lat=geocode_results['latitude'],
-        aid1_lon=geocode_results['longitude'],
-        )
-
-    if staticmap_data is None:
-        image_data = None
-    else:
-        image_data = base64.b64encode(staticmap_data).decode('utf-8')
-
-    attach1 = {
-        "name": f"AidRequest{aid_request.pk}_GeocodedMap.png",
-        "contentId": "map_image",
-        "contentType": "image/png",
-        "contentInBase64": image_data,
-
-    }
-    attachments = [attach1,]
-
     message = {
         "senderAddress": settings.MAIL_FROM,
         "recipients": {
@@ -238,6 +218,5 @@ def email_creator_html(aid_request, geocode_results, notify):
             "subject": subject,
             "html": html
         },
-        # 'attachments': attachments
     }
     return message

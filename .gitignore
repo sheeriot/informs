@@ -4,4 +4,5 @@
 db.sqlite3
 docker-compose.override.yml
 xfer
+informs/webapp/media/maps/*.png
 

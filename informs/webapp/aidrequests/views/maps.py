@@ -25,16 +25,12 @@ def staticmap_aid(width=600, height=400, zoom=13,
         'pins': pin_instances,
         'path': f'lcFF1493||{fieldop_lon} {fieldop_lat}|{aid1_lon} {aid1_lat}'
     }
-    # ic(params)
     try:
         response = httpx.get(url, params=params)
-        # ic(response)
     except Exception as e:
         ic(f"Error: {e}")
 
     if response.content.startswith(b'\x89PNG'):
-        # content_length = response.headers['content-length']
-        # content_type = response.headers['content-type']
         return response.content
     else:
         return None
