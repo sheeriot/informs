@@ -34,6 +34,8 @@ SERVERNAME2 = os.environ.get('SERVERNAME2')
 
 ALLOWED_HOSTS = ["127.0.0.1", SERVERNAME1, SERVERNAME2]
 
+SITE_ID = 1
+
 CSRF_TRUSTED_ORIGINS = [
     'https://' + SERVERNAME1,
     'https://' + SERVERNAME2,
@@ -45,6 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
+    'django.contrib.sites',
     # 'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
@@ -146,6 +149,9 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static')
 ]
 STATIC_ROOT = '/opt/app/static_files/'
+
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
