@@ -1,5 +1,6 @@
 .venv/
 *.env
+docker-compose.override.yml
 .structurizr
 db.sqlite3
 docker-compose.override.yml

@@ -1,18 +1,24 @@
 django~=5.1
-gunicorn
+
 django_bootstrap_icons
 django-tz-detect
 crispy-bootstrap5
 django-crispy-forms
 django-mathfilters
 django-auditlog
+django-q2
+django-picklefield
+blessed
 
-geopy
+aiohttp
+httpx
+cryptography
+
+gunicorn
 azure-core
 azure-maps-search
 azure-communication-email
+geopy
 pytak
-cryptography
-httpx
 
 icecream
