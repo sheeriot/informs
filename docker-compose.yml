@@ -5,11 +5,13 @@ services:
   informs:
     build:
       context: ./informs
+    image: informs-app
     env_file:
       - informs/env/django.env
     # entrypoint: export static_files, migrate DB, then run "command"
     entrypoint: /opt/app/docker-entrypoint.sh
     command: gunicorn --bind=0.0.0.0:8000 --workers=${WORKERS:-3} informs.wsgi
+    # command: gunicorn --bind 0.0.0.0:8000 informs.asgi:application -w 3 -k uvicorn.workers.UvicornWorker
     restart: unless-stopped
     ports:
      - 8000:8000
@@ -17,6 +19,18 @@ services:
       - informs_staticfiles:/opt/app/static_files
       - local-db:/opt/app/db
       - certs:/opt/app/certs:z
+
+  queues:
+    image: informs-app
+    env_file:
+      - informs/env/django.env
+    # entrypoint: export static_files, migrate DB, then run "command"
+    # entrypoint: /opt/app/docker-entrypoint.sh
+    command: python manage.py qcluster
+    volumes:
+      - informs_staticfiles:/opt/app/static_files
+      - local-db:/opt/app/db
+
 
 volumes:
   local-db:

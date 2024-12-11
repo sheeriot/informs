@@ -4,6 +4,7 @@ from azure.core.exceptions import HttpResponseError
 
 from django.conf import settings
 
+from time import sleep
 from geopy.distance import geodesic
 
 # from icecream import ic
@@ -47,10 +48,8 @@ def getAddressGeocode(self):
             results['distance'] = distance
             note = geocode_note(results)
             results['note'] = note
-            return results
         else:
             results['status'] = "No Matches"
-            return results
 
     except HttpResponseError as exception:
         if exception.error is not None:
@@ -58,7 +57,10 @@ def getAddressGeocode(self):
         results['status'] = "HttpError"
         results['error_code'] = exception.error.code
         results['error_message'] = exception.error.message
-        return results
+
+    # check for blocking
+    sleep(20)
+    return results
 
 
 def geocode_note(geocode_results):

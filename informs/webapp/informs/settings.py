@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_bootstrap_icons',
+    'django_q',
     'auditlog',
     'tz_detect',
     'crispy_forms',
@@ -208,3 +209,13 @@ TAKSERVER_DNS = os.environ.get('TAKSERVER_DNS')
 PYTAK_TLS_CLIENT_CERT = os.environ.get('PYTAK_TLS_CLIENT_CERT')
 PYTAK_TLS_CLIENT_PASSWORD = os.environ.get('PYTAK_TLS_CLIENT_PASSWORD')
 PYTAK_TLS_CLIENT_CAFILE = os.environ.get('PYTAK_TLS_CLIENT_CAFILE')
+
+Q_CLUSTER = {
+    'name': 'informs-queuy',
+    'label': 'queues',
+    'workers': 1,
+    'orm': 'default',
+    'retry': 120,
+    'timeout': 60,
+    'recycle': 500
+}

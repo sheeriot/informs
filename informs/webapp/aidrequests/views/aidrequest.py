@@ -3,16 +3,20 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView, DetailView, CreateView, UpdateView
 
+from django_q import tasks
+
 from geopy.distance import geodesic
 import base64
-
+from time import perf_counter as timer
 from ..models import AidRequest, FieldOp, AidRequestLog
+from ..emailer import aid_request_new_email
 from .aid_request_forms import AidRequestCreateForm, AidRequestUpdateForm, AidRequestLogForm
 from .geocode_form import AidLocationForm
 from .maps import staticmap_aid, calculate_zoom
-from .getAzureGeocode import getAddressGeocode
+# from .getAzureGeocode import getAddressGeocode
+from ..azure_geocode import get_azure_geocode
 
-# from icecream import ic
+from icecream import ic
 
 
 def has_confirmed_location(aid_request):
@@ -36,8 +40,7 @@ def geodist(aid_request):
         geodesic(
             (aid_request.latitude, aid_request.longitude),
             (aid_request.field_op.latitude, aid_request.field_op.longitude)
-            ).km,
-        1)
+            ).km, 1)
 
 
 # List View for AidRequests
@@ -86,7 +89,7 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
             self.aid1_lon = locations.first().longitude
             self.aid1_note = locations.first().note
         else:
-            self.geocode_results = getAddressGeocode(self.aid_request)
+            self.geocode_results = get_azure_geocode(self.aid_request)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -167,6 +170,7 @@ class AidRequestCreateView(CreateView):
     model = AidRequest
     form_class = AidRequestCreateForm
     template_name = 'aidrequests/aidrequest_form.html'
+    # should return to Field Op Home
     success_url = reverse_lazy('home')
 
     def setup(self, request, *args, **kwargs):
@@ -193,16 +197,22 @@ class AidRequestCreateView(CreateView):
         if not self.object.requestor_email and not self.object.requestor_phone:
             form.add_error(None, 'Provide one of phone or email.')
             return self.form_invalid(form)
-
         user = self.request.user
         if user.is_authenticated:
-            form.instance.created_by = user
-            form.instance.updated_by = user
+            self.object.created_by = user
+            self.object.updated_by = user
         else:
-            form.instance.created_by = None
-            form.instance.updated_by = None
-
+            self.object.created_by = None
+            self.object.updated_by = None
         self.object.save()
+
+        # ----- post save starts here ------
+        postsave_start = timer()
+        updated_at_stamp = self.object.updated_at.strftime('%Y%m%d%H%M%S')
+        tasks.async_task(aid_request_new_email, self.object, kwargs={},
+                         task_name=f"AR{self.object.pk}-Saved-{updated_at_stamp}")
+        postsave_time = round((timer() - postsave_start), 2)
+        ic(postsave_time)
         return super().form_valid(form)
 
 
@@ -273,12 +283,11 @@ class AidRequestLogCreateView(LoginRequiredMixin, CreateView):
 
         user = self.request.user
         if user.is_authenticated:
-            form.instance.created_by = user
-            form.instance.updated_by = user
+            self.object.created_by = user
+            self.object.updated_by = user
         else:
-            form.instance.created_by = None
-            form.instance.updated_by = None
-        return super().form_valid(form)
+            self.object.created_by = None
+            self.object.updated_by = None
         self.object.save()
         return super().form_valid(form)
 
