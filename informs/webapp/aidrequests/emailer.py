@@ -48,14 +48,15 @@ def aid_request_new_email(aid_request, **kwargs):
         message = email_creator_html(aid_request, geocode_results, notify, map_file)
         try:
             result = send_email(message)
-            # ic(f'Email Result: {result}')
-            results += f"Email: {notify.name}: Status: {result['status']}, ID: {result['id']}, Error: {result['error']}\n"
+            results += f"Email: {notify.name}: Status: {result['status']}"
+            results += ", ID: {result['id']}, Error: {result['error']}\n"
         except Exception as e:
             ic(f"Error sending email: {e}")
             results += f"Email Error: {e}\n"
 
     if results.endswith('\n'):
         results = results[:-1]
+
     try:
         ic(results)
         aid_request.logs.create(

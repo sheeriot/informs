@@ -209,7 +209,8 @@ class AidRequestCreateView(CreateView):
         # ----- post save starts here ------
         postsave_start = timer()
         updated_at_stamp = self.object.updated_at.strftime('%Y%m%d%H%M%S')
-        tasks.async_task(aid_request_new_email, self.object, kwargs={}, task_name=f"AR{self.object.pk}-Saved-{updated_at_stamp}")
+        tasks.async_task(aid_request_new_email, self.object, kwargs={},
+                         task_name=f"AR{self.object.pk}-Saved-{updated_at_stamp}")
         postsave_time = round((timer() - postsave_start), 2)
         ic(postsave_time)
         return super().form_valid(form)

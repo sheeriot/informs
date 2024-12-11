@@ -7,13 +7,12 @@ from django.conf import settings
 
 # import asyncio
 from geopy.distance import geodesic
-from time import perf_counter as timer
+# from time import perf_counter as timer
 
 from icecream import ic
 
 
 def get_azure_geocode(self):
-    geocode_start = timer()
     query_address = (
         f"{self.street_address} "
         f"{self.city} "
