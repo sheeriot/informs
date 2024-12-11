@@ -49,7 +49,7 @@ def aid_request_new_email(aid_request, **kwargs):
         try:
             result = send_email(message)
             results += f"Email: {notify.name}: Status: {result['status']}"
-            results += ", ID: {result['id']}, Error: {result['error']}\n"
+            results += f", ID: {result['id']}, Error: {result['error']}\n"
         except Exception as e:
             ic(f"Error sending email: {e}")
             results += f"Email Error: {e}\n"
