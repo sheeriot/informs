@@ -7,7 +7,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
-from aidrequests.views.aidrequest import (
+from aidrequests.views.aid_request import (
      AidRequestCreateView,
      AidRequestListView,
      AidRequestUpdateView,
@@ -48,44 +48,44 @@ urlpatterns = [
      path('field_op/<int:pk>/update/', FieldOpUpdateView.as_view(), name='field_op_update'),
      # path('field_op/<int:pk>/delete/', FieldOpDeleteView.as_view(), name='field_op_delete'),
      path('tz_detect/', include('tz_detect.urls')),
-     path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aidrequest_new'),
-     path('<slug:field_op>/aidrequest/', AidRequestCreateView.as_view(), name='aidrequest_create'),
-     path('<slug:field_op>/aidrequest/list/', AidRequestListView.as_view(), name='aidrequest_list'),
+     path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aid_request_new'),
+     path('<slug:field_op>/aid_request/', AidRequestCreateView.as_view(), name='aid_request_create'),
+     path('<slug:field_op>/aid_request/list/', AidRequestListView.as_view(), name='aid_request_list'),
      path(
-          '<slug:field_op>/aidrequest/<int:pk>/update/',
+          '<slug:field_op>/aid_request/<int:pk>/update/',
           AidRequestUpdateView.as_view(),
-          name='aidrequest_update'
+          name='aid_request_update'
           ),
      # path(
-     #      '<slug:field_op>/aidrequest/<int:pk>/delete/',
+     #      '<slug:field_op>/aid_request/<int:pk>/delete/',
      #      AidRequestDeleteView.as_view(),
-     #      name='aidrequest_delete'
+     #      name='aid_request_delete'
      #      ),
      path(
-          '<slug:field_op>/aidrequest/<int:pk>/',
+          '<slug:field_op>/aid_request/<int:pk>/',
           AidRequestDetailView.as_view(),
-          name='aidrequest_detail'
+          name='aid_request_detail'
           ),
      path(
-          '<slug:field_op>/aidrequest/export-csv/',
+          '<slug:field_op>/aid_request/export-csv/',
           AidRequestCsvView.as_view(),
           {'action': 'export_csv'},
-          name='aidrequests_csv'
+          name='aid_requests_csv'
           ),
      path(
-          '<slug:field_op>/aidrequest/<int:pk>/geocode',
+          '<slug:field_op>/aid_request/<int:pk>/geocode',
           AidLocationCreateView.as_view(),
-          name='aidrequest_geocode'
+          name='aid_request_geocode'
           ),
      path(
-          '<slug:field_op>/aidrequest/<int:aid_request>/location/<int:pk>/delete',
+          '<slug:field_op>/aid_request/<int:aid_request>/location/<int:pk>/delete',
           AidLocationDeleteView.as_view(),
           name='aid_location_delete'
           ),
      path(
-          '<slug:field_op>/aidrequest/<int:pk>/addlog',
+          '<slug:field_op>/aid_request/<int:pk>/addlog',
           AidRequestLogCreateView.as_view(),
-          name='aidrequest_addlog'
+          name='aid_request_addlog'
           ),
 ]
 

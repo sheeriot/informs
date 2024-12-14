@@ -24,25 +24,25 @@
         </thead>
 
         <tbody>
-            {% for aidrequest in object_list %}
+            {% for aid_request in object_list %}
             <tr>
                 <td>
                     <div class="d-flex">
-                        <a href="{% url 'aidrequest_detail' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-info btn-sm me-2">
-                            {{ aidrequest.pk }} {% bs_icon "life-preserver" %}
+                        <a href="{% url 'aid_request_detail' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-info btn-sm me-2">
+                            {{ aid_request.pk }} {% bs_icon "life-preserver" %}
                         </a>
                     </div>
                 </td>
-                <td>{{ aidrequest.assistance_type }}</td>
-                <td>{{ aidrequest.priority }}</td>
-                <td>{{ aidrequest.status }}</td>
-                <td>{{ aidrequest.requestor_first_name }} {{ aidrequest.requestor_last_name }}</td>
-                <td>{{ aidrequest.street_address }},{{ aidrequest.state }}</td>
-                <td>{{ aidrequest.created_at|date:"Ymd-Hi" }}</td>
-                <td>{{ aidrequest.updated_at|date:"Ymd-Hi" }}</td>
+                <td>{{ aid_request.assistance_type }}</td>
+                <td>{{ aid_request.priority }}</td>
+                <td>{{ aid_request.status }}</td>
+                <td>{{ aid_request.requestor_first_name }} {{ aid_request.requestor_last_name }}</td>
+                <td>{{ aid_request.street_address }},{{ aid_request.state }}</td>
+                <td>{{ aid_request.created_at|date:"Ymd-Hi" }}</td>
+                <td>{{ aid_request.updated_at|date:"Ymd-Hi" }}</td>
                 <td>
                     <div class="d-flex justify-content-end">
-                        <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm me-2">
+                        <a href="{% url 'aid_request_update' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm me-2">
                             {% bs_icon "pencil" %}
                         </a>
                     </div>
@@ -55,7 +55,7 @@
 <hr>
 <div class="d-flex justify-content-between">
     <div class="me-2">
-        <a href="{% url 'aidrequest_create' field_op=field_op.slug %}">
+        <a href="{% url 'aid_request_create' field_op=field_op.slug %}">
             <button class="btn btn-success p-1">
             {% bs_icon "plus-circle" %}
             Add
@@ -63,7 +63,7 @@
         </a>
     </div>
     <div class="d-flex justify-content-end">
-        <a href="{% url 'aidrequests_csv' field_op=field_op.slug %}">
+        <a href="{% url 'aid_requests_csv' field_op=field_op.slug %}">
             <button class="btn btn-info p-1">
             {% bs_icon "download" %}
             Export

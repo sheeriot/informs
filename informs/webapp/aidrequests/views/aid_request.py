@@ -47,7 +47,7 @@ def geodist(aid_request):
 class AidRequestListView(LoginRequiredMixin, ListView):
     """ list the aid requests"""
     model = AidRequest
-    template_name = 'aidrequests/aidrequest_list.html'
+    template_name = 'aidrequests/aid_request_list.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -60,14 +60,14 @@ class AidRequestListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         field_op_slug = self.kwargs['field_op']
         field_op = get_object_or_404(FieldOp, slug=field_op_slug)
-        aidrequests = AidRequest.objects.filter(field_op_id=field_op.id)
-        return aidrequests
+        aid_requests = AidRequest.objects.filter(field_op_id=field_op.id)
+        return aid_requests
 
 
 # Detail View for AidRequest
 class AidRequestDetailView(LoginRequiredMixin, DetailView):
     model = AidRequest
-    template_name = 'aidrequests/aidrequest_detail.html'
+    template_name = 'aidrequests/aid_request_detail.html'
 
     def setup(self, request, *args, **kwargs):
         """Initialize attributes shared by all view methods."""
@@ -169,7 +169,7 @@ class AidRequestCreateView(CreateView):
     """ Aid Request - Create """
     model = AidRequest
     form_class = AidRequestCreateForm
-    template_name = 'aidrequests/aidrequest_form.html'
+    template_name = 'aidrequests/aid_request_form.html'
     # should return to Field Op Home
     success_url = reverse_lazy('home')
 
@@ -220,15 +220,15 @@ class AidRequestCreateView(CreateView):
 class AidRequestUpdateView(LoginRequiredMixin, UpdateView):
     model = AidRequest
     form_class = AidRequestUpdateForm
-    template_name = 'aidrequests/aidrequest_update.html'
-    # success_url = reverse_lazy('aidrequest_list')
+    template_name = 'aidrequests/aid_request_update.html'
+    # success_url = reverse_lazy('aid_request_list')
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         return kwargs
 
     def get_success_url(self):
-        return reverse_lazy('aidrequest_list', kwargs={'field_op': self.kwargs['field_op']})
+        return reverse_lazy('aid_request_list', kwargs={'field_op': self.kwargs['field_op']})
 
     def get_context_data(self, **kwargs):
         field_op_slug = self.kwargs['field_op']
@@ -262,7 +262,7 @@ class AidRequestLogCreateView(LoginRequiredMixin, CreateView):
     form_class = AidRequestLogForm
 
     def get_success_url(self):
-        return reverse('aidrequest_detail',
+        return reverse('aid_request_detail',
                        kwargs={
                            'field_op': self.field_op.slug,
                            'pk': self.aid_request.pk}

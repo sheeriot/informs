@@ -25,10 +25,10 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
     """
     model = AidRequest
     form_class = AidLocationForm
-    template_name = 'aidrequests/aidrequest_geocode.html'
+    template_name = 'aidrequests/aid_request_geocode.html'
 
     def get_success_url(self):
-        return reverse('aidrequest_detail',
+        return reverse('aid_request_detail',
                        kwargs={'field_op': self.field_op.slug,
                                'pk': self.aid_request.pk}
                        )
@@ -234,7 +234,7 @@ class AidLocationDeleteView(LoginRequiredMixin, DeleteView):
 
     def get_success_url(self):
         return reverse_lazy(
-            'aidrequest_detail',
+            'aid_request_detail',
             kwargs={
                 'field_op': self.field_op.slug,
                 'pk': self.aid_request.pk

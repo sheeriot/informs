@@ -99,7 +99,7 @@ def email_creator_html(aid_request, geocode_results, notify, map_file):
         </tr>
         <tr>
             <td style="font-weight: bold;">
-                <a href="{protocol}://{domain}{reverse('aidrequest_detail',
+                <a href="{protocol}://{domain}{reverse('aid_request_detail',
                                                        kwargs={
                                                             'pk': aid_request.pk,
                                                             'field_op': aid_request.field_op.slug

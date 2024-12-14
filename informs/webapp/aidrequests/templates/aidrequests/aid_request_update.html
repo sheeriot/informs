@@ -3,7 +3,7 @@
 {% load bootstrap_icons %}
 {% block content %}
 
-{% if New %}
+{% if form.action == "create" %}
 <div class='form-header mb-5'>
 <h2>Aid Request: {{ field_op.name }}</h2>
 <div>Evacuation, Resupply, Welfare Check</div>
@@ -32,12 +32,12 @@
 <div class="d-flex justify-content-between">
     <div class="d-flex">
         <div class="m-0 p-0">
-            <a href="{% url 'aidrequest_detail' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-secondary btn-sm mx-1 p-1">
+            <a href="{% url 'aid_request_detail' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-secondary btn-sm mx-1 p-1">
                 {% bs_icon "x-circle" %} Cancel
             </a>
         </div>
         <div class="m-0 p-0">
-            <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-info btn-sm mx-1 p-1">
+            <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-info btn-sm mx-1 p-1">
                 {% bs_icon "list" %} List
             </a>
         </div>

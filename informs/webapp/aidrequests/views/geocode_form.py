@@ -23,7 +23,7 @@ class AidLocationForm(forms.ModelForm):
             'status',
             'note',
         )
-        success_url = 'aidrequest_detail'
+        success_url = 'aid_request_detail'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -38,7 +38,7 @@ class AidLocationForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         self.helper.form_action = reverse(
-            'aidrequest_geocode',
+            'aid_request_geocode',
             kwargs={
                 'field_op': field_vals.get('field_op', None),
                 'pk': field_vals.get('aid_request', None)

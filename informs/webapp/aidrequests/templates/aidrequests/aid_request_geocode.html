@@ -19,13 +19,13 @@
                 </tr>
                 <tr>
                     <td class="col-auto">
-                        <a href="{% url 'aidrequest_detail' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-outline-success btn-sm mx-1 p-1">
+                        <a href="{% url 'aid_request_detail' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-outline-success btn-sm mx-1 p-1">
                             {% bs_icon "life-preserver" %} {{ aid_request.pk }}
                         </a>
                     </td>
                     <td class="col-auto">
                         
-                        <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-outline-primary btn-sm mx-1 p-1">
+                        <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-outline-primary btn-sm mx-1 p-1">
                             {% bs_icon "truck" %} {{ field_op.name }}
                         </a>
                     </td>
@@ -85,10 +85,10 @@
             {{ aid_request.street_address }}<br>
             {{ aid_request.city }}, {{ aid_request.state }} {{ aid_request.zip_code }}
             <hr>
-            <a href="{% url 'aidrequest_geocode' pk=aid_request.pk field_op=field_op.slug %}?action=search" class="btn btn-info btn-sm m-1 p-1">
+            <a href="{% url 'aid_request_geocode' pk=aid_request.pk field_op=field_op.slug %}?action=search" class="btn btn-info btn-sm m-1 p-1">
                 {% bs_icon "search" %} Search
             </a>
-            <a href="{% url 'aidrequest_geocode' pk=aid_request.pk field_op=field_op.slug %}?action=geocode" class="btn btn-outline-primary btn-sm m-1 p-1">
+            <a href="{% url 'aid_request_geocode' pk=aid_request.pk field_op=field_op.slug %}?action=geocode" class="btn btn-outline-primary btn-sm m-1 p-1">
                 {% bs_icon "globe2" color="blue" %} Geocodes
             </a>
         </td>

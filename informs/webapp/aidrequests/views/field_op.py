@@ -17,8 +17,8 @@ class FieldOpListView(LoginRequiredMixin, ListView):
     template_name = 'aidrequests/field_op_list.html'
 
     def get_queryset(self):
-        # queryset = FieldOp.objects.annotate(aidrequest_count=Count('aid_requests'))
-        queryset = FieldOp.objects.annotate(aidrequest_count=Count('aid_requests'))
+        # queryset = FieldOp.objects.annotate(aid_request_count=Count('aid_requests'))
+        queryset = FieldOp.objects.annotate(aid_request_count=Count('aid_requests'))
         # ic(queryset)
         return queryset
 
