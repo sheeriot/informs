@@ -81,6 +81,7 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
         # custom setup
         self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
         self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
+        ic(self.aid_request)
 
         confirmed_location, locations = has_confirmed_location(self.aid_request)
         if confirmed_location:
@@ -95,7 +96,8 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context['location_confirmed'] = getattr(self, 'confirmed', False)
         context['field_op'] = self.field_op
-        context['aid_request'] = object
+        context['aid_request'] = self.aid_request
+        ic(context['aid_request'])
         context['locations'] = self.aid_request.locations.all()
         context['logs'] = self.aid_request.logs.all().order_by('-updated_at')
         context['fieldop_lat'] = self.field_op.latitude
