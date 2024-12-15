@@ -9,12 +9,11 @@ from geopy.distance import geodesic
 import base64
 from time import perf_counter as timer
 from ..models import AidRequest, FieldOp, AidRequestLog
-from ..emailer import aid_request_new_email
+from ..tasks import aid_request_postsave
 from .aid_request_forms import AidRequestCreateForm, AidRequestUpdateForm, AidRequestLogForm
 from .geocode_form import AidLocationForm
 from .maps import staticmap_aid, calculate_zoom
-# from .getAzureGeocode import getAddressGeocode
-from ..azure_geocode import get_azure_geocode
+from ..geocoder import get_azure_geocode
 
 from icecream import ic
 
@@ -211,8 +210,9 @@ class AidRequestCreateView(CreateView):
         # ----- post save starts here ------
         postsave_start = timer()
         updated_at_stamp = self.object.updated_at.strftime('%Y%m%d%H%M%S')
-        tasks.async_task(aid_request_new_email, self.object, kwargs={},
-                         task_name=f"AR{self.object.pk}-Saved-{updated_at_stamp}")
+
+        tasks.async_task(aid_request_postsave, self.object, kwargs={},
+                         task_name=f"AR{self.object.pk}-PostSave-{updated_at_stamp}")
         postsave_time = round((timer() - postsave_start), 2)
         ic(postsave_time)
         return super().form_valid(form)

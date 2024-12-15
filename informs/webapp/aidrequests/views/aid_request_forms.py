@@ -6,7 +6,7 @@ from django.urls import reverse
 
 from ..models import AidRequest, AidRequestLog
 
-from icecream import ic
+# from icecream import ic
 
 
 class AidRequestCreateForm(forms.ModelForm):

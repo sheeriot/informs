@@ -6,8 +6,6 @@ from crispy_forms.layout import Layout, Submit, Row, Column, HTML, Div, Hidden
 
 from ..models import AidLocation
 
-from icecream import ic
-
 
 class AidLocationForm(forms.ModelForm):
     """ AidLocation Form """

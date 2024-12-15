@@ -8,6 +8,7 @@ from .timestamped_model import TimeStampedModel
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from auditlog.registry import auditlog
+from informs.utils import takuid_new
 
 
 class FieldOpNotify(TimeStampedModel):
@@ -165,6 +166,7 @@ class AidRequest(TimeStampedModel):
 class AidLocation(TimeStampedModel):
     """Location details for AidRequest"""
     aid_request = models.ForeignKey(AidRequest, on_delete=models.CASCADE, related_name='locations')
+    uid = models.CharField(max_length=36, default=takuid_new, unique=True)
 
     STATUS_CHOICES = [
         ('new', 'New'),
@@ -186,6 +188,13 @@ class AidLocation(TimeStampedModel):
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
     note = models.TextField(blank=True, null=True)
 
+    address_searched = models.CharField(max_length=100, null=True, blank=True)
+    address_found = models.CharField(max_length=100, null=True, blank=True)
+
+    distance = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    map_filename = models.CharField(max_length=100, null=True, blank=True)
+
     created_by = models.ForeignKey(
         User, related_name='aid_locations_created', on_delete=models.SET_NULL, null=True, blank=True
     )
@@ -198,7 +207,7 @@ class AidLocation(TimeStampedModel):
         verbose_name_plural = 'Aid Locations'
 
     def __str__(self):
-        return f"Location ({self.latitude}, {self.longitude}) - {self.status} - {self.source}"
+        return f"Location ({round(self.latitude, 5)}, {round(self.longitude, 5)}) - {self.status} - {self.source}"
 
 
 class AidRequestLog(TimeStampedModel):

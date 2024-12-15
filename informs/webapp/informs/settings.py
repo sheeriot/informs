@@ -203,6 +203,8 @@ MAIL_ENDPOINT = os.environ.get('MAIL_ENDPOINT')
 
 # MAPS
 AZURE_MAPS_KEY = os.environ.get('AZURE_MAPS_KEY')
+AZURE_MAPS_STATIC_URL = 'https://atlas.microsoft.com/map/static'
+MAPS_PATH = 'media/maps'
 
 # TAK Server
 TAKSERVER_DNS = os.environ.get('TAKSERVER_DNS')
