@@ -22,3 +22,5 @@ geopy
 pytak
 
 icecream
+# if dev ?
+django-debug-toolbar

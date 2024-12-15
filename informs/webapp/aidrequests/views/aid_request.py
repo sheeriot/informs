@@ -2,6 +2,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView, DetailView, CreateView, UpdateView
+# from django.db.models import F
 
 from django_q import tasks
 
@@ -16,18 +17,20 @@ from .maps import staticmap_aid, calculate_zoom
 from ..geocoder import get_azure_geocode
 
 from icecream import ic
+from datetime import datetime
 
 
-def has_confirmed_location(aid_request):
+def has_location_status(aid_request, status):
     """
-    Check if any of the aid_request locations has status 'confirmed'.
+    Check if any of the aid_request locations have the matching status.
 
     :param aid_request: The AidRequest instance to check.
-    :return: True if any location has status 'confirmed', False otherwise.
+    :param status: location status you seek
+    :return: found (boolean), and locations list
     """
-    status = aid_request.locations.filter(status='confirmed').exists()
-    locations = aid_request.locations.filter(status='confirmed')
-    return status, locations
+    found = aid_request.locations.filter(status=status).exists()
+    locations = aid_request.locations.filter(status=status)
+    return found, locations
 
 
 def geodist(aid_request):
@@ -48,18 +51,40 @@ class AidRequestListView(LoginRequiredMixin, ListView):
     model = AidRequest
     template_name = 'aidrequests/aid_request_list.html'
 
+    def setup(self, request, *args, **kwargs):
+        now = datetime.now().strftime("%M:%S:%f")
+        ic(f'Begin: {now}')
+        super().setup(request, *args, **kwargs)
+        self.start_time = timer()
+        field_op_slug = self.kwargs['field_op']
+        self.field_op = get_object_or_404(FieldOp, slug=field_op_slug)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        field_op_slug = self.kwargs['field_op']
-        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
-        context['field_op'] = field_op
-        # context['map'] = generate_map(self.get_queryset())
+        context['field_op'] = self.field_op
+        now = datetime.now().strftime("%M:%S:%f")
+        ic(f'Got Context: {now}')
         return context
 
     def get_queryset(self):
+        super().get_queryset()
         field_op_slug = self.kwargs['field_op']
         field_op = get_object_or_404(FieldOp, slug=field_op_slug)
-        aid_requests = AidRequest.objects.filter(field_op_id=field_op.id)
+        aid_requests = AidRequest.objects.only(
+            'assistance_type',
+            'priority',
+            'status',
+            'requestor_first_name',
+            'requestor_last_name',
+            'street_address',
+            'created_at',
+            'updated_at',
+            ).filter(field_op_id=field_op.id)
+        for aid_request in aid_requests:
+            aid_request.url_detail = reverse('aid_request_detail',
+                                             kwargs={'field_op': field_op_slug, 'pk': aid_request.pk})
+            aid_request.url_update = reverse('aid_request_update',
+                                             kwargs={'field_op': field_op_slug, 'pk': aid_request.pk})
         return aid_requests
 
 
@@ -71,32 +96,33 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
     def setup(self, request, *args, **kwargs):
         """Initialize attributes shared by all view methods."""
         super().setup(request, *args, **kwargs)
-        if hasattr(self, "get") and not hasattr(self, "head"):
-            self.head = self.get
-        self.request = request
-        self.args = args
         self.kwargs = kwargs
-
-        # custom setup
         self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
         self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
-        ic(self.aid_request)
 
-        confirmed_location, locations = has_confirmed_location(self.aid_request)
-        if confirmed_location:
+        location_confirmed, locs_confirmed = has_location_status(self.aid_request, 'confirmed')
+        
+        location_new, locs_new = has_location_status(self.aid_request, 'new')
+
+        if location_confirmed:
             self.confirmed = True
-            self.aid1_lat = locations.first().latitude
-            self.aid1_lon = locations.first().longitude
-            self.aid1_note = locations.first().note
+            self.aid1_lat = locs_confirmed.first().latitude
+            self.aid1_lon = locs_confirmed.first().longitude
+            self.aid1_note = locs_confirmed.first().note
+        elif location_new:
+            self.aid1_lat = locs_new.first().latitude
+            self.aid1_lon = locs_new.first().longitude
+            self.aid1_note = locs_new.first().note
         else:
             self.geocode_results = get_azure_geocode(self.aid_request)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['location_confirmed'] = getattr(self, 'confirmed', False)
+        context['location_new'] = getattr(self, 'new', False)
         context['field_op'] = self.field_op
         context['aid_request'] = self.aid_request
-        ic(context['aid_request'])
+
         context['locations'] = self.aid_request.locations.all()
         context['logs'] = self.aid_request.logs.all().order_by('-updated_at')
         context['fieldop_lat'] = self.field_op.latitude
@@ -111,24 +137,25 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
             }
         context['log_form'] = AidRequestLogForm(initial=log_init)
 
+        # Geocoded means no saved Confirmed or New location. Better map it.
         if hasattr(self, 'geocode_results'):
             zoom = calculate_zoom(self.geocode_results['distance'])
-            note = self.geocode_results['note']
 
             initial_data = {
                 'field_op': self.field_op.slug,
                 'aid_request': self.aid_request.pk,
                 'latitude': self.geocode_results['latitude'],
                 'longitude': self.geocode_results['longitude'],
+                'source': self.geocode_results['source'],
+                'note': self.geocode_results['note'],
                 'status': 'confirmed',
-                'source': 'azure_maps',
-                'note': note,
                 }
-
             context['geocode_form'] = AidLocationForm(initial=initial_data)
-            context['aid_lat'] = self.geocode_results['latitude']
-            context['aid_lon'] = self.geocode_results['longitude']
+
+            context['aid_lat'] = round(self.geocode_results['latitude'], 5)
+            context['aid_lon'] = round(self.geocode_results['longitude'], 5)
             context['distance'] = self.geocode_results['distance']
+
             staticmap_data = staticmap_aid(
                 width=600, height=600, zoom=zoom,
                 fieldop_lat=self.field_op.latitude,
@@ -142,25 +169,7 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
             else:
                 context['map_image'] = None
         else:
-            distance = round(geodesic(
-                (self.aid1_lat, self.aid1_lon),
-                (self.field_op.latitude, self.field_op.longitude)
-                ).km, 1)
-            zoom = calculate_zoom(distance)
-            # ic(zoom)
-            context['distance'] = distance
-            staticmap_data = staticmap_aid(
-                width=600, height=600, zoom=zoom,
-                fieldop_lat=self.field_op.latitude,
-                fieldop_lon=self.field_op.longitude,
-                aid1_lat=self.aid1_lat,
-                aid1_lon=self.aid1_lon,
-                )
-            image_data = base64.b64encode(staticmap_data).decode('utf-8')
-            context['map_image'] = f"data:image/png;base64,{image_data}"
-            context['aid_lat'] = self.aid1_lat
-            context['aid_lon'] = self.aid1_lon
-            context['note'] = self.aid1_note
+            pass
 
         return context
 

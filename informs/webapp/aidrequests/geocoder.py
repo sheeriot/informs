@@ -42,7 +42,6 @@ def get_azure_geocode(aid_request):
         # ic(feature0)
         coordinates = feature0['geometry']['coordinates']
         results['latitude'] = Decimal(round(coordinates[1], 5))
-        ic(type(coordinates[1]))
         results['longitude'] = Decimal(round(coordinates[0], 5))
         results['features'] = query_results['features']
         results['confidence'] = feature0['properties']['confidence']
@@ -62,6 +61,7 @@ def get_azure_geocode(aid_request):
 
         note = geocode_note(results)
         results['note'] = note
+        results['source'] = "azure_maps"
 
     else:
         results['status'] = "No Match"

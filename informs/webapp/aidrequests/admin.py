@@ -15,7 +15,7 @@ class AidRequestAdmin(admin.ModelAdmin):
     list_display = (
         'pk', 'field_op', 'assistance_type',
         'requestor_first_name', 'requestor_last_name',
-        'group_size', 'created_by', 'updated_by')
+        'group_size', 'street_address', 'city', 'created_at')
     list_filter = ('field_op', 'assistance_type',)
     search_fields = (
         'requestor_first_name',
