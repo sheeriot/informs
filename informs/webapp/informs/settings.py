@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_bootstrap_icons',
     'django_q',
+    'debug_toolbar',
     'auditlog',
     'tz_detect',
     'crispy_forms',
@@ -67,6 +68,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -203,6 +205,8 @@ MAIL_ENDPOINT = os.environ.get('MAIL_ENDPOINT')
 
 # MAPS
 AZURE_MAPS_KEY = os.environ.get('AZURE_MAPS_KEY')
+AZURE_MAPS_STATIC_URL = 'https://atlas.microsoft.com/map/static'
+MAPS_PATH = 'media/maps'
 
 # TAK Server
 TAKSERVER_DNS = os.environ.get('TAKSERVER_DNS')
@@ -218,4 +222,9 @@ Q_CLUSTER = {
     'retry': 120,
     'timeout': 60,
     'recycle': 500
+}
+
+DEBUG_TOOLBAR_CONFIG = {
+    'SHOW_TOOLBAR_CALLBACK': lambda request: True,  # Always show the toolbar
+    'INTERCEPT_REDIRECTS': False,  # Prevent toolbar from intercepting redirects
 }

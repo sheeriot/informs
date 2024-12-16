@@ -20,7 +20,7 @@ class AidRequestCsvView(View):
         # filter by FieldOp (GroundOp)
         rrslug = kwargs['field_op']
         field_op = FieldOp.objects.get(slug=rrslug)
-        aid_requests = AidRequest.objects.filter(field_op=field_op)
+        aidrequests = AidRequest.objects.filter(field_op=field_op)
 
         # Create the HttpResponse object with the appropriate CSV header.
         response = HttpResponse(content_type='text/csv')
@@ -59,7 +59,7 @@ class AidRequestCsvView(View):
                         )
 
         # Write data rows
-        for obj in aid_requests:
+        for obj in aidrequests:
             writer.writerow([
                              obj.pk,
                              obj.field_op.slug if obj.field_op else None,

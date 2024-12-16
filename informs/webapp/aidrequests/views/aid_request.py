@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy, reverse
@@ -6,29 +7,32 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django_q import tasks
 
 from geopy.distance import geodesic
-import base64
+# import base64
 from time import perf_counter as timer
+
 from ..models import AidRequest, FieldOp, AidRequestLog
-from ..emailer import aid_request_new_email
+from ..tasks import aid_request_postsave
 from .aid_request_forms import AidRequestCreateForm, AidRequestUpdateForm, AidRequestLogForm
-from .geocode_form import AidLocationForm
+from .aid_location_forms import AidLocationStatusForm
+
 from .maps import staticmap_aid, calculate_zoom
-# from .getAzureGeocode import getAddressGeocode
-from ..azure_geocode import get_azure_geocode
+from ..geocoder import get_azure_geocode, geocode_save
 
 from icecream import ic
+from datetime import datetime
 
 
-def has_confirmed_location(aid_request):
+def has_location_status(aid_request, status):
     """
-    Check if any of the aid_request locations has status 'confirmed'.
+    Check if any of the aid_request locations have the matching status.
 
     :param aid_request: The AidRequest instance to check.
-    :return: True if any location has status 'confirmed', False otherwise.
+    :param status: location status you seek
+    :return: found (boolean), and locations list
     """
-    status = aid_request.locations.filter(status='confirmed').exists()
-    locations = aid_request.locations.filter(status='confirmed')
-    return status, locations
+    found = aid_request.locations.filter(status=status).exists()
+    locations = aid_request.locations.filter(status=status)
+    return found, locations
 
 
 def geodist(aid_request):
@@ -47,59 +51,118 @@ def geodist(aid_request):
 class AidRequestListView(LoginRequiredMixin, ListView):
     """ list the aid requests"""
     model = AidRequest
-    template_name = 'aidrequests/aidrequest_list.html'
+    template_name = 'aidrequests/aid_request_list.html'
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.start_time = timer()
+        field_op_slug = self.kwargs['field_op']
+        self.field_op = get_object_or_404(FieldOp, slug=field_op_slug)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        field_op_slug = self.kwargs['field_op']
-        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
-        context['field_op'] = field_op
-        # context['map'] = generate_map(self.get_queryset())
+        context['field_op'] = self.field_op
         return context
 
     def get_queryset(self):
+        super().get_queryset()
         field_op_slug = self.kwargs['field_op']
         field_op = get_object_or_404(FieldOp, slug=field_op_slug)
-        aidrequests = AidRequest.objects.filter(field_op_id=field_op.id)
-        return aidrequests
+        aid_requests = AidRequest.objects.only(
+            'assistance_type',
+            'priority',
+            'status',
+            'requestor_first_name',
+            'requestor_last_name',
+            'street_address',
+            'created_at',
+            'updated_at',
+            ).filter(field_op_id=field_op.id)
+        for aid_request in aid_requests:
+            aid_request.url_detail = reverse('aid_request_detail',
+                                             kwargs={'field_op': field_op_slug, 'pk': aid_request.pk})
+            aid_request.url_update = reverse('aid_request_update',
+                                             kwargs={'field_op': field_op_slug, 'pk': aid_request.pk})
+        return aid_requests
 
 
 # Detail View for AidRequest
 class AidRequestDetailView(LoginRequiredMixin, DetailView):
     model = AidRequest
-    template_name = 'aidrequests/aidrequest_detail.html'
+    template_name = 'aidrequests/aid_request_detail.html'
 
     def setup(self, request, *args, **kwargs):
         """Initialize attributes shared by all view methods."""
         super().setup(request, *args, **kwargs)
-        if hasattr(self, "get") and not hasattr(self, "head"):
-            self.head = self.get
-        self.request = request
-        self.args = args
         self.kwargs = kwargs
-
-        # custom setup
         self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
         self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
 
-        confirmed_location, locations = has_confirmed_location(self.aid_request)
-        if confirmed_location:
-            self.confirmed = True
-            self.aid1_lat = locations.first().latitude
-            self.aid1_lon = locations.first().longitude
-            self.aid1_note = locations.first().note
+        location_confirmed, locs_confirmed = has_location_status(self.aid_request, 'confirmed')
+
+        location_new, locs_new = has_location_status(self.aid_request, 'new')
+
+        if location_confirmed:
+            self.aid_location_confirmed = locs_confirmed.first()
+        elif location_new:
+            self.aid_location_new = locs_new.first()
         else:
-            self.geocode_results = get_azure_geocode(self.aid_request)
+            # not confirmed, not new, better geocode and map it.
+            try:
+                self.geocode_results = get_azure_geocode(self.aid_request)
+            except Exception as e:
+                ic(e)
+            try:
+                self.aid_location_new = geocode_save(self.aid_request, self.geocode_results)
+            except Exception as e:
+                ic(e)
+            zoom = calculate_zoom(self.geocode_results['distance'])
+            # ic(zoom)
+
+            staticmap_data = staticmap_aid(
+                width=600, height=600, zoom=zoom,
+                fieldop_lat=self.aid_request.field_op.latitude,
+                fieldop_lon=self.aid_request.field_op.longitude,
+                aid1_lat=self.geocode_results['latitude'],
+                aid1_lon=self.geocode_results['longitude'],
+                )
+
+            if staticmap_data:
+                timestamp = datetime.now().strftime("%y%m%d%H%M%S")
+                map_filename = f"AR{self.aid_request.pk}-map_{timestamp}.png"
+                map_file = f"{settings.MAPS_PATH}/{map_filename}"
+                with open(map_file, 'wb') as file:
+                    file.write(staticmap_data)
+                try:
+                    self.aid_location_new.map_filename = map_filename
+                    self.aid_location_new.save()
+                except Exception as e:
+                    ic(e)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['location_confirmed'] = getattr(self, 'confirmed', False)
+
         context['field_op'] = self.field_op
-        context['aid_request'] = object
+        context['aid_request'] = self.aid_request
+        if hasattr(self, 'aid_location_confirmed'):
+            context['location_confirmed'] = self.aid_location_confirmed
+            context['map_filename'] = self.aid_location_confirmed.map_filename
+            found_pk = self.aid_location_confirmed.pk
+        elif hasattr(self, 'aid_location_new'):
+            context['location_new'] = self.aid_location_new
+            context['map_filename'] = self.aid_location_new.map_filename
+            found_pk = self.aid_location_new.pk
+
+        context['MAPS_PATH'] = settings.MAPS_PATH
         context['locations'] = self.aid_request.locations.all()
         context['logs'] = self.aid_request.logs.all().order_by('-updated_at')
-        context['fieldop_lat'] = self.field_op.latitude
-        context['fieldop_lon'] = self.field_op.longitude
+        aid_location_status_init = {
+            'field_op': self.field_op.slug,
+            'aid_request': self.aid_request.pk,
+            'pk': found_pk,
+        }
+        aid_location_status_form = AidLocationStatusForm(initial=aid_location_status_init)
+        context['aid_location_status_form'] = aid_location_status_form
 
         # show the static map. Current, it runs in every context.
         # should be saved locally and updated as needed
@@ -110,57 +173,6 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
             }
         context['log_form'] = AidRequestLogForm(initial=log_init)
 
-        if hasattr(self, 'geocode_results'):
-            zoom = calculate_zoom(self.geocode_results['distance'])
-            note = self.geocode_results['note']
-
-            initial_data = {
-                'field_op': self.field_op.slug,
-                'aid_request': self.aid_request.pk,
-                'latitude': self.geocode_results['latitude'],
-                'longitude': self.geocode_results['longitude'],
-                'status': 'confirmed',
-                'source': 'azure_maps',
-                'note': note,
-                }
-
-            context['geocode_form'] = AidLocationForm(initial=initial_data)
-            context['aid_lat'] = self.geocode_results['latitude']
-            context['aid_lon'] = self.geocode_results['longitude']
-            context['distance'] = self.geocode_results['distance']
-            staticmap_data = staticmap_aid(
-                width=600, height=600, zoom=zoom,
-                fieldop_lat=self.field_op.latitude,
-                fieldop_lon=self.field_op.longitude,
-                aid1_lat=self.geocode_results['latitude'],
-                aid1_lon=self.geocode_results['longitude'],
-                )
-            if staticmap_data is not None:
-                image_data = base64.b64encode(staticmap_data).decode('utf-8')
-                context['map_image'] = f"data:image/png;base64,{image_data}"
-            else:
-                context['map_image'] = None
-        else:
-            distance = round(geodesic(
-                (self.aid1_lat, self.aid1_lon),
-                (self.field_op.latitude, self.field_op.longitude)
-                ).km, 1)
-            zoom = calculate_zoom(distance)
-            # ic(zoom)
-            context['distance'] = distance
-            staticmap_data = staticmap_aid(
-                width=600, height=600, zoom=zoom,
-                fieldop_lat=self.field_op.latitude,
-                fieldop_lon=self.field_op.longitude,
-                aid1_lat=self.aid1_lat,
-                aid1_lon=self.aid1_lon,
-                )
-            image_data = base64.b64encode(staticmap_data).decode('utf-8')
-            context['map_image'] = f"data:image/png;base64,{image_data}"
-            context['aid_lat'] = self.aid1_lat
-            context['aid_lon'] = self.aid1_lon
-            context['note'] = self.aid1_note
-
         return context
 
 
@@ -169,7 +181,7 @@ class AidRequestCreateView(CreateView):
     """ Aid Request - Create """
     model = AidRequest
     form_class = AidRequestCreateForm
-    template_name = 'aidrequests/aidrequest_form.html'
+    template_name = 'aidrequests/aid_request_form.html'
     # should return to Field Op Home
     success_url = reverse_lazy('home')
 
@@ -207,12 +219,11 @@ class AidRequestCreateView(CreateView):
         self.object.save()
 
         # ----- post save starts here ------
-        postsave_start = timer()
         updated_at_stamp = self.object.updated_at.strftime('%Y%m%d%H%M%S')
-        tasks.async_task(aid_request_new_email, self.object, kwargs={},
-                         task_name=f"AR{self.object.pk}-Saved-{updated_at_stamp}")
-        postsave_time = round((timer() - postsave_start), 2)
-        ic(postsave_time)
+
+        tasks.async_task(aid_request_postsave, self.object, kwargs={},
+                         task_name=f"AR{self.object.pk}-PostSave-{updated_at_stamp}")
+
         return super().form_valid(form)
 
 
@@ -220,15 +231,15 @@ class AidRequestCreateView(CreateView):
 class AidRequestUpdateView(LoginRequiredMixin, UpdateView):
     model = AidRequest
     form_class = AidRequestUpdateForm
-    template_name = 'aidrequests/aidrequest_update.html'
-    # success_url = reverse_lazy('aidrequest_list')
+    template_name = 'aidrequests/aid_request_update.html'
+    # success_url = reverse_lazy('aid_request_list')
 
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        return kwargs
+    # def get_form_kwargs(self):
+    #     kwargs = super().get_form_kwargs()
+    #     return kwargs
 
     def get_success_url(self):
-        return reverse_lazy('aidrequest_list', kwargs={'field_op': self.kwargs['field_op']})
+        return reverse_lazy('aid_request_list', kwargs={'field_op': self.kwargs['field_op']})
 
     def get_context_data(self, **kwargs):
         field_op_slug = self.kwargs['field_op']
@@ -262,7 +273,7 @@ class AidRequestLogCreateView(LoginRequiredMixin, CreateView):
     form_class = AidRequestLogForm
 
     def get_success_url(self):
-        return reverse('aidrequest_detail',
+        return reverse('aid_request_detail',
                        kwargs={
                            'field_op': self.field_op.slug,
                            'pk': self.aid_request.pk}

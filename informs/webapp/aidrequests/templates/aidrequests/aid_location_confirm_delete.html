@@ -38,7 +38,7 @@
     <a href="#" onclick="this.closest('form').submit(); return false;" style="color: white; text-decoration: none;" class="btn btn-danger">
         {% bs_icon "trash" %} Delete
     </a>
-    <a href="{% url 'aidrequest_detail' field_op=field_op.slug pk=aid_request.pk %}" class="btn btn-secondary">
+    <a href="{% url 'aid_request_detail' field_op=field_op.slug pk=aid_request.pk %}" class="btn btn-secondary">
         {% bs_icon "x-circle" %} Cancel
     </a>
 </form>

@@ -73,7 +73,7 @@
                   </li>
                   {% for fieldop in fieldops_active %}
                     <li>
-                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'aidrequest_list' field_op=fieldop.slug %}'">
+                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'aid_request_list' field_op=fieldop.slug %}'">
                           {% bs_icon 'life-preserver' %} {{ fieldop.name }} - Aid Requests
                         </button>
                     </li>

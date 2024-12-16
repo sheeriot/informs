@@ -6,8 +6,6 @@ from crispy_forms.layout import Layout, Submit, Row, Column, HTML, Div, Hidden
 
 from ..models import AidLocation
 
-from icecream import ic
-
 
 class AidLocationForm(forms.ModelForm):
     """ AidLocation Form """
@@ -23,7 +21,7 @@ class AidLocationForm(forms.ModelForm):
             'status',
             'note',
         )
-        success_url = 'aidrequest_detail'
+        success_url = 'aid_request_detail'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -38,7 +36,7 @@ class AidLocationForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         self.helper.form_action = reverse(
-            'aidrequest_geocode',
+            'aid_request_geocode',
             kwargs={
                 'field_op': field_vals.get('field_op', None),
                 'pk': field_vals.get('aid_request', None)
@@ -49,8 +47,8 @@ class AidLocationForm(forms.ModelForm):
         self.helper.layout = Layout(
             Hidden('field_op', field_vals.get('field_op', False)),
             Hidden('aid_request', field_vals.get('aid_request', False)),
-            Hidden('latitude', field_vals.get('latitude', False)),
-            Hidden('longitude', field_vals.get('longitude', False)),
+            Hidden('latitude', round(float(field_vals.get('latitude', False)), 5)),
+            Hidden('longitude', round(float(field_vals.get('longitude', False)), 5)),
             Hidden('source', field_vals.get('source', False)),
             Hidden('status', field_vals.get('status', False)),
             Hidden('note', field_vals.get('note', False)),
@@ -58,8 +56,8 @@ class AidLocationForm(forms.ModelForm):
                 Column(
                     Div(
                         HTML(
-                            f"latitude,longitude<br><strong>{field_vals.get('latitude', None)},"
-                            f"{field_vals.get('longitude', None)}</strong>"
+                            f"latitude,longitude<br><strong>{round(float(field_vals.get('latitude', None)), 5)},"
+                            f"{round(float(field_vals.get('longitude', None)), 5)}</strong>"
                         ),
                     ),
                     Div(

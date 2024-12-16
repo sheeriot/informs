@@ -10,70 +10,70 @@ def email_connectstring():
     return connect_string
 
 
-def email_creator_plain(aid_request, geocode_results, notify, map_file):
-    subject = (
-        f"SOA:{aid_request.field_op.slug}:"
-        f"New Aid Request #{aid_request.pk}:"
-        f"{aid_request.assistance_type}:"
-        f"{aid_request.requestor_first_name} {aid_request.requestor_last_name}"
-    )
-    message_body = (
-        f"SOA Notification - {aid_request.field_op.name}\n"
-        "------------------------------------------\n"
-        f"A new aid request has been created with the following details:\n\n"
-        f"Assistance Type: {aid_request.assistance_type}, Group Size: {aid_request.group_size}\n"
-        f"Requestor: {aid_request.requestor_first_name} {aid_request.requestor_last_name}\n"
-        f"Email: {aid_request.requestor_email}\n"
-        f"Phone: {aid_request.requestor_phone}\n"
-    )
-    if aid_request.contact_methods:
-        message_body += f"Preferred Contact Methods: {', '.join(aid_request.contact_methods)}\n"
-    if aid_request.assistance_first_name or aid_request.assistance_last_name:
-        message_body += "Assistance Contact Provided\n"
-        message_body += f"Assistance Contact: {aid_request.assistance_first_name} {aid_request.assistance_last_name}\n"
-    if aid_request.assistance_phone:
-        message_body += f"Assistance Phone: {aid_request.assistance_phone}\n"
-    if aid_request.assistance_email:
-        message_body += f"Assistance Email: {aid_request.assistance_email}\n"
+# def email_creator_plain(aid_request, geocode_results, notify, map_file):
+#     subject = (
+#         f"SOA:{aid_request.field_op.slug}:"
+#         f"New Aid Request #{aid_request.pk}:"
+#         f"{aid_request.assistance_type}:"
+#         f"{aid_request.requestor_first_name} {aid_request.requestor_last_name}"
+#     )
+#     message_body = (
+#         f"SOA Notification - {aid_request.field_op.name}\n"
+#         "------------------------------------------\n"
+#         f"A new aid request has been created with the following details:\n\n"
+#         f"Assistance Type: {aid_request.assistance_type}, Group Size: {aid_request.group_size}\n"
+#         f"Requestor: {aid_request.requestor_first_name} {aid_request.requestor_last_name}\n"
+#         f"Email: {aid_request.requestor_email}\n"
+#         f"Phone: {aid_request.requestor_phone}\n"
+#     )
+#     if aid_request.contact_methods:
+#         message_body += f"Preferred Contact Methods: {', '.join(aid_request.contact_methods)}\n"
+#     if aid_request.assistance_first_name or aid_request.assistance_last_name:
+#         message_body += "Assistance Contact Provided\n"
+#         message_body += f"Assistance Contact: {aid_request.assistance_first_name} {aid_request.assistance_last_name}\n"
+#     if aid_request.assistance_phone:
+#         message_body += f"Assistance Phone: {aid_request.assistance_phone}\n"
+#     if aid_request.assistance_email:
+#         message_body += f"Assistance Email: {aid_request.assistance_email}\n"
 
-    message_body += (
-        f"Description: {aid_request.assistance_description}\n"
-        f"\nLocation:\n"
-        f"{aid_request.street_address}\n"
-        f"{aid_request.city}, {aid_request.state}, {aid_request.zip_code}, {aid_request.country}\n"
-    )
+#     message_body += (
+#         f"Description: {aid_request.assistance_description}\n"
+#         f"\nLocation:\n"
+#         f"{aid_request.street_address}\n"
+#         f"{aid_request.city}, {aid_request.state}, {aid_request.zip_code}, {aid_request.country}\n"
+#     )
 
-    message_body += "-------- Additional Info ---------\n"
-    if aid_request.medical_needs:
-        message_body += f"Medical Needs: {aid_request.medical_needs}\n"
-    if aid_request.supplies_needed:
-        message_body += f"Supplies Info: {aid_request.supplies_needed}\n"
-    if aid_request.welfare_check_info:
-        message_body += f"Welfare Check Info: {aid_request.welfare_check_info}\n"
-    if aid_request.additional_info:
-        message_body += f"Additional Info: {aid_request.additional_info}\n"
+#     message_body += "-------- Additional Info ---------\n"
+#     if aid_request.medical_needs:
+#         message_body += f"Medical Needs: {aid_request.medical_needs}\n"
+#     if aid_request.supplies_needed:
+#         message_body += f"Supplies Info: {aid_request.supplies_needed}\n"
+#     if aid_request.welfare_check_info:
+#         message_body += f"Welfare Check Info: {aid_request.welfare_check_info}\n"
+#     if aid_request.additional_info:
+#         message_body += f"Additional Info: {aid_request.additional_info}\n"
 
-    message_body += "-------- Geocoded Location ---------\n"
+#     message_body += "-------- Geocoded Location ---------\n"
 
-    if geocode_results['status'] == "Success":
-        note = geocode_results('note')
-        message_body += (
-            f"Latitude: {geocode_results['latitude']}\n"
-            f"Longitude: {geocode_results['longitude']}\n"
-            f"Distance: {geocode_results['distance']} km\n"
-            f"Note: {note}\n"
-        )
-    message = {
-        "senderAddress": settings.MAIL_FROM,
-        "recipients": {
-            "to": [{"address": notify.email}]
-         },
-        'content': {
-            "subject": subject,
-            "plainText": message_body
-         }
-     }
-    return message
+#     if geocode_results['status'] == "Success":
+#         note = geocode_results('note')
+#         message_body += (
+#             f"Latitude: {round(geocode_results['latitude'], 5)}\n"
+#             f"Longitude: {round(geocode_results['longitude'], 5)}\n"
+#             f"Distance: {geocode_results['distance']} km\n"
+#             f"Note: {note}\n"
+#         )
+#     message = {
+#         "senderAddress": settings.MAIL_FROM,
+#         "recipients": {
+#             "to": [{"address": notify.email}]
+#          },
+#         'content': {
+#             "subject": subject,
+#             "plainText": message_body
+#          }
+#      }
+#     return message
 
 
 def email_creator_html(aid_request, geocode_results, notify, map_file):
@@ -99,7 +99,7 @@ def email_creator_html(aid_request, geocode_results, notify, map_file):
         </tr>
         <tr>
             <td style="font-weight: bold;">
-                <a href="{protocol}://{domain}{reverse('aidrequest_detail',
+                <a href="{protocol}://{domain}{reverse('aid_request_detail',
                                                        kwargs={
                                                             'pk': aid_request.pk,
                                                             'field_op': aid_request.field_op.slug
@@ -178,7 +178,7 @@ def email_creator_html(aid_request, geocode_results, notify, map_file):
                         <hr class="my-1 py-0">
                         Geocoded:
                         <div style="font-weight: bold; margin-left: 10px;">
-                            <div>{geocode_results['latitude']},{geocode_results['longitude']}</div>
+                            <div>{round(geocode_results['latitude'], 5)},{round(geocode_results['longitude'], 5)}</div>
                             <div>
                                 <pre style="font-weight: normal;">{geocode_results['note']}</pre>
                             </div>

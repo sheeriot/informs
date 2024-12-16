@@ -15,7 +15,7 @@ class AidRequestAdmin(admin.ModelAdmin):
     list_display = (
         'pk', 'field_op', 'assistance_type',
         'requestor_first_name', 'requestor_last_name',
-        'group_size', 'created_by', 'updated_by')
+        'group_size', 'street_address', 'city', 'created_at')
     list_filter = ('field_op', 'assistance_type',)
     search_fields = (
         'requestor_first_name',
@@ -77,17 +77,19 @@ class FieldOpAdmin(admin.ModelAdmin):
 
 class AidLocationAdmin(admin.ModelAdmin):
     """AidLocation admin"""
-    list_display = ('aid_request', 'status', 'source', 'latitude', 'longitude', 'created_at')
+    list_display = ('aid_request', 'status', 'source', 'latitude', 'longitude', 'created_at', 'uid')
     list_filter = ('aid_request',)
     readonly_fields = (
         'aid_request',
-        'latitude',
-        'longitude',
-        'source',
         'created_at',
         'updated_at',
         'created_by',
-        'updated_by'
+        'updated_by',
+        'uid',
+        'address_searched',
+        'address_found',
+        'map_filename',
+        'distance'
         )
 
     def save_model(self, request, obj, form, change):

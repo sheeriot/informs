@@ -43,13 +43,13 @@
         <a href="{% url 'field_op_update' pk=object.pk %}" class="btn btn-warning btn-sm mx-1 p-1">
             {% bs_icon "pencil" %} Edit
         </a>
-        <a href="https://google.com/maps/{{ object.latitude }},{{ object.longitude }}/@{{ object.latitude }},{{ object.longitude }},13z" target="_blank" class="btn btn-primary btn-sm">
+        <!-- <a href="https://google.com/maps/{{ object.latitude }},{{ object.longitude }}/@{{ object.latitude }},{{ object.longitude }},13z" target="_blank" class="btn btn-primary btn-sm">
         {% bs_icon "geo-alt" %} Google Maps
-        </a>
+        </a> -->
     </div>
 </div>
 <hr>
-<div class="mt-3"></div>
+<div class="mt-3">
     <h3>Notify Destinations</h3>
     <table class="table table-border table-success font-monospace border border-1 m-0 p-0 w-auto">
         <caption>Note: sms not yet implemented</caption>
@@ -83,7 +83,7 @@
     <a href="{% url 'field_op_list' %}" class="btn btn-outline-info mx-2">
         {% bs_icon "truck" %} {% bs_icon "truck" %} Field Op List
     </a>
-    <a href="{% url 'aidrequest_list' field_op=object.slug %}" class="btn btn-outline-success mx-2">
+    <a href="{% url 'aid_request_list' field_op=object.slug %}" class="btn btn-outline-success mx-2">
         {% bs_icon "life-preserver" %} Aid Request List ({{ aid_request_count }})
     </a>
 </div>

@@ -35,9 +35,9 @@
                 </td>
                 <td class="border border-info bg-transparent m-0 px-1 py-0">{{ locations|length }}
                     {% if location_confirmed %}
-                    <span class="text-success">{% bs_icon "check" %} ok</span>
+                    <span class="text-success"><i class="bi bi-check"></i> ok</span>
                 {% else %}
-                    <span class="text-danger">{% bs_icon "exclamation" color="red" %} NOT CONFIRMED</span>
+                    <span class="text-danger">{><i class="bi bi-exclamation"></i> NOT CONFIRMED</span>
                 {% endif %}
                 </td>
 
@@ -59,13 +59,13 @@
                 </tr>
                 <tr>
                     <td class="col-auto">
-                        <a href="{% url 'aidrequest_update' pk=aidrequest.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
-                            {% bs_icon "pencil" %} {{ object.pk }}
+                        <a href="{% url 'aid_request_update' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
+                            <i class="bi bi-pencil"></i> {{ object.pk }}
                         </a>
                     </td>
                     <td class="col-auto">                     
-                        <a href="{% url 'aidrequest_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm mx-1 p-1">
-                            {% bs_icon "truck" %} {{ field_op.name }}
+                        <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm mx-1 p-1">
+                            <i class="bi bi-truck"></i> {{ field_op.name }}
                         </a>
                     </td>
                     <td class="col-auto">{{ object.get_assistance_type_display }}</td>
@@ -118,11 +118,11 @@
             <caption>Aid Location</caption>
             <tr>
                 <th class="col-auto">Address Provided</th>
-                {% if not location_confirmed %}
+                {% if geocode_results %}
                     <th class="col-auto">Geocoder</th>
                 {% endif %}
-                {% if map_image %}
-                    <th class="col-auto">Azure Map</th>
+                {% if map_filename %}
+                    <th class="col-auto">Location Map</th>
                 {% endif %}
             </tr>
             <tr>
@@ -132,32 +132,34 @@
                     <hr class="my-1 py-0">
                     Status:<br>
                     {% if location_confirmed %}
-                        <span class="text-success">{% bs_icon "check" %}Confirmed</span>
+                        <span class="text-success"><i class="bi bi-check"></i>Confirmed</span>
                         <hr class="my-1 py-0">
-                        <div>Field Op: {{fieldop_lat}},{{fieldop_lon}}</div>
-                        <div>Aid Location: {{aid_lat}},{{aid_lon}}</div>
+                        <div>Field Op: {{ field_op.latitude }},{{ field_op.longitude }}</div>
+                        <div>Aid Location: {{ location_confirmed.latitude }},{{ location_confirmed.longitude }}</div>
+                        <hr class="my-1 py-0">
+                        <strong>Location Note:</strong>
+                        <div style="font-weight: normal;"><pre>{{ location_confirmed.note }}</pre></div>
+                    {% elif location_new %}
+                        <span class="text-info"><i class="bi bi-compass"></i> New</span>
+                        <hr class="my-1 py-0">
+                        <div>Field Op: {{ field_op.latitude }},{{ field_op.longitude }}</div>
+                        <div>Aid Location: {{ location_new.latitude }},{{ location_new.longitude }}</div>
                         <hr class="my-1 py-0">
                         <strong>Geocoded:</strong>
-                        <div style="font-weight: normal;"><pre>{{ note }}</pre></div>
+                        <div style="font-weight: normal;"><pre>{{ location_new.note }}</pre></div>
+                        {% crispy aid_location_status_form %}
                     {% else %}
-                        <span class="text-danger">Not Confirmed</span>
+                        <span class="text-danger">No Confirmed or new Location</span>
                     {% endif %}
                 </td>
-                {% if not location_confirmed %}
-                    <td>
-                        {% if geocode_form %}
-                            {% crispy geocode_form %}
-                        {% endif %}
-                    </td>
-                {% endif %}
-                {% if map_image %}
-                    <td class="col-auto">
-                        <div>
-                            <div id="map-image">
-                                <img src="{{ map_image }}" alt="Aid Request - Location Map">
-                            </div>
+                {% if map_filename %}
+                <td class="col-auto">
+                    <div>
+                        <div id="map-image">
+                            <img src="/{{ MAPS_PATH }}/{{ map_filename }}" alt="Aid Request - Location Map">
                         </div>
-                    </td>
+                    </div>
+                </td>
                 {% endif %}
             </tr>
         </table>
@@ -182,7 +184,7 @@
                         </div>
                         <a href="https://google.com/maps/place/{{ location.latitude }},{{ location.longitude }}/@{{ location.latitude }},{{ location.longitude }},13z"
                                                             target="_blank" class="btn btn-outline-success btn-sm">
-                            {% bs_icon "globe2" %}
+                            <i class="bi bi-globe2"></i>
                         </a>
                     </div>
                     <div>
@@ -194,7 +196,7 @@
                     <div class="d-inline-flex border bg-warning-subtle border-warning border-2 rounded align-items-center p-1">
                         <small class="me-2">{{ location.source }}</small>
                         <a href="{% url 'aid_location_delete' field_op=field_op.slug aid_request=object.pk pk=location.pk  %}" class="btn btn-danger btn-sm w-auto">
-                            {% bs_icon "trash" %}
+                            <i class="bi bi-trash"></i>
                         </a>
                     </div>
                 </td>
@@ -268,9 +270,9 @@
         <td class="col-auto">{{ object.updated_at|date:"Y-m-d H:i" }}</td>
         <td class="col-auto">{{ locations|length }}
             {% if location_confirmed %}
-            <span class="text-success">{% bs_icon "check" %} ok</span>
+            <span class="text-success"><i class="bi bi-check color="green""></i> ok</span>
         {% else %}
-            <span class="text-danger">{% bs_icon "exclamation" color="red" %} NOT CONFIRMED</span>
+            <span class="text-danger"><i class="bi bi-exclamation" color="red"></i>NOT CONFIRMED</span>
         {% endif %}
         </td>
     </tr>

@@ -6,7 +6,7 @@ from django.urls import reverse
 
 from ..models import AidRequest, AidRequestLog
 
-from icecream import ic
+# from icecream import ic
 
 
 class AidRequestCreateForm(forms.ModelForm):
@@ -266,7 +266,7 @@ class AidRequestLogForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         self.helper.form_action = reverse(
-            'aidrequest_addlog',
+            'aid_request_addlog',
             kwargs={
                 'field_op': initial['field_op'],
                 'pk': initial['aid_request']
