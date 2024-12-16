@@ -61,7 +61,7 @@ def calculate_zoom(distance=0):
         return 9
     elif distance <= 120:
         return 8
-    elif distance <= 300:
+    elif distance <= 250:
         return 7
     elif distance <= 550:
         return 6

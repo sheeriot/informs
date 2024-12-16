@@ -54,8 +54,6 @@ class AidRequestListView(LoginRequiredMixin, ListView):
     template_name = 'aidrequests/aid_request_list.html'
 
     def setup(self, request, *args, **kwargs):
-        now = datetime.now().strftime("%M:%S:%f")
-        ic(f'Begin: {now}')
         super().setup(request, *args, **kwargs)
         self.start_time = timer()
         field_op_slug = self.kwargs['field_op']
@@ -64,8 +62,6 @@ class AidRequestListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['field_op'] = self.field_op
-        now = datetime.now().strftime("%M:%S:%f")
-        ic(f'Got Context: {now}')
         return context
 
     def get_queryset(self):
@@ -114,7 +110,6 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
             # not confirmed, not new, better geocode and map it.
             try:
                 self.geocode_results = get_azure_geocode(self.aid_request)
-                ic('geocoded it')
             except Exception as e:
                 ic(e)
             try:
@@ -138,14 +133,11 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
                 map_file = f"{settings.MAPS_PATH}/{map_filename}"
                 with open(map_file, 'wb') as file:
                     file.write(staticmap_data)
-
-                    if file:
-                        ic(f'Map File: {map_file}')
-                    try:
-                        self.aid_location_new.map_filename = map_filename
-                        self.aid_location_new.save()
-                    except Exception as e:
-                        ic(e)
+                try:
+                    self.aid_location_new.map_filename = map_filename
+                    self.aid_location_new.save()
+                except Exception as e:
+                    ic(e)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -161,7 +153,6 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
             context['map_filename'] = self.aid_location_new.map_filename
             found_pk = self.aid_location_new.pk
 
-        ic(context['map_filename'])
         context['MAPS_PATH'] = settings.MAPS_PATH
         context['locations'] = self.aid_request.locations.all()
         context['logs'] = self.aid_request.logs.all().order_by('-updated_at')
@@ -228,13 +219,11 @@ class AidRequestCreateView(CreateView):
         self.object.save()
 
         # ----- post save starts here ------
-        postsave_start = timer()
         updated_at_stamp = self.object.updated_at.strftime('%Y%m%d%H%M%S')
 
         tasks.async_task(aid_request_postsave, self.object, kwargs={},
                          task_name=f"AR{self.object.pk}-PostSave-{updated_at_stamp}")
-        postsave_time = round((timer() - postsave_start), 2)
-        ic(postsave_time)
+
         return super().form_valid(form)
 
 

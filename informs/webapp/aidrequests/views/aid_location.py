@@ -18,8 +18,6 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
     template_name = 'aidrequests/aid_request_geocode.html'
 
     def get_success_url(self):
-        ic(self)
-        ic(vars(self))
         return reverse_lazy('aid_request_detail',
                             kwargs={'field_op': self.field_op.slug,
                                     'pk': self.aid_request.pk}
@@ -28,7 +26,6 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
     def setup(self, request, *args, **kwargs):
         """Initialize attributes shared by all view methods."""
         super().setup(request, *args, **kwargs)
-        ic('setup aidlocation createview')
         self.kwargs = kwargs
         self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
         self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
@@ -43,7 +40,6 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         except Exception as e:
             ic(e)
         self.object.aid_request = self.aid_request
-        ic(self.aid_request)
         user = self.request.user
         if user.is_authenticated:
             form.instance.created_by = user
@@ -55,7 +51,6 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        ic('form_invalid')
         ic(form.errors)
         return self.render_to_response(self.get_context_data(form=form))
 
@@ -92,7 +87,7 @@ class AidLocationStatusUpdateView(LoginRequiredMixin, UpdateView):
     model = AidLocation
     form_class = AidLocationStatusForm
     # template_name = 'aidrequests/aid_location_update.html'
-    context_object_name = 'aid_location'
+    # context_object_name = 'aid_location'
 
     def setup(self, request, *args, **kwargs):
         super().setup(request, *args, **kwargs)
@@ -100,17 +95,34 @@ class AidLocationStatusUpdateView(LoginRequiredMixin, UpdateView):
         self.field_op = self.aid_request.field_op
 
     def get_success_url(self):
-        ic(self)
-        ic(vars(self))
         return reverse_lazy('aid_request_detail',
                             kwargs={'field_op': self.field_op.slug,
                                     'pk': self.aid_request.pk}
                             )
 
     def form_valid(self, form):
+        user = self.request.user
+
         # Check which button was pressed
         if 'confirm' in self.request.POST:
             form.instance.status = 'confirmed'
+            action = f'Location {self.object.pk} - Confirmed by {user}'
         elif 'reject' in self.request.POST:
             form.instance.status = 'rejected'
+            action = f'Location {self.object.pk} - Rejected by {user}'
+        try:
+            self.object = form.save()
+        except Exception as e:
+            ic(e)
+
+        if user.is_authenticated:
+            form.instance.updated_by = user
+        else:
+            form.instance.updated_by = None
+        try:
+            self.aid_request.logs.create(
+                log_entry=f'{action}'
+            )
+        except Exception as e:
+            ic(f"Log Error: {e}")
         return super().form_valid(form)

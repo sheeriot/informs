@@ -37,8 +37,6 @@ def get_azure_geocode(aid_request):
     if features:
         results['status'] = "Success"
         feature0 = query_results['features'][0]
-        ic(len(features))
-        # ic(feature0)
         coordinates = feature0['geometry']['coordinates']
         results['latitude'] = round(coordinates[1], 5)
         results['longitude'] = round(coordinates[0], 5)

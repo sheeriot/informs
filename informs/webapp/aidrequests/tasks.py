@@ -13,7 +13,6 @@ from datetime import datetime
 def aid_request_postsave(aid_request, **kwargs):
     geocode_results = get_azure_geocode(aid_request)
     aid_location = geocode_save(aid_request, geocode_results)
-    ic(aid_location)
     zoom = calculate_zoom(geocode_results['distance'])
     # ic(zoom)
 
@@ -31,12 +30,8 @@ def aid_request_postsave(aid_request, **kwargs):
         map_file = f"{settings.MAPS_PATH}/{map_filename}"
         with open(map_file, 'wb') as file:
             file.write(staticmap_data)
-            ic(file)
-            if file:
-                mapped = True
-                if mapped:
-                    ic(f'Map File: {map_file}')
 
+            if file:
                 try:
                     aid_location.map_filename = map_filename
                     aid_location.save()
@@ -44,7 +39,7 @@ def aid_request_postsave(aid_request, **kwargs):
                     ic(e)
 
     notify_emails = aid_request.field_op.notify.filter(type__startswith='email')
-    ic(notify_emails)
+
     results = ""
 
     for notify in notify_emails:
@@ -61,7 +56,6 @@ def aid_request_postsave(aid_request, **kwargs):
         results = results[:-1]
 
     try:
-        ic(results)
         aid_request.logs.create(
             log_entry=f'{results}'
         )

@@ -24,7 +24,6 @@ class AidLocationStatusForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        ic(kwargs)
         initial = kwargs.get('initial', False)
         self.fields['field_op'] = forms.CharField(widget=forms.HiddenInput())
         self.helper = FormHelper()
