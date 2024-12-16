@@ -191,7 +191,7 @@ class AidLocation(TimeStampedModel):
     address_searched = models.CharField(max_length=100, null=True, blank=True)
     address_found = models.CharField(max_length=100, null=True, blank=True)
 
-    distance = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    distance = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
 
     map_filename = models.CharField(max_length=100, null=True, blank=True)
 

@@ -1,5 +1,6 @@
-from azure.communication.email import EmailClient
 from django.conf import settings
+
+from azure.communication.email import EmailClient
 
 from .email_creator import email_connectstring, email_creator_html
 from .geocoder import get_azure_geocode, geocode_save

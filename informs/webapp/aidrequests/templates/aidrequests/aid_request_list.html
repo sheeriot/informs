@@ -3,8 +3,7 @@
 {% load bootstrap_icons %}
 
 {% block content %}
-{% now "i:s.u" as current_time %}
-<p>Template begins: {{ current_time }}</p>
+
 <div class="container mt-4">
     <h2 class="mb-3">Aid Requests: {{ field_op.name }}
         <a href="{% url 'field_op_detail' pk=field_op.pk %}" class="btn btn-info btn-sm me-2">
@@ -75,6 +74,5 @@
         </a>
     </div>
 </div>
-{% now "i:s.u" as current_time %}
-<p>Template ends: {{ current_time }}</p>
+
 {% endblock %}

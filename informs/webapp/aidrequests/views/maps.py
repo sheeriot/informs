@@ -10,8 +10,8 @@ def staticmap_aid(width=600, height=400, zoom=13,
 
     # ic(type(aid1_lat), type(aid1_lon))
     # ic(type(fieldop_lat), type(fieldop_lon))
-    center_lat = (fieldop_lat + aid1_lat) / 2
-    center_lon = (fieldop_lon + aid1_lon) / 2
+    center_lat = (float(fieldop_lat) + aid1_lat) / 2
+    center_lon = (float(fieldop_lon) + aid1_lon) / 2
 
     pin_instances = [
         f"default|co008000|lcFFFFFF||'OP'{fieldop_lon} {fieldop_lat}",
@@ -55,7 +55,7 @@ def calculate_zoom(distance=0):
         return 12
     elif distance <= 20:
         return 11
-    elif distance <= 35:
+    elif distance <= 30:
         return 10
     elif distance <= 60:
         return 9
@@ -63,7 +63,7 @@ def calculate_zoom(distance=0):
         return 8
     elif distance <= 300:
         return 7
-    elif distance <= 500:
+    elif distance <= 550:
         return 6
     elif distance <= 1000:
         return 5

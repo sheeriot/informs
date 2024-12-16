@@ -6,7 +6,6 @@ from azure.core.credentials import AzureKeyCredential
 from azure.maps.search import MapsSearchClient
 
 from geopy.distance import geodesic
-from decimal import Decimal
 
 from icecream import ic
 
@@ -41,8 +40,8 @@ def get_azure_geocode(aid_request):
         ic(len(features))
         # ic(feature0)
         coordinates = feature0['geometry']['coordinates']
-        results['latitude'] = Decimal(round(coordinates[1], 5))
-        results['longitude'] = Decimal(round(coordinates[0], 5))
+        results['latitude'] = round(coordinates[1], 5)
+        results['longitude'] = round(coordinates[0], 5)
         results['features'] = query_results['features']
         results['confidence'] = feature0['properties']['confidence']
         results['address_found'] = feature0['properties']['address']['formattedAddress']
@@ -57,6 +56,7 @@ def get_azure_geocode(aid_request):
                             (aid_request.field_op.latitude, aid_request.field_op.longitude),
                             (results['latitude'], results['longitude'])
                             ).km, 2)
+
         results['distance'] = distance
 
         note = geocode_note(results)
@@ -89,21 +89,23 @@ def geocode_note(geocode_results):
 
 
 def geocode_save(aid_request, geocode_results):
+
     aid_location = AidLocation(
         aid_request=aid_request,
         status='new',
-        latitude=geocode_results['latitude'],
-        longitude=geocode_results['longitude'],
+        latitude=str(geocode_results['latitude']),
+        longitude=str(geocode_results['longitude']),
         source='azure_maps',
         note=geocode_results['note'],
         address_searched=geocode_results['address_searched'],
         address_found=geocode_results['address_found'],
-        distance=geocode_results['distance']
+        distance=str(geocode_results['distance'])
     )
 
     try:
+        aid_location.full_clean()
         aid_location.save()
         return aid_location
     except Exception as e:
         ic(e)
-        raise AidLocationError("Could NOT Save Geocoded location!")
+        raise AidLocationError(f"Could NOT Save Geocoded location!\n{e}")
