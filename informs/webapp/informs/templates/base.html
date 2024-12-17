@@ -63,18 +63,18 @@
                 <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                   <li>
                     <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_list' %}'">
-                      {% bs_icon 'truck' %} {% bs_icon 'truck' %} All Field Ops
+                      <i class="bi bi-truck"></i> <i class="bi bi-truck"></i>  All Field Ops
                     </button>
                   </li>
                   <li>
                     <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_create' %}'">
-                      {% bs_icon 'plus-circle' %}</i> New Field Op{% bs_icon 'truck' %}
+                      <i class="bi bi-plus-circle"></i> New Field Op <i class="bi bi-truck"></i> 
                     </button>
                   </li>
                   {% for fieldop in fieldops_active %}
                     <li>
                         <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'aid_request_list' field_op=fieldop.slug %}'">
-                          {% bs_icon 'life-preserver' %} {{ fieldop.name }} - Aid Requests
+                          <i class="bi life-preserver"></i>  {{ fieldop.name }} - Aid Requests
                         </button>
                     </li>
                   {% endfor %}
@@ -114,12 +114,12 @@
         <div class="col-1"></div>
         <div class="col-2">
           <div class="nav-item nav-link link-secondary d-flex align-items-center" aria-current="page">
-            {% bs_icon 'person-fill' color='green'%}
+            <i class="bi bi-life-preserver" color="green"></i> 
             {{ user.username }}
           </div>
           <a class="nav-item nav-link link-secondary d-flex align-items-center"
             href="javascript:{document.getElementById('logout').submit()}" onclick="">
-            {% bs_icon 'box-arrow-right' color='red'%}
+            <i class="bi bi-arrow-right" color="red"></i> 
             Logout
           </a>
           <form id="logout" method="POST" action="{% url 'logout' %}">
@@ -132,12 +132,12 @@
         <div class="col-4"></div>
         <div class="col-2">
           <a class="nav-item nav-link link-secondary d-flex align-items-center" href="{% url 'login'%}">
-            {% bs_icon 'box-arrow-in-right' color='green'%}
+            <i class="bi bi-box-arrow-in-right" color="green"></i> 
             Login
           </a>
           <a class="nav-item nav-link link-secondary d-flex align-items-center" aria-current="page"
             href="{% url 'signup'%}">
-            {% bs_icon 'person-plus-fill' color='white'%}
+            <i class="bi bi-person-plus-fill" color="white"></i> 
             Join
           </a>
         </div>
@@ -154,7 +154,7 @@
     <div class="container d-flex justify-content-between align-items-center">
       <div class="d-flex align-items-center">
         <div class="d-flex justify-content-center align-items-center pe-1 mb-1">
-          {% bs_icon 'life-preserver' color='red' size='1em' %}
+          <i class="bi bi-life-preserver" color="red" size="1em"></i>
         </div>
         <div class="d-flex justify-content-center align-items-center>
           <a href="https://saveourallies.org">
@@ -164,7 +164,7 @@
           </a>
         </div>
         <div class="d-flex justify-content-center align-items-center p-0 mb-1">
-          {% bs_icon 'person-raised-hand' color='green' size='1em' %}
+          <i class="bi bi-person-raised-hand" color="green" size="1em"></i>
         </div>
       </div>
       <div class="d-flex align-items-center font-monospace">

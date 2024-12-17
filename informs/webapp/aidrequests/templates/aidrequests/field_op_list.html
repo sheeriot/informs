@@ -21,14 +21,14 @@
             <tr>
                 <td>
                     <a href="{% url 'field_op_detail' pk=field_op.pk %}" class="btn btn-outline-primary btn-sm">
-                        {% bs_icon "truck" %}
+                        <i class="bi bi-truck"></i>
                         {{ field_op }}
                     </a>
                 </td>
                 <td>{{ field_op.slug }}</td>
                 <td>
                     <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm">
-                        {% bs_icon "life-preserver" %}
+                        <i class="bi bi-life-preserver"></i>
                         {{ field_op.aid_request_count }}
                     </a>
                 </td>
@@ -36,7 +36,7 @@
                 <td>
                     <div class="d-flex justify-content-end">
                         <a href="{% url 'field_op_update' field_op.pk %}" class="btn btn-warning btn-sm me-2">
-                            {% bs_icon "pencil" %}
+                            <i class="bi bi-pencil"></i>
                         </a>
                     </div>
                 </td>
@@ -46,7 +46,7 @@
     </table>
     <hr>
     <a href="{% url 'field_op_create' %}" class="btn btn-primary btn-sm mb-3">
-        {% bs_icon "plus" %} New Field Op {% bs_icon "truck" %}
+        <i class="bi bi-plus"></i> New Field Op <i class="bi bi-truck"></i>
     </a>
 </div>
 {% endblock %}

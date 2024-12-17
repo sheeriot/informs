@@ -11,7 +11,8 @@
         {% csrf_token %}
         <a href="#" onclick="this.closest('form').submit(); return false;" style="color: white; text-decoration: none;" class="btn btn-danger">Yes, delete</a>
         <a href="{% url 'field_op_list' %}" class="btn btn-secondary">
-            {% bs_icon "x-circle" %} Cancel
+            <i class="bi bi-x-circle"></i> List
+                Cancel
         </a>
     </form>
 <hr>

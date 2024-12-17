@@ -41,10 +41,10 @@
 <div class="d-flex justify-content-between">
         <div class="d-flex">
             <a href="{% url 'field_op_detail' pk=object.pk %}" class="btn btn-secondary btn-sm m-2">
-                {% bs_icon "x-circle" %} Cancel
+                <i class="bi bi-x-circle"></i> Cancel
             </a>
             <a href="{% url 'field_op_list' %}" class="btn btn-outline-info info btn btn-sm m-2">
-                {% bs_icon "truck" %} {% bs_icon "truck" %} Field Ops
+                <i class="bi bi-truck"></i> <i class="bi bi-truck"></i> Field Ops
             </a>
         </div>
     </div>
