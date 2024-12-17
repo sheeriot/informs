@@ -36,10 +36,10 @@
 <form method="post">
     {% csrf_token %}
     <a href="#" onclick="this.closest('form').submit(); return false;" style="color: white; text-decoration: none;" class="btn btn-danger">
-        {% bs_icon "trash" %} Delete
+        <i class="bi bi-trash"></i> Delete
     </a>
     <a href="{% url 'aid_request_detail' field_op=field_op.slug pk=aid_request.pk %}" class="btn btn-secondary">
-        {% bs_icon "x-circle" %} Cancel
+        <i class="bi bi-x-circle"></i> Cancel
     </a>
 </form>
 {% endblock %}

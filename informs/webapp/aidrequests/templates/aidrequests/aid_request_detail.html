@@ -71,8 +71,18 @@
                     <td class="col-auto">{{ object.get_assistance_type_display }}</td>
                     <td class="col-auto text-center">{{ object.group_size }}</td>
                 </tr>
+                <tr><th colspan="4">Address</th></tr>
                 <tr>
-                    <tr><th colspan="4">Descripton</th></tr>
+                    <td colspan="4">
+                        {{ object.street_address }}
+                        {{ object.city }}
+                        {{ object.state }}
+                        {{ object.country }}
+                        {{ object.zip_code }}
+                    </td>
+                </tr>
+                <tr><th colspan="4">Descripton</th></tr>
+                <tr>
                     <td colspan="4">
                         {{ object.assistance_description }}
                     </td>
@@ -293,7 +303,7 @@
         <td class="col-auto">{{ object.updated_at|date:"Y-m-d H:i" }}</td>
         <td class="col-auto">{{ locations|length }}
             {% if confirmed %}
-            <span class="text-success"><i class="bi bi-check color="green""></i> ok</span>
+            <span class="text-success"><i class="bi bi-check" color="green"></i> ok</span>
         {% else %}
             <span class="text-danger"><i class="bi bi-exclamation" color="red"></i>NOT CONFIRMED</span>
         {% endif %}

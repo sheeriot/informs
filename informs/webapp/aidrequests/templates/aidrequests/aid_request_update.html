@@ -33,12 +33,12 @@
     <div class="d-flex">
         <div class="m-0 p-0">
             <a href="{% url 'aid_request_detail' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-secondary btn-sm mx-1 p-1">
-                {% bs_icon "x-circle" %} Cancel
+                <i class="bi bi-x-circle"></i> Cancel
             </a>
         </div>
         <div class="m-0 p-0">
             <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-info btn-sm mx-1 p-1">
-                {% bs_icon "list" %} List
+                <i class="bi bi-list"></i> List
             </a>
         </div>
     </div>
