@@ -206,7 +206,16 @@
                         Status: {{ loc.status }}<br>
                     </div>
                     <div>
-                        <small>{{ loc.updated_at|date:"Y-m-d H:i" }}</small>
+                        <small>Updated: {{ loc.updated_at|date:"Y-m-d H:i" }}</small>
+                    </div>
+                    <div>
+                        Distance: {{ loc.distance }} km<br>
+                    </div>
+                    <div>
+                        Location ID: {{ loc.pk }}<br>
+                    </div>
+                    <div>
+                        Created By: {{ loc.created_by }}<br>
                     </div>
                     <div class="d-inline-flex border bg-warning-subtle border-warning border-2 rounded align-items-center p-1">
                         <small class="me-2">{{ loc.source }}</small>
@@ -214,7 +223,6 @@
                             <i class="bi bi-trash"></i>
                         </a>
                     </div>
-                </td>
                 <td>
                     <pre>{{ loc.note }}</pre>
                 </td>
