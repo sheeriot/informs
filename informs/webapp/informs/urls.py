@@ -31,7 +31,7 @@ from aidrequests.views.export_csv import AidRequestCsvView
 from aidrequests.views.aid_location import (
      AidLocationCreateView,
      AidLocationDeleteView,
-     AidLocationStatusUpdateView
+     AidLocationStatusUpdateView,
      )
 
 from .views import home
@@ -76,9 +76,9 @@ urlpatterns = [
           name='aid_requests_csv'
           ),
      path(
-          '<slug:field_op>/aidrequest/<int:pk>/geocode',
+          '<slug:field_op>/aidrequest/<int:aid_request>/location',
           AidLocationCreateView.as_view(),
-          name='aid_request_geocode'
+          name='aid_location_create'
           ),
      path(
           '<slug:field_op>/aidrequest/<int:aid_request>/location/<int:pk>/delete',

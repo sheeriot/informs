@@ -118,3 +118,14 @@ table.table-data td {
 	font-weight: bold;
 	padding: 0.25rem;
 }
+
+div.aid-coords legend {
+	font-size: 14px; /* Adjust the value as needed */
+	padding: 2px; /* Adjust the value as needed */
+	margin-bottom: 2px;
+}
+
+div.aid-coords label {
+	display: block; /* or display: inline; depending on your desired layout */
+	font-size: 12px; /* Adjust the font size as needed */
+}

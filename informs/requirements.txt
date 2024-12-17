@@ -13,6 +13,7 @@ blessed
 aiohttp
 httpx
 cryptography
+jinja2
 
 gunicorn
 azure-core
@@ -22,5 +23,6 @@ geopy
 pytak
 
 icecream
+
 # if dev ?
 django-debug-toolbar
