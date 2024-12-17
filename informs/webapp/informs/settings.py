@@ -225,6 +225,6 @@ Q_CLUSTER = {
 }
 
 DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda request: True,  # Always show the toolbar
+    'SHOW_TOOLBAR_CALLBACK': lambda request: os.environ.get('DEBUG_TOOLBAR', False),  # Show the django-debug-toolbar?
     'INTERCEPT_REDIRECTS': False,  # Prevent toolbar from intercepting redirects
 }
