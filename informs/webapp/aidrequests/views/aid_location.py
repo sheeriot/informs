@@ -3,9 +3,14 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 
+from django_q import tasks
+
+from geopy.distance import geodesic
+
 from ..models import FieldOp, AidRequest, AidLocation
-from .geocode_form import AidLocationForm
-from .aid_location_forms import AidLocationStatusForm
+from ..tasks import aid_location_postsave
+from .aid_location_forms import AidLocationCreateForm, AidLocationStatusForm
+
 from icecream import ic
 
 
@@ -14,7 +19,7 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
     A Django class-based view for saving azure maps geocoded location
     """
     model = AidRequest
-    form_class = AidLocationForm
+    form_class = AidLocationCreateForm
     template_name = 'aidrequests/aid_request_geocode.html'
 
     def get_success_url(self):
@@ -28,18 +33,28 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         super().setup(request, *args, **kwargs)
         self.kwargs = kwargs
         self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
-        self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
+        self.aid_request = get_object_or_404(AidRequest, pk=kwargs['aid_request'])
 
-    # def get_form_kwargs(self):
-    #     kwargs = super().get_form_kwargs()
-    #     return kwargs
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs.update({
+            'initial': {
+                'field_op': self.field_op.slug,
+                'aid_request': self.aid_request.pk,
+                'status': 'new',
+                'source': 'manual'
+            }
+        })
+        ic(kwargs)
+        return kwargs
 
     def form_valid(self, form):
         try:
             self.object = form.save()
         except Exception as e:
             ic(e)
-        self.object.aid_request = self.aid_request
+        # self.object.aid_request = self.aid_request
+
         user = self.request.user
         if user.is_authenticated:
             form.instance.created_by = user
@@ -47,7 +62,17 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         else:
             form.instance.created_by = None
             form.instance.updated_by = None
+        aid_request = form.instance.aid_request
+        form.instance.distance = round(geodesic(
+                    (aid_request.field_op.latitude, aid_request.field_op.longitude),
+                    (form.instance.latitude, form.instance.longitude)
+                    ).km, 2)
         self.object.save()
+        # ----- post save starts here ------
+        updated_at_stamp = self.object.updated_at.strftime('%Y%m%d%H%M%S')
+        tasks.async_task(aid_location_postsave, self.object, kwargs={},
+                         task_name=f"AidLocation{self.object.pk}-PostSave-{updated_at_stamp}")
+
         return super().form_valid(form)
 
     def form_invalid(self, form):

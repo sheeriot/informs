@@ -7,19 +7,18 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django_q import tasks
 
 from geopy.distance import geodesic
-# import base64
 from time import perf_counter as timer
+from datetime import datetime
+from jinja2 import Template
 
 from ..models import AidRequest, FieldOp, AidRequestLog
 from ..tasks import aid_request_postsave
 from .aid_request_forms import AidRequestCreateForm, AidRequestUpdateForm, AidRequestLogForm
-from .aid_location_forms import AidLocationStatusForm
-
+from .aid_location_forms import AidLocationCreateForm, AidLocationStatusForm
 from .maps import staticmap_aid, calculate_zoom
 from ..geocoder import get_azure_geocode, geocode_save
 
 from icecream import ic
-from datetime import datetime
 
 
 def has_location_status(aid_request, status):
@@ -45,6 +44,32 @@ def geodist(aid_request):
             (aid_request.latitude, aid_request.longitude),
             (aid_request.field_op.latitude, aid_request.field_op.longitude)
             ).km, 1)
+
+
+def format_aid_location_note(aid_location):
+    """
+    Format a text string using Jinja2 and aid_location data.
+
+    :param aid_location: The AidLocation instance to format.
+    :return: Formatted text string.
+    """
+    if aid_location.source == "azure_maps":
+        template_str = "Geocode Note:\n{{ aid_location.note }}"
+    elif aid_location.source == "manual":
+        template_str = """
+        Aid Location Details:
+        ---------------------
+        ID: {{ aid_location.pk }}
+        Source: {{ aid_location.source }}
+        Created: {{ aid_location.created_at.strftime('%Y-%m-%d %H:%M') }}
+        By: {{ aid_location.created_by }}
+        """
+        template_str = "\n".join([line.strip() for line in template_str.split('\n')])
+    else:
+        template_str = "Location Note:\n{{ aid_location.note }}"
+
+    template = Template(template_str)
+    return template.render(aid_location=aid_location)
 
 
 # List View for AidRequests
@@ -145,12 +170,16 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
         context['field_op'] = self.field_op
         context['aid_request'] = self.aid_request
         if hasattr(self, 'aid_location_confirmed'):
-            context['location_confirmed'] = self.aid_location_confirmed
+            context['confirmed'] = True
+            context['location'] = self.aid_location_confirmed
             context['map_filename'] = self.aid_location_confirmed.map_filename
+            context['location_note'] = format_aid_location_note(self.aid_location_confirmed)
             found_pk = self.aid_location_confirmed.pk
         elif hasattr(self, 'aid_location_new'):
-            context['location_new'] = self.aid_location_new
+            context['new'] = True
+            context['location'] = self.aid_location_new
             context['map_filename'] = self.aid_location_new.map_filename
+            context['location_note'] = format_aid_location_note(self.aid_location_new)
             found_pk = self.aid_location_new.pk
 
         context['MAPS_PATH'] = settings.MAPS_PATH
@@ -172,6 +201,12 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
             'aid_request': self.aid_request.pk,
             }
         context['log_form'] = AidRequestLogForm(initial=log_init)
+        # Manual Location Form
+        aid_location_manual_init = {
+            'field_op': self.field_op.slug,
+            'aid_request': self.aid_request.pk,
+        }
+        context['aid_location_manual_form'] = AidLocationCreateForm(initial=aid_location_manual_init)
 
         return context
 
