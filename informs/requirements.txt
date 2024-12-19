@@ -8,6 +8,8 @@ django-mathfilters
 django-auditlog
 django-q2
 django-picklefield
+django-filter
+
 blessed
 
 aiohttp

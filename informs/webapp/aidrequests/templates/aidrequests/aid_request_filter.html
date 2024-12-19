@@ -9,19 +9,26 @@
         <a href="{% url 'field_op_detail' pk=field_op.pk %}" class="btn btn-info btn-sm me-2">
             <i class="bi bi-truck"></i>
         </a>
-        <hr>
-        Filter View:
-        <a href="{% url 'aid_request_filter' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm me-2">
-            <i class="bi bi-funnel-fill text-success"></i>
-        </a>
     </h2>
-    
-    <table class="table table-sm table-striped align-middle">
+
+    <table class="table table-sm table-striped align-middle caption-top">
+
+    <form method="get">
+        <caption>Aid Requests: Sort {{ filter.form.ordering }} with Filters - <button type="submit">Apply Filters</button></caption>
         <thead>
                 <th scope="col">ID</th>
-                <th scope="col">Type</th>
-                <th scope="col">Priority</th>
-                <th scope="col">Status</th>
+                <th scope="col">
+                    <label for="assistance_type-filter">Assistance Type</label>
+                    {{ filter.form.assistance_type }}
+                </th>
+                <th scope="col">
+                    <label for="priority-filter">Priority</label>
+                    {{ filter.form.priority }}
+                </th>
+                <th scope="col">
+                    <label for="status-filter">Status</label>
+                    {{ filter.form.status }}
+                </th>
                 <th scope="col">Requester</th>
                 <th scope="col">Address</th>
                 <th scope="col">Created At</th>
@@ -29,15 +36,15 @@
                 <th scope="col" class="text-end">Actions</th>
             </tr>
         </thead>
-
+    </form>
         <tbody>
             {% for aid_request in object_list %}
             <tr>
                 <td>
                     <div class="d-flex">
-                        <a href="{{ aid_request.url_detail }}" class="btn btn-info btn-sm me-2">
+                        <a href="{% url 'aid_request_detail' field_op=field_op.slug pk=aid_request.pk %}" class="btn btn-outline-info btn-sm text-dark me-2">
                             {{ aid_request.pk }}
-                            <i class="bi bi-life-preserver"></i>
+                            <i class="bi bi-life-preserver text-danger"></i>
                         </a>
                     </div>
                 </td>
@@ -50,7 +57,7 @@
                 <td>{{ aid_request.updated_at|date:"Y-m-d H:i" }}</td>
                 <td>
                     <div class="d-flex justify-content-end">
-                        <a href="{{ aid_request.url_update }}" class="btn btn-warning btn-sm me-2">
+                        <a href="{% url 'aid_request_update' field_op=field_op.slug pk=aid_request.pk %}" class="btn btn-warning btn-sm me-2">
                             <i class="bi bi-pencil"></i>
                         </a>
                     </div>

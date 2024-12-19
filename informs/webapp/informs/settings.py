@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_bootstrap_icons',
     'django_q',
+    'django_filters',
     'debug_toolbar',
     'auditlog',
     'tz_detect',
@@ -215,7 +216,7 @@ PYTAK_TLS_CLIENT_PASSWORD = os.environ.get('PYTAK_TLS_CLIENT_PASSWORD')
 PYTAK_TLS_CLIENT_CAFILE = os.environ.get('PYTAK_TLS_CLIENT_CAFILE')
 
 Q_CLUSTER = {
-    'name': 'informs-queuy',
+    'name': 'informs-queues',
     'label': 'queues',
     'workers': 1,
     'orm': 'default',

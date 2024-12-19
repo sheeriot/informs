@@ -27,8 +27,8 @@
                 </td>
                 <td>{{ field_op.slug }}</td>
                 <td>
-                    <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm">
-                        <i class="bi bi-life-preserver"></i>
+                    <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm text-dark">
+                        <i class="bi bi-life-preserver text-danger"></i>
                         {{ field_op.aid_request_count }}
                     </a>
                 </td>
@@ -46,7 +46,7 @@
     </table>
     <hr>
     <a href="{% url 'field_op_create' %}" class="btn btn-primary btn-sm mb-3">
-        <i class="bi bi-plus"></i> New Field Op <i class="bi bi-truck"></i>
+        <i class="bi bi-circle-plus"></i> New Field Op <i class="bi bi-truck"></i>
     </a>
 </div>
 {% endblock %}

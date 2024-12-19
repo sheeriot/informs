@@ -17,6 +17,7 @@ from aidrequests.views.aid_request import (
      AidRequestDetailView,
      AidRequestLogCreateView
      )
+from aidrequests.views.aid_request_filter import AidRequestFilterView
 
 from aidrequests.views.field_op import (
      FieldOpCreateView,
@@ -54,6 +55,7 @@ urlpatterns = [
      path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aid_request_new'),
      path('<slug:field_op>/aidrequest/', AidRequestCreateView.as_view(), name='aid_request_create'),
      path('<slug:field_op>/aidrequest/list/', AidRequestListView.as_view(), name='aid_request_list'),
+     path('<slug:field_op>/aidrequest/filter/', AidRequestFilterView.as_view(), name='aid_request_filter'),
      path(
           '<slug:field_op>/aidrequest/<int:pk>/update/',
           AidRequestUpdateView.as_view(),
