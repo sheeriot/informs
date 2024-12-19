@@ -77,11 +77,11 @@
 </div>
 <hr>
 <div class="d-flex">
-    <a href="{% url 'field_op_list' %}" class="btn btn-outline-info mx-2">
-        <i class="bi bi-truck"></i><i class="bi bi-truck"></i> Field Op List
+    <a href="{% url 'field_op_list' %}" class="btn btn-outline-info mx-2 text-dark">
+        <i class="bi bi-truck"></i> <i class="bi bi-truck"></i> Field Op List
     </a>
-    <a href="{% url 'aid_request_list' field_op=object.slug %}" class="btn btn-outline-success mx-2">
-        <i class="bi bi-life-preserver"></i> Aid Request List ({{ aid_request_count }})
+    <a href="{% url 'aid_request_list' field_op=object.slug %}" class="btn btn-outline-success mx-2 text-dark">
+        <i class="bi bi-life-preserver text-danger"></i> Aid Request List ({{ aid_request_count }})
     </a>
 </div>
 

@@ -52,4 +52,9 @@
         <i class="bi bi-globe2 text-success"></i> Map It
     </a>
 </div>
+<div>
+    {% if map %}
+        <img src="{{ map }}" alt="Field Operations Map" class="img-fluid">
+    {% endif %}
+</div>
 {% endblock %}

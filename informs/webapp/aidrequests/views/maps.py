@@ -1,6 +1,8 @@
 from django.conf import settings
 import httpx
 from icecream import ic
+from ..models import FieldOp
+from geopy.distance import geodesic
 # from decimal import Decimal
 
 
@@ -42,6 +44,60 @@ def staticmap_aid(width=600, height=400, zoom=13,
         return None
 
 
+def staticmap_fieldops(width=900, height=900):
+    # map all field ops
+    field_ops = FieldOp.objects.all()
+
+    pin_instances = [
+        f"default|co008000|lcFFFFFF||'{field_op.slug}'{field_op.longitude} {field_op.latitude}"
+        # ic(field_op.latitude)
+        for field_op in field_ops
+    ]
+    if not field_ops:
+        return None
+
+    avg_lat = sum(field_op.latitude for field_op in field_ops) / len(field_ops)
+    avg_lon = sum(field_op.longitude for field_op in field_ops) / len(field_ops)
+    min_lat = min(field_op.latitude for field_op in field_ops)
+    max_lat = max(field_op.latitude for field_op in field_ops)
+    min_lon = min(field_op.longitude for field_op in field_ops)
+    max_lon = max(field_op.longitude for field_op in field_ops)
+
+    ic(min_lat, max_lat, min_lon, max_lon)
+    ic(avg_lat, avg_lon)
+
+    # Calculate the distance between the furthest points
+    distance = geodesic((min_lat, min_lon), (max_lat, max_lon)).kilometers
+    ic(distance)
+    # Determine the zoom level based on the distance
+    zoom = calculate_zoom(distance)
+    ic(zoom)
+
+    url = settings.AZURE_MAPS_STATIC_URL
+    params = {
+        'subscription-key': settings.AZURE_MAPS_KEY,
+        'api-version': '2024-04-01',
+        'layer': 'basic',
+        'style': 'main',
+        'zoom': zoom,
+        'center': f'{avg_lon},{avg_lat}',
+        'width': width,
+        'height': height,
+        'pins': pin_instances
+    }
+    try:
+        response = httpx.get(url, params=params)
+    except Exception as e:
+        ic(f"Error: {e}")
+
+    # ic(response.content)
+    if response.content.startswith(b'\x89PNG'):
+
+        return response.content
+    else:
+        return None
+
+
 def calculate_zoom(distance=0):
     if distance <= 0.4:
         return 16
@@ -69,7 +125,7 @@ def calculate_zoom(distance=0):
         return 5
     elif distance <= 2000:
         return 4
-    elif distance <= 3000:
+    elif distance <= 5000:
         return 3
     else:
         return 2
