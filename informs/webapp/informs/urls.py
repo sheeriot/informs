@@ -26,6 +26,7 @@ from aidrequests.views.field_op import (
      # FieldOpDeleteView,
      FieldOpDetailView
      )
+from aidrequests.views.field_op_map import FieldOpMapView
 
 from aidrequests.views.export_csv import AidRequestCsvView
 
@@ -46,10 +47,11 @@ urlpatterns = [
      path('admin/', admin.site.urls),
      path('accounts/', include('accounts.urls')),
      # path('aidrequests/', include('aidrequests.urls')),
-     path('field_op/', FieldOpListView.as_view(), name='field_op_list'),
-     path('field_op/<int:pk>/', FieldOpDetailView.as_view(), name='field_op_detail'),
-     path('field_op/create/', FieldOpCreateView.as_view(), name='field_op_create'),
-     path('field_op/<int:pk>/update/', FieldOpUpdateView.as_view(), name='field_op_update'),
+     path('fieldop/', FieldOpListView.as_view(), name='field_op_list'),
+     path('fieldop/<int:pk>/', FieldOpDetailView.as_view(), name='field_op_detail'),
+     path('fieldop/create/', FieldOpCreateView.as_view(), name='field_op_create'),
+     path('fieldop/<int:pk>/update/', FieldOpUpdateView.as_view(), name='field_op_update'),
+     path('fieldop/map/', FieldOpMapView.as_view(), name='field_op_map'),
      # path('field_op/<int:pk>/delete/', FieldOpDeleteView.as_view(), name='field_op_delete'),
      path('tz_detect/', include('tz_detect.urls')),
      path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aid_request_new'),
