@@ -175,6 +175,12 @@ class AidRequestDetailView(LoginRequiredMixin, DetailView):
                     self.aid_location_new.save()
                 except Exception as e:
                     ic(e)
+            try:
+                self.aid_request.logs.create(
+                    log_entry='New Aid Location Created!'
+                )
+            except Exception as e:
+                ic(f"Log Error: {e}")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

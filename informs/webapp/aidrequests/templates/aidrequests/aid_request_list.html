@@ -73,25 +73,24 @@
             {% endfor %}
         </tbody>
     </table>
-</div>
-<hr>
-<div class="d-flex justify-content-between">
-    <div class="me-2">
-        <a href="{% url 'aid_request_create' field_op=field_op.slug %}">
-            <button class="btn btn-success p-1">
-                <i class="bi bi-circle-plus"></i>
-                Add
-            </button>
-        </a>
+    <hr>
+    <div class="d-flex justify-content-between">
+        <div class="me-2">
+            <a href="{% url 'aid_request_create' field_op=field_op.slug %}">
+                <button class="btn btn-success p-1">
+                    <i class="bi bi-circle-plus"></i>
+                    Add
+                </button>
+            </a>
+        </div>
+        <div class="d-flex justify-content-end">
+            <a href="{% url 'aid_requests_csv' field_op=field_op.slug %}">
+                <button class="btn btn-info p-1">
+                    <i class="bi bi-download"></i>
+                    Export
+                </button>
+            </a>
+        </div>
     </div>
-    <div class="d-flex justify-content-end">
-        <a href="{% url 'aid_requests_csv' field_op=field_op.slug %}">
-            <button class="btn btn-info p-1">
-                <i class="bi bi-download"></i>
-                Export
-            </button>
-        </a>
-    </div>
 </div>
-
 {% endblock %}

@@ -1,314 +1,314 @@
 {% extends "base.html" %}
-{% load bootstrap_icons %}
 {% load crispy_forms_tags %}
 
 {% block content %}
-<div class="row flex-row align-items-center my-1">
-    <div class="col-auto display-6 font-monospace">
-        Aid Request Detail
-    </div>
-    <div class="col-auto font-monospace bg-light ms-4 p-0" style="font-size: 0.75rem;">
-        <table class="table border border-1 m-0 p-0">
-            <tr>
-                <td class="border border-info bg-transparent m-0 px-1 py-0">
-                    priority:
-                    {{ object.priority }}
-                </td>
-                <td class="border border-info bg-transparent m-0 px-1 py-0">
-                    created:
-                    {{ object.created_at|date:"Y-m-d H:i" }}
-                    ({{ object.created_by }})
-                </td>
-                <th class="border border-info bg-transparent m-0 px-1 py-0">
-                    Locations
-                </th>
-            </tr>
-            <tr>
-                <td class="border border-info bg-transparent m-0 px-1 py-0">
-                    status:
-                    {{ object.status }}
-                </td>
-                <td class="border border-info bg-transparent m-0 px-1 py-0">
-                    updated:
-                    {{ object.updated_at|date:"Y-m-d H:i" }}
-                    ({{ object.updated_by }})
-                </td>
-                <td class="border border-info bg-transparent m-0 px-1 py-0">{{ locations|length }}
-                    {% if confirmed %}
-                    <span class="text-success"><i class="bi bi-check"></i> ok</span>
-                {% else %}
-                    <span class="text-danger"><i class="bi bi-exclamation"></i> NOT CONFIRMED</span>
-                {% endif %}
-                </td>
-
-            </tr>
-        </table>
-    </div>
-</div>
-<hr class="m-0" />
-<div class="container font-monospace mt-1">
-    <div class="d-flex flex-column flex-lg-row">
-        <div class="table-responsive">
-            <table class="table table-bordered table-data w-auto caption-top me-2 border border-3 border-success">
-                <caption>Aid Summary</caption>
+<div class="container m-4">
+    <div class="row flex-row align-items-center my-1">
+        <div class="col-auto display-6 font-monospace">
+            Aid Request Detail
+        </div>
+        <div class="col-auto font-monospace bg-light ms-4 p-0" style="font-size: 0.75rem;">
+            <table class="table border border-1 m-0 p-0">
                 <tr>
-                    <th class="col-auto">ID</th>
-                    <th class="col-auto">Field Op</th>
-                    <th class="col-auto">Aid Type</th>
-                    <th class="col-auto">Group Size</th>
+                    <td class="border border-info bg-transparent m-0 px-1 py-0">
+                        priority:
+                        {{ object.priority }}
+                    </td>
+                    <td class="border border-info bg-transparent m-0 px-1 py-0">
+                        created:
+                        {{ object.created_at|date:"Y-m-d H:i" }}
+                        ({{ object.created_by }})
+                    </td>
+                    <th class="border border-info bg-transparent m-0 px-1 py-0">
+                        Locations
+                    </th>
+                </tr>
+                <tr>
+                    <td class="border border-info bg-transparent m-0 px-1 py-0">
+                        status:
+                        {{ object.status }}
+                    </td>
+                    <td class="border border-info bg-transparent m-0 px-1 py-0">
+                        updated:
+                        {{ object.updated_at|date:"Y-m-d H:i" }}
+                        ({{ object.updated_by }})
+                    </td>
+                    <td class="border border-info bg-transparent m-0 px-1 py-0">{{ locations|length }}
+                        {% if confirmed %}
+                        <span class="text-success"><i class="bi bi-check"></i> ok</span>
+                    {% else %}
+                        <span class="text-danger"><i class="bi bi-exclamation"></i> NOT CONFIRMED</span>
+                    {% endif %}
+                    </td>
+
+                </tr>
+            </table>
+        </div>
+    </div>
+    <hr class="m-0" />
+    <div class="container font-monospace mt-1">
+        <div class="d-flex flex-column flex-lg-row">
+            <div class="table-responsive">
+                <table class="table table-bordered table-data w-auto caption-top me-2 border border-3 border-success">
+                    <caption>Aid Summary</caption>
+                    <tr>
+                        <th class="col-auto">ID</th>
+                        <th class="col-auto">Field Op</th>
+                        <th class="col-auto">Aid Type</th>
+                        <th class="col-auto">Group Size</th>
+                    </tr>
+                    <tr>
+                        <td class="col-auto">
+                            <a href="{% url 'aid_request_update' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
+                                <i class="bi bi-pencil"></i> {{ object.pk }}
+                            </a>
+                        </td>
+                        <td class="col-auto">                     
+                            <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-outline-primary btn-sm mx-1 p-1">
+                                <i class="bi bi-truck text"></i> <span class="text-dark">{{ field_op.name }}</span>
+                            </a>
+                        </td>
+                        <td class="col-auto">{{ object.get_assistance_type_display }}</td>
+                        <td class="col-auto text-center">{{ object.group_size }}</td>
+                    </tr>
+                    <tr><th colspan="4">Address</th></tr>
+                    <tr>
+                        <td colspan="4">
+                            {{ object.street_address }}
+                            {{ object.city }}
+                            {{ object.state }}
+                            {{ object.country }}
+                            {{ object.zip_code }}
+                        </td>
+                    </tr>
+                    <tr><th colspan="4">Descripton</th></tr>
+                    <tr>
+                        <td colspan="4">
+                            {{ object.assistance_description }}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-data border border-3 border-info w-auto caption-top mb-1">
+                    <caption>Contact Information</caption>
+                    <tr>
+                        <th class="col-auto">Requestor Name</th>
+                        <th class="col-auto">Requestor Phone</th>
+                        <th class="col-auto">Requestor Email</th>
+                    </tr>
+                    <tr>
+                        <td class="col-auto">{{ object.requestor_first_name }} {{ object.requestor_last_name }}</td>
+                        <td class="col-auto">{{ object.requestor_phone }}</td>
+                        <td class="col-auto">{{ object.requestor_email }}</td>
+                    </tr>
+                    <tr>
+                        <th class="col-auto">Contact Name</th>
+                        <th class="col-auto">Contact Phone</th>
+                        <th class="col-auto">Contact Email</th>
+                    </tr>
+                    <tr>
+                        <td class="col-auto">{{ object.assistance_first_name|default:"None" }} {{ object.assistance_last_name }}</td>
+                        <td class="col-auto">{{ object.assistance_phone|default:"None" }}</td>
+                        <td class="col-auto">{{ object.assistance_email|default:"None" }}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3">
+                            <strong>Methods</strong>:<br>{{ object.contact_methods }}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <hr>
+    <div class="row flex-row align-items-center my-1">
+        <div class="col-auto font-monospace">
+            <table class="table table-bordered table-data w-auto caption-top w-auto border border-3 border-warning font-monospace ms-4">
+                <caption>Aid Location</caption>
+                <tr>
+                    <th class="col-auto">Address Provided</th>
+                    {% if map_filename %}
+                        <th class="col-auto">Location Map</th>
+                    {% endif %}
                 </tr>
                 <tr>
                     <td class="col-auto">
-                        <a href="{% url 'aid_request_update' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
-                            <i class="bi bi-pencil"></i> {{ object.pk }}
-                        </a>
+                        <div>Field Op: {{ field_op.slug }}<br>{{ field_op.latitude }},{{ field_op.longitude }}</div>
+                        <hr class="my-1 py-0">
+                        {% if location.address_searched %}
+                            Address Searched:<br>
+                            {{ location.address_searched }}
+                            <hr class="my-1 py-0">
+                        {% endif %}
+                        {% if location.address_found %}
+                            Address Found:<br>
+                            {{ location.address_found }}
+                            <hr class="my-1 py-0">
+                        {% endif %}
+                        {% if confirmed or new %}
+                            <div>Aid Location: {{ location.pk }}<br>{{ location.latitude }},{{ location.longitude }}</div>
+                            {% if location.distance %}
+                                <div>Distance: {{ location.distance }} km</div>
+                            {% endif %}                 
+                            {% if confirmed %}
+                                <div>Status: <span class="text-success"><i class="bi bi-check"></i> Confirmed</span></div>
+                            {% endif %}
+                            {% if new %}
+                                <div>Status: <span class="text-success"><i class="bi bi-compass"></i> New</span></div>
+                            {% endif %}
+                            {% if location.source %}
+                                <div>Source: {{ location.source }}</div>
+                            {% endif %}
+                            <hr class="my-1 py-0">
+                            {% if location_note %}
+                                <div style="font-weight: normal;"><pre>{{ location_note }}</pre></div>
+                            {% endif %}
+                            {% if new %}
+                                {% crispy aid_location_status_form %}
+                            {% endif %}
+                        {% else %}
+                            <span class="text-danger">No Confirmed or new Location</span>
+                        {% endif %}
                     </td>
-                    <td class="col-auto">                     
-                        <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm mx-1 p-1">
-                            <i class="bi bi-truck"></i> {{ field_op.name }}
-                        </a>
+                    {% if map_filename %}
+                    <td class="col-auto">
+                        <div>
+                            <div id="map-image">
+                                <img src="/{{ MAPS_PATH }}/{{ map_filename }}" alt="Aid Request - Location Map">
+                            </div>
+                        </div>
                     </td>
-                    <td class="col-auto">{{ object.get_assistance_type_display }}</td>
-                    <td class="col-auto text-center">{{ object.group_size }}</td>
-                </tr>
-                <tr><th colspan="4">Address</th></tr>
-                <tr>
-                    <td colspan="4">
-                        {{ object.street_address }}
-                        {{ object.city }}
-                        {{ object.state }}
-                        {{ object.country }}
-                        {{ object.zip_code }}
-                    </td>
-                </tr>
-                <tr><th colspan="4">Descripton</th></tr>
-                <tr>
-                    <td colspan="4">
-                        {{ object.assistance_description }}
-                    </td>
-                </tr>
-            </table>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-bordered table-data border border-3 border-info w-auto caption-top mb-1">
-                <caption>Contact Information</caption>
-                <tr>
-                    <th class="col-auto">Requestor Name</th>
-                    <th class="col-auto">Requestor Phone</th>
-                    <th class="col-auto">Requestor Email</th>
+                    {% endif %}
                 </tr>
                 <tr>
-                    <td class="col-auto">{{ object.requestor_first_name }} {{ object.requestor_last_name }}</td>
-                    <td class="col-auto">{{ object.requestor_phone }}</td>
-                    <td class="col-auto">{{ object.requestor_email }}</td>
-                </tr>
-                <tr>
-                    <th class="col-auto">Contact Name</th>
-                    <th class="col-auto">Contact Phone</th>
-                    <th class="col-auto">Contact Email</th>
-                </tr>
-                <tr>
-                    <td class="col-auto">{{ object.assistance_first_name|default:"None" }} {{ object.assistance_last_name }}</td>
-                    <td class="col-auto">{{ object.assistance_phone|default:"None" }}</td>
-                    <td class="col-auto">{{ object.assistance_email|default:"None" }}</td>
-                </tr>
-                <tr>
-                    <td colspan="3">
-                        <strong>Methods</strong>:<br>{{ object.contact_methods }}
+                    <td colspan="2" class="col-auto">
+                        {% crispy aid_location_manual_form %}
                     </td>
                 </tr>
             </table>
         </div>
     </div>
-</div>
-<hr>
-<div class="row flex-row align-items-center my-1">
-    <div class="col-auto font-monospace">
-        <table class="table table-bordered table-data w-auto caption-top w-auto border border-3 border-warning font-monospace ms-4">
-            <caption>Aid Location</caption>
-            <tr>
-                <th class="col-auto">Address Provided</th>
-                {% if map_filename %}
-                    <th class="col-auto">Location Map</th>
-                {% endif %}
-            </tr>
-            <tr>
-                <td class="col-auto">
-                    <div>Field Op: {{ field_op.slug }}<br>{{ field_op.latitude }},{{ field_op.longitude }}</div>
-                    <hr class="my-1 py-0">
-                    {% if location.address_searched %}
-                        Address Searched:<br>
-                        {{ location.address_searched }}
-                        <hr class="my-1 py-0">
-                    {% endif %}
-                    {% if location.address_found %}
-                        Address Found:<br>
-                        {{ location.address_found }}
-                        <hr class="my-1 py-0">
-                    {% endif %}
-                    {% if confirmed or new %}
-                        <div>Aid Location: {{ location.pk }}<br>{{ location.latitude }},{{ location.longitude }}</div>
-                        {% if location.distance %}
-                            <div>Distance: {{ location.distance }} km</div>
-                        {% endif %}                 
-                        {% if confirmed %}
-                            <div>Status: <span class="text-success"><i class="bi bi-check"></i> Confirmed</span></div>
-                        {% endif %}
-                        {% if new %}
-                            <div>Status: <span class="text-success"><i class="bi bi-compass"></i> New</span></div>
-                        {% endif %}
-                        {% if location.source %}
-                            <div>Source: {{ location.source }}</div>
-                        {% endif %}
-                        <hr class="my-1 py-0">
-                        {% if location_note %}
-                            <div style="font-weight: normal;"><pre>{{ location_note }}</pre></div>
-                        {% endif %}
-                        {% if new %}
-                            {% crispy aid_location_status_form %}
-                        {% endif %}
-                    {% else %}
-                        <span class="text-danger">No Confirmed or new Location</span>
-                    {% endif %}
-                </td>
-                {% if map_filename %}
-                <td class="col-auto">
-                    <div>
-                        <div id="map-image">
-                            <img src="/{{ MAPS_PATH }}/{{ map_filename }}" alt="Aid Request - Location Map">
+
+    <div class="container font-monospace">
+        <table class="table table-sm table-data table-success table-striped">
+            <thead>
+                <tr>
+                    <th scope="col-auto">Location</th>
+                    <th scope="col-auto">Notes</th>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loc in locations %}
+                <tr>
+                    <td class="ps-2">
+                        <div class="d-inline-flex">
+                            <div class=" px-1 mx-1">
+                                {{ loc.latitude }},{{ loc.longitude }}
+                            </div>
+                            <a href="https://google.com/maps/place/{{ loc.latitude }},{{ loc.longitude }}/@{{ loc.latitude }},{{ loc.longitude }},13z"
+                                                                target="_blank" class="btn btn-outline-success btn-sm">
+                                <i class="bi bi-globe2"></i>
+                            </a>
                         </div>
-                    </div>
-                </td>
-                {% endif %}
-            </tr>
-            <tr>
-                <td colspan="2" class="col-auto">
-                    {% crispy aid_location_manual_form %}
-                </td>
-            </tr>
+                        <div>
+                            Status: {{ loc.status }}<br>
+                        </div>
+                        <div>
+                            <small>Updated: {{ loc.updated_at|date:"Y-m-d H:i" }}</small>
+                        </div>
+                        <div>
+                            Distance: {{ loc.distance }} km<br>
+                        </div>
+                        <div>
+                            Location ID: {{ loc.pk }}<br>
+                        </div>
+                        <div>
+                            Created By: {{ loc.created_by }}<br>
+                        </div>
+                        <div class="d-inline-flex border bg-warning-subtle border-warning border-2 rounded align-items-center p-1">
+                            <small class="me-2">{{ loc.source }}</small>
+                            <a href="{% url 'aid_location_delete' field_op=field_op.slug aid_request=object.pk pk=loc.pk  %}" class="btn btn-danger btn-sm w-auto">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    <td>
+                        <pre>{{ loc.note }}</pre>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </div>
-</div>
 
-<div class="container font-monospace">
-    <table class="table table-sm table-data table-success table-striped">
-        <thead>
-            <tr>
-                <th scope="col-auto">Location</th>
-                <th scope="col-auto">Notes</th>
-                </th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for loc in locations %}
-            <tr>
-                <td class="ps-2">
-                    <div class="d-inline-flex">
-                        <div class=" px-1 mx-1">
-                            {{ loc.latitude }},{{ loc.longitude }}
+    <hr>
+    <h2>Emergency Medical Needs</h2>
+    <p>{{ object.medical_needs|default:"None" }}</p>
+
+    <h2>Supplies Needed</h2>
+    <p>{{ object.supplies_needed|default:"None" }}</p>
+
+    <h2>Welfare Check Information</h2>
+    <p>{{ object.welfare_check_info|default:"None" }}</p>
+
+    <h2>Additional Information</h2>
+    <p>{{ object.additional_info|default:"None" }}</p>
+    <hr>
+    <h4>Activity Logs</h4>
+    <div class="container font-monospace">
+        <table class="table table-sm table-warning table-striped table-bordered w-100" style="font-size: 0.75rem;">
+            <thead>
+                <tr>
+                    <th class="col-2">Updated</th>
+                    <th class="col">Log</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td class="col-2">
+                        <div class="d-inline-flex">
+                            {{ log.updated_at|date:"Y-m-d H:i" }}
+                            ({{ log.updated_by }})
                         </div>
-                        <a href="https://google.com/maps/place/{{ loc.latitude }},{{ loc.longitude }}/@{{ loc.latitude }},{{ loc.longitude }},13z"
-                                                            target="_blank" class="btn btn-outline-success btn-sm">
-                            <i class="bi bi-globe2"></i>
-                        </a>
-                    </div>
-                    <div>
-                        Status: {{ loc.status }}<br>
-                    </div>
-                    <div>
-                        <small>Updated: {{ loc.updated_at|date:"Y-m-d H:i" }}</small>
-                    </div>
-                    <div>
-                        Distance: {{ loc.distance }} km<br>
-                    </div>
-                    <div>
-                        Location ID: {{ loc.pk }}<br>
-                    </div>
-                    <div>
-                        Created By: {{ loc.created_by }}<br>
-                    </div>
-                    <div class="d-inline-flex border bg-warning-subtle border-warning border-2 rounded align-items-center p-1">
-                        <small class="me-2">{{ loc.source }}</small>
-                        <a href="{% url 'aid_location_delete' field_op=field_op.slug aid_request=object.pk pk=loc.pk  %}" class="btn btn-danger btn-sm w-auto">
-                            <i class="bi bi-trash"></i>
-                        </a>
-                    </div>
-                <td>
-                    <pre>{{ loc.note }}</pre>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-
-<hr>
-<h2>Emergency Medical Needs</h2>
-<p>{{ object.medical_needs|default:"None" }}</p>
-
-<h2>Supplies Needed</h2>
-<p>{{ object.supplies_needed|default:"None" }}</p>
-
-<h2>Welfare Check Information</h2>
-<p>{{ object.welfare_check_info|default:"None" }}</p>
-
-<h2>Additional Information</h2>
-<p>{{ object.additional_info|default:"None" }}</p>
-<hr>
-<h4>Activity Logs</h4>
-<div class="container font-monospace">
-    <table class="table table-sm table-warning table-striped table-bordered w-100" style="font-size: 0.75rem;">
-        <thead>
-            <tr>
-                <th class="col-2">Updated</th>
-                <th class="col">Log</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for log in logs %}
-            <tr>
-                <td class="col-2">
-                    <div class="d-inline-flex">
-                        {{ log.updated_at|date:"Y-m-d H:i" }}
-                        ({{ log.updated_by }})
-                    </div>
-                </td>
-                <td class="col">
-                    <div>
-                        <pre>{{ log.log_entry }}</pre>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-<h6>Add Notes</h6>
-<div class="container font-monospace">
-    {% if log_form %}
-        {% crispy log_form %}
-    {% endif %}
-</div>
-<hr>
-<table class="table table-bordered table-data w-auto caption-top border border-3 border-primary font-monospace"
-                style="font-size: 0.75rem;">
-    <caption>Ticket Info</caption>
-    <tr>
-        <th class="col-auto">Created At</th>
-        <th class="col-auto">Updated At</th>
-        <th class="col-auto">Locations</th>
-    </tr>
-    <tr>
-        <td class="col-auto">{{ object.created_at|date:"Y-m-d H:i" }}</td>
-        <td class="col-auto">{{ object.updated_at|date:"Y-m-d H:i" }}</td>
-        <td class="col-auto">{{ locations|length }}
-            {% if confirmed %}
-            <span class="text-success"><i class="bi bi-check" color="green"></i> ok</span>
-        {% else %}
-            <span class="text-danger"><i class="bi bi-exclamation" color="red"></i>NOT CONFIRMED</span>
+                    </td>
+                    <td class="col">
+                        <div>
+                            <pre>{{ log.log_entry }}</pre>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <h6>Add Notes</h6>
+    <div class="container font-monospace">
+        {% if log_form %}
+            {% crispy log_form %}
         {% endif %}
-        </td>
-    </tr>
-</table>
-
+    </div>
+    <hr>
+    <table class="table table-bordered table-data w-auto caption-top border border-3 border-primary font-monospace"
+                    style="font-size: 0.75rem;">
+        <caption>Ticket Info</caption>
+        <tr>
+            <th class="col-auto">Created At</th>
+            <th class="col-auto">Updated At</th>
+            <th class="col-auto">Locations</th>
+        </tr>
+        <tr>
+            <td class="col-auto">{{ object.created_at|date:"Y-m-d H:i" }}</td>
+            <td class="col-auto">{{ object.updated_at|date:"Y-m-d H:i" }}</td>
+            <td class="col-auto">{{ locations|length }}
+                {% if confirmed %}
+                <span class="text-success"><i class="bi bi-check" color="green"></i> ok</span>
+            {% else %}
+                <span class="text-danger"><i class="bi bi-exclamation" color="red"></i>NOT CONFIRMED</span>
+            {% endif %}
+            </td>
+        </tr>
+    </table>
+</div>
 {% endblock %}

@@ -3,47 +3,48 @@
 {% load bootstrap_icons %}
 {% block content %}
 
-{% if New %}
-<div class='form-header mb-5'>
-<h2>Aid Request: {{ field_op.name }}</h2>
-<div>Evacuation, Resupply, Welfare Check</div>
-<p>
-    <strong>
-    Please use this form to request aid from Save our Allies.
-    </strong>
-</p>
-<span>
-    <em>
-    This form should only be used for first-hand requests for aid. Please do not relay aid messages from social media that are not first hand information. Thank you!
-    </em>
-</span>
-<hr>
-</div>
-{% else %}
-<div class="form-header">
-    <h2>Update Aid Request</h2>
-</div>
-{% endif %}
+<div class="container m-4"
+    {% if New %}
+    <div class='form-header mb-5'>
+    <h2>Aid Request: {{ field_op.name }}</h2>
+    <div>Evacuation, Resupply, Welfare Check</div>
+    <p>
+        <strong>
+        Please use this form to request aid from Save our Allies.
+        </strong>
+    </p>
+    <span>
+        <em>
+        This form should only be used for first-hand requests for aid. Please do not relay aid messages from social media that are not first hand information. Thank you!
+        </em>
+    </span>
+    <hr>
+    {% else %}
+    <div class="form-header">
+        <h2>Update Aid Request</h2>
+    </div>
+    {% endif %}
 
-{% crispy form %}
+    {% crispy form %}
 
-{% if form.action == "update" %}
-<hr />
-<div class="d-flex justify-content-between">
-    <div class="d-flex">
-        <div class="m-0 p-0">
-            <a href="{% url 'aid_request_detail' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-secondary btn-sm mx-1 p-1">
-                <i class="bi bi-x-circle"></i> Cancel
-            </a>
-        </div>
-        <div class="m-0 p-0">
-            <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-info btn-sm mx-1 p-1">
-                <i class="bi bi-list"></i> List
-            </a>
+    {% if form.action == "update" %}
+    <hr />
+    <div class="d-flex justify-content-between">
+        <div class="d-flex">
+            <div class="m-0 p-0">
+                <a href="{% url 'aid_request_detail' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-secondary btn-sm mx-1 p-1">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+            <div class="m-0 p-0">
+                <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-info btn-sm mx-1 p-1">
+                    <i class="bi bi-list"></i> List
+                </a>
+            </div>
         </div>
     </div>
+    {% endif %}
 </div>
-{% endif %}
 
 <script>
     function differentContact() {

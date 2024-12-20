@@ -91,24 +91,26 @@ def staticmap_fieldops(width=1200, height=600):
         return None
 
 
-def staticmap_aidrequests(field_op=None, width=1200, height=800):
-    if not field_op.aid_requests:
+def staticmap_aidrequests(aid_requests=None, width=1200, height=800):
+    if aid_requests is None:
         return None
-    aid_requests = field_op.aid_requests.all()
+
+    field_op = aid_requests.first().field_op
+    # only map aid_requests with locations (confirmed or new).
     aid_requests = [aid_request for aid_request in aid_requests if aid_request.location]
 
     pin_instances = [
-        f"default|co008000|lc000000||'{aid_request.pk}'{aid_request.location.longitude} {aid_request.location.latitude}"
+        f"default|co008000|lc000000||'{aid_request.pk}'"
+        f"{aid_request.location.longitude} {aid_request.location.latitude}"
         for aid_request in aid_requests
     ]
 
-    min_lat = min(aid_request.location.latitude for aid_request in aid_requests)
-    max_lat = max(aid_request.location.latitude for aid_request in aid_requests)
-    min_lon = min(aid_request.location.longitude for aid_request in aid_requests)
-    max_lon = max(aid_request.location.longitude for aid_request in aid_requests)
-
-    distance = geodesic((min_lat, min_lon), (max_lat, max_lon)).kilometers
-    zoom = calculate_zoom(distance)
+    max_distance = max(
+        aid_request.location.distance
+        for aid_request in aid_requests
+        if aid_request.location.distance is not None
+    )
+    zoom = calculate_zoom(max_distance)
 
     url = settings.AZURE_MAPS_STATIC_URL
     params = {
