@@ -24,6 +24,9 @@
                 <th scope="col">Status</th>
                 <th scope="col">Requester</th>
                 <th scope="col">Address</th>
+                <th scope="col">Locations</th>
+                <th scope="col">Longitude</th>
+                <th scope="col">Latitude</th>
                 <th scope="col">Created At</th>
                 <th scope="col">Updated At</th>
                 <th scope="col" class="text-end">Actions</th>
@@ -46,6 +49,17 @@
                 <td>{{ aid_request.status }}</td>
                 <td>{{ aid_request.requestor_first_name }} {{ aid_request.requestor_last_name }}</td>
                 <td>{{ aid_request.street_address }},{{ aid_request.state }}</td>
+                <td>
+                    {% if aid_request.location_confirmed %}
+                    Confirmed ({{ aid_request.locs_confirmed|length }})
+                    {% elif aid_request.location_new %}
+                    New ({{ aid_request.locs_new|length }})
+                    {% else %}
+                    None
+                    {% endif %}
+                </td>
+                <td>{{ aid_request.latitude }}</td>
+                <td>{{ aid_request.longitude }}</td>
                 <td>{{ aid_request.created_at|date:"Y-m-d H:i" }}</td>
                 <td>{{ aid_request.updated_at|date:"Y-m-d H:i" }}</td>
                 <td>

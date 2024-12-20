@@ -154,6 +154,26 @@ class AidRequest(TimeStampedModel):
         default='new',
     )
 
+    @property
+    def location_status(self):
+        if self.locations.filter(status='confirmed').exists():
+            status = 'confirmed'
+        elif self.locations.filter(status='new').exists():
+            status = 'new'
+        else:
+            status = None
+        return status
+
+    @property
+    def location(self):
+        if self.location_status == 'confirmed':
+            location = self.locations.filter(status='confirmed').first()
+        elif self.location_status == 'new':
+            location = self.locations.filter(status='new').first()
+        else:
+            location = None
+        return location
+
     class Meta:
         verbose_name = 'Aid Request'
         verbose_name_plural = 'Aid Requests'

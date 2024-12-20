@@ -119,6 +119,13 @@ table.table-data td {
 	padding: 0.25rem;
 }
 
+table.aid-requests {
+	border-collapse: collapse;
+}
+table.aid_requests th, td {
+	border: 1px solid lightgray;
+}
+
 div.aid-coords legend {
 	font-size: 14px; /* Adjust the value as needed */
 	padding: 2px; /* Adjust the value as needed */

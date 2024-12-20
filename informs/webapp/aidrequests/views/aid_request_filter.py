@@ -3,11 +3,12 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 # from django.urls import reverse
 import django_filters
 from django_filters.views import FilterView
+from .maps import staticmap_aidrequests
 
 from ..models import FieldOp, AidRequest
 
+import base64
 # from time import perf_counter as timer
-
 # from icecream import ic
 
 
@@ -30,7 +31,7 @@ class AidRequestFilter(django_filters.FilterSet):
 class AidRequestFilterView(LoginRequiredMixin, FilterView):
     model = AidRequest
     filterset_class = AidRequestFilter
-    context_object_name = 'aid_requests'
+    # context_object_name = 'aid_requests'
     template_name = 'aidrequests/aid_request_filter.html'
     # paginate_by = 10
 
@@ -43,6 +44,10 @@ class AidRequestFilterView(LoginRequiredMixin, FilterView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['field_op'] = self.field_op
+
+        # should do this by queryset but for now map the full field_op
+        image_data = base64.b64encode(staticmap_aidrequests(self.field_op)).decode('utf-8')
+        context['map'] = f"data:image/png;base64,{image_data}"
         return context
 
     def get_queryset(self):

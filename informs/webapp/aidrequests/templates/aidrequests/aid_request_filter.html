@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 
-{% load bootstrap_icons %}
+{% load custom_tags %}
 
 {% block content %}
 
-<div class="container mt-4">
+<div class="container m-4">
     <h2 class="mb-3">Aid Requests: {{ field_op.name }}
-        <a href="{% url 'field_op_detail' pk=field_op.pk %}" class="btn btn-info btn-sm me-2">
-            <i class="bi bi-truck"></i>
+        <a href="{% url 'field_op_detail' pk=field_op.pk %}" class="btn btn-outline-info btn-sm me-2">
+            <i class="bi bi-truck text-primary"></i>
         </a>
     </h2>
 
-    <table class="table table-sm table-striped align-middle caption-top">
-
-    <form method="get">
+    <table class="table table-sm table-striped align-middle font-monospace caption-top">
+    <div class="font-monospace">
+    <form method="get" class="font-monospace">
         <caption>Aid Requests: Sort {{ filter.form.ordering }} with Filters - <button type="submit">Apply Filters</button></caption>
         <thead>
                 <th scope="col">ID</th>
@@ -31,12 +31,15 @@
                 </th>
                 <th scope="col">Requester</th>
                 <th scope="col">Address</th>
-                <th scope="col">Created At</th>
-                <th scope="col">Updated At</th>
+                <th scope="col">Locations</th>
+                <th scope="col">Coords</th>
+                <th scope="col">Updated</th>
+                <th scope="col">Created</th>
                 <th scope="col" class="text-end">Actions</th>
             </tr>
         </thead>
     </form>
+    </div>
         <tbody>
             {% for aid_request in object_list %}
             <tr>
@@ -53,8 +56,32 @@
                 <td>{{ aid_request.status }}</td>
                 <td>{{ aid_request.requestor_first_name }} {{ aid_request.requestor_last_name }}</td>
                 <td>{{ aid_request.street_address }},{{ aid_request.state }}</td>
-                <td>{{ aid_request.created_at|date:"Y-m-d H:i" }}</td>
-                <td>{{ aid_request.updated_at|date:"Y-m-d H:i" }}</td>
+                <td>
+                    {{ aid_request.location_status }}
+                </td>
+                <td>
+                    {% if aid_request.location %}
+                        {{ aid_request.location.latitude }},{{ aid_request.location.longitude }}
+                    {% endif %}
+                </td>
+                <td class="small">
+                    <span>
+                        {{ aid_request.updated_at|date:"Y-m-d H:i" }}
+                    </span>
+                    <hr class="m-0">
+                    <span class="text-{{ aid_request.updated_at|age_color }}">
+                        +{{ aid_request.updated_at|timesince|upto:',' }}
+                    </span>
+                </td>
+                <td class="small">
+                    <span>
+                        {{ aid_request.created_at|date:"Y-m-d H:i" }}
+                    </span>
+                    <hr class="m-0">
+                    <span class="text-{{ aid_request.created_at|age_color }}">
+                        +{{ aid_request.created_at|timesince|upto:',' }}
+                    </span>
+                </td>
                 <td>
                     <div class="d-flex justify-content-end">
                         <a href="{% url 'aid_request_update' field_op=field_op.slug pk=aid_request.pk %}" class="btn btn-warning btn-sm me-2">
@@ -66,24 +93,32 @@
             {% endfor %}
         </tbody>
     </table>
-</div>
-<hr>
-<div class="d-flex justify-content-between">
-    <div class="me-2">
-        <a href="{% url 'aid_request_create' field_op=field_op.slug %}">
-            <button class="btn btn-success p-1">
-                <i class="bi bi-circle-plus"></i>
-                Add
-            </button>
-        </a>
+    <hr class="m-1">
+
+    {% if map %}
+    <div>
+        <img src="{{ map }}" alt="Field Operations Map" class="img-fluid">
     </div>
-    <div class="d-flex justify-content-end">
-        <a href="{% url 'aid_requests_csv' field_op=field_op.slug %}">
-            <button class="btn btn-info p-1">
-                <i class="bi bi-download"></i>
-                Export
-            </button>
-        </a>
+    <hr class="m-1">
+    {% endif %}
+
+    <div class="d-flex justify-content-between">
+        <div class="me-2">
+            <a href="{% url 'aid_request_create' field_op=field_op.slug %}">
+                <button class="btn btn-success p-1">
+                    <i class="bi bi-plus-circle"></i>
+                    Add
+                </button>
+            </a>
+        </div>
+        <div class="d-flex justify-content-end">
+            <a href="{% url 'aid_requests_csv' field_op=field_op.slug %}">
+                <button class="btn btn-info p-1">
+                    <i class="bi bi-download"></i>
+                    Export
+                </button>
+            </a>
+        </div>
     </div>
 </div>
 
