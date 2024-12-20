@@ -1,29 +1,29 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<div class="container m-4">
+    <h1>Login</h1>
 
-<h1>Login</h1>
+    {% if error %}
+    {{error}}
+    {% endif %}
 
-{% if error %}
-{{error}}
-{% endif %}
+    <form method="post" action="{% url 'login' %}?next={{ next }}">
+    {% csrf_token %}
 
-<form method="post" action="{% url 'login' %}?next={{ next }}">
-{% csrf_token %}
+    Username:
+    <br />
+    <input type="text" name="username" />
+    <br />
 
-Username:
-<br />
-<input type="text" name="username" />
-<br />
+    Password
+    <br />
+    <input type="password" name="password" />
+    <br />
+    <br />
 
-Password
-<br />
-<input type="password" name="password" />
-<br />
-<br />
+    <input class="btn btn-primary" type="submit" value="Login" />
 
-<input class="btn btn-primary" type="submit" value="Login" />
-
-</form>
-
+    </form>
+</div>
 {% endblock %}

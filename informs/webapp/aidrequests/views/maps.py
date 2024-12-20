@@ -91,26 +91,28 @@ def staticmap_fieldops(width=1200, height=600):
         return None
 
 
-def staticmap_aidrequests(aid_requests=None, width=1200, height=800):
-    if aid_requests is None:
-        return None
-
-    field_op = aid_requests.first().field_op
-    # only map aid_requests with locations (confirmed or new).
-    aid_requests = [aid_request for aid_request in aid_requests if aid_request.location]
+def staticmap_aidrequests(field_op=None, aid_requests=None, width=1200, height=800):
 
     pin_instances = [
-        f"default|co008000|lc000000||'{aid_request.pk}'"
+        f"default|co008000|lcFFFFFF||'AR{aid_request.pk}'"
         f"{aid_request.location.longitude} {aid_request.location.latitude}"
         for aid_request in aid_requests
     ]
+    if field_op:
+        pin_instances.insert(0,
+            f"default|coFF0000|lcFFFFFF||"
+            f"{field_op.longitude} {field_op.latitude}"
+        )
 
-    max_distance = max(
-        aid_request.location.distance
-        for aid_request in aid_requests
-        if aid_request.location.distance is not None
-    )
-    zoom = calculate_zoom(max_distance)
+    min_lat = min(aid_request.location.latitude for aid_request in aid_requests)
+    max_lat = max(aid_request.location.latitude for aid_request in aid_requests)
+    min_lon = min(aid_request.location.longitude for aid_request in aid_requests)
+    max_lon = max(aid_request.location.longitude for aid_request in aid_requests)
+    center_lat = (min_lat + max_lat) / 2
+    center_lon = (min_lon + max_lon) / 2
+    map_distance = geodesic((min_lat, min_lon), (max_lat, max_lon)).kilometers
+
+    zoom = calculate_zoom(map_distance/1.5)
 
     url = settings.AZURE_MAPS_STATIC_URL
     params = {
@@ -119,9 +121,10 @@ def staticmap_aidrequests(aid_requests=None, width=1200, height=800):
         'layer': 'basic',
         'style': 'main',
         'zoom': zoom,
-        'center': f'{field_op.longitude},{field_op.latitude}',
+        'center': f'{center_lon},{center_lat}',
         'width': width,
         'height': height,
+        'path': f'lcff0000|lw2|la0.60|ra20000||{field_op.longitude} {field_op.latitude}',
         'pins': pin_instances
     }
     try:

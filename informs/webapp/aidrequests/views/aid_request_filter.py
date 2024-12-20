@@ -9,7 +9,7 @@ from ..models import FieldOp, AidRequest
 
 import base64
 # from time import perf_counter as timer
-# from icecream import ic
+from icecream import ic
 
 
 class AidRequestFilter(django_filters.FilterSet):
@@ -45,9 +45,12 @@ class AidRequestFilterView(LoginRequiredMixin, FilterView):
         context = super().get_context_data(**kwargs)
         context['field_op'] = self.field_op
 
-        # should do this by queryset but for now map the full field_op
-        image_data = base64.b64encode(staticmap_aidrequests(self.get_queryset())).decode('utf-8')
-        context['map'] = f"data:image/png;base64,{image_data}"
+        # this should be false if filtered queryset is empty, i.e. []
+        ic(self.filterset.qs)
+        if self.filterset.qs:
+            mapped_aidrequests = [aid_request for aid_request in self.filterset.qs if aid_request.location]
+            image_data = base64.b64encode(staticmap_aidrequests(self.field_op, mapped_aidrequests)).decode('utf-8')
+            context['map'] = f"data:image/png;base64,{image_data}"
         return context
 
     def get_queryset(self):
