@@ -44,12 +44,12 @@ def staticmap_aid(width=600, height=400, zoom=13,
         return None
 
 
-def staticmap_fieldops(width=900, height=900):
+def staticmap_fieldops(width=1200, height=600):
     # map all field ops
     field_ops = FieldOp.objects.all()
 
     pin_instances = [
-        f"default|co008000|lcFFFFFF||'{field_op.slug}'{field_op.longitude} {field_op.latitude}"
+        f"default|co008000|lc000000||'{field_op.slug}'{field_op.longitude} {field_op.latitude}"
         # ic(field_op.latitude)
         for field_op in field_ops
     ]
@@ -63,15 +63,8 @@ def staticmap_fieldops(width=900, height=900):
     min_lon = min(field_op.longitude for field_op in field_ops)
     max_lon = max(field_op.longitude for field_op in field_ops)
 
-    ic(min_lat, max_lat, min_lon, max_lon)
-    ic(avg_lat, avg_lon)
-
-    # Calculate the distance between the furthest points
     distance = geodesic((min_lat, min_lon), (max_lat, max_lon)).kilometers
-    ic(distance)
-    # Determine the zoom level based on the distance
     zoom = calculate_zoom(distance)
-    ic(zoom)
 
     url = settings.AZURE_MAPS_STATIC_URL
     params = {
@@ -81,6 +74,50 @@ def staticmap_fieldops(width=900, height=900):
         'style': 'main',
         'zoom': zoom,
         'center': f'{avg_lon},{avg_lat}',
+        'width': width,
+        'height': height,
+        'pins': pin_instances
+    }
+    try:
+        response = httpx.get(url, params=params)
+    except Exception as e:
+        ic(f"Error: {e}")
+
+    # ic(response.content)
+    if response.content.startswith(b'\x89PNG'):
+
+        return response.content
+    else:
+        return None
+
+
+def staticmap_aidrequests(field_op=None, width=1200, height=800):
+    if not field_op.aid_requests:
+        return None
+    aid_requests = field_op.aid_requests.all()
+    aid_requests = [aid_request for aid_request in aid_requests if aid_request.location]
+
+    pin_instances = [
+        f"default|co008000|lc000000||'{aid_request.pk}'{aid_request.location.longitude} {aid_request.location.latitude}"
+        for aid_request in aid_requests
+    ]
+
+    min_lat = min(aid_request.location.latitude for aid_request in aid_requests)
+    max_lat = max(aid_request.location.latitude for aid_request in aid_requests)
+    min_lon = min(aid_request.location.longitude for aid_request in aid_requests)
+    max_lon = max(aid_request.location.longitude for aid_request in aid_requests)
+
+    distance = geodesic((min_lat, min_lon), (max_lat, max_lon)).kilometers
+    zoom = calculate_zoom(distance)
+
+    url = settings.AZURE_MAPS_STATIC_URL
+    params = {
+        'subscription-key': settings.AZURE_MAPS_KEY,
+        'api-version': '2024-04-01',
+        'layer': 'basic',
+        'style': 'main',
+        'zoom': zoom,
+        'center': f'{field_op.longitude},{field_op.latitude}',
         'width': width,
         'height': height,
         'pins': pin_instances

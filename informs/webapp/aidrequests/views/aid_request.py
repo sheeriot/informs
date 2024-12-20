@@ -108,6 +108,18 @@ class AidRequestListView(LoginRequiredMixin, ListView):
                                              kwargs={'field_op': field_op_slug, 'pk': aid_request.pk})
             aid_request.url_update = reverse('aid_request_update',
                                              kwargs={'field_op': field_op_slug, 'pk': aid_request.pk})
+            aid_request.location_confirmed, aid_request.locs_confirmed = has_location_status(aid_request, 'confirmed')
+            aid_request.location_new, aid_request.locs_new = has_location_status(aid_request, 'new')
+
+            if aid_request.location_confirmed:
+                # ic(aid_request.locs_confirmed.first().latitude)
+                aid_request.latitude = aid_request.locs_confirmed.first().latitude
+                aid_request.longitude = aid_request.locs_confirmed.first().longitude
+            elif aid_request.location_new:
+                aid_request.latitude = aid_request.locs_new.first().latitude
+                aid_request.longitude = aid_request.locs_new.first().longitude
+            else:
+                aid_request.latitude, aid_request.longitude = None, None
         return aid_requests
 
 
