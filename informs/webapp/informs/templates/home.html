@@ -3,41 +3,43 @@
 {% load bootstrap_icons %}
 
 {% block content %}
-<div class="d-flex flex-column justify-content-center align-items-center centerit">
+<div class="container m-4">
+    <div class="d-flex flex-column justify-content-center align-items-center centerit">
+        <p />
+        <h2 class="d-flex align-items-center">
+            <div class="d-flex justify-content-center align-items-center p-0 me-2">
+                <i class="bi bi-life-preserver text-danger"></i>
+            </div>
+            Welcome to the InForms Tool!
+            <div class="d-flex justify-content-center align-items-center p-0 me-2">
+                <i class="bi bi-person-raised-hand text-success"></i>
+            </div>
+        </h2>
+    </div>
+    {% if user.is_authenticated %}
+    <hr>
+    <p>Please report defects and enhancement requests to Kris Thompson.</p>
+    <hr>
+
     <p />
-    <h2 class="d-flex align-items-center">
-        <div class="d-flex justify-content-center align-items-center p-0 me-2">
-            <i class="bi bi-life-preserver text-danger"></i>
+    <p />
+    <div class="row">
+        <div class="col-sm-8 mx-auto d-flex justify-content-center">
+            <p>
+                <a href="https://saveourallies.org">https://saveourallies.org</a>
+            </p
         </div>
-        Welcome to the InForms Tool!
-        <div class="d-flex justify-content-center align-items-center p-0 me-2">
-            <i class="bi bi-person-raised-hand text-success"></i>
-        </div>
-    </h2>
-</div>
-{% if user.is_authenticated %}
-<hr>
-<p>Please report defects and enhancement requests to Kris Thompson.</p>
-<hr>
-
-<p />
-<p />
-<div class="row">
-    <div class="col-sm-8 mx-auto d-flex justify-content-center">
-        <p>
-            <a href="https://saveourallies.org">https://saveourallies.org</a>
-        </p
-    </div>
-</div>
-
-{% else %}
-<hr>
-<p />
-<p />
-    <div class="d-flex justify-content-center">
-        <img src="{% static 'images/form-inputs-1024x512.png.webp' %}" height="400px" />
     </div>
 
+    {% else %}
+    <hr>
+    <p />
+    <p />
+        <div class="d-flex justify-content-center">
+            <img src="{% static 'images/form-inputs-1024x512.png.webp' %}" height="400px" />
+        </div>
+
+    </div>
+    {% endif %}
 </div>
-{% endif %}
 {% endblock %}

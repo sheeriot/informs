@@ -10,37 +10,31 @@
             <i class="bi bi-truck text-primary"></i>
         </a>
     </h2>
-
-    <table class="table table-sm table-striped align-middle font-monospace caption-top">
-    <div class="font-monospace">
-    <form method="get" class="font-monospace">
-        <caption>Aid Requests: Sort {{ filter.form.ordering }} with Filters - <button type="submit">Apply Filters</button></caption>
-        <thead>
-                <th scope="col">ID</th>
-                <th scope="col">
-                    <label for="assistance_type-filter">Assistance Type</label>
-                    {{ filter.form.assistance_type }}
-                </th>
-                <th scope="col">
-                    <label for="priority-filter">Priority</label>
-                    {{ filter.form.priority }}
-                </th>
-                <th scope="col">
-                    <label for="status-filter">Status</label>
-                    {{ filter.form.status }}
-                </th>
-                <th scope="col">Requester</th>
-                <th scope="col">Address</th>
-                <th scope="col">Locations</th>
-                <th scope="col">Coords</th>
-                <th scope="col">Distance</th>
-                <th scope="col">Updated</th>
-                <th scope="col">Created</th>
-                <th scope="col" class="text-end">Actions</th>
-            </tr>
-        </thead>
-    </form>
-    </div>
+    <table class="table table-sm table-striped align-middle font-monospace caption-top w-auto">
+        <form method="get">
+            <caption>Aid Requests: Sort {{ filter.form.ordering }} with Filters - <button type="submit">Apply Filters</button></caption>
+            <thead>
+                    <th scope="col">ID</th>
+                    <th scope="col"><label for="assistance_type-filter">Type</label>{{ filter.form.assistance_type }}</th>
+                    <th scope="col">
+                        <label for="priority-filter">Priority</label>
+                        {{ filter.form.priority }}
+                    </th>
+                    <th scope="col">
+                        <label for="status-filter">Status</label>
+                        {{ filter.form.status }}
+                    </th>
+                    <th scope="col">Requester</th>
+                    <th scope="col">Address</th>
+                    <th scope="col">Locations</th>
+                    <th scope="col">Coords</th>
+                    <th scope="col">Distance</th>
+                    <th scope="col">Updated</th>
+                    <th scope="col">Created</th>
+                    <th scope="col" class="text-end">Actions</th>
+                </tr>
+            </thead>
+        </form>
         <tbody>
             {% for aid_request in object_list %}
             <tr>
@@ -62,7 +56,7 @@
                 </td>
                 <td>
                     {% if aid_request.location %}
-                        {{ aid_request.location.latitude }},{{ aid_request.location.longitude }}
+                    <div class="small">{{ aid_request.location.latitude }},{{ aid_request.location.longitude }}</div>
                     {% endif %}
                 </td>
                 <td>
@@ -99,15 +93,6 @@
             {% endfor %}
         </tbody>
     </table>
-    <hr class="m-1">
-
-    {% if map %}
-    <div>
-        <img src="{{ map }}" alt="Field Operations Map" class="img-fluid">
-    </div>
-    <hr class="m-1">
-    {% endif %}
-
     <div class="d-flex justify-content-between">
         <div class="me-2">
             <a href="{% url 'aid_request_create' field_op=field_op.slug %}">
@@ -126,6 +111,15 @@
             </a>
         </div>
     </div>
+    {% if map %}
+    <hr class="m-1">
+    <div class="container">
+        <div class="display-4">Aid Request Locations Map - Filtered</div>
+        <div class="d-flex justify-content-center">
+            <img src="{{ map }}" alt="Field Operations Map" class="img-fluid">
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 {% endblock %}
