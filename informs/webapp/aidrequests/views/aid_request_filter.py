@@ -46,7 +46,7 @@ class AidRequestFilterView(LoginRequiredMixin, FilterView):
         context['field_op'] = self.field_op
 
         # should do this by queryset but for now map the full field_op
-        image_data = base64.b64encode(staticmap_aidrequests(self.field_op)).decode('utf-8')
+        image_data = base64.b64encode(staticmap_aidrequests(self.get_queryset())).decode('utf-8')
         context['map'] = f"data:image/png;base64,{image_data}"
         return context
 

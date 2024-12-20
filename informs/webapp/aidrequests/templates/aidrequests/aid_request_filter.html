@@ -33,6 +33,7 @@
                 <th scope="col">Address</th>
                 <th scope="col">Locations</th>
                 <th scope="col">Coords</th>
+                <th scope="col">Distance</th>
                 <th scope="col">Updated</th>
                 <th scope="col">Created</th>
                 <th scope="col" class="text-end">Actions</th>
@@ -62,6 +63,11 @@
                 <td>
                     {% if aid_request.location %}
                         {{ aid_request.location.latitude }},{{ aid_request.location.longitude }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if aid_request.location %}
+                        {{ aid_request.location.distance }}
                     {% endif %}
                 </td>
                 <td class="small">

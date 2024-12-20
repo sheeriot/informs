@@ -3,53 +3,53 @@
 {% load bootstrap_icons %}
 
 {% block content %}
+<div class="container m-4">
+    {% if form.action == "create" %}
+        <div class='form-header mb-5'>
+            <h2>Field Op</h2>
+        </div>
+    {% else %}
+        <div class="form-header">
+            <h2>Update Field Op</h2>
+        </div>
+    {% endif %}
 
-{% if form.action == "create" %}
-    <div class='form-header mb-5'>
-        <h2>Field Op</h2>
+    <div>Each "Field Op" is a distinct call to support (response) for a region.</div>
+    <p>
+        Each "Field Op" will get a unique short name (aka slug), i.e.
+        <strong>
+        <ul>
+            <li>nc2024: North Carolina - 2024 - Hurricane Helene</li>
+            <li>milton2024: Hurricane Milton - Florida 2024</li>
+        </ul>
+        </strong>
+    </p>
+    <span>
+        <em>
+        This form should only be used to create and update Field Ops. Each intake form will be associated to a distinct Field Op.
+        </em>
+    </span>
+    <hr>
+
+
+    <div>
+        {% crispy form %}
     </div>
-{% else %}
-    <div class="form-header">
-        <h2>Update Field Op</h2>
-    </div>
-{% endif %}
 
-<div>Each "Field Op" is a distinct call to support (response) for a region.</div>
-<p>
-    Each "Field Op" will get a unique short name (aka slug), i.e.
-    <strong>
-    <ul>
-        <li>nc2024: North Carolina - 2024 - Hurricane Helene</li>
-        <li>milton2024: Hurricane Milton - Florida 2024</li>
-    </ul>
-    </strong>
-</p>
-<span>
-    <em>
-    This form should only be used to create and update Field Ops. Each intake form will be associated to a distinct Field Op.
-    </em>
-</span>
-<hr>
-
-
-<div>
-    {% crispy form %}
-</div>
-
-{% if form.action == "update" %}
-<hr class="my-1" />
-<div class="d-flex justify-content-between">
-        <div class="d-flex">
-            <a href="{% url 'field_op_detail' pk=object.pk %}" class="btn btn-secondary btn-sm m-2">
-                <i class="bi bi-x-circle"></i> Cancel
-            </a>
-            <a href="{% url 'field_op_list' %}" class="btn btn-outline-info info btn btn-sm m-2">
-                <i class="bi bi-truck"></i> <i class="bi bi-truck"></i> Field Ops
-            </a>
+    {% if form.action == "update" %}
+    <hr class="my-1" />
+    <div class="d-flex justify-content-between">
+            <div class="d-flex">
+                <a href="{% url 'field_op_detail' pk=object.pk %}" class="btn btn-secondary btn-sm m-2">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+                <a href="{% url 'field_op_list' %}" class="btn btn-outline-info info btn btn-sm m-2">
+                    <i class="bi bi-truck"></i> <i class="bi bi-truck"></i> Field Ops
+                </a>
+            </div>
         </div>
     </div>
+    {% endif %}
 </div>
-{% endif %}
-
 
 {% endblock %}
