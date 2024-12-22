@@ -98,16 +98,21 @@ def staticmap_aidrequests(field_op=None, aid_requests=None, width=1200, height=8
         f"{aid_request.location.longitude} {aid_request.location.latitude}"
         for aid_request in aid_requests
     ]
-    if field_op:
-        pin_instances.insert(0,
-            f"default|coFF0000|lcFFFFFF||"
-            f"{field_op.longitude} {field_op.latitude}"
-        )
 
     min_lat = min(aid_request.location.latitude for aid_request in aid_requests)
     max_lat = max(aid_request.location.latitude for aid_request in aid_requests)
     min_lon = min(aid_request.location.longitude for aid_request in aid_requests)
     max_lon = max(aid_request.location.longitude for aid_request in aid_requests)
+
+    if field_op:
+        min_lat = min(min_lat, field_op.latitude)
+        max_lat = max(max_lat, field_op.latitude)
+        min_lon = min(min_lon, field_op.longitude)
+        max_lon = max(max_lon, field_op.longitude)
+        pin_instances.insert(0,
+            f"default|coFF0000|lcFFFFFF||'OP'"
+            f"{field_op.longitude} {field_op.latitude}"
+        )
     center_lat = (min_lat + max_lat) / 2
     center_lon = (min_lon + max_lon) / 2
     map_distance = geodesic((min_lat, min_lon), (max_lat, max_lon)).kilometers
@@ -124,7 +129,7 @@ def staticmap_aidrequests(field_op=None, aid_requests=None, width=1200, height=8
         'center': f'{center_lon},{center_lat}',
         'width': width,
         'height': height,
-        'path': f'lcff0000|lw2|la0.60|ra20000||{field_op.longitude} {field_op.latitude}',
+        'path': f"lcff0000|lw2|la0.60|ra20000||{field_op.longitude} {field_op.latitude}",
         'pins': pin_instances
     }
     try:
