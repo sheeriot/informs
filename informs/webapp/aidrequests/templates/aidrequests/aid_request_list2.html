@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 
+{% load static %}
 {% load custom_tags %}
 
 {% block content %}
@@ -12,9 +13,10 @@
     </h2>
     <table class="table table-sm table-striped align-middle font-monospace caption-top w-auto">
         <form method="get">
-            <caption>Aid Requests: Sort {{ filter.form.ordering }} with Filters - <button type="submit">Apply Filters</button></caption>
+            <caption>Aid Requests: Sort {{ filter.form.ordering }}</caption>
             <thead>
                     <th scope="col">ID</th>
+                    <th><button type="submit"><i class="bi button-outline-success bi-funnel-fill text-success"></i></button></th>
                     <th scope="col"><label for="assistance_type-filter">Type</label>{{ filter.form.assistance_type }}</th>
                     <th scope="col">
                         <label for="priority-filter">Priority</label>
@@ -31,7 +33,6 @@
                     <th scope="col">Distance</th>
                     <th scope="col">Updated</th>
                     <th scope="col">Created</th>
-                    <th scope="col" class="text-end">Actions</th>
                 </tr>
             </thead>
         </form>
@@ -40,11 +41,21 @@
             <tr>
                 <td>
                     <div class="d-flex">
-                        <a href="{% url 'aid_request_detail' field_op=field_op.slug pk=aid_request.pk %}" class="btn btn-outline-info btn-sm text-dark me-2">
-                            {{ aid_request.pk }}
-                            <i class="bi bi-life-preserver text-danger"></i>
-                        </a>
+                        <div class="d-inline-block">
+                            <a href="{% url 'aid_request_detail' field_op=field_op.slug pk=aid_request.pk %}" class="btn btn-outline-info btn-sm text-dark me-2">
+                                {{ aid_request.pk }}
+                                <i class="bi bi-life-preserver text-danger"></i>
+                            </a>
+                        </div>
+                        <div class="d-inline-block">
+                            <a href="{% url 'aid_request_update' field_op=field_op.slug pk=aid_request.pk %}" class="btn btn-outline-warning btn-sm me-2">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </div>
                     </div>
+                </td>
+                <td>
+                    <input type="checkbox" name="selected_requests" value="{{ aid_request.pk }}">
                 </td>
                 <td>{{ aid_request.assistance_type }}</td>
                 <td>{{ aid_request.priority }}</td>
@@ -82,13 +93,6 @@
                         +{{ aid_request.created_at|timesince|upto:',' }}
                     </span>
                 </td>
-                <td>
-                    <div class="d-flex justify-content-end">
-                        <a href="{% url 'aid_request_update' field_op=field_op.slug pk=aid_request.pk %}" class="btn btn-warning btn-sm me-2">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                    </div>
-                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -111,15 +115,27 @@
             </a>
         </div>
     </div>
-    {% if map %}
     <hr class="m-1">
-    <div class="container">
-        <div class="display-4">Aid Request Locations Map - Filtered</div>
-        <div class="d-flex justify-content-center">
-            <img src="{{ map }}" alt="Field Operations Map" class="img-fluid">
-        </div>
-    </div>
-    {% endif %}
+    <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
+    <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+    <script type="text/javascript" src="{% static 'js/map_aidrequests.js' %}?v5"></script>
+    <script>
+        const mapContext = {
+            latitude: "{{ field_op.latitude|safe }}",
+            longitude: "{{ field_op.longitude|safe }}",
+            apiKey: "{{ azure_maps_key|escapejs }}"
+        };
+    </script>
+    <input type="button" onclick="initMap(mapContext)" value="run external javascript">
+<!-- <div id="mapContainer" style="width: 100%; height: 500px;"></div> -->
+<div id="mapContainer" style="position:relative;width:100%;min-width:290px;height:600px;"></div>
+    
+
+<fieldset style="width:calc(100% - 30px);min-width:290px;margin-top:10px;">
+<legend>CSS Styled HTML Marker</legend>
+This sample shows how to use CSS and HTML to create a marker on the map.
+</fieldset>
+
 </div>
 
 {% endblock %}

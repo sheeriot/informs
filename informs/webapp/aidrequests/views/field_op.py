@@ -10,14 +10,12 @@ from .forms import FieldOpForm
 
 
 # List View for FieldOp
-class FieldOpListView(LoginRequiredMixin, ListView):
+class FieldOpListView0(LoginRequiredMixin, ListView):
     model = FieldOp
     template_name = 'aidrequests/field_op_list.html'
 
     def get_queryset(self):
-        # queryset = FieldOp.objects.annotate(aid_request_count=Count('aid_requests'))
         queryset = FieldOp.objects.annotate(aid_request_count=Count('aid_requests'))
-        # ic(queryset)
         return queryset
 
 
@@ -31,7 +29,6 @@ class FieldOpDetailView(LoginRequiredMixin, DetailView):
         context['notifies_email'] = self.object.notify.filter(type__startswith='email')
         context['notifies_sms'] = self.object.notify.filter(type='sms')
 
-        # ic(context['notifies'])
         context['aid_request_count'] = self.object.aid_requests.count()
         return context
 
@@ -45,7 +42,6 @@ class FieldOpCreateView(LoginRequiredMixin, CreateView):
 
     def setup(self, request, *args, **kwargs):
         super().setup(request, *args, **kwargs)
-        # ic(self, request, args, kwargs)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()

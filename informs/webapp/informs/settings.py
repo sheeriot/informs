@@ -92,7 +92,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'aidrequests.context_processors.fieldops_active'
+                'aidrequests.context_processors.fieldops_active',
+                'aidrequests.context_processors.basevars',
             ],
         },
     },

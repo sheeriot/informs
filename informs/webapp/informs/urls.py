@@ -11,22 +11,23 @@ from debug_toolbar.toolbar import debug_toolbar_urls
 
 from aidrequests.views.aid_request import (
      AidRequestCreateView,
-     AidRequestListView,
+     # AidRequestListView,
      AidRequestUpdateView,
      # AidRequestDeleteView,
      AidRequestDetailView,
      AidRequestLogCreateView
      )
-from aidrequests.views.aid_request_filter import AidRequestFilterView
+from aidrequests.views.aid_request_list import AidRequestListView
+from aidrequests.views.aid_request_list2 import AidRequestListView2
 
 from aidrequests.views.field_op import (
      FieldOpCreateView,
-     FieldOpListView,
+     # FieldOpListView,
      FieldOpUpdateView,
      # FieldOpDeleteView,
      FieldOpDetailView
      )
-from aidrequests.views.field_op_map import FieldOpMapView
+from aidrequests.views.field_op_list import FieldOpListView
 
 from aidrequests.views.export_csv import AidRequestCsvView
 
@@ -51,13 +52,13 @@ urlpatterns = [
      path('fieldop/<int:pk>/', FieldOpDetailView.as_view(), name='field_op_detail'),
      path('fieldop/create/', FieldOpCreateView.as_view(), name='field_op_create'),
      path('fieldop/<int:pk>/update/', FieldOpUpdateView.as_view(), name='field_op_update'),
-     path('fieldop/map/', FieldOpMapView.as_view(), name='field_op_map'),
+     # path('fieldop/map/', FieldOpMapView.as_view(), name='field_op_map'),
      # path('field_op/<int:pk>/delete/', FieldOpDeleteView.as_view(), name='field_op_delete'),
      path('tz_detect/', include('tz_detect.urls')),
      path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aid_request_new'),
      path('<slug:field_op>/aidrequest/', AidRequestCreateView.as_view(), name='aid_request_create'),
      path('<slug:field_op>/aidrequest/list/', AidRequestListView.as_view(), name='aid_request_list'),
-     path('<slug:field_op>/aidrequest/filter/', AidRequestFilterView.as_view(), name='aid_request_filter'),
+     path('<slug:field_op>/aidrequest/list2/', AidRequestListView2.as_view(), name='aid_request_list2'),
      path(
           '<slug:field_op>/aidrequest/<int:pk>/update/',
           AidRequestUpdateView.as_view(),

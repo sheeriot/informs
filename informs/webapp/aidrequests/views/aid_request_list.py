@@ -9,15 +9,17 @@ from ..models import FieldOp, AidRequest
 
 import base64
 # from time import perf_counter as timer
-from icecream import ic
+# from icecream import ic
 
 
 class AidRequestFilter(django_filters.FilterSet):
 
     ordering = django_filters.OrderingFilter(
         fields=(
-            ('status', 'status'),
-            ('priority', 'priority'),
+            ('status', 'Status'),
+            ('priority', 'Priority'),
+            ('created_at', 'Created'),
+            ('updated_at', 'Updated'),
         ),
         label='Sort by'
     )
@@ -28,11 +30,11 @@ class AidRequestFilter(django_filters.FilterSet):
 
 
 # Filter View for AidRequests
-class AidRequestFilterView(LoginRequiredMixin, FilterView):
+class AidRequestListView(LoginRequiredMixin, FilterView):
     model = AidRequest
     filterset_class = AidRequestFilter
     # context_object_name = 'aid_requests'
-    template_name = 'aidrequests/aid_request_filter.html'
+    template_name = 'aidrequests/aid_request_list.html'
     # paginate_by = 10
 
     def setup(self, request, *args, **kwargs):
@@ -46,7 +48,7 @@ class AidRequestFilterView(LoginRequiredMixin, FilterView):
         context['field_op'] = self.field_op
 
         # this should be false if filtered queryset is empty, i.e. []
-        ic(self.filterset.qs)
+        # ic(self.filterset.qs)
         if self.filterset.qs:
             mapped_aidrequests = [aid_request for aid_request in self.filterset.qs if aid_request.location]
             image_data = base64.b64encode(staticmap_aidrequests(self.field_op, mapped_aidrequests)).decode('utf-8')

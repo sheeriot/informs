@@ -2,12 +2,12 @@ from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy, reverse
-from django.views.generic import ListView, DetailView, CreateView, UpdateView
+from django.views.generic import DetailView, CreateView, UpdateView
 
 from django_q import tasks
 
 from geopy.distance import geodesic
-from time import perf_counter as timer
+# from time import perf_counter as timer
 from datetime import datetime
 from jinja2 import Template
 
@@ -70,57 +70,6 @@ def format_aid_location_note(aid_location):
 
     template = Template(template_str)
     return template.render(aid_location=aid_location)
-
-
-# List View for AidRequests
-class AidRequestListView(LoginRequiredMixin, ListView):
-    """ list the aid requests"""
-    model = AidRequest
-    template_name = 'aidrequests/aid_request_list.html'
-
-    def setup(self, request, *args, **kwargs):
-        super().setup(request, *args, **kwargs)
-        self.start_time = timer()
-        field_op_slug = self.kwargs['field_op']
-        self.field_op = get_object_or_404(FieldOp, slug=field_op_slug)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['field_op'] = self.field_op
-        return context
-
-    def get_queryset(self):
-        super().get_queryset()
-        field_op_slug = self.kwargs['field_op']
-        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
-        aid_requests = AidRequest.objects.only(
-            'assistance_type',
-            'priority',
-            'status',
-            'requestor_first_name',
-            'requestor_last_name',
-            'street_address',
-            'created_at',
-            'updated_at',
-            ).filter(field_op_id=field_op.id)
-        for aid_request in aid_requests:
-            aid_request.url_detail = reverse('aid_request_detail',
-                                             kwargs={'field_op': field_op_slug, 'pk': aid_request.pk})
-            aid_request.url_update = reverse('aid_request_update',
-                                             kwargs={'field_op': field_op_slug, 'pk': aid_request.pk})
-            aid_request.location_confirmed, aid_request.locs_confirmed = has_location_status(aid_request, 'confirmed')
-            aid_request.location_new, aid_request.locs_new = has_location_status(aid_request, 'new')
-
-            if aid_request.location_confirmed:
-                # ic(aid_request.locs_confirmed.first().latitude)
-                aid_request.latitude = aid_request.locs_confirmed.first().latitude
-                aid_request.longitude = aid_request.locs_confirmed.first().longitude
-            elif aid_request.location_new:
-                aid_request.latitude = aid_request.locs_new.first().latitude
-                aid_request.longitude = aid_request.locs_new.first().longitude
-            else:
-                aid_request.latitude, aid_request.longitude = None, None
-        return aid_requests
 
 
 # Detail View for AidRequest

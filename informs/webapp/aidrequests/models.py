@@ -94,7 +94,7 @@ class AidRequest(TimeStampedModel):
         ('evacuation', 'Evacuation'),
         ('re_supply', 'Re-supply'),
         ('welfare_check', 'Welfare check'),
-        ('other', 'Other (please describe)'),
+        ('other', 'Other'),
     ]
     assistance_type = models.CharField(max_length=20, choices=ASSISTANCE_CHOICES)
     assistance_description = models.TextField(blank=True, null=True)
