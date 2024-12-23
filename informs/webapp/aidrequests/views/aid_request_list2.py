@@ -51,7 +51,7 @@ class AidRequestListView2(LoginRequiredMixin, FilterView):
         context['azure_maps_key'] = settings.AZURE_MAPS_KEY
         aid_locations = []
         for aid_request in self.filterset.qs:
-            if aid_request.location.latitude and aid_request.location.longitude:
+            if aid_request.location:
                 aid_location = {
                     'pk': aid_request.pk,
                     'latitude': float(aid_request.location.latitude),
