@@ -61,7 +61,10 @@
                 <td>{{ aid_request.priority }}</td>
                 <td>{{ aid_request.status }}</td>
                 <td>{{ aid_request.requestor_first_name }} {{ aid_request.requestor_last_name }}</td>
-                <td>{{ aid_request.street_address }},{{ aid_request.state }}</td>
+                <td>{{ aid_request.street_address }},{{ aid_request.state }},{{ aid_request.state }}
+                    <hr class="m-0">
+                    {{aid_request.location.address_found}}
+                </td>
                 <td>
                     {{ aid_request.location_status }}
                 </td>
@@ -116,26 +119,30 @@
         </div>
     </div>
     <hr class="m-1">
+
     <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
     <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
-    <script type="text/javascript" src="{% static 'js/map_aidrequests.js' %}?v5"></script>
+    <script type="text/javascript" src="{% static 'js/map_aidrequests.js' %}?v6"></script>
+
+    {{ aid_locations|json_script:'aid-locations-data' }}
+
     <script>
+        const locations_data = JSON.parse(document.getElementById('aid-locations-data').textContent)
         const mapContext = {
-            latitude: "{{ field_op.latitude|safe }}",
-            longitude: "{{ field_op.longitude|safe }}",
-            apiKey: "{{ azure_maps_key|escapejs }}"
-        };
+            fieldop_lat: "{{ field_op.latitude|safe }}",
+            fieldop_lon: "{{ field_op.longitude|safe }}",
+            apiKey: "{{ azure_maps_key|escapejs }}",
+            aid_locations: locations_data
+        }
+        document.addEventListener("DOMContentLoaded", function() {
+            initMap(mapContext);
+        })
     </script>
-    <input type="button" onclick="initMap(mapContext)" value="run external javascript">
-<!-- <div id="mapContainer" style="width: 100%; height: 500px;"></div> -->
-<div id="mapContainer" style="position:relative;width:100%;min-width:290px;height:600px;"></div>
-    
-
-<fieldset style="width:calc(100% - 30px);min-width:290px;margin-top:10px;">
-<legend>CSS Styled HTML Marker</legend>
-This sample shows how to use CSS and HTML to create a marker on the map.
-</fieldset>
-
+    <fieldset style="width:calc(100% - 30px);min-width:290px;margin-top:10px;">
+    <legend>Field Op Map</legend>
+    Use the interactive map below.
+    </fieldset>
+    <div id="mapContainer" style="position:relative;width:100%;min-width:290px;height:600px;"></div>
 </div>
 
 {% endblock %}
