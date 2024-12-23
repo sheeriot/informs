@@ -8,9 +8,7 @@ from django_filters.views import FilterView
 
 from ..models import FieldOp, AidRequest
 
-# import base64
-
-# from icecream import ic
+from icecream import ic
 
 
 class AidRequestFilter2(django_filters.FilterSet):
@@ -51,6 +49,24 @@ class AidRequestListView2(LoginRequiredMixin, FilterView):
         #     context['map'] = f"data:image/png;base64,{image_data}"
 
         context['azure_maps_key'] = settings.AZURE_MAPS_KEY
+        aid_locations = []
+        for aid_request in self.filterset.qs:
+            if aid_request.location.latitude and aid_request.location.longitude:
+                aid_location = {
+                    'pk': aid_request.pk,
+                    'latitude': float(aid_request.location.latitude),
+                    'longitude': float(aid_request.location.longitude),
+                    'address': (
+                        f"{aid_request.street_address}, "
+                        f"{aid_request.city}, "
+                        f"{aid_request.state}"
+                    ),
+                    'requester_name': f"{aid_request.requestor_first_name} {aid_request.requestor_last_name}"
+                }
+                aid_locations.append(aid_location)
+
+        ic(aid_locations)
+        context['aid_locations'] = aid_locations
         return context
 
     def get_queryset(self):
