@@ -79,13 +79,6 @@
                   {% endfor %}
                   <li><hr class="dropdown-divider"></li>
                   <li class="dropdown-header">Beta...</li>
-                  {% for fieldop in fieldops_active %}
-                    <li>
-                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'aid_request_list2' field_op=fieldop.slug %}'">
-                          <i class="bi life-preserver text-danger"></i>  {{ fieldop.name }} - Mapped
-                        </button>
-                    </li>
-                  {% endfor %}
                 </ul>
               </li>
             </ul>

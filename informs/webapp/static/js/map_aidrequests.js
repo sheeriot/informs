@@ -51,21 +51,8 @@ function initMap(context) {
             { position: 'top-left' }
         );
 
-        if (Array.isArray(context.aid_locations)) {
-            locations.forEach(location => {
-            if (location.latitude && location.longitude) {
-                map.markers.add(new atlas.HtmlMarker({
-                htmlContent: "<div><div class='pin bounce'></div><div class='pulse'></div></div>",
-                position: [parseFloat(location.longitude), parseFloat(location.latitude)],
-                pixelOffset: [5, -18]
-                }));
-            }
-            });
-        } else {
-            console.error('Invalid aid_locations provided.');
-        }
 
-        // console.log('Now Mark Field Op');
+        // console.log('First Mark Field Op');
         map.markers.add(new atlas.HtmlMarker({
             htmlContent: "<div id='fieldop'><div class='pin bounce'></div><div class='pulse'></div></div>",
             position: [parseFloat(fieldop_lon), parseFloat(fieldop_lat)],
@@ -81,5 +68,20 @@ function initMap(context) {
         } else {
             console.error('Element with id "fieldop" not found.');
         }
+
+        if (Array.isArray(context.aid_locations)) {
+            locations.forEach(location => {
+            if (location.latitude && location.longitude) {
+                map.markers.add(new atlas.HtmlMarker({
+                htmlContent: "<div><div class='pin bounce'></div><div class='pulse'></div></div>",
+                position: [parseFloat(location.longitude), parseFloat(location.latitude)],
+                pixelOffset: [5, -18]
+                }));
+            }
+            });
+        } else {
+            console.error('Invalid aid_locations provided.');
+        }
+
     })
 }

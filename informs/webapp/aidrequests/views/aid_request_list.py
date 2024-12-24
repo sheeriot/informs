@@ -1,14 +1,13 @@
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
-# from django.urls import reverse
 import django_filters
 from django_filters.views import FilterView
-from .maps import staticmap_aidrequests
 
 from ..models import FieldOp, AidRequest
+from .maps import calculate_zoom
 
-import base64
-# from time import perf_counter as timer
+from geopy.distance import geodesic
 # from icecream import ic
 
 
@@ -33,41 +32,59 @@ class AidRequestFilter(django_filters.FilterSet):
 class AidRequestListView(LoginRequiredMixin, FilterView):
     model = AidRequest
     filterset_class = AidRequestFilter
-    # context_object_name = 'aid_requests'
     template_name = 'aidrequests/aid_request_list.html'
-    # paginate_by = 10
 
     def setup(self, request, *args, **kwargs):
         super().setup(request, *args, **kwargs)
-        # self.start_time = timer()
         field_op_slug = self.kwargs['field_op']
         self.field_op = get_object_or_404(FieldOp, slug=field_op_slug)
+
+    def get_queryset(self):
+        super().get_queryset()
+        aid_requests = AidRequest.objects.filter(field_op_id=self.field_op.id)
+        return aid_requests
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['field_op'] = self.field_op
-
-        # this should be false if filtered queryset is empty, i.e. []
-        # ic(self.filterset.qs)
-        if self.filterset.qs:
-            mapped_aidrequests = [aid_request for aid_request in self.filterset.qs if aid_request.location]
-            image_data = base64.b64encode(staticmap_aidrequests(self.field_op, mapped_aidrequests)).decode('utf-8')
-            context['map'] = f"data:image/png;base64,{image_data}"
+        context['azure_maps_key'] = settings.AZURE_MAPS_KEY
+        aid_locations = []
+        for aid_request in self.filterset.qs:
+            if aid_request.location:
+                if not aid_request.location.distance:
+                    aid_request.location.distance = geodesic(
+                        (self.field_op.latitude, self.field_op.longitude),
+                        (aid_request.location.latitude, aid_request.location.longitude)
+                    ).kilometers
+                aid_location = {
+                    'pk': aid_request.pk,
+                    'latitude': float(aid_request.location.latitude),
+                    'longitude': float(aid_request.location.longitude),
+                    'address': (
+                        f"{aid_request.street_address}, "
+                        f"{aid_request.city}, "
+                        f"{aid_request.state}"
+                    ),
+                    'requester_name': f"{aid_request.requestor_first_name} {aid_request.requestor_last_name}"
+                }
+                aid_locations.append(aid_location)
+        context['aid_locations'] = aid_locations
+        if aid_locations:
+            min_lat = min(aid_location['latitude'] for aid_location in aid_locations)
+            max_lat = max(aid_location['latitude'] for aid_location in aid_locations)
+            min_lon = min(aid_location['longitude'] for aid_location in aid_locations)
+            max_lon = max(aid_location['longitude'] for aid_location in aid_locations)
+            # compare to field_op location
+            min_lat = float(min(min_lat, self.field_op.latitude))
+            max_lat = float(max(max_lat, self.field_op.latitude))
+            min_lon = float(min(min_lon, self.field_op.longitude))
+            max_lon = float(max(max_lon, self.field_op.longitude))
+            center_lat = (min_lat + max_lat) / 2
+            center_lon = (min_lon + max_lon) / 2
+            context['center_lat'] = center_lat
+            context['center_lon'] = center_lon
+            context['map_zoom'] = calculate_zoom(geodesic(
+                (min_lat, min_lon),
+                (max_lat, max_lon)
+            ).kilometers/1.5)
         return context
-
-    def get_queryset(self):
-        super().get_queryset()
-        field_op_slug = self.kwargs['field_op']
-        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
-        aid_requests = AidRequest.objects.only(
-            'assistance_type',
-            'priority',
-            'status',
-            'requestor_first_name',
-            'requestor_last_name',
-            'street_address',
-            'created_at',
-            'updated_at',
-            ).filter(field_op_id=field_op.id)
-
-        return aid_requests

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 
+{% load static %}
 {% load custom_tags %}
 
 {% block content %}
@@ -60,7 +61,10 @@
                 <td>{{ aid_request.priority }}</td>
                 <td>{{ aid_request.status }}</td>
                 <td>{{ aid_request.requestor_first_name }} {{ aid_request.requestor_last_name }}</td>
-                <td>{{ aid_request.street_address }},{{ aid_request.state }}</td>
+                <td>{{ aid_request.street_address }},{{ aid_request.state }},{{ aid_request.state }}
+                    <hr class="m-0">
+                    {{aid_request.location.address_found}}
+                </td>
                 <td>
                     {{ aid_request.location_status }}
                 </td>
@@ -114,16 +118,34 @@
             </a>
         </div>
     </div>
-    {% if map %}
     <hr class="m-1">
-    <div class="container">
-        <div class="display-5 m-2">Aid Request Locations Map - Filtered</div>
-        <div class="small m-2">Note: Circle marks a 20 km radius from Field Op center.</div>
-        <div class="d-flex justify-content-center">
-            <img src="{{ map }}" alt="Field Operations Map" class="img-fluid">
-        </div>
-    </div>
-    {% endif %}
+
+    <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
+    <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+    <script type="text/javascript" src="{% static 'js/map_aidrequests.js' %}?v6"></script>
+
+    {{ aid_locations|json_script:'aid-locations-data' }}
+
+    <script>
+        const locations_data = JSON.parse(document.getElementById('aid-locations-data').textContent)
+        const mapContext = {
+            fieldop_lat: "{{ field_op.latitude|safe }}",
+            fieldop_lon: "{{ field_op.longitude|safe }}",
+            apiKey: "{{ azure_maps_key|escapejs }}",
+            aid_locations: locations_data,
+            map_zoom: "{{ map_zoom|safe  }}",
+            center_lat: "{{ center_lat|safe }}",
+            center_lon: "{{ center_lon|safe }}"
+        }
+        document.addEventListener("DOMContentLoaded", function() {
+            initMap(mapContext);
+        })
+    </script>
+    <fieldset style="width:calc(100% - 30px);min-width:290px;margin-top:10px;">
+    <legend>Field Op Map</legend>
+    Use the interactive map below.
+    </fieldset>
+    <div id="mapContainer" style="position:relative;width:100%;min-width:290px;height:800px;"></div>
 </div>
 
 {% endblock %}
