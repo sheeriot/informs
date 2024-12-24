@@ -1,3 +1,9 @@
+:root {
+    --pin-color: red;
+    --pin-background: LemonChiffon;
+}
+
+
 input.tableedit,
 select.tableedit {
     font-size: 0.875em;
@@ -23,11 +29,12 @@ button.tableedit {
 }
 
 /* Fun with Azure Maps - from internet sample */
+/* now with css variables */
 .pin {
     width: 30px;
     height: 30px;
     border-radius: 50% 50% 50% 0;
-    background: #00cae9;
+    background: var(--pin-color);
     position: absolute;
     transform: rotate(-45deg);
     left: 50%;
@@ -40,41 +47,19 @@ button.tableedit {
         width: 14px;
         height: 14px;
         margin: 8px 0 0 8px;
-        background: #e6e6e6;
+        background: var(--pin-background);
         position: absolute;
-        border-radius: 50%;
+        border-radius: 35%;
     }
-
-.pin-red {
-    width: 30px;
-    height: 30px;
-    border-radius: 50% 50% 50% 0;
-    background: red;
-    position: absolute;
-    transform: rotate(-45deg);
-    left: 50%;
-    top: 50%;
-    margin: -20px 0 0 -20px;
-}
-
-    .pin-red:after {
-        content: "";
-        width: 14px;
-        height: 14px;
-        margin: 8px 0 0 8px;
-        background: pink;
-        position: absolute;
-        border-radius: 50%;
-        }
 
 .bounce {
     animation-name: bounce;
     animation-fill-mode: both;
-    animation-duration: 1s;
+    animation-duration: 3s;
 }
 
 .pulse {
-    background: #d6d4d4;
+    background: var(--pin-background);
     border-radius: 50%;
     height: 14px;
     width: 14px;
@@ -96,36 +81,9 @@ button.tableedit {
         animation: pulsate 1s ease-out;
         animation-iteration-count: infinite;
         opacity: 0;
-        box-shadow: 0 0 1px 2px #00cae9;
+        box-shadow: 0 0 1px 2px var(--pin-color);
         animation-delay: 1.1s;
     }
-
-    .pulse2 {
-        background: pink;
-        border-radius: 50%;
-        height: 14px;
-        width: 14px;
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        margin: 11px 0px 0px -12px;
-        transform: rotateX(55deg);
-        z-index: -2;
-    }
-    
-        .pulse2:after {
-            content: "";
-            border-radius: 50%;
-            height: 40px;
-            width: 40px;
-            position: absolute;
-            margin: -13px 0 0 -13px;
-            animation: pulsate 1s ease-out;
-            animation-iteration-count: infinite;
-            opacity: 0;
-            box-shadow: 0 0 1px 2px red;
-            animation-delay: 1.1s;
-
 
 @keyframes pulsate {
     0% {

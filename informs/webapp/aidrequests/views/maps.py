@@ -110,9 +110,9 @@ def staticmap_aidrequests(field_op=None, aid_requests=None, width=1200, height=8
         min_lon = min(min_lon, field_op.longitude)
         max_lon = max(max_lon, field_op.longitude)
         pin_instances.insert(0,
-            f"default|coFF0000|lcFFFFFF||'OP'"
-            f"{field_op.longitude} {field_op.latitude}"
-        )
+                             f"default|coFF0000|lcFFFFFF||'OP'"
+                             f"{field_op.longitude} {field_op.latitude}"
+                             )
     center_lat = (min_lat + max_lat) / 2
     center_lon = (min_lon + max_lon) / 2
     map_distance = geodesic((min_lat, min_lon), (max_lat, max_lon)).kilometers

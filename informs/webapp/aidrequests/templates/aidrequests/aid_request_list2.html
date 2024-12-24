@@ -132,7 +132,10 @@
             fieldop_lat: "{{ field_op.latitude|safe }}",
             fieldop_lon: "{{ field_op.longitude|safe }}",
             apiKey: "{{ azure_maps_key|escapejs }}",
-            aid_locations: locations_data
+            aid_locations: locations_data,
+            map_zoom: "{{ map_zoom|safe  }}",
+            center_lat: "{{ center_lat|safe }}",
+            center_lon: "{{ center_lon|safe }}"
         }
         document.addEventListener("DOMContentLoaded", function() {
             initMap(mapContext);
@@ -142,7 +145,7 @@
     <legend>Field Op Map</legend>
     Use the interactive map below.
     </fieldset>
-    <div id="mapContainer" style="position:relative;width:100%;min-width:290px;height:600px;"></div>
+    <div id="mapContainer" style="position:relative;width:100%;min-width:290px;height:700px;"></div>
 </div>
 
 {% endblock %}
