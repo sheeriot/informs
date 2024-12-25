@@ -77,7 +77,7 @@ class FieldOpAdmin(admin.ModelAdmin):
 
 class AidLocationAdmin(admin.ModelAdmin):
     """AidLocation admin"""
-    list_display = ('aid_request', 'status', 'source', 'latitude', 'longitude', 'created_at', 'uid')
+    list_display = ('pk', 'aid_request', 'status', 'source', 'latitude', 'longitude', 'created_at', 'uid')
     list_filter = ('aid_request',)
     readonly_fields = (
         'aid_request',
@@ -98,6 +98,16 @@ class AidLocationAdmin(admin.ModelAdmin):
             obj.created_by = request.user
         # Set updated_by on every save
         obj.updated_by = request.user
+        if change:
+            obj.aid_request.logs.create(
+                created_by=request.user,
+                log_entry=f"Updated {obj} with changes: {form.changed_data}"
+            )
+        else:
+            obj.aid_request.logs.create(
+                created_by=request.user,
+                log_entry=f"Created {obj}"
+            )
         super().save_model(request, obj, form, change)
 
 

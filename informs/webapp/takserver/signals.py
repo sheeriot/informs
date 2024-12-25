@@ -10,7 +10,7 @@ import ast
 from configparser import ConfigParser
 
 from aidrequests.models import AidLocation
-from .signals2 import tak_activityReport
+# from takserver.signals2 import tak_activityReport
 
 from icecream import ic
 
@@ -25,52 +25,60 @@ class CotSender(pytak.QueueWorker):
         aid_location_id = notice[1]
         try:
             aid_location = await AidLocation.objects.select_related('aid_request').aget(pk=aid_location_id)
-
         except Exception as e:
             ic(e)
-        finally:
-            data = tak_activityReport(
-                uuid=f'AidLocation.{aid_location_id}',
-                name=f'AidRequest.{aid_location.aid_request.pk}',
-                lat=aid_location.latitude,
-                lon=aid_location.longitude
-            )
+        aid_request = aid_location.aid_request
+        try:
+            data = make_cot(
+                            uuid=aid_location.uid,
+                            name=f'AidRequest.{aid_request.pk}',
+                            lat=aid_location.latitude,
+                            lon=aid_location.longitude,
+                            remarks=f'{aid_request.assistance_type}'
+                            )
+        except Exception as e:
+            ic(e)
 
         try:
             await self.handle_data(data)
         except Exception as e:
             ic(e)
         finally:
-            # ic('notice handled')
             while not self.queue.empty():
                 await asyncio.sleep(1)
+        ic('cot sent, create log entry')
+
+        try:
+            await aid_request.logs.acreate(
+                log_entry=f"CoT event sent for AidRequest {aid_request.pk}; location: {aid_location_id}"
+            )
+        except Exception as e:
+            ic(e)
 
     async def handle_data(self, event):
-        # ic(event)
         try:
+            # ic(event)
             await self.put_queue(event)
         except Exception as e:
             ic(e)
-        finally:
-            # ic('data in queue')
-            pass
+
 
 
 @receiver(post_save, sender=AidLocation)
 def aid_location_post_save(sender, instance, created, **kwargs):
-    if created:
-        try:
-            asyncio.run(send_cot(instance))
-        except Exception as e:
-            ic(e)
+    update_fields = kwargs.get('update_fields', False)
+    if update_fields:
+        if 'status' in update_fields and instance.status == 'confirmed':
+            try:
+                asyncio.run(send_cot(instance))
+            except Exception as e:
+                ic(e)
 
 
 async def send_cot(instance=None):
-    # Get the cot_config and cot_queues
     cot_config, cot_queues = await setup_cotqueues(instance)
     cot_queues.add_tasks(set([CotSender(cot_queues.tx_queue, cot_config)]))
     try:
-        # ic('queues setup, run the worker')
         await cot_queues.run()
     except Exception as e:
         ic(e)
@@ -78,7 +86,7 @@ async def send_cot(instance=None):
 
 async def setup_cotqueues(instance=None):
     COT_URL = f'tls://{settings.TAKSERVER_DNS}:8089'
-    NOTICE = ["created", instance.pk]
+    NOTICE = ["confirmed", instance.pk]
     cot_config = ConfigParser()
 
     cot_config["civtakdev"] = {
@@ -95,111 +103,49 @@ async def setup_cotqueues(instance=None):
     return cot_config, cot_queues
 
 
-# def generate_cot_event(action, aid_location):
-#     cot_event = pytak.Event(
-#         type="a-f-G-U-C",
-#         how="m-g",
-#         lat=aid_location.latitude,
-#         lon=aid_location.longitude,
-#         ce="0.0",
-#         le="0.0",
-#         hae="0.0",
-#         uid='973aa331-cd08-4eb9-a635-8871629a38f2',
-#     )
-#     return cot_event
-
-def generate_cot_event():
-    cot_event = pytak.COTEvent(
-        cot_type="a-f-G-U-C",
-        lat="40.781789",
-        lon="-73.968698",
-        ce="0.0",
-        le="0.0",
-        hae="0.0",
-        uid='generate-cot-event-tester',
-    )
-    return cot_event
-
-
-def gen_cot2(action, aid_location):
-    cot_event = pytak.SimpleCOTEvent(
-        lat=aid_location.latitude,
-        lon=aid_location.longitude,
-        # uid='973aa331-cd08-4eb9-a635-8871629a38f2',
-        uid=f"aid-location-{aid_location.id}",
-        stale=3600,
-        cot_type="a-f-G-U-C",
-    )
-    return cot_event
-
-
-# def gen_cot2():
-#     """Generate CoT Event."""
-#     root = ET.Element("event")
-#     root.set("version", "2.0")
-#     root.set("type", "a-f-G-U-C")
-#     root.set("uid", "informs-mark2")
-#     root.set("how", "m-g")
-#     root.set("time", pytak.cot_time())
-#     root.set("start", pytak.cot_time())
-#     root.set("stale", pytak.cot_time(3600))
-#     pt_attr = {
-#         "lat": "30.42333",
-#         "lon": "-97.93248",
-#         "hae": "0",
-#         "ce": "10",
-#         "le": "10",
-#     }
-
-    # ET.SubElement(root, "point", attrib=pt_attr)
-
-    # return ET.tostring(root, encoding='unicode')
-
-
-def gen_cot(action, aid_location):
-    """Generate CoT Event."""
+def make_cot(lat=0.0, lon=0.0, uuid="test101", name="name101",
+             updates=None, poll_interval="3600", remarks=None):
+    # ic(remarks)
+    event_uuid = uuid
     root = ET.Element("event")
+
     root.set("version", "2.0")
-    root.set("type", "a-f-G-U-C")  # insert your type of marker
-    root.set("uid", str(f"aid-location-{aid_location.pk}"))
-    root.set("how", "m-g")
+    root.set("type", "a-u-G")
+    root.set("uid", event_uuid)
+    root.set("how", "h-g-i-g-o")
     root.set("time", pytak.cot_time())
     root.set("start", pytak.cot_time())
-    root.set("stale", pytak.cot_time(86400))
+    root.set("stale", pytak.cot_time(int(poll_interval)))
+    root.set("access", "Undefined")
 
-    pt_attr = {
-        "lat": str(aid_location.latitude),
-        "lon": str(aid_location.longitude),
-        "hae": "0",
-        "ce": "10",
-        "le": "10",
-    }
-    ET.SubElement(root, "point", attrib=pt_attr)
+    point = ET.SubElement(root, 'point')
+    point.set('lat', str(lat))
+    point.set('lon', str(lon))
+    point.set('hae', '250')
+    point.set('ce', '9999999.0')
+    point.set('le', '9999999.0')
 
-    return ET.tostring(root)
+    detail = ET.SubElement(root, 'detail')
 
+    contact = ET.SubElement(detail, "contact")
+    contact.set("callsign", name)
 
-def gen_cot0():
-    """Generate CoT Event."""
-    root = ET.Element("event")
-    root.set("version", "2.0")
-    root.set("type", "a-h-A-M-A")  # insert your type of marker
-    root.set("uid", "name_your_marker")
-    root.set("how", "m-g")
-    root.set("time", pytak.cot_time())
-    root.set("start", pytak.cot_time())
-    root.set(
-        "stale", pytak.cot_time(60)
-    )  # time difference in seconds from 'start' when stale initiates
+    status = ET.SubElement(detail, 'status')
+    status.set('readiness', 'true')
 
-    pt_attr = {
-        "lat": "40.781789",  # set your lat (this loc points to Central Park NY)
-        "lon": "-73.968698",  # set your long (this loc points to Central Park NY)
-        "hae": "0",
-        "ce": "10",
-        "le": "10",
-    }
+    ET.SubElement(detail, 'archive')
 
-    ET.SubElement(root, "point", attrib=pt_attr)
-
-    return ET.tostring(root)
+    precisionlocation = ET.SubElement(detail, "precisionlocation")
+    precisionlocation.set("altsrc", "DTED0")
+    # remarks = ET.SubElement(detail, 'remarks')
+    if remarks:
+        remarks_element = ET.SubElement(detail, 'remarks')
+        remarks_element.text = remarks
+    # if hasattr(updates, '__iter__'):
+    #     remarks.text = '\n'.join(updates)
+    color = ET.SubElement(detail, 'color')
+    color.set('argb', "-1")
+    usericon = ET.SubElement(detail, 'usericon')
+    usericon.set('iconsetpath', 'COT_MAPPING_2525B/a-u/a-u-G')
+    result = ET.tostring(root)
+    return result

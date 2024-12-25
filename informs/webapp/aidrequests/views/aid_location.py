@@ -135,15 +135,14 @@ class AidLocationStatusUpdateView(LoginRequiredMixin, UpdateView):
         elif 'reject' in self.request.POST:
             form.instance.status = 'rejected'
             action = f'Location {self.object.pk} - Rejected by {user}'
-        try:
-            self.object = form.save()
-        except Exception as e:
-            ic(e)
-
         if user.is_authenticated:
             form.instance.updated_by = user
         else:
             form.instance.updated_by = None
+        try:
+            self.object = form.instance.save(update_fields=['status', 'updated_by'])
+        except Exception as e:
+            ic(e)
         try:
             self.aid_request.logs.create(
                 log_entry=f'{action}'
