@@ -254,8 +254,14 @@
 
     <h2>Additional Information</h2>
     <p>{{ object.additional_info|default:"None" }}</p>
-    <hr>
-    <h4>Activity Logs</h4>
+    <hr class="m-0">
+    <h2>Activity Logs</h2>
+    <div class="container font-monospace">
+        {% if log_form %}
+            {% crispy log_form %}
+        {% endif %}
+    </div>
+    <hr class="m-1">
     <div class="container font-monospace">
         <table class="table table-sm table-warning table-striped table-bordered w-100" style="font-size: 0.75rem;">
             <thead>
@@ -283,13 +289,8 @@
             </tbody>
         </table>
     </div>
-    <h6>Add Notes</h6>
-    <div class="container font-monospace">
-        {% if log_form %}
-            {% crispy log_form %}
-        {% endif %}
-    </div>
-    <hr>
+
+    <hr class="m-0">
     <table class="table table-bordered table-data w-auto caption-top border border-3 border-primary font-monospace"
                     style="font-size: 0.75rem;">
         <caption>Ticket Info</caption>
