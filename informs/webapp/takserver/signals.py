@@ -63,7 +63,6 @@ class CotSender(pytak.QueueWorker):
             ic(e)
 
 
-
 @receiver(post_save, sender=AidLocation)
 def aid_location_post_save(sender, instance, created, **kwargs):
     update_fields = kwargs.get('update_fields', False)

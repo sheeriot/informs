@@ -146,6 +146,26 @@
     Use the interactive map below.
     </fieldset>
     <div id="mapContainer" style="position:relative;width:100%;min-width:290px;height:800px;"></div>
+
+    <hr class="m-1">
+    <h2>Map2 - Now with Shapes</h2
+    </fieldset>
+    <div id="map2Container" style="position:relative;width:100%;min-width:290px;height:800px;"></div>
+    <script>
+    const map2Context = {
+            azure_maps_key: "{{ azure_maps_key|escapejs }}",
+            map_zoom: "{{ map_zoom|safe  }}",
+            center_lat: "{{ center_lat|safe }}",
+            center_lon: "{{ center_lon|safe }}",
+            fieldop_name: "{{ field_op.name|safe }}",
+            fieldop_slug: "{{ field_op.slug|safe }}",
+            fieldop_lat: "{{ field_op.latitude|safe }}",
+            fieldop_lon: "{{ field_op.longitude|safe }}",
+        }
+        document.addEventListener("DOMContentLoaded", function() {
+            initMap2(map2Context);
+        })
+    </script>
 </div>
 
 {% endblock %}
