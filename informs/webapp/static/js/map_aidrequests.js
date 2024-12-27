@@ -11,6 +11,8 @@ function initMap(context) {
     const map_zoom = context.map_zoom
     const center_lat = context.center_lat
     const center_lon = context.center_lon
+    console.log('fieldop coords')
+    console.log(fieldop_lat, fieldop_lon)
  
     // console.log('fieldop_lat,fieldop_lon:', fieldop_lat, ',', fieldop_lon)
     // console.log('map_zoom:', map_zoom)
@@ -101,10 +103,8 @@ function initMap2(context) {
     const fieldop_lon = context.fieldop_lon
     const azure_maps_key = context.azure_maps_key
     const map_zoom = context.map_zoom
+    const ring_size = context.ring_size
 
-    // console.log('center_lat, center_lon:', center_lat, ',', center_lon)
-    // console.log('map_zoom:', map_zoom)
-    // console.log(azure_maps_key)
 
     var map2 = new atlas.Map('map2Container', {
         center: [parseFloat(center_lon), parseFloat(center_lat)],
@@ -112,7 +112,6 @@ function initMap2(context) {
         style: 'road_shaded_relief',
         view: "Auto",
 
-        //Add authentication details for connecting to Azure Maps.
         authOptions: {
             authType: 'subscriptionKey',
             subscriptionKey: azure_maps_key,
@@ -121,9 +120,6 @@ function initMap2(context) {
 
     //Wait until the map resources are ready.
     map2.events.add('ready', function () {
-        // console.log('Map2 is READY. Add controls, markers..')
-        // map2.setUserInteraction({ scrollZoomInteraction: false })
-
         const zoomControl = new atlas.control.ZoomControl();
         map2.controls.add(zoomControl, {
             position: 'top-right'
@@ -152,10 +148,10 @@ function initMap2(context) {
             new atlas.data.Point([parseFloat(fieldop_lon), parseFloat(fieldop_lat)]), 
             {
                 subType: "Circle",
-                radius: 20000
+                radius: ring_size * 1000
             }
         ));
-
+        console.log("Ring in KM", ring_size)
         const circleLayer = new atlas.layer.PolygonLayer(dataSourceC, null, {
             fillColor: 'rgba(255, 0, 0, 0.1)',
             strokeColor: 'red',
@@ -270,7 +266,46 @@ function initMap2(context) {
                 haloWidth: 2
             }
         });
-
         map2.layers.add(aidLayer);
-    });
+
+        // Add a control for toggling layers
+        var lc = new atlas.control.LayerControl({  
+            // legendControl: legend,
+            layerGroups: [  
+                {  
+                    layout: 'checkbox',  
+                    groupTitle: 'aidGrouplayerTitle1',  
+                    layers: ['aidLayer',],  
+                    items: [
+                        {  
+                            label: 'aidLayer1',  
+                            layout: 'checkbox',  
+                            enabledStyle: { visible: true },  
+                            disabledStyle: { visible: false }
+                        },  
+                    ]
+                },
+                { 
+                    layout: 'checkbox',  
+                    groupTitle: 'fieldOpTitle',  
+                    layers: ['foLayer', 'circleLayer'],  
+                    items: [
+                        {
+                            label: 'field_op_marker',  
+                            layout: 'checkbox',  
+                            enabledStyle: { visible: true },  
+                            disabledStyle: { visible: false } 
+                        },
+                        { 
+                            label: 'field_op Ring: ' + ring_size,  
+                            layout: 'checkbox',  
+                            enabledStyle: { visible: true }, 
+                            disabledStyle: { visible: false }
+                        }
+                    ]
+                }
+            ]
+        })
+        map2.controls.add(lc, { position: 'bottom-right' })
+    })
 }
