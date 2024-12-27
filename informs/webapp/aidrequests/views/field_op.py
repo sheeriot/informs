@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.db.models import Count
@@ -5,7 +6,9 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView
 
 from ..models import FieldOp
 from .forms import FieldOpForm
+from .maps import calculate_zoom
 
+from geopy.distance import geodesic
 # from icecream import ic
 
 
@@ -30,6 +33,61 @@ class FieldOpDetailView(LoginRequiredMixin, DetailView):
         context['notifies_sms'] = self.object.notify.filter(type='sms')
 
         context['aid_request_count'] = self.object.aid_requests.count()
+        context['azure_maps_key'] = settings.AZURE_MAPS_KEY
+        aid_locations = []
+        for aid_request in self.object.aid_requests.all():
+            if aid_request.location:
+                aid_location = {
+                    'pk': aid_request.pk,
+                    'latitude': float(aid_request.location.latitude),
+                    'longitude': float(aid_request.location.longitude),
+                    'address': (
+                                f"{aid_request.street_address}, "
+                                f"{aid_request.city}, "
+                                f"{aid_request.state}"
+                                ),
+                    'requester_name': f"{aid_request.requestor_first_name} {aid_request.requestor_last_name}"
+                }
+                aid_locations.append(aid_location)
+        context['aid_locations'] = aid_locations
+        if aid_locations:
+            min_lat = min(aid_location['latitude'] for aid_location in aid_locations)
+            max_lat = max(aid_location['latitude'] for aid_location in aid_locations)
+            min_lon = min(aid_location['longitude'] for aid_location in aid_locations)
+            max_lon = max(aid_location['longitude'] for aid_location in aid_locations)
+            # compare to field_op location
+            min_lat = float(min(min_lat, self.object.latitude))
+            max_lat = float(max(max_lat, self.object.latitude))
+            min_lon = float(min(min_lon, self.object.longitude))
+            max_lon = float(max(max_lon, self.object.longitude))
+            center_lat = (min_lat + max_lat) / 2
+            center_lon = (min_lon + max_lon) / 2
+            context['center_lat'] = center_lat
+            context['center_lon'] = center_lon
+            context['map_zoom'] = calculate_zoom(geodesic(
+                (min_lat, min_lon),
+                (max_lat, max_lon)
+            ).kilometers/1.5)
+
+        # for aid_request in self.field:
+        #     if aid_request.location:
+        #         if not aid_request.location.distance:
+        #             aid_request.location.distance = geodesic(
+        #                 (self.field_op.latitude, self.field_op.longitude),
+        #                 (aid_request.location.latitude, aid_request.location.longitude)
+        #             ).kilometers
+        #         aid_location = {
+        #             'pk': aid_request.pk,
+        #             'latitude': float(aid_request.location.latitude),
+        #             'longitude': float(aid_request.location.longitude),
+        #             'address': (
+        #                 f"{aid_request.street_address}, "
+        #                 f"{aid_request.city}, "
+        #                 f"{aid_request.state}"
+        #             ),
+        #             'requester_name': f"{aid_request.requestor_first_name} {aid_request.requestor_last_name}"
+        #         }
+        #         aid_locations.append(aid_location)
         return context
 
 

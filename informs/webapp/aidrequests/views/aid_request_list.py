@@ -83,8 +83,14 @@ class AidRequestListView(LoginRequiredMixin, FilterView):
             center_lon = (min_lon + max_lon) / 2
             context['center_lat'] = center_lat
             context['center_lon'] = center_lon
-            context['map_zoom'] = calculate_zoom(geodesic(
+            max_distance = geodesic(
                 (min_lat, min_lon),
                 (max_lat, max_lon)
-            ).kilometers/1.5)
+            ).kilometers
+            # ic(max_distance)
+            context['max_distance'] = max_distance
+            context['ring_size'] = int(max_distance / 10)
+            if context['ring_size'] < 1:
+                context['ring_size'] = 1
+            context['map_zoom'] = calculate_zoom(max_distance/1.5)
         return context

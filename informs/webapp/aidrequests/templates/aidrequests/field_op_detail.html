@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% load bootstrap_icons %}
+
+{% load static %}
 
 {% block content %}
 <div class="container m-4">
@@ -94,5 +95,32 @@
             <i class="bi bi-life-preserver text-danger"></i> Aid Request List ({{ aid_request_count }})
         </a>
     </div>
+
+    <hr class="m-1">
+    <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
+    <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+    <script type="text/javascript" src="{% static 'js/map_aidrequests.js' %}?v6"></script>
+
+    {{ aid_locations|json_script:'aid-locations-data' }}
+
+    <script>
+        const locations_data = JSON.parse(document.getElementById('aid-locations-data').textContent)
+        const mapContext = {
+            fieldop_lat: "{{ object.latitude|safe }}",
+            fieldop_lon: "{{ object.longitude|safe }}",
+            apiKey: "{{ azure_maps_key|escapejs }}",
+            aid_locations: locations_data,
+            map_zoom: "{{ map_zoom|safe  }}",
+            center_lat: "{{ center_lat|safe }}",
+            center_lon: "{{ center_lon|safe }}"
+        }
+        document.addEventListener("DOMContentLoaded", function() {
+            initMap(mapContext);
+        })
+    </script>
+    <fieldset style="width:calc(100% - 30px);min-width:290px;margin-top:10px;">
+    <legend>Field Operation Map: {{ object.name }}</legend>
+    </fieldset>
+    <div id="mapContainer" style="position:relative;width:100%;min-width:290px;height:800px;"></div>
 </div>
 {% endblock %}
