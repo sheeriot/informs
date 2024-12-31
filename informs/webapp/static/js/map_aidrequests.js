@@ -104,7 +104,38 @@ function initMap2(context) {
     const azure_maps_key = context.azure_maps_key
     const map_zoom = context.map_zoom
     const ring_size = context.ring_size
-
+    const legend_one = {
+            type: 'category',
+            subtitle: 'Category',
+            layout: 'column',
+            itemLayout: 'row',
+            footer: 'A category legend that uses a combination of shapes and icons.',
+            strokeWidth: 2,
+            items: [
+                {
+                    color: 'DodgerBlue',
+                    label: 'label1',
+                    //Url to an image.
+                    shape: 'https://azuremapscodesamples.azurewebsites.net/Common/images/icons/campfire.png'
+                }, {
+                    color: 'Yellow',
+                    label: 'label2',
+                    shape: 'square'
+                }, {
+                    color: 'Orange',
+                    label: 'Ricky',
+                    shape: 'line'
+                }, {
+                    color: 'Red',
+                    label: 'is',
+                    shape: 'circle'
+                }, {
+                    color: 'purple',
+                    label: 'awesome!',
+                    shape: 'triangle'
+                }
+            ]
+        }
 
     var map2 = new atlas.Map('map2Container', {
         center: [parseFloat(center_lon), parseFloat(center_lat)],
@@ -116,48 +147,46 @@ function initMap2(context) {
             authType: 'subscriptionKey',
             subscriptionKey: azure_maps_key,
         }
-    });
+    })
 
-    //Wait until the map resources are ready.
+    map2StyleControl = new atlas.control.StyleControl({
+        mapStyles: [
+            'terra', 
+            'road', 
+            'satellite', 
+            'hybrid',
+            'road_shaded_relief', 
+            'satellite_road_labels'
+        ],
+        layout: 'list'
+    })
+
+    //Wait until the map resources are ready, then add layers
     map2.events.add('ready', function () {
-        const zoomControl = new atlas.control.ZoomControl();
-        map2.controls.add(zoomControl, {
-            position: 'top-right'
-        })
 
-        //Add a style control to the map.
-        map2.controls.add(
-            new atlas.control.StyleControl({
-            mapStyles: [
-                'terra', 
-                'road', 
-                'satellite', 
-                'hybrid',
-                'road_shaded_relief', 
-                'satellite_road_labels'
-            ],
-            layout: 'list'
-            }),
-            { position: 'top-left' }
-        );
-        // First, Field Op Marker
-        const dataSourceC = new atlas.source.DataSource()
-        map2.sources.add(dataSourceC)
-        //Create a circle
-        dataSourceC.add(new atlas.data.Feature(
-            new atlas.data.Point([parseFloat(fieldop_lon), parseFloat(fieldop_lat)]), 
-            {
-                subType: "Circle",
-                radius: ring_size * 1000
+        map2.imageSprite.add('life-preserver', '/static/images/icons/t_life-preserver.svg')
+        console.log(atlas.getAllImageTemplateNames())
+        legend = new atlas.control.LegendControl({ title: 'Field Op Legend'}, legends = [legend_one])
+
+        map2.controls.add(legend, { position: 'top-left' })
+        var lc = new atlas.control.LayerControl({
+            legendControl: legend,
+            dynamicLayerGroup: {
+                groupTitle: 'Show:',
+                layout: 'checkbox'
             }
-        ));
-        console.log("Ring in KM", ring_size)
-        const circleLayer = new atlas.layer.PolygonLayer(dataSourceC, null, {
-            fillColor: 'rgba(255, 0, 0, 0.1)',
-            strokeColor: 'red',
-            strokeWidth: 2
-        });
-        map2.layers.add(circleLayer)
+        })
+        map2.controls.add( map2StyleControl, { position: 'top-left' })
+        map2.controls.add( lc, { position: 'bottom-left' })
+        map2.controls.add([
+                new atlas.control.ZoomControl(),
+                new atlas.control.PitchControl(),
+                new atlas.control.CompassControl(),
+                new atlas.control.FullscreenControl(),
+            ], { position: 'top-right' })
+        map2.controls.add([
+            new atlas.control.ScaleControl(),
+            ], { position: 'bottom-right' })
 
         var fopoint_data = []
         var fopos = new atlas.data.Position(parseFloat(fieldop_lon), parseFloat(fieldop_lat))
@@ -168,12 +197,10 @@ function initMap2(context) {
                     'lon': fieldop_lon
                 })
         fopoint_data.push(fopoint);
-        
         var fodataSource = new atlas.source.DataSource()
         map2.sources.add(fodataSource)
         fodataSource.add(fopoint_data);
-
-        var foLayer = new atlas.layer.SymbolLayer(fodataSource, null, {
+        var foLayer = new atlas.layer.SymbolLayer(fodataSource, fieldop_name, {
             iconOptions: {
                 ignorePlacement: false,
                 allowOverlap: true,
@@ -192,9 +219,28 @@ function initMap2(context) {
                 haloColor: 'white',
                 haloWidth: 2
             }
-        });
-        
-        map2.layers.add(foLayer);
+        })
+        map2.layers.add(foLayer)
+
+        // Mark an Aid Ring
+        const dataSourceC = new atlas.source.DataSource()
+        map2.sources.add(dataSourceC)
+        //Create a circle
+        dataSourceC.add(new atlas.data.Feature(
+            new atlas.data.Point([parseFloat(fieldop_lon), parseFloat(fieldop_lat)]), 
+            {
+                subType: "Circle",
+                radius: ring_size * 1000
+            }
+        ))
+        // console.log("Ring in KM", ring_size)
+        const ringLayer = new atlas.layer.PolygonLayer(dataSourceC, ring_size + 'km Aid Ring', {
+            fillColor: 'rgba(255, 0, 0, 0.1)',
+            strokeColor: 'red',
+            strokeWidth: 2
+        })
+        map2.layers.add(ringLayer)
+
         //Create a popup but leave it closed so we can update it and display it later.
         var fopopupTemplate = '<div class="fieldop-popup">{name}<hr class="m-0">{slug}<div><hr class="m-0">{lat},{lon}</div></div>';
         fopopup = new atlas.Popup({
@@ -204,33 +250,22 @@ function initMap2(context) {
 
         //Add a hover event to the symbol layer.
         map2.events.add('mouseover', foLayer, function (e) {
-            //Make sure that the point exists.
             if (e.shapes && e.shapes.length > 0) {
             var content, coordinate
             var properties = e.shapes[0].getProperties()
             content = fopopupTemplate.replace(/{name}/g, properties.name).replace(/{slug}/g, properties.slug).replace(/{lat}/g, properties.lat).replace(/{lon}/g, properties.lon)
             coordinate = e.shapes[0].getCoordinates()
-        
             fopopup.setOptions({
-                //Update the content of the popup.
                 content: content,
-        
-                //Update the popup's position with the symbol's coordinate.
                 position: coordinate
-        
             })
-            //Open the popup.
             fopopup.open(map2)
             }
         })
-        
-        map2.events.add('mouseleave', foLayer, function (){
-            fopopup.close();
-        })
+        map2.events.add('mouseleave', foLayer, function () { fopopup.close() })
 
-        // get and prep the location points into GeoJSON
+        // now the aid requests
         const locations = JSON.parse(document.getElementById('aid-locations-data').textContent)
-
         var points = []
         locations.forEach(location => {
             if (location.latitude && location.longitude) {
@@ -238,74 +273,62 @@ function initMap2(context) {
                 var point = new atlas.data.Feature(new atlas.data.Point(position), location)
                 points.push(point);
             }
-        });
-
-        /* Create a data source and add the new points  */
-        var dataSource2 = new atlas.source.DataSource()
+        })
+        var dataSource2 = new atlas.source.DataSource(undefined, {
+            cluster: false,
+          })
         map2.sources.add(dataSource2)
         dataSource2.add(points)
-        // console.log(points)
-        //Create a layer that defines how to render the points on the map.
-        var aidLayer = new atlas.layer.SymbolLayer(dataSource2, null, {
-            iconOptions: {
-                ignorePlacement: false,
-                allowOverlap: true,
-                image: "pin-red",
-                anchor: "bottom",
-                size: 1.5
-            },
-            textOptions: {
-                textField: ['get', 'pk'],
-                offset: [0, 0.5],
-                allowOverlap: true,
-                ignorePlacement: false,
-                font: ['StandardFont-Bold'],
-                size: 12,
-                color: 'black',
-                haloColor: 'white',
-                haloWidth: 2
-            }
-        });
-        map2.layers.add(aidLayer);
-
-        // Add a control for toggling layers
-        var lc = new atlas.control.LayerControl({  
-            // legendControl: legend,
-            layerGroups: [  
-                {  
-                    layout: 'checkbox',  
-                    groupTitle: 'aidGrouplayerTitle1',  
-                    layers: ['aidLayer',],  
-                    items: [
-                        {  
-                            label: 'aidLayer1',  
-                            layout: 'checkbox',  
-                            enabledStyle: { visible: true },  
-                            disabledStyle: { visible: false }
-                        },  
+        //Create an array of custom icon promises to load into the map. 
+        // var iconPromises = [
+        //     // map.imageSprite.add('gas_station_icon', '/images/icons/gas_station_pin.png'),
+        //     // map.imageSprite.add('grocery_store_icon', '/images/icons/grocery_cart_pin.png'),
+        //     // map.imageSprite.add('restaurant_icon', '/images/icons/restaurant_pin.png'),
+        //     map2.imageSprite.add('life_preserver', '/static/images/icons/life-preserver-red.svg'),
+        // ]
+        // await map2.imageSprite.createFromTemplate('')
+        // Promise.all(iconPromises).then(function () {
+            // console.log('promises kept')
+            // map2.imageSprite.add('life-preserver-red', '/static/images/icons/life-preserver-red.svg')
+        // map2.imageSprite.createFromTemplate('flat-teal', 'marker-flat', 'teal', '#fff').then(function () {
+        const iconPromises = [
+            map2.imageSprite.createFromTemplate('flag-red', 'flag', 'red', '#fff'),
+            map2.imageSprite.createFromTemplate('car-blue', 'car', 'blue', '#fff'),
+        ]
+        Promise.all(iconPromises).then(function () {
+            var aidLayer = new atlas.layer.SymbolLayer(dataSource2, 'Aid Requests', {
+                iconOptions: {
+                    ignorePlacement: false,
+                    allowOverlap: true,
+                    // image: "pin-red",
+                    anchor: "bottom",
+                    // size: 1.5,
+                    //Use a match expression to select the image icon based on the EntityType property of the data point.
+                    image: [
+                        'match', ['get', 'aid_type'],
+                        'welfare_check', 'pin-blue',
+                        're_supply', 'pin-darkblue',
+                        // 'evacuation', 'pin-round-blue',
+                        'evacuation', 'flag-red',
+                        'other', 'car-blue',
+                        // 'evacuation', 'life_preserver',
+                        // Default fallback icon.
+                        'marker-yellow'
                     ]
                 },
-                { 
-                    layout: 'checkbox',  
-                    groupTitle: 'fieldOpTitle',  
-                    layers: ['foLayer', 'circleLayer'],  
-                    items: [
-                        {
-                            label: 'field_op_marker',  
-                            layout: 'checkbox',  
-                            enabledStyle: { visible: true },  
-                            disabledStyle: { visible: false } 
-                        },
-                        { 
-                            label: 'field_op Ring: ' + ring_size,  
-                            layout: 'checkbox',  
-                            enabledStyle: { visible: true }, 
-                            disabledStyle: { visible: false }
-                        }
-                    ]
+                textOptions: {
+                    textField: ['get', 'pk'],
+                    offset: [0, 0.5],
+                    allowOverlap: true,
+                    ignorePlacement: false,
+                    font: ['StandardFont-Bold'],
+                    size: 12,
+                    color: 'black',
+                    haloColor: 'white',
+                    haloWidth: 2
                 }
-            ]
+            })
+            map2.layers.add(aidLayer)
         })
-        map2.controls.add(lc, { position: 'bottom-right' })
     })
 }

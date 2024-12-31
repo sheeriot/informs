@@ -1106,17 +1106,25 @@ MIT License
          */
         DynamicLegend._getImage = function (map, imgName) {
             if (map && imgName !== 'none') {
-                //Check user defined images.
-                if (map.imageSprite.hasImage(imgName)) {
-                    //@ts-ignore
-                    return map.imageSprite.userImages.get(imgName).src;
-                }
+                // DO NOT Check user defined images.
+                // if (map.imageSprite.hasImage(imgName)) {
+                //     //@ts-ignore
+                //     return map.imageSprite.userImages.get(imgName).src;
+                // }
                 //Try built in images. 
                 var template = void 0;
                 var color = void 0;
                 if (imgName.startsWith('marker')) {
                     template = 'marker';
                     color = imgName.replace('marker-', '');
+                }
+                if (imgName.startsWith('flag')) {
+                    template = 'flag';
+                    color = imgName.replace('flag-', '');
+                }
+                if (imgName.startsWith('car')) {
+                    template = 'car';
+                    color = imgName.replace('car-', '');
                 }
                 else if (imgName.startsWith('pin-round')) {
                     template = 'pin-round';

@@ -58,6 +58,7 @@ class AidRequestListView(LoginRequiredMixin, FilterView):
                     ).kilometers
                 aid_location = {
                     'pk': aid_request.pk,
+                    'aid_type': aid_request.assistance_type,
                     'latitude': float(aid_request.location.latitude),
                     'longitude': float(aid_request.location.longitude),
                     'address': (
