@@ -46,97 +46,98 @@
           </div>
         </div>
         {% if user.is_authenticated %}
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup"
-          aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse col-4" id="navbarNavAltMarkup">
-          <div>
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-              <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
-                  aria-expanded="false">
-                  <img src="{% static 'images/informs-icon1.webp' %}" alt="FormsIcon" height="60px" width="60px">
-                  <div class="d-inline-block float-left">Field Ops</div>
-                </a>
-                <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                  <li>
-                    <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_list' %}'">
-                      <i class="bi bi-truck"></i> <i class="bi bi-truck"></i>  All Field Ops
-                    </button>
-                  </li>
-                  <li>
-                    <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_create' %}'">
-                      <i class="bi bi-plus-circle"></i> New Field Op <i class="bi bi-truck"></i> 
-                    </button>
-                  </li>
-                  {% for fieldop in fieldops_active %}
-                    <li>
-                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'aid_request_list' field_op=fieldop.slug %}'">
-                          <i class="bi life-preserver text-danger"></i>  {{ fieldop.name }} - Aid Requests
+          {% if perms.informs.view_fieldop %}
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup"
+              aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse col-4" id="navbarNavAltMarkup">
+              <div>
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                  <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
+                      aria-expanded="false">
+                      <img src="{% static 'images/informs-icon1.webp' %}" alt="FormsIcon" height="60px" width="60px">
+                      <div class="d-inline-block float-left">Field Ops</div>
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                      <li>
+                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_list' %}'">
+                          <i class="bi bi-truck"></i> <i class="bi bi-truck"></i>  All Field Ops
                         </button>
-                    </li>
-                  {% endfor %}
-                  <li><hr class="dropdown-divider"></li>
-                  <li class="dropdown-header">Beta...</li>
+                      </li>
+                      <li>
+                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_create' %}'">
+                          <i class="bi bi-plus-circle"></i> New Field Op <i class="bi bi-truck"></i> 
+                        </button>
+                      </li>
+                      {% for fieldop in fieldops_active %}
+                        <li>
+                            <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'aid_request_list' field_op=fieldop.slug %}'">
+                              <i class="bi life-preserver text-danger"></i>  {{ fieldop.name }} - Aid Requests
+                            </button>
+                        </li>
+                      {% endfor %}
+                      <li><hr class="dropdown-divider"></li>
+                      <li class="dropdown-header">Beta...</li>
+                    </ul>
+                  </li>
                 </ul>
-              </li>
-            </ul>
-          </div>
-        </div>
+              </div>
+            </div>
 
-        <div class="collapse navbar-collapse col-4" id="navbarNavAltMarkup">
-          <div>
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-              <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
-                  aria-expanded="false">
-                  <img src="{% static 'images/informs-icon1.webp' %}" alt="FormsIcon" height="60px" width="60px">
-                  <div class="d-inline-block float-left">Inactive Menu</div>
-                </a>
-                <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                  <ul>Next Menu</ul>
-                  <!-- <li><hr class="dropdown-divider"></li>
-                  <li class="dropdown-header">Beta...</li>
-                  <li>
-                    None
-                  </li> -->
+            <div class="collapse navbar-collapse col-4" id="navbarNavAltMarkup">
+              <div>
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                  <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
+                      aria-expanded="false">
+                      <img src="{% static 'images/informs-icon1.webp' %}" alt="FormsIcon" height="60px" width="60px">
+                      <div class="d-inline-block float-left">Inactive Menu</div>
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                      <ul>Next Menu</ul>
+                      <!-- <li><hr class="dropdown-divider"></li>
+                      <li class="dropdown-header">Beta...</li>
+                      <li>
+                        None
+                      </li> -->
+                    </ul>
+                  </li>
                 </ul>
-              </li>
-            </ul>
+              </div>
+            </div>
+          {% endif %}
+          <div class="col-1"></div>
+          <div class="col-2">
+            <div class="nav-item nav-link link-secondary d-flex align-items-center" aria-current="page">
+              <i class="bi bi-person-fill text-success"></i> 
+              {{ user.username }}
+            </div>
+            <a class="nav-item nav-link link-secondary d-flex align-items-center"
+              href="javascript:{document.getElementById('logout').submit()}" onclick="">
+              <i class="bi bi-box-arrow-right text-danger"></i> 
+              Logout
+            </a>
+            <form id="logout" method="POST" action="{% url 'logout' %}">
+              {% csrf_token %}
+              <input type="hidden" />
+            </form>
+            </div>
           </div>
-        </div>
-
-        <div class="col-1"></div>
-        <div class="col-2">
-          <div class="nav-item nav-link link-secondary d-flex align-items-center" aria-current="page">
-            <i class="bi bi-person-fill text-success"></i> 
-            {{ user.username }}
-          </div>
-          <a class="nav-item nav-link link-secondary d-flex align-items-center"
-            href="javascript:{document.getElementById('logout').submit()}" onclick="">
-            <i class="bi bi-box-arrow-right text-danger"></i> 
-            Logout
-          </a>
-          <form id="logout" method="POST" action="{% url 'logout' %}">
-            {% csrf_token %}
-            <input type="hidden" />
-          </form>
-          </div>
-        </div>
         {% else %}
-        <div class="col-4"></div>
-        <div class="col-2">
-          <a class="nav-item nav-link link-secondary d-flex align-items-center" href="{% url 'login'%}">
-            <i class="bi bi-box-arrow-in-right text-success"></i> 
-            Login
-          </a>
-          <a class="nav-item nav-link link-secondary d-flex align-items-center" aria-current="page"
-            href="{% url 'signup'%}">
-            <i class="bi bi-person-plus-fill text-white"></i> 
-            Join
-          </a>
-        </div>
+          <div class="col-4"></div>
+          <div class="col-2">
+            <a class="nav-item nav-link link-secondary d-flex align-items-center" href="{% url 'login'%}">
+              <i class="bi bi-box-arrow-in-right text-success"></i> 
+              Login
+            </a>
+            <a class="nav-item nav-link link-secondary d-flex align-items-center" aria-current="page"
+              href="{% url 'signup'%}">
+              <i class="bi bi-person-plus-fill text-white"></i> 
+              Join
+            </a>
+          </div>
         {% endif %}
       </div>
     </nav>
@@ -171,11 +172,13 @@
           <img src="{% static 'images/AVD_Logo.jpg' %}" width="60px" alt="Austin Voice Data LLC" class="me-1">
         </a>
       </div>
-      <div class="d-flex align-items-center font-monospace">
-        <a href="/admin" class="text-reset">
-          <button class="btn btn-sm btn-outline-info">admin</button>
-        </a>
-      </div>
+      {% if perms.is_staff %}
+        <div class="d-flex align-items-center font-monospace">
+          <a href="/admin" class="text-reset">
+            <button class="btn btn-sm btn-outline-info">admin</button>
+          </a>
+        </div>
+      {% endif %}
     </div>
   </footer>
 

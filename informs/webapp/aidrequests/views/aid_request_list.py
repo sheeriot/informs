@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.shortcuts import get_object_or_404
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 import django_filters
 from django_filters.views import FilterView
 
@@ -29,10 +29,11 @@ class AidRequestFilter(django_filters.FilterSet):
 
 
 # Filter View for AidRequests
-class AidRequestListView(LoginRequiredMixin, FilterView):
+class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView):
     model = AidRequest
     filterset_class = AidRequestFilter
     template_name = 'aidrequests/aid_request_list.html'
+    permission_required = 'aidrequests.view_aidrequest'
 
     def setup(self, request, *args, **kwargs):
         super().setup(request, *args, **kwargs)

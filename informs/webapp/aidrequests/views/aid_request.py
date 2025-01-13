@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.shortcuts import get_object_or_404
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.urls import reverse_lazy, reverse
 from django.views.generic import DetailView, CreateView, UpdateView
 
@@ -73,7 +73,8 @@ def format_aid_location_note(aid_location):
 
 
 # Detail View for AidRequest
-class AidRequestDetailView(LoginRequiredMixin, DetailView):
+class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+    permission_required = 'aidrequests.view_aidrequest'
     model = AidRequest
     template_name = 'aidrequests/aid_request_detail.html'
 
@@ -230,15 +231,11 @@ class AidRequestCreateView(CreateView):
 
 
 # Update View for AidRequest
-class AidRequestUpdateView(LoginRequiredMixin, UpdateView):
+class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    permission_required = 'aidrequests.change_aidrequest'
     model = AidRequest
     form_class = AidRequestUpdateForm
     template_name = 'aidrequests/aid_request_update.html'
-    # success_url = reverse_lazy('aid_request_list')
-
-    # def get_form_kwargs(self):
-    #     kwargs = super().get_form_kwargs()
-    #     return kwargs
 
     def get_success_url(self):
         return reverse_lazy('aid_request_list', kwargs={'field_op': self.kwargs['field_op']})
