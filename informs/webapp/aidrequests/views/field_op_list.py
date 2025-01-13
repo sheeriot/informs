@@ -1,4 +1,4 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 
 from django.db.models import Count
 from django.views.generic import ListView
@@ -12,9 +12,10 @@ import base64
 
 
 # Map View for FieldOp
-class FieldOpListView(LoginRequiredMixin, ListView):
+class FieldOpListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = FieldOp
     template_name = 'aidrequests/field_op_list.html'
+    permission_required = 'aidrequests.view_fieldop'
 
     def get_queryset(self):
         queryset = FieldOp.objects.annotate(aid_request_count=Count('aid_requests'))

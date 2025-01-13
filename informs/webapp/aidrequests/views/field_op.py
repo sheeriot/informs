@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.urls import reverse_lazy
 from django.db.models import Count
 from django.views.generic import ListView, DetailView, CreateView, UpdateView
@@ -12,18 +12,9 @@ from geopy.distance import geodesic
 # from icecream import ic
 
 
-# List View for FieldOp
-class FieldOpListView0(LoginRequiredMixin, ListView):
-    model = FieldOp
-    template_name = 'aidrequests/field_op_list.html'
-
-    def get_queryset(self):
-        queryset = FieldOp.objects.annotate(aid_request_count=Count('aid_requests'))
-        return queryset
-
-
 # Detail View for FieldOp
-class FieldOpDetailView(LoginRequiredMixin, DetailView):
+class FieldOpDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+    permission_required = 'aidrequests.view_fieldop'
     model = FieldOp
     template_name = 'aidrequests/field_op_detail.html'
 
@@ -69,32 +60,15 @@ class FieldOpDetailView(LoginRequiredMixin, DetailView):
                 (max_lat, max_lon)
             ).kilometers/1.5)
 
-        # for aid_request in self.field:
-        #     if aid_request.location:
-        #         if not aid_request.location.distance:
-        #             aid_request.location.distance = geodesic(
-        #                 (self.field_op.latitude, self.field_op.longitude),
-        #                 (aid_request.location.latitude, aid_request.location.longitude)
-        #             ).kilometers
-        #         aid_location = {
-        #             'pk': aid_request.pk,
-        #             'latitude': float(aid_request.location.latitude),
-        #             'longitude': float(aid_request.location.longitude),
-        #             'address': (
-        #                 f"{aid_request.street_address}, "
-        #                 f"{aid_request.city}, "
-        #                 f"{aid_request.state}"
-        #             ),
-        #             'requester_name': f"{aid_request.requestor_first_name} {aid_request.requestor_last_name}"
-        #         }
-        #         aid_locations.append(aid_location)
         return context
 
 
 # Create View for FieldOp
-class FieldOpCreateView(LoginRequiredMixin, CreateView):
+class FieldOpCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    permission_required = 'aidrequests.add_fieldop'
     model = FieldOp
     form_class = FieldOpForm
+
     template_name = 'aidrequests/field_op_form.html'
     success_url = reverse_lazy('field_op_list')
 
@@ -118,7 +92,8 @@ class FieldOpCreateView(LoginRequiredMixin, CreateView):
 
 
 # Update View for FieldOp
-class FieldOpUpdateView(LoginRequiredMixin, UpdateView):
+class FieldOpUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    permission_required = 'aidrequests.view_fieldop'
     model = FieldOp
     form_class = FieldOpForm
     template_name = 'aidrequests/field_op_form.html'
