@@ -25,7 +25,7 @@ class AidRequestFilter(django_filters.FilterSet):
 
     class Meta:
         model = AidRequest
-        fields = ['assistance_type', 'status', 'priority', 'ordering']
+        fields = ['aid_type', 'status', 'priority', 'ordering']
 
 
 # Filter View for AidRequests
@@ -59,7 +59,7 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
                     ).kilometers
                 aid_location = {
                     'pk': aid_request.pk,
-                    'aid_type': aid_request.assistance_type,
+                    'aid_type': aid_request.aid_type.slug,
                     'latitude': float(aid_request.location.latitude),
                     'longitude': float(aid_request.location.longitude),
                     'address': (
@@ -70,6 +70,7 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
                     'requester_name': f"{aid_request.requestor_first_name} {aid_request.requestor_last_name}"
                 }
                 aid_locations.append(aid_location)
+        # ic(aid_locations)
         context['aid_locations'] = aid_locations
         if aid_locations:
             min_lat = min(aid_location['latitude'] for aid_location in aid_locations)

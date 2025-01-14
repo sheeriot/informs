@@ -5,27 +5,31 @@ AidRequests Admin
 from django.contrib import admin
 from django.db.models import Count
 
-from .models import FieldOp, FieldOpNotify, AidRequest, AidRequestLog, AidLocation
+from .models import FieldOp, FieldOpNotify, AidType, AidRequest, AidRequestLog, AidLocation
 from .views.aid_location_forms import AidLocationInline
 from .views.aid_request_forms import AidRequestInline
 
 
 class AidRequestAdmin(admin.ModelAdmin):
     """aid request admin"""
+
     list_display = (
-        'pk', 'field_op', 'assistance_type',
+        'pk', 'field_op', 'aid_type',
         'requestor_first_name', 'requestor_last_name',
         'group_size', 'street_address', 'city', 'created_at')
-    list_filter = ('field_op', 'assistance_type',)
+
+    list_filter = ('field_op', 'aid_type',)
+
     search_fields = (
         'requestor_first_name',
         'requestor_last_name',
         'street_address',
         'city',
-        'assistance_description'
+        'aid_description'
         )
     readonly_fields = (
         'field_op',
+        'aid_type',
         'created_at',
         'updated_at',
         'created_by',
@@ -44,7 +48,9 @@ class AidRequestAdmin(admin.ModelAdmin):
 
 class FieldOpAdmin(admin.ModelAdmin):
     """fieldops admin"""
+
     list_display = ('slug', 'name', 'notify_count', 'latitude', 'longitude')
+
     readonly_fields = (
         'latitude',
         'longitude',
@@ -53,11 +59,10 @@ class FieldOpAdmin(admin.ModelAdmin):
         'created_by',
         'updated_by'
         )
+
     inlines = [AidRequestInline]
-    # formfield_overrides = {
-    #     models.ManyToManyField: {'widget': CheckboxSelectMultiple},
-    # }
-    filter_vertical = ('notify',)
+
+    filter_vertical = ('notify', 'aid_types')
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -144,8 +149,14 @@ class FieldOpNotifyAdmin(admin.ModelAdmin):
     #     super().save_model(request, obj, form, change)
 
 
+class AidTypeAdmin(admin.ModelAdmin):
+    """aid_type admin"""
+    list_display = ('slug', 'name', 'description', 'icon_name', 'icon_color', 'icon_scale')
+
+
 admin.site.register(FieldOp, FieldOpAdmin)
 admin.site.register(FieldOpNotify, FieldOpNotifyAdmin)
 admin.site.register(AidRequest, AidRequestAdmin)
 admin.site.register(AidRequestLog, AidRequestLogAdmin)
 admin.site.register(AidLocation, AidLocationAdmin)
+admin.site.register(AidType, AidTypeAdmin)

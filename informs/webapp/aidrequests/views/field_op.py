@@ -1,8 +1,8 @@
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.urls import reverse_lazy
-from django.db.models import Count
-from django.views.generic import ListView, DetailView, CreateView, UpdateView
+# from django.db.models import Count
+from django.views.generic import DetailView, CreateView, UpdateView
 
 from ..models import FieldOp
 from .forms import FieldOpForm

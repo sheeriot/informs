@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django import forms
 from django.urls import reverse
+from django.utils.html import format_html
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Fieldset, Hidden, Row, Column, Div, HTML
@@ -95,8 +96,16 @@ class AidLocationCreateForm(forms.ModelForm):
 class AidLocationInline(admin.TabularInline):
     model = AidLocation
     extra = 0
-    readonly_fields = ('uid',)
-    fields = ['status', 'latitude', 'longitude', 'source', 'note', 'uid']
+    fields = ['pk', 'status', 'latitude', 'longitude', 'source', 'note', 'uid']
+    readonly_fields = ('pk', 'uid',)
+
+    def pk(self, obj):
+        """Display the primary key of the related object."""
+
+        url = reverse("admin:aidrequests_aidlocation_change", args=(obj.pk,))
+        # return format_html(f'<a href="{ url }">{ obj.pk }</a>', url)
+        # return obj.pk
+        return format_html('<a href="{}">{}</a>', url, obj.pk)
 
 
 class AidLocationStatusForm(forms.ModelForm):

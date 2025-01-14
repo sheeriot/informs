@@ -24,10 +24,10 @@
 <p>Phone Number: {{ object.requestor_phone }}</p>
 
 <h2>Contact Details for Party Needing Assistance</h2>
-<p>First Name: {{ object.assistance_first_name }}</p>
-<p>Last Name: {{ object.assistance_last_name }}</p>
-<p>Email Address: {{ object.assistance_email }}</p>
-<p>Phone Number: {{ object.assistance_phone }}</p>
+<p>First Name: {{ object.aid_first_name }}</p>
+<p>Last Name: {{ object.aid_last_name }}</p>
+<p>Email Address: {{ object.aid_email }}</p>
+<p>Phone Number: {{ object.aid_phone }}</p>
 
 <h2>Location of Assistance Request</h2>
 <p>Street Address: {{ object.street_address }}</p>
@@ -36,8 +36,8 @@
 <p>Zip Code: {{ object.zip_code }}</p>
 
 <h2>Type of Assistance Requested</h2>
-<p>Type: {{ object.get_assistance_type_display }}</p>
-<p>Description: {{ object.assistance_description }}</p>
+<p>Type: {{ object.get_aid_type_display }}</p>
+<p>Description: {{ object.aid_description }}</p>
 
 <h2>Group Size</h2>
 <p>{{ object.group_size }}</p>

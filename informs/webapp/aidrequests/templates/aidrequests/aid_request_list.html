@@ -17,7 +17,7 @@
             <thead>
                     <th scope="col">ID</th>
                     <th><button type="submit"><i class="bi button-outline-success bi-funnel-fill text-success"></i></button></th>
-                    <th scope="col"><label for="assistance_type-filter">Type</label>{{ filter.form.assistance_type }}</th>
+                    <th scope="col"><label for="aid_type-filter">Type</label>{{ filter.form.aid_type }}</th>
                     <th scope="col">
                         <label for="priority-filter">Priority</label>
                         {{ filter.form.priority }}
@@ -57,7 +57,7 @@
                 <td>
                     <input type="checkbox" name="selected_requests" value="{{ aid_request.pk }}">
                 </td>
-                <td>{{ aid_request.assistance_type }}</td>
+                <td>{{ aid_request.aid_type }}</td>
                 <td>{{ aid_request.priority }}</td>
                 <td>{{ aid_request.status }}</td>
                 <td>{{ aid_request.requestor_first_name }} {{ aid_request.requestor_last_name }}</td>

@@ -1,12 +1,13 @@
 """
 This module  for AidRequests and FieldOps
 """
-
 from django.db import models
-from .timestamped_model import TimeStampedModel
 # from django.conf import settings
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
+
+from .timestamped_model import TimeStampedModel
 from auditlog.registry import auditlog
 from informs.utils import takuid_new
 
@@ -41,12 +42,67 @@ class FieldOpNotify(TimeStampedModel):
             raise ValidationError('SMS address must be provided for sms notifications')
 
 
+class AidType(models.Model):
+    """Model to define types of aid"""
+    slug = models.SlugField(unique=True)
+    name = models.CharField(max_length=50)
+    description = models.TextField(blank=True, null=True)
+
+    ICON_CHOICES = [
+            ('marker', 'marker'),
+            ('marker-thick', 'marker-thick'),
+            ('marker-circle', 'marker-circle'),
+            ('marker-flat', 'marker-flat'),
+            ('marker-square', 'marker-square'),
+            ('marker-square-cluster', 'marker-square-cluster'),
+            ('marker-arrow', 'marker-arrow'),
+            ('marker-ball-pin', 'marker-ball-pin'),
+            ('marker-square-rounded', 'marker-square-rounded'),
+            ('marker-square-rounded-cluster', 'marker-square-rounded-cluster'),
+            ('flag', 'flag'),
+            ('flag-triangle', 'flag-triangle'),
+            ('triangle', 'triangle'),
+            ('triangle-thick', 'triangle-thick'),
+            ('triangle-arrow-up', 'triangle-arrow-up'),
+            ('triangle-arrow-left', 'triangle-arrow-left'),
+            ('hexagon', 'hexagon'),
+            ('hexagon-thick', 'hexagon-thick'),
+            ('hexagon-rounded', 'hexagon-rounded'),
+            ('hexagon-rounded-thick', 'hexagon-rounded-thick'),
+            ('pin', 'pin'),
+            ('pin-round', 'pin-round'),
+            ('rounded-square', 'rounded-square'),
+            ('rounded-square-thick', 'rounded-square-thick'),
+            ('arrow-up', 'arrow-up'),
+            ('arrow-up-thin', 'arrow-up-thin'),
+            ('car', 'car'),
+        ]
+
+    # https://learn.microsoft.com/en-us/azure/azure-maps/how-to-use-image-templates-web-sdk#list-of-image-templates
+
+    icon_name = models.CharField(max_length=30, choices=ICON_CHOICES,  default='helicopter')
+    icon_color = models.CharField(max_length=7, default='blue')  # Hex color code or name, e.g., #FF5733
+    icon_scale = models.DecimalField(max_digits=4, decimal_places=2, default=1.00, validators=[
+        MinValueValidator(0.00),
+        MaxValueValidator(10.00)
+    ])
+
+    class Meta:
+        verbose_name = 'Aid Type'
+        verbose_name_plural = 'Aid Types'
+
+    def __str__(self):
+        return self.name
+
+
 class FieldOp(TimeStampedModel):
     """Field Ops"""
     slug = models.SlugField(unique=True)
     name = models.CharField(max_length=50)
     latitude = models.DecimalField(max_digits=7, decimal_places=5)
     longitude = models.DecimalField(max_digits=8, decimal_places=5)
+
+    aid_types = models.ManyToManyField(AidType, related_name='field_ops', default=1, blank=True)
 
     created_by = models.ForeignKey(
         User, related_name='field_ops_created', on_delete=models.SET_NULL, null=True, blank=True
@@ -77,10 +133,10 @@ class AidRequest(TimeStampedModel):
     requestor_phone = models.CharField(blank=True, max_length=12)  # Format: 555-555-5555
 
     # 2. Contact details for party needing assistance
-    assistance_first_name = models.CharField(max_length=20, blank=True)
-    assistance_last_name = models.CharField(max_length=30, blank=True)
-    assistance_email = models.EmailField(blank=True)
-    assistance_phone = models.CharField(max_length=12, blank=True)
+    aid_first_name = models.CharField(max_length=20, blank=True)
+    aid_last_name = models.CharField(max_length=30, blank=True)
+    aid_email = models.EmailField(blank=True)
+    aid_phone = models.CharField(max_length=12, blank=True)
 
     # 3. Location of assistance request
     street_address = models.CharField(max_length=50)
@@ -90,14 +146,17 @@ class AidRequest(TimeStampedModel):
     country = models.CharField(max_length=30, blank=True)
 
     # 4. Type of assistance requested
-    ASSISTANCE_CHOICES = [
-        ('evacuation', 'Evacuation'),
-        ('re_supply', 'Re-supply'),
-        ('welfare_check', 'Welfare check'),
-        ('other', 'Other'),
-    ]
-    assistance_type = models.CharField(max_length=20, choices=ASSISTANCE_CHOICES)
-    assistance_description = models.TextField(blank=True, null=True)
+    # ASSISTANCE_CHOICES = [
+    #     ('evacuation', 'Evacuation'),
+    #     ('re_supply', 'Re-supply'),
+    #     ('welfare_check', 'Welfare check'),
+    #     ('other', 'Other'),
+    # ]
+    # 4. Type of assistance requested
+    aid_type = models.ForeignKey(AidType, on_delete=models.CASCADE)
+    aid_description = models.TextField(blank=True, null=True)
+    # assistance_type = models.CharField(max_length=20, choices=ASSISTANCE_CHOICES)
+    # assistance_description = models.TextField(blank=True, null=True)
 
     # 5. Group size
     group_size = models.PositiveIntegerField(blank=True, null=True)
@@ -180,7 +239,7 @@ class AidRequest(TimeStampedModel):
 
     def __str__(self):
         return f"""AidRequest-{self.pk}: {self.requestor_first_name} {self.requestor_last_name}
-               - {self.assistance_type}"""
+               - {self.aid_type}"""
 
 
 class AidLocation(TimeStampedModel):
