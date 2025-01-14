@@ -14,30 +14,30 @@ def email_connectstring():
 #     subject = (
 #         f"SOA:{aid_request.field_op.slug}:"
 #         f"New Aid Request #{aid_request.pk}:"
-#         f"{aid_request.assistance_type}:"
+#         f"{aid_request.aid_type}:"
 #         f"{aid_request.requestor_first_name} {aid_request.requestor_last_name}"
 #     )
 #     message_body = (
 #         f"SOA Notification - {aid_request.field_op.name}\n"
 #         "------------------------------------------\n"
 #         f"A new aid request has been created with the following details:\n\n"
-#         f"Assistance Type: {aid_request.assistance_type}, Group Size: {aid_request.group_size}\n"
+#         f"Assistance Type: {aid_request.aid_type}, Group Size: {aid_request.group_size}\n"
 #         f"Requestor: {aid_request.requestor_first_name} {aid_request.requestor_last_name}\n"
 #         f"Email: {aid_request.requestor_email}\n"
 #         f"Phone: {aid_request.requestor_phone}\n"
 #     )
 #     if aid_request.contact_methods:
 #         message_body += f"Preferred Contact Methods: {', '.join(aid_request.contact_methods)}\n"
-#     if aid_request.assistance_first_name or aid_request.assistance_last_name:
+#     if aid_request.aid_first_name or aid_request.aid_last_name:
 #         message_body += "Assistance Contact Provided\n"
-#         message_body += f"Assistance Contact: {aid_request.assistance_first_name} {aid_request.assistance_last_name}\n"
-#     if aid_request.assistance_phone:
-#         message_body += f"Assistance Phone: {aid_request.assistance_phone}\n"
-#     if aid_request.assistance_email:
-#         message_body += f"Assistance Email: {aid_request.assistance_email}\n"
+#         message_body += f"Assistance Contact: {aid_request.aid_first_name} {aid_request.aid_last_name}\n"
+#     if aid_request.aid_phone:
+#         message_body += f"Assistance Phone: {aid_request.aid_phone}\n"
+#     if aid_request.aid_email:
+#         message_body += f"Assistance Email: {aid_request.aid_email}\n"
 
 #     message_body += (
-#         f"Description: {aid_request.assistance_description}\n"
+#         f"Description: {aid_request.aid_description}\n"
 #         f"\nLocation:\n"
 #         f"{aid_request.street_address}\n"
 #         f"{aid_request.city}, {aid_request.state}, {aid_request.zip_code}, {aid_request.country}\n"
@@ -83,7 +83,7 @@ def email_creator_html(aid_request, geocode_results, notify, map_file):
     subject = (
         f"SOA:{aid_request.field_op.slug}:"
         f"New Aid Request #{aid_request.pk}:"
-        f"{aid_request.assistance_type}:"
+        f"{aid_request.aid_type}:"
         f"{aid_request.requestor_first_name} {aid_request.requestor_last_name}"
     )
 
@@ -109,14 +109,14 @@ def email_creator_html(aid_request, geocode_results, notify, map_file):
                 </a>
             </td>
             <td style="font-weight: bold;">{aid_request.field_op.name}</td>
-            <td style="font-weight: bold;">{aid_request.assistance_type}</td>
+            <td style="font-weight: bold;">{aid_request.aid_type}</td>
             <td style="font-weight: bold;">{aid_request.group_size}</td>
         </tr>
         <tr>
             <th colspan="4" style="font-weight: normal;">Description</th>
         </tr>
         <tr>
-            <td colspan="4" style="font-weight: bold;">{aid_request.assistance_description}</td>
+            <td colspan="4" style="font-weight: bold;">{aid_request.aid_description}</td>
         </tr>
     </table>
     <br>
@@ -138,9 +138,9 @@ def email_creator_html(aid_request, geocode_results, notify, map_file):
             <th style="font-weight: normal;">Contact Email</th>
         </tr>
         <tr>
-            <td style="font-weight: bold;">{aid_request.assistance_first_name} {aid_request.assistance_last_name}</td>
-            <td style="font-weight: bold;">{aid_request.assistance_phone}</td>
-            <td style="font-weight: bold;">{aid_request.assistance_email}</td>
+            <td style="font-weight: bold;">{aid_request.aid_first_name} {aid_request.aid_last_name}</td>
+            <td style="font-weight: bold;">{aid_request.aid_phone}</td>
+            <td style="font-weight: bold;">{aid_request.aid_email}</td>
         </tr>
         <tr>
             <td colspan="3"><div style="font-weight: normal;">Methods:</div>

@@ -1,10 +1,13 @@
 from django import forms
 from django.contrib import admin
+from django.shortcuts import get_object_or_404
+from django.urls import reverse
+from django.utils.html import format_html
+
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Field, Submit, Row, Column, Div, Hidden
-from django.urls import reverse
 
-from ..models import AidRequest, AidRequestLog
+from ..models import FieldOp, AidRequest, AidRequestLog
 
 # from icecream import ic
 
@@ -21,17 +24,17 @@ class AidRequestCreateForm(forms.ModelForm):
             'requestor_last_name',
             'requestor_email',
             'requestor_phone',
-            'assistance_first_name',
-            'assistance_last_name',
-            'assistance_email',
-            'assistance_phone',
+            'aid_first_name',
+            'aid_last_name',
+            'aid_email',
+            'aid_phone',
             'street_address',
             'city',
             'state',
             'zip_code',
             'country',
-            'assistance_type',
-            'assistance_description',
+            'aid_type',
+            'aid_description',
             'group_size',
             'contact_methods',
             'medical_needs',
@@ -42,7 +45,7 @@ class AidRequestCreateForm(forms.ModelForm):
 
     different_contact = forms.BooleanField(
         required=False,
-        label="Add a different contact person",
+        label="Add a different AID contact",
         widget=forms.CheckboxInput(attrs={"onclick": "differentContact()"})
     )
 
@@ -50,6 +53,13 @@ class AidRequestCreateForm(forms.ModelForm):
         super(AidRequestCreateForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_method = 'post'
+
+        field_op = get_object_or_404(FieldOp, id=kwargs['initial']['field_op'])
+        # ic(field_op)
+
+        # ic(field_op.aid_types.all())
+        self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in field_op.aid_types.all()]
+
         self.fields['contact_methods'].widget.attrs['rows'] = 4
         self.fields['medical_needs'].widget.attrs['rows'] = 4
         self.fields['supplies_needed'].widget.attrs['rows'] = 4
@@ -75,12 +85,12 @@ class AidRequestCreateForm(forms.ModelForm):
                 Fieldset(
                     'Contact Details for Party Needing Assistance (if different)',
                     Row(
-                        Column('assistance_first_name', css_class='col-md-6 mb-2'),
-                        Column('assistance_last_name', css_class='col-md-6 mb-2'),
+                        Column('aid_first_name', css_class='col-md-6 mb-2'),
+                        Column('aid_last_name', css_class='col-md-6 mb-2'),
                     ),
                     Row(
-                        Column('assistance_phone', css_class='col-md-6 mb-2'),
-                        Column('assistance_email', css_class='col-md-6 mb-2'),
+                        Column('aid_phone', css_class='col-md-6 mb-2'),
+                        Column('aid_email', css_class='col-md-6 mb-2'),
                     ),
                     css_class="fieldset-box p-3 border rounded"
                 ),
@@ -97,10 +107,10 @@ class AidRequestCreateForm(forms.ModelForm):
             Fieldset(
                 'Type of Assistance Requested',
                 Row(
-                    Column('assistance_type', css_class='col-md-4 mb-2'),
+                    Column('aid_type', css_class='col-md-4 mb-2'),
                     Column('group_size', css_class='col-md-2 mb-2'),
                 ),
-                'assistance_description',
+                'aid_description',
                 css_class="fieldset-box p-3 border rounded"
             ),
             Fieldset(
@@ -139,17 +149,17 @@ class AidRequestUpdateForm(forms.ModelForm):
             'requestor_last_name',
             'requestor_email',
             'requestor_phone',
-            'assistance_first_name',
-            'assistance_last_name',
-            'assistance_email',
-            'assistance_phone',
+            'aid_first_name',
+            'aid_last_name',
+            'aid_email',
+            'aid_phone',
             'street_address',
             'city',
             'state',
             'zip_code',
             'country',
-            'assistance_type',
-            'assistance_description',
+            'aid_type',
+            'aid_description',
             'group_size',
             'contact_methods',
             'medical_needs',
@@ -201,12 +211,12 @@ class AidRequestUpdateForm(forms.ModelForm):
                 Fieldset(
                     'Contact Details for Party Needing Assistance (if different)',
                     Row(
-                        Column('assistance_first_name', css_class='col-md-6 mb-2'),
-                        Column('assistance_last_name', css_class='col-md-6 mb-2'),
+                        Column('aid_first_name', css_class='col-md-6 mb-2'),
+                        Column('aid_last_name', css_class='col-md-6 mb-2'),
                     ),
                     Row(
-                        Column('assistance_phone', css_class='col-md-6 mb-2'),
-                        Column('assistance_email', css_class='col-md-6 mb-2'),
+                        Column('aid_phone', css_class='col-md-6 mb-2'),
+                        Column('aid_email', css_class='col-md-6 mb-2'),
                     ),
                     css_class="fieldset-box p-3 border rounded"
                 ),
@@ -223,10 +233,10 @@ class AidRequestUpdateForm(forms.ModelForm):
             Fieldset(
                 'Type of Assistance Requested',
                 Row(
-                    Column('assistance_type', css_class='col-md-4 mb-2'),
+                    Column('aid_type', css_class='col-md-4 mb-2'),
                     Column('group_size', css_class='col-md-2 mb-2'),
                 ),
-                'assistance_description',
+                'aid_description',
                 css_class="fieldset-box p-3 border rounded"
             ),
             Fieldset(
@@ -288,5 +298,13 @@ class AidRequestLogForm(forms.ModelForm):
 class AidRequestInline(admin.TabularInline):
     model = AidRequest
     extra = 0
-    readonly_fields = ('requestor_first_name', 'requestor_last_name', 'street_address')
-    fields = ('status', 'priority', 'requestor_first_name', 'requestor_last_name', 'street_address')
+    readonly_fields = ('pk', 'requestor_first_name', 'requestor_last_name', 'street_address')
+    fields = ('pk', 'status', 'priority', 'requestor_first_name', 'requestor_last_name', 'street_address')
+
+    def pk(self, obj):
+        """Display the primary key of the related object."""
+
+        url = reverse("admin:aidrequests_aidrequest_change", args=(obj.pk,))
+        # return format_html(f'<a href="{ url }">{ obj.pk }</a>', url)
+        # return obj.pk
+        return format_html('<a href="{}">{}</a>', url, obj.pk)

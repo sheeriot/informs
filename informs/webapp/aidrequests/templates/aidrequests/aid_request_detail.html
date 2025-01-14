@@ -68,7 +68,7 @@
                                 <i class="bi bi-truck text"></i> <span class="text-dark">{{ field_op.name }}</span>
                             </a>
                         </td>
-                        <td class="col-auto">{{ object.get_assistance_type_display }}</td>
+                        <td class="col-auto">{{ object.get_aid_type_display }}</td>
                         <td class="col-auto text-center">{{ object.group_size }}</td>
                     </tr>
                     <tr><th colspan="4">Address</th></tr>
@@ -84,7 +84,7 @@
                     <tr><th colspan="4">Descripton</th></tr>
                     <tr>
                         <td colspan="4">
-                            {{ object.assistance_description }}
+                            {{ object.aid_description }}
                         </td>
                     </tr>
                 </table>
@@ -108,9 +108,9 @@
                         <th class="col-auto">Contact Email</th>
                     </tr>
                     <tr>
-                        <td class="col-auto">{{ object.assistance_first_name|default:"None" }} {{ object.assistance_last_name }}</td>
-                        <td class="col-auto">{{ object.assistance_phone|default:"None" }}</td>
-                        <td class="col-auto">{{ object.assistance_email|default:"None" }}</td>
+                        <td class="col-auto">{{ object.aid_first_name|default:"None" }} {{ object.aid_last_name }}</td>
+                        <td class="col-auto">{{ object.aid_phone|default:"None" }}</td>
+                        <td class="col-auto">{{ object.aid_email|default:"None" }}</td>
                     </tr>
                     <tr>
                         <td colspan="3">
