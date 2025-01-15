@@ -124,11 +124,12 @@
     <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
     <script src="{% static 'js/azure-maps-layer-legend.js' %}?v1"></script>
     <link href="{% static 'css/azure-maps-layer-legend.css' %}" rel="stylesheet" />
-    <script type="text/javascript" src="{% static 'js/map_aidrequests.js' %}?v7"></script>
+    <script type="text/javascript" src="{% static 'js/map_aidrequests.js' %}?v8"></script>
+    {{ aid_types|json_script:'aid-types-data' }}
     {{ aid_locations|json_script:'aid-locations-data' }}
 
-    <h2>Aid Request Map</h2
-    </fieldset>
+    <h2>Aid Request Map</h2>
+
     <div id="map2Container" style="position:relative;width:100%;min-width:290px;height:800px;"></div>
     <script>
     const map2Context = {
