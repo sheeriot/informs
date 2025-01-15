@@ -72,6 +72,17 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
                 aid_locations.append(aid_location)
         # ic(aid_locations)
         context['aid_locations'] = aid_locations
+        aid_types = self.field_op.aid_types
+
+        aid_types_dict = {}
+        for aid_type in aid_types.all():
+            aid_types_dict[aid_type.slug] = {
+                'icon_name': aid_type.icon_name,
+                'icon_color': aid_type.icon_color,
+                'icon_scale': aid_type.icon_scale,
+            }
+        context['aid_types'] = aid_types_dict
+
         if aid_locations:
             min_lat = min(aid_location['latitude'] for aid_location in aid_locations)
             max_lat = max(aid_location['latitude'] for aid_location in aid_locations)

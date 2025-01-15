@@ -62,7 +62,8 @@ class FieldOpAdmin(admin.ModelAdmin):
 
     inlines = [AidRequestInline]
 
-    filter_vertical = ('notify', 'aid_types')
+    filter_horizontal = ('aid_types', 'notify')
+    # filter_vertical = ('notify',)
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)

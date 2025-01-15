@@ -165,7 +165,7 @@ function initMap2(context) {
     map2.events.add('ready', function () {
 
         map2.imageSprite.add('life-preserver', '/static/images/icons/t_life-preserver.svg')
-        console.log(atlas.getAllImageTemplateNames())
+        // console.log(atlas.getAllImageTemplateNames())
         legend = new atlas.control.LegendControl({ title: 'Field Op Legend'}, legends = [legend_one])
 
         map2.controls.add(legend, { position: 'top-left' })
@@ -264,6 +264,9 @@ function initMap2(context) {
         })
         map2.events.add('mouseleave', foLayer, function () { fopopup.close() })
 
+        const aidtypes_data = JSON.parse(document.getElementById('aid-types-data').textContent)
+        console.log("aidtypes_data:", aidtypes_data)
+
         // now the aid requests
         const locations = JSON.parse(document.getElementById('aid-locations-data').textContent)
         var points = []
@@ -291,10 +294,25 @@ function initMap2(context) {
             // console.log('promises kept')
             // map2.imageSprite.add('life-preserver-red', '/static/images/icons/life-preserver-red.svg')
         // map2.imageSprite.createFromTemplate('flat-teal', 'marker-flat', 'teal', '#fff').then(function () {
-        const iconPromises = [
-            map2.imageSprite.createFromTemplate('flag-red', 'flag', 'red', '#fff'),
-            map2.imageSprite.createFromTemplate('car-blue', 'car', 'blue', '#fff'),
-        ]
+        // const iconPromises = [
+        //     map2.imageSprite.createFromTemplate('flag-red', 'flag', 'red', '#fff'),
+        //     map2.imageSprite.createFromTemplate('car-blue', 'car', 'blue', '#fff'),
+        // ]
+        const iconPromises = Object.keys(aidtypes_data).map(key =>
+            map2.imageSprite.createFromTemplate(key, aidtypes_data[key].icon_name, aidtypes_data[key].icon_color, '#fff')
+        )
+        console.log(iconPromises)
+
+        var icon_map = [ 'match', ['get', 'aid_type'] ]
+        Object.keys(aidtypes_data).map(key => {
+            icon_map.push(key, key)
+            aidtype = aidtypes_data[key]
+            console.log('aidtype: key, name, color:', key, aidtype.icon_name, aidtype.icon_color)
+        })
+        // no match need an icon
+        icon_map.push('marker-yellow')
+        console.log(icon_map)
+
         Promise.all(iconPromises).then(function () {
             var aidLayer = new atlas.layer.SymbolLayer(dataSource2, 'Aid Requests', {
                 iconOptions: {
@@ -304,17 +322,19 @@ function initMap2(context) {
                     anchor: "bottom",
                     // size: 1.5,
                     //Use a match expression to select the image icon based on the EntityType property of the data point.
-                    image: [
-                        'match', ['get', 'aid_type'],
-                        'welfare_check', 'pin-blue',
-                        're_supply', 'pin-darkblue',
-                        // 'evacuation', 'pin-round-blue',
-                        'evacuation', 'flag-red',
-                        'other', 'car-blue',
-                        // 'evacuation', 'life_preserver',
-                        // Default fallback icon.
-                        'marker-yellow'
-                    ]
+                    // image: [
+                    //     'match', ['get', 'aid_type'],
+                    //     'welfare_check', 'pin-blue',
+                    //     're_supply', 'pin-darkblue',
+                    //     // 'evacuation', 'pin-round-blue',
+                    //     'evacuation', 'flag-red',
+                    //     'other', 'car-blue',
+                    //     // 'evacuation', 'life_preserver',
+                    //     // Default fallback icon.
+                    //     'marker-yellow'
+                    // ]
+                    // image: JSON.stringify(icon_map)
+                    image: icon_map
                 },
                 textOptions: {
                     textField: ['get', 'pk'],

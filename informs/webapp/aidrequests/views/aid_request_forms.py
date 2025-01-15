@@ -180,6 +180,9 @@ class AidRequestUpdateForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         button_text = 'Update'
+        field_op = kwargs['instance'].field_op
+        # ic(field_op)
+        self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in field_op.aid_types.all()]
         self.fields['contact_methods'].widget.attrs['rows'] = 4
         self.fields['medical_needs'].widget.attrs['rows'] = 4
         self.fields['supplies_needed'].widget.attrs['rows'] = 4
