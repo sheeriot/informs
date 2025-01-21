@@ -19,6 +19,7 @@ def get_azure_geocode(aid_request):
         f"{aid_request.street_address} "
         f"{aid_request.city} "
         f"{aid_request.state} "
+        f"{aid_request.zip_code} "
         f"{aid_request.country}"
     )
     field_op_coords = [aid_request.field_op.longitude, aid_request.field_op.latitude]
@@ -33,7 +34,7 @@ def get_azure_geocode(aid_request):
     features = query_results['features']
     results = {}
     results['address_searched'] = query_address
-
+    # ic(query_address)
     if features:
         results['status'] = "Success"
         feature0 = query_results['features'][0]
@@ -68,11 +69,7 @@ def get_azure_geocode(aid_request):
 
 
 def geocode_note(geocode_results):
-    note = (
-        f"Found: {geocode_results['address_found']}\n"
-        f"Confidence: {geocode_results['confidence']}\n"
-        f"Distance: {geocode_results['distance']} km\n"
-    )
+    note = ""
     if geocode_results['match_type'] is not None:
         note += f"Match Type: {geocode_results['match_type']}\n"
     if geocode_results['locality'] is not None:
@@ -83,6 +80,8 @@ def geocode_note(geocode_results):
         note += f"Districts: {str(geocode_results['districts'])}\n"
     if geocode_results['match_codes'] is not None:
         note += f"Match Codes: {geocode_results['match_codes']}\n"
+    if geocode_results['confidence'] is not None:
+        note += f"Confidence: {geocode_results['confidence']}\n"
     return note
 
 

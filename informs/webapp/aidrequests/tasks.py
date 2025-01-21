@@ -14,15 +14,15 @@ from icecream import ic
 def aid_request_postsave(aid_request, **kwargs):
     geocode_results = get_azure_geocode(aid_request)
     aid_location = geocode_save(aid_request, geocode_results)
-    zoom = calculate_zoom(geocode_results['distance'])
+    zoom = calculate_zoom(aid_location.distance)
     # ic(zoom)
 
     staticmap_data = staticmap_aid(
         width=600, height=600, zoom=zoom,
         fieldop_lat=aid_request.field_op.latitude,
         fieldop_lon=aid_request.field_op.longitude,
-        aid1_lat=geocode_results['latitude'],
-        aid1_lon=geocode_results['longitude'],
+        aid1_lat=aid_location.latitude,
+        aid1_lon=aid_location.longitude,
         )
 
     if staticmap_data:
@@ -44,7 +44,7 @@ def aid_request_postsave(aid_request, **kwargs):
     results = ""
 
     for notify in notify_emails:
-        message = email_creator_html(aid_request, geocode_results, notify, map_file)
+        message = email_creator_html(aid_request, aid_location, notify, map_file)
         try:
             result = send_email(message)
             results += f"Email: {notify.name}: Status: {result['status']}"

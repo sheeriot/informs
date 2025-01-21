@@ -12,10 +12,10 @@ from debug_toolbar.toolbar import debug_toolbar_urls
 from aidrequests.views.aid_request import (
      AidRequestCreateView,
      AidRequestUpdateView,
-     AidRequestDetailView,
      AidRequestLogCreateView
      )
 from aidrequests.views.aid_request_list import AidRequestListView
+from aidrequests.views.aid_request_detail import AidRequestDetailView
 # from aidrequests.views.aid_request_list2 import AidRequestListView2
 
 from aidrequests.views.field_op import (

@@ -10,75 +10,10 @@ def email_connectstring():
     return connect_string
 
 
-# def email_creator_plain(aid_request, geocode_results, notify, map_file):
-#     subject = (
-#         f"SOA:{aid_request.field_op.slug}:"
-#         f"New Aid Request #{aid_request.pk}:"
-#         f"{aid_request.aid_type}:"
-#         f"{aid_request.requestor_first_name} {aid_request.requestor_last_name}"
-#     )
-#     message_body = (
-#         f"SOA Notification - {aid_request.field_op.name}\n"
-#         "------------------------------------------\n"
-#         f"A new aid request has been created with the following details:\n\n"
-#         f"Assistance Type: {aid_request.aid_type}, Group Size: {aid_request.group_size}\n"
-#         f"Requestor: {aid_request.requestor_first_name} {aid_request.requestor_last_name}\n"
-#         f"Email: {aid_request.requestor_email}\n"
-#         f"Phone: {aid_request.requestor_phone}\n"
-#     )
-#     if aid_request.contact_methods:
-#         message_body += f"Preferred Contact Methods: {', '.join(aid_request.contact_methods)}\n"
-#     if aid_request.aid_first_name or aid_request.aid_last_name:
-#         message_body += "Assistance Contact Provided\n"
-#         message_body += f"Assistance Contact: {aid_request.aid_first_name} {aid_request.aid_last_name}\n"
-#     if aid_request.aid_phone:
-#         message_body += f"Assistance Phone: {aid_request.aid_phone}\n"
-#     if aid_request.aid_email:
-#         message_body += f"Assistance Email: {aid_request.aid_email}\n"
-
-#     message_body += (
-#         f"Description: {aid_request.aid_description}\n"
-#         f"\nLocation:\n"
-#         f"{aid_request.street_address}\n"
-#         f"{aid_request.city}, {aid_request.state}, {aid_request.zip_code}, {aid_request.country}\n"
-#     )
-
-#     message_body += "-------- Additional Info ---------\n"
-#     if aid_request.medical_needs:
-#         message_body += f"Medical Needs: {aid_request.medical_needs}\n"
-#     if aid_request.supplies_needed:
-#         message_body += f"Supplies Info: {aid_request.supplies_needed}\n"
-#     if aid_request.welfare_check_info:
-#         message_body += f"Welfare Check Info: {aid_request.welfare_check_info}\n"
-#     if aid_request.additional_info:
-#         message_body += f"Additional Info: {aid_request.additional_info}\n"
-
-#     message_body += "-------- Geocoded Location ---------\n"
-
-#     if geocode_results['status'] == "Success":
-#         note = geocode_results('note')
-#         message_body += (
-#             f"Latitude: {round(geocode_results['latitude'], 5)}\n"
-#             f"Longitude: {round(geocode_results['longitude'], 5)}\n"
-#             f"Distance: {geocode_results['distance']} km\n"
-#             f"Note: {note}\n"
-#         )
-#     message = {
-#         "senderAddress": settings.MAIL_FROM,
-#         "recipients": {
-#             "to": [{"address": notify.email}]
-#          },
-#         'content': {
-#             "subject": subject,
-#             "plainText": message_body
-#          }
-#      }
-#     return message
-
-
-def email_creator_html(aid_request, geocode_results, notify, map_file):
+def email_creator_html(aid_request, aid_location, notify, map_file):
     domain = Site.objects.get_current().domain
     protocol = 'https'
+    field_op = aid_request.field_op
 
     subject = (
         f"SOA:{aid_request.field_op.slug}:"
@@ -88,35 +23,58 @@ def email_creator_html(aid_request, geocode_results, notify, map_file):
     )
 
     html = f"""
-    <h2>{aid_request.field_op}: New Aid Request #{aid_request.pk}</h2>
-    <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: auto;">
+    <h2>{field_op}: Aid Request #{aid_request.pk} - {aid_request.status}</h2>
+    Informs:
+    <a href="{protocol}://{domain}{reverse(
+        'aid_request_detail',
+        kwargs={
+            'pk': aid_request.pk,
+            'field_op': field_op.slug
+        }
+    )}">
+        Aid Request {aid_request.pk}
+    </a>
+
+    <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: auto; text-align: left">
         <caption style="text-align: left;"><strong>Aid Summary</strong></caption>
         <tr>
             <th style="font-weight: normal;">ID</th>
-            <th style="font-weight: normal;">Field Op</th>
             <th style="font-weight: normal;">Aid Type</th>
             <th style="font-weight: normal;">Group Size</th>
+            <th style="font-weight: normal;">Status</th>
+            <th style="font-weight: normal;">Priority</th>
         </tr>
         <tr>
             <td style="font-weight: bold;">
                 <a href="{protocol}://{domain}{reverse('aid_request_detail',
                                                        kwargs={
                                                             'pk': aid_request.pk,
-                                                            'field_op': aid_request.field_op.slug
+                                                            'field_op': field_op.slug
                                                         }
                                                        )}">
                     {aid_request.pk}
                 </a>
             </td>
-            <td style="font-weight: bold;">{aid_request.field_op.name}</td>
             <td style="font-weight: bold;">{aid_request.aid_type}</td>
             <td style="font-weight: bold;">{aid_request.group_size}</td>
+            <td style="font-weight: bold;">{aid_request.status}</td>
+            <td style="font-weight: bold;">{aid_request.priority}</td>
+        </tr>
+        <tr><th colspan="5" style="font-weight: normal;">Address Provided</th></tr>
+        <tr>
+            <td colspan="5" style="font-weight: bold;">
+                {aid_request.street_address}
+                {aid_request.city}
+                {aid_request.state}
+                {aid_request.zip_code}
+                {aid_request.country}
+            </td>
         </tr>
         <tr>
-            <th colspan="4" style="font-weight: normal;">Description</th>
+            <th colspan="5" style="font-weight: normal;">Description</th>
         </tr>
         <tr>
-            <td colspan="4" style="font-weight: bold;">{aid_request.aid_description}</td>
+            <td colspan="5" style="font-weight: bold;">{aid_request.aid_description}</td>
         </tr>
     </table>
     <br>
@@ -153,41 +111,36 @@ def email_creator_html(aid_request, geocode_results, notify, map_file):
     map_url = f"{protocol}://{domain}/{map_file}"
     location_html = f"""
         <hr>
-        <div>
-            Field Operation ({aid_request.field_op.slug}) Center:
-            <strong>
-                {aid_request.field_op.latitude},{aid_request.field_op.longitude}
-            </strong>
-        </div>
-        <div>
+        <div style="text-align: left;">
             <table border="1" cellpadding="5" cellspacing="0"
                    style="border-collapse: collapse; width: auto;">
+                <caption>{field_op.name} Center: {field_op.latitude},{field_op.longitude}
+                </caption>
                 <tr>
-                    <th>Aid Location</th>
-                    <th>Map</th>
+                    <th>Location Info</th>
+                    <th>Location Map</th>
                 </tr>
                 <tr>
-                    <td style="vertical-align:text-top">
-                        <div>Provided Address:</div>
-                        <div style="font-weight: bold; margin-left: 10px;">
-                            <div>{aid_request.street_address}</div>
-                            <div>
-                                {aid_request.city}, {aid_request.state} {aid_request.zip_code} {aid_request.country}
-                            </div>
-                        </div>
+                    <td style="vertical-align:text-top; text-align: left;">
+                        Address Searched:<br>
+                        <strong>{aid_location.address_searched}</strong>
                         <hr class="my-1 py-0">
-                        Geocoded:
-                        <div style="font-weight: bold; margin-left: 10px;">
-                            <div>{round(geocode_results['latitude'], 5)},{round(geocode_results['longitude'], 5)}</div>
-                            <div>
-                                <pre style="font-weight: normal;">{geocode_results['note']}</pre>
-                            </div>
-                        </div>
+                        Address Found:<br>
+                        <strong>{aid_location.address_found}</strong>
+                        <hr class="my-1 py-0">
+                        Aid Location ID {aid_location.pk}<br>
+                        <strong>{aid_location.latitude},{aid_location.longitude}</strong><br>
+                        Distance: <strong>{aid_location.distance} km</strong><br>
+                        Status: <strong>{aid_location.status}</strong><br>
+                        Source: {aid_location.source}
+                        <hr class="my-1 py-0">
+                        Location Notes:
+                        <pre>{aid_location.note}</pre>
                     </td>
                     <td class="col-auto">
                         <div>
                             <div id="map-image">
-                                <img src="{map_url}" alt="Aid Request - Preview Map">
+                                <img src="{map_url}" alt="Aid Location - Preview Map">
                             </div>
                         </div>
                     </td>
