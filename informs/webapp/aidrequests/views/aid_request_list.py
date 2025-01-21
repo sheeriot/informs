@@ -4,11 +4,11 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 import django_filters
 from django_filters.views import FilterView
 
-from ..models import FieldOp, AidRequest
+from ..models import FieldOp, AidRequest, AidType
 from .maps import calculate_zoom
 
 from geopy.distance import geodesic
-# from icecream import ic
+from icecream import ic
 
 
 class AidRequestFilter(django_filters.FilterSet):
@@ -23,17 +23,42 @@ class AidRequestFilter(django_filters.FilterSet):
         label='Sort by'
     )
 
+    aid_type = django_filters.ModelChoiceFilter(
+        queryset=AidType.objects.all(),
+        method='filter_by_fieldop'
+    )
+
+    # ic(list(aid_type.__dict__.keys()))
+
     class Meta:
         model = AidRequest
         fields = ['aid_type', 'status', 'priority', 'ordering']
+
+    def __init__(self, *args, **kwargs):
+        # Pop the extra variable passed from the view
+        field_op = kwargs.pop('field_op', None)
+        super().__init__(*args, **kwargs)
+        # Dynamically adjust the queryset for the aid_types field
+        if field_op is not None:
+            self.filters['aid_type'].queryset = field_op.aid_types.all()
+
+    def filter_by_fieldop(self, queryset, name, value):
+        # Filter products based on the selected category
+        if value:
+            return queryset.filter(aid_type=value)
+        return queryset
 
 
 # Filter View for AidRequests
 class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView):
     model = AidRequest
-    filterset_class = AidRequestFilter
     template_name = 'aidrequests/aid_request_list.html'
     permission_required = 'aidrequests.view_aidrequest'
+
+    filterset_class = AidRequestFilter
+
+    def get_filterset(self, filterset_class):
+        return filterset_class(self.request.GET, queryset=self.get_queryset(), field_op=self.field_op)
 
     def setup(self, request, *args, **kwargs):
         super().setup(request, *args, **kwargs)
