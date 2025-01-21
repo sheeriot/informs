@@ -11,8 +11,8 @@ function initMap(context) {
     const map_zoom = context.map_zoom
     const center_lat = context.center_lat
     const center_lon = context.center_lon
-    console.log('fieldop coords')
-    console.log(fieldop_lat, fieldop_lon)
+    // console.log('fieldop coords')
+    // console.log(fieldop_lat, fieldop_lon)
  
     // console.log('fieldop_lat,fieldop_lon:', fieldop_lat, ',', fieldop_lon)
     // console.log('map_zoom:', map_zoom)
@@ -104,38 +104,38 @@ function initMap2(context) {
     const azure_maps_key = context.azure_maps_key
     const map_zoom = context.map_zoom
     const ring_size = context.ring_size
-    const legend_one = {
-            type: 'category',
-            subtitle: 'Category',
-            layout: 'column',
-            itemLayout: 'row',
-            footer: 'A category legend that uses a combination of shapes and icons.',
-            strokeWidth: 2,
-            items: [
-                {
-                    color: 'DodgerBlue',
-                    label: 'label1',
-                    //Url to an image.
-                    shape: 'https://azuremapscodesamples.azurewebsites.net/Common/images/icons/campfire.png'
-                }, {
-                    color: 'Yellow',
-                    label: 'label2',
-                    shape: 'square'
-                }, {
-                    color: 'Orange',
-                    label: 'Ricky',
-                    shape: 'line'
-                }, {
-                    color: 'Red',
-                    label: 'is',
-                    shape: 'circle'
-                }, {
-                    color: 'purple',
-                    label: 'awesome!',
-                    shape: 'triangle'
-                }
-            ]
-        }
+    // const legend_one = {
+    //         type: 'category',
+    //         subtitle: 'Category',
+    //         layout: 'column',
+    //         itemLayout: 'row',
+    //         footer: 'A category legend that uses a combination of shapes and icons.',
+    //         strokeWidth: 2,
+    //         items: [
+    //             {
+    //                 color: 'DodgerBlue',
+    //                 label: 'label1',
+    //                 //Url to an image.
+    //                 shape: 'https://azuremapscodesamples.azurewebsites.net/Common/images/icons/campfire.png'
+    //             }, {
+    //                 color: 'Yellow',
+    //                 label: 'label2',
+    //                 shape: 'square'
+    //             }, {
+    //                 color: 'Orange',
+    //                 label: 'Ricky',
+    //                 shape: 'line'
+    //             }, {
+    //                 color: 'Red',
+    //                 label: 'is',
+    //                 shape: 'circle'
+    //             }, {
+    //                 color: 'purple',
+    //                 label: 'awesome!',
+    //                 shape: 'triangle'
+    //             }
+    //         ]
+    //     }
 
     var map2 = new atlas.Map('map2Container', {
         center: [parseFloat(center_lon), parseFloat(center_lat)],
@@ -166,9 +166,11 @@ function initMap2(context) {
 
         map2.imageSprite.add('life-preserver', '/static/images/icons/t_life-preserver.svg')
         // console.log(atlas.getAllImageTemplateNames())
-        legend = new atlas.control.LegendControl({ title: 'Field Op Legend'}, legends = [legend_one])
-
+        legend = new atlas.control.LegendControl({ 
+            title: 'Field Op Legend',
+        })
         map2.controls.add(legend, { position: 'top-left' })
+
         var lc = new atlas.control.LayerControl({
             legendControl: legend,
             dynamicLayerGroup: {
@@ -265,7 +267,7 @@ function initMap2(context) {
         map2.events.add('mouseleave', foLayer, function () { fopopup.close() })
 
         const aidtypes_data = JSON.parse(document.getElementById('aid-types-data').textContent)
-        console.log("aidtypes_data:", aidtypes_data)
+        // console.log("aidtypes_data:", aidtypes_data)
 
         // now the aid requests
         const locations = JSON.parse(document.getElementById('aid-locations-data').textContent)
@@ -301,17 +303,17 @@ function initMap2(context) {
         const iconPromises = Object.keys(aidtypes_data).map(key =>
             map2.imageSprite.createFromTemplate(key, aidtypes_data[key].icon_name, aidtypes_data[key].icon_color, '#fff')
         )
-        console.log(iconPromises)
+        // console.log(iconPromises)
 
         var icon_map = [ 'match', ['get', 'aid_type'] ]
         Object.keys(aidtypes_data).map(key => {
-            icon_map.push(key, key)
             aidtype = aidtypes_data[key]
-            console.log('aidtype: key, name, color:', key, aidtype.icon_name, aidtype.icon_color)
+            icon_map.push(key, key)
+            // console.log('aidtype: key, name, color:', key, aidtype.icon_name, aidtype.icon_color)
         })
         // no match need an icon
         icon_map.push('marker-yellow')
-        console.log(icon_map)
+        // console.log(icon_map)
 
         Promise.all(iconPromises).then(function () {
             var aidLayer = new atlas.layer.SymbolLayer(dataSource2, 'Aid Requests', {
