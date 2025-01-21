@@ -104,38 +104,38 @@ function initMap2(context) {
     const azure_maps_key = context.azure_maps_key
     const map_zoom = context.map_zoom
     const ring_size = context.ring_size
-    const legend_one = {
-            type: 'category',
-            subtitle: 'Category',
-            layout: 'column',
-            itemLayout: 'row',
-            footer: 'A category legend that uses a combination of shapes and icons.',
-            strokeWidth: 2,
-            items: [
-                {
-                    color: 'DodgerBlue',
-                    label: 'label1',
-                    //Url to an image.
-                    shape: 'https://azuremapscodesamples.azurewebsites.net/Common/images/icons/campfire.png'
-                }, {
-                    color: 'Yellow',
-                    label: 'label2',
-                    shape: 'square'
-                }, {
-                    color: 'Orange',
-                    label: 'Ricky',
-                    shape: 'line'
-                }, {
-                    color: 'Red',
-                    label: 'is',
-                    shape: 'circle'
-                }, {
-                    color: 'purple',
-                    label: 'awesome!',
-                    shape: 'triangle'
-                }
-            ]
-        }
+    // const legend_one = {
+    //         type: 'category',
+    //         subtitle: 'Category',
+    //         layout: 'column',
+    //         itemLayout: 'row',
+    //         footer: 'A category legend that uses a combination of shapes and icons.',
+    //         strokeWidth: 2,
+    //         items: [
+    //             {
+    //                 color: 'DodgerBlue',
+    //                 label: 'label1',
+    //                 //Url to an image.
+    //                 shape: 'https://azuremapscodesamples.azurewebsites.net/Common/images/icons/campfire.png'
+    //             }, {
+    //                 color: 'Yellow',
+    //                 label: 'label2',
+    //                 shape: 'square'
+    //             }, {
+    //                 color: 'Orange',
+    //                 label: 'Ricky',
+    //                 shape: 'line'
+    //             }, {
+    //                 color: 'Red',
+    //                 label: 'is',
+    //                 shape: 'circle'
+    //             }, {
+    //                 color: 'purple',
+    //                 label: 'awesome!',
+    //                 shape: 'triangle'
+    //             }
+    //         ]
+    //     }
 
     var map2 = new atlas.Map('map2Container', {
         center: [parseFloat(center_lon), parseFloat(center_lat)],
@@ -166,11 +166,11 @@ function initMap2(context) {
 
         map2.imageSprite.add('life-preserver', '/static/images/icons/t_life-preserver.svg')
         // console.log(atlas.getAllImageTemplateNames())
-        legend = new atlas.control.LegendControl({ title: 'Field Op Legend'}, legends = [legend_one])
+        legend = new atlas.control.LegendControl({ title: 'Field Op Legend'})
 
         map2.controls.add(legend, { position: 'top-left' })
         var lc = new atlas.control.LayerControl({
-            legendControl: legend,
+            // legendControl: legend,
             dynamicLayerGroup: {
                 groupTitle: 'Show:',
                 layout: 'checkbox'

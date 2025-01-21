@@ -1105,6 +1105,7 @@ MIT License
          * @returns Image source string, or null.
          */
         DynamicLegend._getImage = function (map, imgName) {
+            console.log("imgName:", imgName)
             if (map && imgName !== 'none') {
                 // DO NOT Check user defined images.
                 // if (map.imageSprite.hasImage(imgName)) {
