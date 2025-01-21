@@ -71,14 +71,14 @@
                         <td class="col-auto">{{ object.get_aid_type_display }}</td>
                         <td class="col-auto text-center">{{ object.group_size }}</td>
                     </tr>
-                    <tr><th colspan="4">Address</th></tr>
+                    <tr><th colspan="4">Address Provided</th></tr>
                     <tr>
                         <td colspan="4">
                             {{ object.street_address }}
                             {{ object.city }}
                             {{ object.state }}
-                            {{ object.country }}
                             {{ object.zip_code }}
+                            {{ object.country }}
                         </td>
                     </tr>
                     <tr><th colspan="4">Descripton</th></tr>
@@ -125,17 +125,16 @@
     <div class="row flex-row align-items-center my-1">
         <div class="col-auto font-monospace">
             <table class="table table-bordered table-data w-auto caption-top w-auto border border-3 border-warning font-monospace ms-4">
-                <caption>Aid Location</caption>
+                <caption>{{ field_op.name }} Center: {{ field_op.latitude }},{{ field_op.longitude }}</div>
+                </caption>
                 <tr>
-                    <th class="col-auto">Address Provided</th>
+                    <th class="col-auto">Location Info</th>
                     {% if map_filename %}
                         <th class="col-auto">Location Map</th>
                     {% endif %}
                 </tr>
                 <tr>
                     <td class="col-auto">
-                        <div>Field Op: {{ field_op.slug }}<br>{{ field_op.latitude }},{{ field_op.longitude }}</div>
-                        <hr class="my-1 py-0">
                         {% if location.address_searched %}
                             Address Searched:<br>
                             {{ location.address_searched }}
