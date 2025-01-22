@@ -17,7 +17,7 @@ def email_creator_html(aid_request, aid_location, notify, map_file):
 
     subject = (
         f"SOA:{aid_request.field_op.slug}:"
-        f"New Aid Request #{aid_request.pk}:"
+        f"{aid_request.status} Aid Request #{aid_request.pk}:"
         f"{aid_request.aid_type}:"
         f"{aid_request.requestor_first_name} {aid_request.requestor_last_name}"
     )

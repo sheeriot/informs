@@ -34,7 +34,7 @@ class CotSender(pytak.QueueWorker):
                             name=f'AidRequest.{aid_request.pk}',
                             lat=aid_location.latitude,
                             lon=aid_location.longitude,
-                            remarks=f'{aid_request.assistance_type}'
+                            remarks=f'{aid_request.aid_type}'
                             )
         except Exception as e:
             ic(e)
