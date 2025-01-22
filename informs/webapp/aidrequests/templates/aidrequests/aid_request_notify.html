@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load bootstrap_icons %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container m-4">
+    <h2>{{ object.field_op.name}}: Aid Request Notify</h2>
+    <hr class="m-1">
+    <h3>{{ object }}</h3>
+    {% crispy form %}
+</div>
+{% endblock %}

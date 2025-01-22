@@ -55,9 +55,6 @@ class AidRequestCreateForm(forms.ModelForm):
         self.helper.form_method = 'post'
 
         field_op = get_object_or_404(FieldOp, id=kwargs['initial']['field_op'])
-        # ic(field_op)
-
-        # ic(field_op.aid_types.all())
         self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in field_op.aid_types.all()]
 
         self.fields['contact_methods'].widget.attrs['rows'] = 4

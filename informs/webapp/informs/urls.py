@@ -1,13 +1,11 @@
 """
 URLs
 """
-
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from debug_toolbar.toolbar import debug_toolbar_urls
-
 
 from aidrequests.views.aid_request import (
      AidRequestCreateView,
@@ -16,7 +14,7 @@ from aidrequests.views.aid_request import (
      )
 from aidrequests.views.aid_request_list import AidRequestListView
 from aidrequests.views.aid_request_detail import AidRequestDetailView
-# from aidrequests.views.aid_request_list2 import AidRequestListView2
+from aidrequests.views.aid_request_notify import AidRequestNotifyView
 
 from aidrequests.views.field_op import (
      FieldOpCreateView,
@@ -53,11 +51,15 @@ urlpatterns = [
      path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aid_request_new'),
      path('<slug:field_op>/aidrequest/', AidRequestCreateView.as_view(), name='aid_request_create'),
      path('<slug:field_op>/aidrequest/list/', AidRequestListView.as_view(), name='aid_request_list'),
-     # path('<slug:field_op>/aidrequest/list2/', AidRequestListView2.as_view(), name='aid_request_list2'),
      path(
           '<slug:field_op>/aidrequest/<int:pk>/update/',
           AidRequestUpdateView.as_view(),
           name='aid_request_update'
+          ),
+     path(
+          '<slug:field_op>/aidrequest/<int:pk>/notify/',
+          AidRequestNotifyView.as_view(),
+          name='aid_request_notify'
           ),
      # path(
      #      '<slug:field_op>/aid_request/<int:pk>/delete/',

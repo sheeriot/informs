@@ -9,6 +9,7 @@ from .views.maps import staticmap_aid, calculate_zoom
 from datetime import datetime
 
 from icecream import ic
+from .models import FieldOpNotify
 
 
 def aid_request_postsave(aid_request, **kwargs):
@@ -23,7 +24,7 @@ def aid_request_postsave(aid_request, **kwargs):
         fieldop_lon=aid_request.field_op.longitude,
         aid1_lat=aid_location.latitude,
         aid1_lon=aid_location.longitude,
-        )
+    )
 
     if staticmap_data:
         timestamp = datetime.now().strftime("%y%m%d%H%M%S")
@@ -64,6 +65,55 @@ def aid_request_postsave(aid_request, **kwargs):
         ic(f"Log Error: {e}")
 
     return results
+
+def aid_request_notify(aid_request, **kwargs):
+
+    aid_location = aid_request.location
+    map_file = f"{settings.MAPS_PATH}/{aid_location.map_filename}"
+
+    results = ""
+    if 'email_extra' in kwargs['kwargs']:
+        email_extra = kwargs['kwargs']['email_extra']
+        if email_extra:
+            notify = FieldOpNotify.objects.create(
+                type='email-adhoc',
+                name='Extra Email',
+                email=email_extra
+            )
+            message = email_creator_html(aid_request, aid_location, notify, map_file)
+            try:
+                result = send_email(message)
+                results += f"Email: {notify.email}: Status: {result['status']}"
+                results += f", ID: {result['id']}, Error: {result['error']}\n |"
+            except Exception as e:
+                ic(f"Error sending email: {e}")
+                results += f"Email Error: {e}\n"
+
+    notifies = kwargs['kwargs']['notifies']
+    notify_emails = notifies.filter(type__startswith='email')
+    for notify in notify_emails:
+        message = email_creator_html(aid_request, aid_location, notify, map_file)
+        try:
+            result = send_email(message)
+            results += f"Email: {notify.email}: Status: {result['status']}"
+            results += f", ID: {result['id']}, Error: {result['error']}\n"
+        except Exception as e:
+            ic(f"Error sending email: {e}")
+            results += f"Email Error: {e}\n"
+
+    if results.endswith('\n'):
+        results = results[:-1]
+
+    try:
+        aid_request.logs.create(
+            log_entry=f'{results}'
+        )
+    except Exception as e:
+        ic(f"Log Error: {e}")
+
+    return results    
+
+
 
 
 def aid_location_postsave(aid_location, **kwargs):
