@@ -49,12 +49,14 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         return kwargs
 
     def form_valid(self, form):
+        ic('aid_location post save')
         try:
             self.object = form.save()
         except Exception as e:
             ic(e)
-        # self.object.aid_request = self.aid_request
 
+        # augment location data and create log
+        # first user and distance
         user = self.request.user
         if user.is_authenticated:
             form.instance.created_by = user
@@ -62,12 +64,17 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         else:
             form.instance.created_by = None
             form.instance.updated_by = None
+
+        # create simple var name for distance calculation
         aid_request = form.instance.aid_request
+        # calculate distance
         form.instance.distance = round(geodesic(
                     (aid_request.field_op.latitude, aid_request.field_op.longitude),
                     (form.instance.latitude, form.instance.longitude)
                     ).km, 2)
+        
         self.object.save()
+        ic(self.object.updated_fields())
         # ----- post save starts here ------
         updated_at_stamp = self.object.updated_at.strftime('%Y%m%d%H%M%S')
         tasks.async_task(aid_location_postsave, self.object, kwargs={},

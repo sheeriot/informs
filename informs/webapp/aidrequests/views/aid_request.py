@@ -3,16 +3,17 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.urls import reverse_lazy, reverse
 from django.views.generic import CreateView, UpdateView
 
-from django_q import tasks
+from django_q.tasks import async_chain, result_group
 
 from geopy.distance import geodesic
 from jinja2 import Template
 
 from ..models import AidRequest, FieldOp, AidRequestLog
 from ..tasks import aid_request_postsave
+from takserver.cot import send_cot
 from .aid_request_forms import AidRequestCreateForm, AidRequestUpdateForm, AidRequestLogForm
 
-# from icecream import ic
+from icecream import ic
 
 
 def has_location_status(aid_request, status):
@@ -110,10 +111,18 @@ class AidRequestCreateView(CreateView):
 
         # ----- post save starts here ------
         updated_at_stamp = self.object.updated_at.strftime('%Y%m%d%H%M%S')
-
-        tasks.async_task(aid_request_postsave, self.object, kwargs={},
-                         task_name=f"AR{self.object.pk}-PostSave-{updated_at_stamp}")
-
+        # ic(self.object.__dict__.keys())
+        savetype = 'new'
+        # location = self.object.location
+        # ic(location)
+        postsave_tasks = async_chain([
+            (aid_request_postsave, [self.object], {'savetype': savetype,
+                'task_name': f"AR{self.object.pk}-AidRequestNew-Email-{updated_at_stamp}"}),
+            (send_cot, [self.object], {
+                    'task_name': f"AR{self.object.pk}-AidRequestNew-TAK-{updated_at_stamp}"
+                })
+        ])
+        # ic(result_group(postsave_tasks, count=2))
         return super().form_valid(form)
 
 

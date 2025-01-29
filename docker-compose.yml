@@ -22,6 +22,7 @@ services:
 
   queues:
     image: informs-app
+    restart: unless-stopped
     env_file:
       - informs/env/django.env
     # entrypoint: export static_files, migrate DB, then run "command"
@@ -38,7 +39,7 @@ volumes:
   informs_staticfiles:
 
 networks:
-  default: 
+  default:
     name: webhost
     external: true
   
