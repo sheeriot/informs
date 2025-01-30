@@ -20,19 +20,15 @@ class CotSender(pytak.QueueWorker):
     Defines how you process or generate your Cursor on Target Events.
     From there it adds the CoT Events to a queue for TX to a COT_URL.
     """
-
     async def handle_data(self, data):
         try:
-            # ic(event)
             await self.put_queue(data)
         except Exception as e:
             ic(e)
 
     async def run(self):
-        ic(self)
         notice = ast.literal_eval(self.config['NOTICE'])
         aid_request_id = notice[1]
-        ic('try to get aid request')
         try:
             aid_request = await AidRequest.objects.select_related('aid_type', 'field_op').aget(pk=aid_request_id)
             aid_locations = [location async for location in AidLocation.objects.filter(aid_request=aid_request_id).all()]
@@ -40,14 +36,6 @@ class CotSender(pytak.QueueWorker):
             ic('failed to get AidRequest or AidLocations')
             ic(e)
 
-        # try:
-        #     aid_location = await aid_request.location.aget()
-            
-        # except Exception as e:
-        #     ic('failed to get AidLocation')
-        #     ic(e)
-        # ic(aid_location)
-        #44.222183216186785, -76.56177414112645
         location_status, location = aidrequest_location(aid_locations)
         try:
             data = make_cot(
@@ -60,7 +48,7 @@ class CotSender(pytak.QueueWorker):
         except Exception as e:
             ic('failed to make data for cot')
             ic(e)
-
+        # ic(data)
         try:
             await self.handle_data(data)
         except Exception as e:
@@ -68,7 +56,6 @@ class CotSender(pytak.QueueWorker):
         finally:
             while not self.queue.empty():
                 await asyncio.sleep(1)
-        ic('cot sent, create log entry')
 
         try:
             await aid_request.logs.acreate(
@@ -78,13 +65,8 @@ class CotSender(pytak.QueueWorker):
             ic(e)
 
 
-# @receiver(post_save, sender=AidLocation)
-# def aid_location_post_save(sender, instance, created, **kwargs):
-
-
 def send_cot(aid_request=None):
-    ic('async send_cot')
-    ic(aid_request)
+    # only sends first confirmed or first new location associated with Aid Request
     try:
         asyncio.run(asend_cot(aid_request))
     except Exception as e:
@@ -93,7 +75,6 @@ def send_cot(aid_request=None):
 async def asend_cot(aid_request=None):
     cot_config, cot_queues = await setup_cotqueues(aid_request)
     cot_queues.add_tasks(set([CotSender(cot_queues.tx_queue, cot_config)]))
-    ic('in asend_cot')
     try:
         await cot_queues.run()
     except Exception as e:
@@ -106,18 +87,14 @@ async def setup_cotqueues(aid_request=None):
 
     ic(str(settings.PYTAK_TLS_CLIENT_CERT))
     cot_config["takserver"] = {
-        "DEBUG": 1,
         "COT_URL": COT_URL,
         "PYTAK_TLS_CLIENT_CERT": str(settings.PYTAK_TLS_CLIENT_CERT),
         "PYTAK_TLS_CLIENT_PASSWORD": str(settings.PYTAK_TLS_CLIENT_PASSWORD),
         "PYTAK_TLS_CLIENT_CAFILE": str(settings.PYTAK_TLS_CLIENT_CAFILE),
-        "PYTAK_TLS_DONT_VERIFY": True,
         "NOTICE":  NOTICE
     }
     cot_config = cot_config["takserver"]
     cot_queues = pytak.CLITool(cot_config)
-    # ic(cot_config.items())
-    ic('await cot_queues.setup')
     await cot_queues.setup()
     return cot_config, cot_queues
 

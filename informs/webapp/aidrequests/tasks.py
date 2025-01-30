@@ -115,50 +115,9 @@ def aid_request_notify(aid_request, **kwargs):
     return results    
 
 
-def aid_location_postsave(aid_location, **kwargs):
-    aid_request = aid_location.aid_request
-
-    zoom = calculate_zoom(aid_location.distance)
-
-    staticmap_data = staticmap_aid(
-        width=600, height=600, zoom=zoom,
-        fieldop_lat=aid_request.field_op.latitude,
-        fieldop_lon=aid_request.field_op.longitude,
-        aid1_lat=aid_location.latitude,
-        aid1_lon=aid_location.longitude,
-        )
-
-    if staticmap_data:
-        timestamp = datetime.now().strftime("%y%m%d%H%M%S")
-        map_filename = f"AR{aid_request.pk}-map_{timestamp}.png"
-        map_file = f"{settings.MAPS_PATH}/{map_filename}"
-
-        # write the file to disk
-        try:
-            with open(map_file, 'wb') as file:
-                file.write(staticmap_data)
-        except Exception as e:
-            ic(e)
-
-        # save the filename to the aid location record
-        try:
-            aid_location.map_filename = map_filename
-            aid_location.save()
-        except Exception as e:
-            ic(e)
-
-    # notify_emails = aid_request.field_op.notify.filter(type__startswith='email')
-
-    results = "New manual location"
-
-    try:
-        aid_request.logs.create(
-            log_entry=f'{results}'
-        )
-    except Exception as e:
-        ic(f"Log Error: {e}")
-
-    return results
+def aidrequest_takcot(aid_request, **kwargs):
+    result = send_cot(aid_request)
+    return result
 
 
 def send_email(message):

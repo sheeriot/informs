@@ -8,7 +8,7 @@ from django_q import tasks
 from geopy.distance import geodesic
 
 from ..models import FieldOp, AidRequest, AidLocation
-from ..tasks import aid_location_postsave
+from ..tasks import aidrequest_takcot
 from .aid_location_forms import AidLocationCreateForm, AidLocationStatusForm
 
 from icecream import ic
@@ -75,10 +75,11 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         
         self.object.save()
         ic(self.object.updated_fields())
-        # ----- post save starts here ------
+
+        # ----- Send COT ------
         updated_at_stamp = self.object.updated_at.strftime('%Y%m%d%H%M%S')
-        tasks.async_task(aid_location_postsave, self.object, kwargs={},
-                         task_name=f"AidLocation{self.object.pk}-PostSave-{updated_at_stamp}")
+        tasks.async_task(aidrequest_takcot, self.aid_request, kwargs={},
+                         task_name=f"AidLocation{self.object.pk}-Manual-Send-{updated_at_stamp}")
 
         return super().form_valid(form)
 
@@ -125,6 +126,8 @@ class AidLocationStatusUpdateView(LoginRequiredMixin, UpdateView):
         super().setup(request, *args, **kwargs)
         self.aid_request = get_object_or_404(AidRequest, pk=kwargs['aid_request'])
         self.field_op = self.aid_request.field_op
+        self.aid_location = get_object_or_404(AidLocation, pk=kwargs['pk'])
+        # ic(vars(self))
 
     def get_success_url(self):
         return reverse_lazy('aid_request_detail',
@@ -134,11 +137,10 @@ class AidLocationStatusUpdateView(LoginRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         user = self.request.user
-
-        # Check which button was pressed
         if 'confirm' in self.request.POST:
             form.instance.status = 'confirmed'
             action = f'Location {self.object.pk} - Confirmed by {user}'
+            # ic(get_object_or_404(AidLocation, pk=self.aid_location.pk).status)
         elif 'reject' in self.request.POST:
             form.instance.status = 'rejected'
             action = f'Location {self.object.pk} - Rejected by {user}'
@@ -147,13 +149,19 @@ class AidLocationStatusUpdateView(LoginRequiredMixin, UpdateView):
         else:
             form.instance.updated_by = None
         try:
-            self.object = form.instance.save(update_fields=['status', 'updated_by'])
+            self.aid_location = form.save()
+            # ic(get_object_or_404(AidLocation, pk=self.aid_location.pk).status)
         except Exception as e:
             ic(e)
+            # ic(self.aid_request)
         try:
             self.aid_request.logs.create(
-                log_entry=f'{action}'
-            )
+                log_entry=f'Location {self.aid_request.pk} - Action: {action}')
         except Exception as e:
             ic(f"Log Error: {e}")
+        # ----- Send COT ------
+        updated_at_stamp = self.aid_request.updated_at.strftime('%Y%m%d%H%M%S')
+        tasks.async_task(aidrequest_takcot, self.aid_request, kwargs={},
+                         task_name=f"AidLocation{self.aid_location.pk}-StatusUpdate-SendCot-{updated_at_stamp}")
+
         return super().form_valid(form)

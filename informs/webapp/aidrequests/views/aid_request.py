@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.urls import reverse_lazy, reverse
 from django.views.generic import CreateView, UpdateView
 
-from django_q.tasks import async_chain, result_group
+from django_q.tasks import async_chain
 
 from geopy.distance import geodesic
 from jinja2 import Template
@@ -113,8 +113,6 @@ class AidRequestCreateView(CreateView):
         updated_at_stamp = self.object.updated_at.strftime('%Y%m%d%H%M%S')
         # ic(self.object.__dict__.keys())
         savetype = 'new'
-        # location = self.object.location
-        # ic(location)
         postsave_tasks = async_chain([
             (aid_request_postsave, [self.object], {'savetype': savetype,
                 'task_name': f"AR{self.object.pk}-AidRequestNew-Email-{updated_at_stamp}"}),
@@ -122,7 +120,6 @@ class AidRequestCreateView(CreateView):
                     'task_name': f"AR{self.object.pk}-AidRequestNew-TAK-{updated_at_stamp}"
                 })
         ])
-        # ic(result_group(postsave_tasks, count=2))
         return super().form_valid(form)
 
 
