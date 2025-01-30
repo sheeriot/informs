@@ -86,7 +86,6 @@ def geocode_note(geocode_results):
 
 
 def geocode_save(aid_request, geocode_results):
-
     aid_location = AidLocation(
         aid_request=aid_request,
         status='new',
@@ -96,9 +95,7 @@ def geocode_save(aid_request, geocode_results):
         note=geocode_results['note'],
         address_searched=geocode_results['address_searched'],
         address_found=geocode_results['address_found'],
-        distance=str(geocode_results['distance'])
-    )
-
+        distance=str(geocode_results['distance']),)
     try:
         aid_location.full_clean()
         aid_location.save()

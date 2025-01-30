@@ -7,3 +7,8 @@ docker-compose.override.yml
 xfer
 informs/webapp/media/maps/*.png
 
+settings.json
+*.p12
+*.pem
+*.key
+*/tmp

@@ -88,7 +88,7 @@ urlpatterns = [
           name='aid_location_delete'
           ),
      path(
-          '<slug:field_op>/aidrequest/<int:aid_request>/location/<int:pk>/udpate',
+          '<slug:field_op>/aidrequest/<int:aid_request>/location/<int:pk>/update',
           AidLocationStatusUpdateView.as_view(),
           name='aid_location_status_update'
           ),

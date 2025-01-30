@@ -6,5 +6,5 @@ class TakServerConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'takserver'
 
-    def ready(self):
-        import takserver.signals  # noqa: F401
+    # def ready(self):
+    #     import takserver.signals  # noqa: F401

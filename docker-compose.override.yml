@@ -2,7 +2,7 @@ services:
 
   informs:
     command: python manage.py runserver 0.0.0.0:8000
-    restart: no
+    # restart: unless-stopped
     volumes:
       # for development and debugging
       # make the code folder live

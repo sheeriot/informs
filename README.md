@@ -8,13 +8,6 @@ https://developers.google.com/maps/documentation/urls/get-started
 Geocoding Coverage by Azure Maps
 * https://learn.microsoft.com/en-us/azure/azure-maps/geocoding-coverage
 
-Azure Maps render v1 - service retirement - 9/17/26
-
-Render Tile = 38 square meters at highest.
-
-chrome://gpu/
-chrome://flags
-
 
 https://learn.microsoft.com/en-us/rest/api/maps/render?view=rest-maps-2024-04-01
 
