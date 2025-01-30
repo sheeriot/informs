@@ -85,13 +85,14 @@ async def setup_cotqueues(aid_request=None):
     NOTICE = ["confirmed", aid_request.pk]
     cot_config = ConfigParser()
 
-    ic(str(settings.PYTAK_TLS_CLIENT_CERT))
+    # ic(str(settings.PYTAK_TLS_CLIENT_CERT))
     cot_config["takserver"] = {
         "COT_URL": COT_URL,
         "PYTAK_TLS_CLIENT_CERT": str(settings.PYTAK_TLS_CLIENT_CERT),
         "PYTAK_TLS_CLIENT_PASSWORD": str(settings.PYTAK_TLS_CLIENT_PASSWORD),
         "PYTAK_TLS_CLIENT_CAFILE": str(settings.PYTAK_TLS_CLIENT_CAFILE),
-        "NOTICE":  NOTICE
+        "NOTICE":  NOTICE,
+        "PYTAK_TLS_DONT_CHECK_HOSTNAME": True
     }
     cot_config = cot_config["takserver"]
     cot_queues = pytak.CLITool(cot_config)

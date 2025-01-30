@@ -1,15 +1,17 @@
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.views.generic import CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
-
 from django_q import tasks
 
 from geopy.distance import geodesic
+from datetime import datetime
 
 from ..models import FieldOp, AidRequest, AidLocation
 from ..tasks import aidrequest_takcot
 from .aid_location_forms import AidLocationCreateForm, AidLocationStatusForm
+from .maps import staticmap_aid, calculate_zoom
 
 from icecream import ic
 
@@ -21,6 +23,7 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
     model = AidRequest
     form_class = AidLocationCreateForm
     template_name = 'aidrequests/aid_request_geocode.html'
+
 
     def get_success_url(self):
         return reverse_lazy('aid_request_detail',
@@ -49,9 +52,9 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         return kwargs
 
     def form_valid(self, form):
-        ic('aid_location post save')
+        ic('manual created aid_location')
         try:
-            self.object = form.save()
+            self.aid_location = form.save()
         except Exception as e:
             ic(e)
 
@@ -59,27 +62,45 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         # first user and distance
         user = self.request.user
         if user.is_authenticated:
-            form.instance.created_by = user
-            form.instance.updated_by = user
+            self.aid_location.created_by = user
+            self.aid_location.updated_by = user
         else:
-            form.instance.created_by = None
-            form.instance.updated_by = None
+            self.aid_location.created_by = None
+            self.aid_location.updated_by = None
 
-        # create simple var name for distance calculation
-        aid_request = form.instance.aid_request
-        # calculate distance
-        form.instance.distance = round(geodesic(
-                    (aid_request.field_op.latitude, aid_request.field_op.longitude),
-                    (form.instance.latitude, form.instance.longitude)
-                    ).km, 2)
+        self.aid_location.distance = round(geodesic(
+                (self.field_op.latitude, self.field_op.longitude),
+                (self.aid_location.latitude, self.aid_location.longitude)
+            ).km, 2)
         
-        self.object.save()
-        ic(self.object.updated_fields())
+        self.aid_location.save()
 
+        # Build the map
+        zoom = calculate_zoom(self.aid_location.distance)
+        staticmap_data = staticmap_aid(
+                                width=600, height=600, zoom=zoom,
+                                fieldop_lat=self.aid_request.field_op.latitude,
+                                fieldop_lon=self.aid_request.field_op.longitude,
+                                aid1_lat=self.aid_location.latitude,
+                                aid1_lon=self.aid_location.longitude,)
+
+        if staticmap_data:
+            timestamp = datetime.now().strftime("%y%m%d%H%M%S")
+            map_filename = f"AR{self.aid_request.pk}-map_{timestamp}.png"
+            map_file = f"{settings.MAPS_PATH}/{map_filename}"
+            with open(map_file, 'wb') as file:
+                file.write(staticmap_data)
+            try:
+                self.aid_location.map_filename = map_filename
+                self.aid_location.save()
+            except Exception as e:
+                ic(e)
+ 
+        ic(vars(self.aid_location))
         # ----- Send COT ------
-        updated_at_stamp = self.object.updated_at.strftime('%Y%m%d%H%M%S')
+        updated_at_stamp = self.aid_location.updated_at.strftime('%Y%m%d%H%M%S')
         tasks.async_task(aidrequest_takcot, self.aid_request, kwargs={},
-                         task_name=f"AidLocation{self.object.pk}-Manual-Send-{updated_at_stamp}")
+                         task_name=f"AidLocation{self.aid_location.pk}-ManualCreate-SendCot-{updated_at_stamp}")
 
         return super().form_valid(form)
 
