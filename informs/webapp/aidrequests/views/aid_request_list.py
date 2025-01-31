@@ -8,7 +8,8 @@ from ..models import FieldOp, AidRequest, AidType
 from .maps import calculate_zoom
 
 from geopy.distance import geodesic
-from icecream import ic
+
+# from icecream import ic
 
 
 class AidRequestFilter(django_filters.FilterSet):

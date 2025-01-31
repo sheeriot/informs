@@ -9,7 +9,7 @@
   <link rel="icon" href="{% static 'images/bi-person-raised-hand.svg' %}">
   <!-- Bootstrap core CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    rel="stylesheet" 
+    rel="stylesheet"
     ntegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
     crossorigin="anonymous">
 
@@ -42,7 +42,7 @@
             <img src="{% static 'images/SoA-Logo_GlobeWhite500.png' %}" alt="Save our Allies Logo" class="me-1">
           </div>
           <div class="d-inline" id="banner-title">
-             InForms 
+             InForms
           </div>
         </div>
         {% if user.is_authenticated %}
@@ -68,7 +68,7 @@
                       </li>
                       <li>
                         <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_create' %}'">
-                          <i class="bi bi-plus-circle"></i> New Field Op <i class="bi bi-truck"></i> 
+                          <i class="bi bi-plus-circle"></i> New Field Op <i class="bi bi-truck"></i>
                         </button>
                       </li>
                       {% for fieldop in fieldops_active %}
@@ -111,12 +111,12 @@
           <div class="col-1"></div>
           <div class="col-2">
             <div class="nav-item nav-link link-secondary d-flex align-items-center" aria-current="page">
-              <i class="bi bi-person-fill text-success"></i> 
+              <i class="bi bi-person-fill text-success"></i>
               {{ user.username }}
             </div>
             <a class="nav-item nav-link link-secondary d-flex align-items-center"
               href="javascript:{document.getElementById('logout').submit()}" onclick="">
-              <i class="bi bi-box-arrow-right text-danger"></i> 
+              <i class="bi bi-box-arrow-right text-danger"></i>
               Logout
             </a>
             <form id="logout" method="POST" action="{% url 'logout' %}">
@@ -129,12 +129,12 @@
           <div class="col-4"></div>
           <div class="col-2">
             <a class="nav-item nav-link link-secondary d-flex align-items-center" href="{% url 'login'%}">
-              <i class="bi bi-box-arrow-in-right text-success"></i> 
+              <i class="bi bi-box-arrow-in-right text-success"></i>
               Login
             </a>
             <a class="nav-item nav-link link-secondary d-flex align-items-center" aria-current="page"
               href="{% url 'signup'%}">
-              <i class="bi bi-person-plus-fill text-white"></i> 
+              <i class="bi bi-person-plus-fill text-white"></i>
               Join
             </a>
           </div>

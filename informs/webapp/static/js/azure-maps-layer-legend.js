@@ -447,7 +447,7 @@ MIT License
             if (!match) {
                 return 0;
             }
-            return Math.max(0, 
+            return Math.max(0,
             // Number of digits right of decimal point.
             (match[1] ? match[1].length : 0)
                 // Adjust for scientific notation.
@@ -584,7 +584,7 @@ MIT License
                     else if (layer instanceof azLayers.SymbolLayer) {
                         var iconOptions = opt.iconOptions;
                         if (iconOptions) {
-                            //If the image is a string, then there is only one image for the layer. 
+                            //If the image is a string, then there is only one image for the layer.
                             if (typeof iconOptions.image === 'string') {
                                 //Check to see if the image is scaled.
                                 if (iconOptions.size && Array.isArray(iconOptions.size)) {
@@ -749,7 +749,7 @@ MIT License
                 1, "#66CC99" //Green
             ]
             */
-            //type == color -> stepped gradient, type == scale -> category, type == image -> category  
+            //type == color -> stepped gradient, type == scale -> category, type == image -> category
             if (exp.length >= 5 && exp.length % 2 === 1) {
                 var self_2 = DynamicLegend;
                 var getString = Utils.getString;
@@ -831,7 +831,7 @@ MIT License
                     ...,
                     fallback: value
                 ]
-        
+
                 [
                     'match',
                     ['get', 'magnitude'],
@@ -840,18 +840,18 @@ MIT License
                     3, 'red',
                     'gray'
                 ]
-        
+
                 [
                     'match',
-        
+
                     ['get', 'EntityType'],
-        
+
                     //For each entity type, specify the icon name to use.
                     'Gas Station', 'gas_station_icon',
                     'Grocery Store', 'grocery_store_icon',
                     'Restaurant', 'restaurant_icon',
                     'School', 'school_icon',
-        
+
                     //Default fallback icon.
                     'marker-blue'
                 ]
@@ -917,7 +917,7 @@ MIT License
                     maxScale / 2, 'rgb(255,255,0)',    // Yellow
                     maxScale, 'rgb(255,0,0)'           // Red
                 ]
-        
+
                  [
                     'interpolate',
                     ['linear'],
@@ -1114,7 +1114,7 @@ MIT License
                     //@ts-ignore
                     return map.imageSprite.userImages.get(imgName).image.src
                 }
-                //Try built in images. 
+                //Try built in images.
                 var template = void 0;
                 var color = void 0;
                 if (imgName.startsWith('marker')) {
@@ -1260,7 +1260,7 @@ MIT License
                                     }
                                 }
                                 else {
-                                    //Hide cards when list layout. 
+                                    //Hide cards when list layout.
                                     card.style.display = display;
                                 }
                             }
@@ -1597,7 +1597,7 @@ MIT License
                 //When legend is displayed within the map, need to restrict the size of the legend content.
                 if (!opt.container) {
                     var rect = self._map.getCanvasContainer().getClientRects()[0];
-                    //Subtract 20 pixels to account for padding around controls in the map.               
+                    //Subtract 20 pixels to account for padding around controls in the map.
                     maxWidth_1 = Math.min(opt.maxWidth || 10000, rect.width - 20) + 'px';
                     var maxContainerHeight = rect.height - 20;
                     var cp = self._controlPosition;
@@ -1709,7 +1709,7 @@ MIT License
                 var darkColor = self._darkColor;
                 var backgroundColor = 'white';
                 var color = darkColor;
-                //If not a named theme, must be a CSS color. Get it's theme. 
+                //If not a named theme, must be a CSS color. Get it's theme.
                 if (theme !== 'light' && theme !== 'dark' && !theme.startsWith('auto')) {
                     backgroundColor = theme;
                     theme = Utils.getColorTheme(theme);
@@ -1840,7 +1840,7 @@ MIT License
                 //If toggle button isn't being to be displayed, then don't allow minimizing.
                 var minimized = (opt.minimized && opt.showToggle);
                 if (minimized) {
-                    ariaLabel += ' - ' + self._localization[2]; //Expand 
+                    ariaLabel += ' - ' + self._localization[2]; //Expand
                 }
                 else {
                     showBtnBg = opt.showToggle;
@@ -2087,7 +2087,7 @@ MIT License
                     self._hasZoomableContent = true;
                 }
                 if (!skipRebuildFocus) {
-                    //Rebuild the legend control. 
+                    //Rebuild the legend control.
                     self._rebuildContainer();
                 }
             }
@@ -2142,7 +2142,7 @@ MIT License
                 //Remove the legend.
                 legends.splice(idx, 1);
                 if (!skipRebuild) {
-                    //Rebuild the legend control. 
+                    //Rebuild the legend control.
                     self._rebuildContainer();
                 }
             }
@@ -2179,7 +2179,7 @@ MIT License
                 self._currentLegend = currentLegend;
                 self._legendIdx = legendIdx;
             }
-            //Rebuild the legend control. 
+            //Rebuild the legend control.
             self._rebuildContainer();
         };
         /**
@@ -2709,7 +2709,7 @@ MIT License
                             }
                         }
                         layerState.enabled = enabled;
-                        //If style changes visibility, ensure associated legends also change. 
+                        //If style changes visibility, ensure associated legends also change.
                         var legend = self_1._options.legendControl;
                         if (typeof style_2.visible === 'boolean' && legend) {
                             legend._rebuildContainer();

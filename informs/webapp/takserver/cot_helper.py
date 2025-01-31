@@ -16,6 +16,7 @@ def aidrequest_location(locations=None):
         location = None
     return status, location
 
+
 def aidrequest_locationstatus(locations=None):
     for status in ['confirmed', 'new']:
         if any(location.status == status for location in locations):

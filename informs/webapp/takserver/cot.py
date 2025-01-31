@@ -1,17 +1,15 @@
 from django.conf import settings
 
-import pytak
-import asyncio
-import time
-import xml.etree.ElementTree as ET
-import ast
-from configparser import ConfigParser
-
 from aidrequests.models import AidRequest, AidLocation
 from .cot_helper import aidrequest_location
 
-# from takserver.signals2 import tak_activityReport
+import asyncio
+import pytak
+from configparser import ConfigParser
+import xml.etree.ElementTree as ET
+import ast
 
+# import time
 from icecream import ic
 
 
@@ -31,7 +29,9 @@ class CotSender(pytak.QueueWorker):
         aid_request_id = notice[1]
         try:
             aid_request = await AidRequest.objects.select_related('aid_type', 'field_op').aget(pk=aid_request_id)
-            aid_locations = [location async for location in AidLocation.objects.filter(aid_request=aid_request_id).all()]
+            aid_locations = [
+                location async for location in AidLocation.objects.filter(aid_request=aid_request_id).all()
+            ]
         except Exception as e:
             ic('failed to get AidRequest or AidLocations')
             ic(e)
@@ -72,6 +72,7 @@ def send_cot(aid_request=None):
     except Exception as e:
         ic(e)
 
+
 async def asend_cot(aid_request=None):
     cot_config, cot_queues = await setup_cotqueues(aid_request)
     cot_queues.add_tasks(set([CotSender(cot_queues.tx_queue, cot_config)]))
@@ -79,6 +80,7 @@ async def asend_cot(aid_request=None):
         await cot_queues.run()
     except Exception as e:
         ic(e)
+
 
 async def setup_cotqueues(aid_request=None):
     COT_URL = f'tls://{settings.TAKSERVER_DNS}:8089'

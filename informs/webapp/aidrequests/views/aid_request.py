@@ -114,12 +114,13 @@ class AidRequestCreateView(CreateView):
         # ic(self.object.__dict__.keys())
         savetype = 'new'
         postsave_tasks = async_chain([
-            (aid_request_postsave, [self.object], {'savetype': savetype,
+            (aid_request_postsave, [self.object], {
+                'savetype': savetype,
                 'task_name': f"AR{self.object.pk}-AidRequestNew-Email-{updated_at_stamp}"}),
             (send_cot, [self.object], {
-                    'task_name': f"AR{self.object.pk}-AidRequestNew-TAK-{updated_at_stamp}"
-                })
-        ])
+                'task_name': f"AR{self.object.pk}-AidRequestNew-TAK-{updated_at_stamp}"})
+                ])
+        ic(vars(postsave_tasks))
         return super().form_valid(form)
 
 

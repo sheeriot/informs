@@ -13,7 +13,7 @@ function initMap(context) {
     const center_lon = context.center_lon
     // console.log('fieldop coords')
     // console.log(fieldop_lat, fieldop_lon)
- 
+
     // console.log('fieldop_lat,fieldop_lon:', fieldop_lat, ',', fieldop_lon)
     // console.log('map_zoom:', map_zoom)
 
@@ -42,11 +42,11 @@ function initMap(context) {
         map.controls.add(
             new atlas.control.StyleControl({
             mapStyles: [
-                'terra', 
-                'road', 
-                'satellite', 
+                'terra',
+                'road',
+                'satellite',
                 'hybrid',
-                'road_shaded_relief', 
+                'road_shaded_relief',
                 'satellite_road_labels'
             ],
             layout: 'list'
@@ -151,11 +151,11 @@ function initMap2(context) {
 
     map2StyleControl = new atlas.control.StyleControl({
         mapStyles: [
-            'terra', 
-            'road', 
-            'satellite', 
+            'terra',
+            'road',
+            'satellite',
             'hybrid',
-            'road_shaded_relief', 
+            'road_shaded_relief',
             'satellite_road_labels'
         ],
         layout: 'list'
@@ -166,7 +166,7 @@ function initMap2(context) {
 
         map2.imageSprite.add('life-preserver', '/static/images/icons/t_life-preserver.svg')
         // console.log(atlas.getAllImageTemplateNames())
-        legend = new atlas.control.LegendControl({ 
+        legend = new atlas.control.LegendControl({
             title: 'Field Op Legend',
         })
         map2.controls.add(legend, { position: 'top-left' })
@@ -229,7 +229,7 @@ function initMap2(context) {
         map2.sources.add(dataSourceC)
         //Create a circle
         dataSourceC.add(new atlas.data.Feature(
-            new atlas.data.Point([parseFloat(fieldop_lon), parseFloat(fieldop_lat)]), 
+            new atlas.data.Point([parseFloat(fieldop_lon), parseFloat(fieldop_lat)]),
             {
                 subType: "Circle",
                 radius: ring_size * 1000
@@ -284,7 +284,7 @@ function initMap2(context) {
           })
         map2.sources.add(dataSource2)
         dataSource2.add(points)
-        //Create an array of custom icon promises to load into the map. 
+        //Create an array of custom icon promises to load into the map.
         // var iconPromises = [
         //     // map.imageSprite.add('gas_station_icon', '/images/icons/gas_station_pin.png'),
         //     // map.imageSprite.add('grocery_store_icon', '/images/icons/grocery_cart_pin.png'),
