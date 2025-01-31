@@ -7,7 +7,7 @@ services:
       # for development and debugging
       # make the code folder live
       - $PWD/informs/webapp:/opt/app/informs
-  
+
   queues:
     volumes:
       - $PWD/informs/webapp:/opt/app/informs

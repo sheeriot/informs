@@ -1,5 +1,5 @@
 from django import forms
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import redirect, get_object_or_404
 from django.views.generic import DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django_q import tasks
@@ -9,8 +9,10 @@ from crispy_forms.layout import Submit
 from ..models import FieldOp, AidRequest, FieldOpNotify
 from ..tasks import aid_request_notify
 
-from icecream import ic
 from datetime import datetime
+
+# from icecream import ic
+
 
 class AidRequestNotifyForm(forms.Form):
     field_op = forms.CharField(widget=forms.HiddenInput())
@@ -23,7 +25,7 @@ class AidRequestNotifyForm(forms.Form):
         label='Additional Email:',
         required=False,
         max_length=64,
-        widget=forms.TextInput(attrs={'style':'max-width: 30em'}),)
+        widget=forms.TextInput(attrs={'style': 'max-width: 30em'}),)
 
     def __init__(self, *args, **kwargs):
         super(AidRequestNotifyForm, self).__init__(*args, **kwargs)
@@ -32,10 +34,11 @@ class AidRequestNotifyForm(forms.Form):
         self.helper.add_input(Submit('submit', 'Notify Selected', css_class='btn-primary'))
 
         if 'initial' in kwargs:
-            field_op = get_object_or_404(FieldOp, id=kwargs['initial']['field_op'])
+            # field_op = get_object_or_404(FieldOp, id=kwargs['initial']['field_op'])
             kwargs_init = kwargs['initial']
             if kwargs_init['notify_destinations'] is not None:
                 self.fields['notify_destinations'].queryset = kwargs_init['notify_destinations']
+
 
 class AidRequestNotifyView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     permission_required = 'aidrequests.view_aidrequest'
@@ -54,7 +57,7 @@ class AidRequestNotifyView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
         context = super().get_context_data(**kwargs)
         context['field_op'] = self.field_op
         if "form" not in context:
-            initial_data =  {
+            initial_data = {
                 'field_op': self.field_op.pk,
                 'notify_destinations': self.field_op.notify.all(),
                 }
@@ -71,8 +74,13 @@ class AidRequestNotifyView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
         if form.is_valid():
             notifies = form.cleaned_data['notify_destinations']
             email_extra = form.cleaned_data['email_additional']
+
             if not notifies and not email_extra:
-                form.add_error(None, 'Please select at least one notification destination, or provide an additional email. Note, SMS is not implemented.')
+                form.add_error(
+                    None,
+                    'Please select at least one notification destination, '
+                    'or provide an additional email. Note, SMS is not implemented.'
+                )
                 return self.render_to_response(self.get_context_data(form=form))
             tasks.async_task(
                         aid_request_notify,

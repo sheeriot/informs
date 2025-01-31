@@ -25,7 +25,7 @@ def signup(request):
                 validate_password(request.POST['password1'])
             except ValidationError as e:
                 return render(request, 'accounts/signup.html', {'error': e.messages})
-            
+
             try:
                 user = User.objects.get(username=request.POST['username'])
                 return render(request, 'accounts/signup.html',

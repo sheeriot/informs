@@ -14,8 +14,7 @@ from ..geocoder import get_azure_geocode, geocode_save
 from ..tasks import aidrequest_takcot
 
 from datetime import datetime
-from time import perf_counter as timer
-# import asyncio
+# from time import perf_counter as timer
 from icecream import ic
 
 
@@ -28,7 +27,7 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
     def setup(self, request, *args, **kwargs):
         """Initialize attributes shared by all view methods."""
         super().setup(request, *args, **kwargs)
-        time_start = timer()
+        # time_start = timer()
         self.kwargs = kwargs
         self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
         self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
@@ -85,7 +84,7 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
             # ic(timer()-time_start)
             updated_at_stamp = self.aid_location.updated_at.strftime('%Y%m%d%H%M%S')
             async_task(aidrequest_takcot, self.aid_request, kwargs={},
-                task_name=f"AidLocation{self.aid_location.pk}-New-SendCOT-{updated_at_stamp}")
+                       task_name=f"AidLocation{self.aid_location.pk}-New-SendCOT-{updated_at_stamp}")
             try:
                 self.aid_request.logs.create(
                     log_entry=f'COT Sent! New Location {self.aid_location}')

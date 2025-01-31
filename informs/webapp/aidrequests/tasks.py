@@ -8,7 +8,7 @@ from .geocoder import get_azure_geocode, geocode_save
 from .views.maps import staticmap_aid, calculate_zoom
 from .models import FieldOpNotify
 from takserver.cot import send_cot
-import asyncio
+# import asyncio
 
 from icecream import ic
 
@@ -67,6 +67,7 @@ def aid_request_postsave(aid_request, **kwargs):
 
     return email_results
 
+
 def aid_request_notify(aid_request, **kwargs):
 
     aid_location = aid_request.location
@@ -76,7 +77,7 @@ def aid_request_notify(aid_request, **kwargs):
     if 'email_extra' in kwargs['kwargs']:
         email_extra = kwargs['kwargs']['email_extra']
         if email_extra:
-            notify = FieldOpNotify.objects.create(
+            notify = FieldOpNotify(
                 type='email-adhoc',
                 name='Extra Email',
                 email=email_extra
@@ -112,7 +113,7 @@ def aid_request_notify(aid_request, **kwargs):
     except Exception as e:
         ic(f"Log Error: {e}")
 
-    return results    
+    return results
 
 
 def aidrequest_takcot(aid_request, **kwargs):

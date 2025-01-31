@@ -8,7 +8,9 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 
 from .timestamped_model import TimeStampedModel
+from takserver.models import TakServer
 from auditlog.registry import auditlog
+
 from informs.utils import takuid_new
 
 
@@ -84,7 +86,7 @@ class AidType(models.Model):
     icon_color = models.CharField(max_length=7, default='blue')  # Hex color code or name, e.g., #FF5733
     icon_scale = models.DecimalField(max_digits=4, decimal_places=2, default=1.00, validators=[
         MinValueValidator(0.00),
-        MaxValueValidator(10.00)
+        MaxValueValidator(5.00)
     ])
 
     class Meta:
@@ -104,6 +106,9 @@ class FieldOp(TimeStampedModel):
 
     aid_types = models.ManyToManyField(AidType, related_name='field_ops', default=1, blank=True)
 
+    tak_server = models.ForeignKey(
+        TakServer, related_name='field_ops', on_delete=models.SET_NULL, null=True, blank=True
+    )
     created_by = models.ForeignKey(
         User, related_name='field_ops_created', on_delete=models.SET_NULL, null=True, blank=True
     )

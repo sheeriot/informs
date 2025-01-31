@@ -16,14 +16,14 @@ from .maps import staticmap_aid, calculate_zoom
 from icecream import ic
 
 
-class AidLocationCreateView(LoginRequiredMixin, CreateView):
+class AidLocationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     """
     A Django class-based view for saving azure maps geocoded location
     """
     model = AidRequest
     form_class = AidLocationCreateForm
+    permission_required = 'aidrequests.create_aidlocation'
     template_name = 'aidrequests/aid_request_geocode.html'
-
 
     def get_success_url(self):
         return reverse_lazy('aid_request_detail',
@@ -72,7 +72,7 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
                 (self.field_op.latitude, self.field_op.longitude),
                 (self.aid_location.latitude, self.aid_location.longitude)
             ).km, 2)
-        
+
         self.aid_location.save()
 
         # Build the map
@@ -95,7 +95,7 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
                 self.aid_location.save()
             except Exception as e:
                 ic(e)
- 
+
         ic(vars(self.aid_location))
         # ----- Send COT ------
         updated_at_stamp = self.aid_location.updated_at.strftime('%Y%m%d%H%M%S')
@@ -109,7 +109,8 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
         return self.render_to_response(self.get_context_data(form=form))
 
 
-class AidLocationDeleteView(LoginRequiredMixin, DeleteView):
+class AidLocationDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
+    permission_required = 'aidrequests.delete_aidlocation'
     model = AidLocation
     template_name = 'aidrequests/aid_location_confirm_delete.html'
     context_object_name = 'aid_location'
@@ -137,9 +138,10 @@ class AidLocationDeleteView(LoginRequiredMixin, DeleteView):
         return context
 
 
-class AidLocationStatusUpdateView(LoginRequiredMixin, UpdateView):
+class AidLocationStatusUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = AidLocation
     form_class = AidLocationStatusForm
+    permission_required = 'aidrequests.change_aidlocation'
     # template_name = 'aidrequests/aid_location_update.html'
     # context_object_name = 'aid_location'
 

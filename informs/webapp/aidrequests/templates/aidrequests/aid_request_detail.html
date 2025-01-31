@@ -63,7 +63,7 @@
                                 <i class="bi bi-pencil"></i> {{ object.pk }}
                             </a>
                         </td>
-                        <td class="col-auto">                     
+                        <td class="col-auto">
                             <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-outline-primary btn-sm mx-1 p-1">
                                 <i class="bi bi-truck text"></i> <span class="text-dark">{{ field_op.name }}</span>
                             </a>
@@ -152,7 +152,7 @@
                             <div>Aid Location: {{ location.pk }}<br>{{ location.latitude }},{{ location.longitude }}</div>
                             {% if location.distance %}
                                 <div>Distance: {{ location.distance }} km</div>
-                            {% endif %}                 
+                            {% endif %}
                             {% if confirmed %}
                                 <div>Status: <span class="text-success"><i class="bi bi-check"></i> Confirmed</span></div>
                             {% endif %}
