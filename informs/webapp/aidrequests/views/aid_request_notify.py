@@ -74,6 +74,7 @@ class AidRequestNotifyView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
         if form.is_valid():
             notifies = form.cleaned_data['notify_destinations']
             email_extra = form.cleaned_data['email_additional']
+
             if not notifies and not email_extra:
                 form.add_error(
                     None,

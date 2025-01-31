@@ -77,7 +77,7 @@ def aid_request_notify(aid_request, **kwargs):
     if 'email_extra' in kwargs['kwargs']:
         email_extra = kwargs['kwargs']['email_extra']
         if email_extra:
-            notify = FieldOpNotify.objects.create(
+            notify = FieldOpNotify(
                 type='email-adhoc',
                 name='Extra Email',
                 email=email_extra

@@ -1,7 +1,8 @@
 from django.conf import settings
 
-from aidrequests.models import AidRequest, AidLocation
+from aidrequests.models import FieldOp, AidRequest, AidLocation
 from .cot_helper import aidrequest_location
+from .models import TakServer
 
 import asyncio
 import pytak
@@ -83,16 +84,26 @@ async def asend_cot(aid_request=None):
 
 
 async def setup_cotqueues(aid_request=None):
-    COT_URL = f'tls://{settings.TAKSERVER_DNS}:8089'
-    NOTICE = ["confirmed", aid_request.pk]
-    cot_config = ConfigParser()
+    update_type = "location"
+    # ic(vars(AidRequest))
+    field_op = await FieldOp.objects.aget(pk=aid_request.field_op_id)
+    # ic('got field op', field_op)
+    tak_server = await TakServer.objects.aget(pk=field_op.tak_server_id)
+    # ic('got tak server', tak_server)
+    COT_URL = f'tls://{tak_server.dns_name}:8089'
 
+    NOTICE = [update_type, aid_request.pk]
+    cot_config = ConfigParser()
+    # ic('now cert_file')
+    cert_private_path = tak_server.cert_private.path
+    cert_trust_path = tak_server.cert_trust.path
+    # ic(cert_private_path)
     # ic(str(settings.PYTAK_TLS_CLIENT_CERT))
     cot_config["takserver"] = {
         "COT_URL": COT_URL,
-        "PYTAK_TLS_CLIENT_CERT": str(settings.PYTAK_TLS_CLIENT_CERT),
-        "PYTAK_TLS_CLIENT_PASSWORD": str(settings.PYTAK_TLS_CLIENT_PASSWORD),
-        "PYTAK_TLS_CLIENT_CAFILE": str(settings.PYTAK_TLS_CLIENT_CAFILE),
+        "PYTAK_TLS_CLIENT_CERT": cert_private_path,
+        # "PYTAK_TLS_CLIENT_PASSWORD": str(settings.PYTAK_TLS_CLIENT_PASSWORD),
+        "PYTAK_TLS_CLIENT_CAFILE": cert_trust_path,
         "NOTICE":  NOTICE,
         "PYTAK_TLS_DONT_CHECK_HOSTNAME": True
     }

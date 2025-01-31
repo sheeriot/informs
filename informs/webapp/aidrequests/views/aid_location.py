@@ -22,6 +22,7 @@ class AidLocationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
     """
     model = AidRequest
     form_class = AidLocationCreateForm
+    permission_required = 'aidrequests.create_aidlocation'
     template_name = 'aidrequests/aid_request_geocode.html'
 
     def get_success_url(self):
@@ -109,6 +110,7 @@ class AidLocationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
 
 
 class AidLocationDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
+    permission_required = 'aidrequests.delete_aidlocation'
     model = AidLocation
     template_name = 'aidrequests/aid_location_confirm_delete.html'
     context_object_name = 'aid_location'
@@ -139,6 +141,7 @@ class AidLocationDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteV
 class AidLocationStatusUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = AidLocation
     form_class = AidLocationStatusForm
+    permission_required = 'aidrequests.change_aidlocation'
     # template_name = 'aidrequests/aid_location_update.html'
     # context_object_name = 'aid_location'
 

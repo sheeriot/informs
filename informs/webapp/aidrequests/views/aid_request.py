@@ -120,7 +120,7 @@ class AidRequestCreateView(CreateView):
             (send_cot, [self.object], {
                 'task_name': f"AR{self.object.pk}-AidRequestNew-TAK-{updated_at_stamp}"})
                 ])
-        ic(vars(postsave_tasks))
+        ic(postsave_tasks)
         return super().form_valid(form)
 
 

@@ -12,11 +12,15 @@ class TakServer(models.Model):
     )
     cert_trust = models.FileField(
         upload_to='certificates/certtrust/',
-        help_text="Upload the trusted certificate file"
+        help_text="Upload the trusted certificate file - PEM Format"
     )
     cert_private = models.FileField(
         upload_to='certificates/certprivate/',
-        help_text="Upload the private certificate file"
+        help_text="Upload the private certificate file - PEM Format"
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Additional notes about the server"
     )
 
     def __str__(self):
