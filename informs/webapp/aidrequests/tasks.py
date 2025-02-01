@@ -118,6 +118,9 @@ def aid_request_notify(aid_request, **kwargs):
 
 def aidrequest_takcot(aid_request, **kwargs):
     result = send_cot(aid_request)
+    ic(aid_request)
+    ic(result)
+    # return f"COT message sent successfully for aidrequest_id: {aidrequest_id}"
     return result
 
 

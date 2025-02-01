@@ -1,4 +1,4 @@
-from django.conf import settings
+# from django.conf import settings
 
 from aidrequests.models import FieldOp, AidRequest, AidLocation
 from .cot_helper import aidrequest_location
