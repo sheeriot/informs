@@ -31,6 +31,8 @@ from aidrequests.views.aid_location import (
      AidLocationStatusUpdateView,
      )
 
+from aidrequests.views.ajax_sendcot import sendcot_aidrequest, sendcot_checkstatus
+
 from .views import home
 
 
@@ -97,6 +99,8 @@ urlpatterns = [
           AidRequestLogCreateView.as_view(),
           name='aid_request_addlog'
           ),
+     path('sendcot-aidrequest', sendcot_aidrequest, name='sendcot_aidrequest'),
+     path('sendcot-checkstatus', sendcot_checkstatus, name='sendcot_checkstatus'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
