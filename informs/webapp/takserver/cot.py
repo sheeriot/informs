@@ -21,13 +21,17 @@ class CotSender(pytak.QueueWorker):
     """
     async def handle_data(self, data):
         try:
-            await self.put_queue(data)
+            result = await self.put_queue(data)
+            ic(result)
+            return result
         except Exception as e:
             ic(e)
+            return None
 
     async def run(self):
-        notice = ast.literal_eval(self.config['NOTICE'])
-        aid_request_id = notice[1]
+        cot_info = ast.literal_eval(self.config['COTINFO'])
+        message_type = cot_info[0]
+        aid_request_id = cot_info[1]
         try:
             aid_request = await AidRequest.objects.select_related('aid_type', 'field_op').aget(pk=aid_request_id)
             aid_locations = [
@@ -40,6 +44,7 @@ class CotSender(pytak.QueueWorker):
         location_status, location = aidrequest_location(aid_locations)
         try:
             data = make_cot(
+                message_type=message_type,
                 uuid=f'AR{aid_request.pk}',
                 name=f'AidRequest.{aid_request.pk}',
                 lat=location.latitude,
@@ -51,13 +56,14 @@ class CotSender(pytak.QueueWorker):
             ic(e)
         # ic(data)
         try:
-            await self.handle_data(data)
+            result = await self.handle_data(data)
+            # ic(result)
+            return result
         except Exception as e:
             ic(e)
         finally:
             while not self.queue.empty():
                 await asyncio.sleep(1)
-
         try:
             await aid_request.logs.acreate(
                 log_entry=f"CoT event sent for AidRequest {aid_request.pk}"
@@ -66,45 +72,41 @@ class CotSender(pytak.QueueWorker):
             ic(e)
 
 
-def send_cot(aid_request=None):
+def send_cot(aid_request=None, **kwargs):
     # only sends first confirmed or first new location associated with Aid Request
+    # ic(kwargs)
+    message_type = kwargs.get('message_type', 'update')
     try:
-        asyncio.run(asend_cot(aid_request))
+        result = asyncio.run(asend_cot(aid_request, message_type=message_type))
+        # ic(result)
+        return result
     except Exception as e:
         ic(e)
 
 
-async def asend_cot(aid_request=None):
-    cot_config, cot_queues = await setup_cotqueues(aid_request)
+async def asend_cot(aid_request=None, **kwargs):
+    cot_config, cot_queues = await setup_cotqueues(aid_request, message_type=kwargs['message_type'])
     cot_queues.add_tasks(set([CotSender(cot_queues.tx_queue, cot_config)]))
     try:
-        await cot_queues.run()
+        result = await cot_queues.run()
+        return result
     except Exception as e:
         ic(e)
 
 
-async def setup_cotqueues(aid_request=None):
-    update_type = "location"
-    # ic(vars(AidRequest))
+async def setup_cotqueues(aid_request=None, **kwargs):
+    COTINFO = [kwargs['message_type'], aid_request.pk]
     field_op = await FieldOp.objects.aget(pk=aid_request.field_op_id)
-    # ic('got field op', field_op)
     tak_server = await TakServer.objects.aget(pk=field_op.tak_server_id)
-    # ic('got tak server', tak_server)
     COT_URL = f'tls://{tak_server.dns_name}:8089'
-
-    NOTICE = [update_type, aid_request.pk]
     cot_config = ConfigParser()
-    # ic('now cert_file')
     cert_private_path = tak_server.cert_private.path
     cert_trust_path = tak_server.cert_trust.path
-    # ic(cert_private_path)
-    # ic(str(settings.PYTAK_TLS_CLIENT_CERT))
     cot_config["takserver"] = {
         "COT_URL": COT_URL,
         "PYTAK_TLS_CLIENT_CERT": cert_private_path,
-        # "PYTAK_TLS_CLIENT_PASSWORD": str(settings.PYTAK_TLS_CLIENT_PASSWORD),
         "PYTAK_TLS_CLIENT_CAFILE": cert_trust_path,
-        "NOTICE":  NOTICE,
+        "COTINFO":  COTINFO,
         "PYTAK_TLS_DONT_CHECK_HOSTNAME": True
     }
     cot_config = cot_config["takserver"]
@@ -113,7 +115,7 @@ async def setup_cotqueues(aid_request=None):
     return cot_config, cot_queues
 
 
-def make_cot(lat=0.0, lon=0.0, uuid="test101", name="name101",
+def make_cot(message_type="update", lat=0.0, lon=0.0, uuid="test101", name="name101",
              updates=None, poll_interval="3600", remarks=None):
     # ic(remarks)
     event_uuid = uuid
@@ -157,5 +159,8 @@ def make_cot(lat=0.0, lon=0.0, uuid="test101", name="name101",
     color.set('argb', "-1")
     usericon = ET.SubElement(detail, 'usericon')
     usericon.set('iconsetpath', 'COT_MAPPING_2525B/a-u/a-u-G')
+    # is this a remove message ?
+    if message_type == "remove":
+        usericon = ET.SubElement(detail, '_forcedelete')
     result = ET.tostring(root)
     return result

@@ -33,6 +33,6 @@ def sendcot_checkstatus(request):
         return JsonResponse({"status": "error", "message": "No sendcot_id provided."})
     task_result = fetch(sendcot_id)
     if task_result:
-        ic('task completed')
-        return JsonResponse({"status": "done", "result": f"COT Sent: {task_result.result}"})
+        ic(vars(task_result))
+        return JsonResponse({"status": "done", "result": task_result.result})
     return JsonResponse({"status": "pending"})

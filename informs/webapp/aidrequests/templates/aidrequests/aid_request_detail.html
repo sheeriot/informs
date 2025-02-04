@@ -126,6 +126,9 @@
                 <i class="bi bi-send-fill"></i> Notify
             </a>
             <input type="hidden" id="aidrequest_id" value="{{ aid_request.pk }}">
+            <button id="delete-cot-button" class="btn btn-danger btn-sm mx-1 p-1">
+                <i class="bi bi-bullseye"></i> Delete Marker
+            </button>
             <button id="send-cot-button" class="btn btn-success btn-sm mx-1 p-1">
                 <i class="bi bi-bullseye"></i> Send COT
             </button>
@@ -338,14 +341,27 @@
                 pollSendCotStatus(sendcot_id)
             })
         })
+        $("#delete-cot-button").click(function(){
+            let aidrequest_id = $("#aidrequest_id").val()
+            $("send-cot-status").text("Status: Sending COT...")
+            $.post("{% url 'sendcot_aidrequest' %}", { aidrequest_id: aidrequest_id, csrfmiddlewaretoken: csrftoken, message_type: 'remove' }, function(data){
+                if (data.status === "error") {
+                    $("#send-cot-status").text("Error: " + data.message)
+                    return
+                }
+                let sendcot_id = data.sendcot_id
+                pollSendCotStatus(sendcot_id)
+            })
+        })
         function pollSendCotStatus(sendcot_id) {
             let interval = setInterval(function(){
                 $.get("{% url 'sendcot_checkstatus' %}", {sendcot_id: sendcot_id}, function(response){
+                    console.log(response)
                     if (response.status === "done") {
-                        $("#send-cot-status").text("Status: " + response.result)
+                        $("#send-cot-status").text("Result:", response.result)
                         clearInterval(interval)
                     } else {
-                        $("#send-cot-status").text("Status: Processing Send COT...")
+                        $("#send-cot-status").text("Processing Send COT...")
                     }
                 })
             }, 2000)
