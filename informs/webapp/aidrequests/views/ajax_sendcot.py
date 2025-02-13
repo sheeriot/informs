@@ -18,11 +18,17 @@ def sendcot_aidrequest(request):
             aid_request = AidRequest.objects.get(pk=aidrequest_id)
         except AidRequest.DoesNotExist:
             return JsonResponse({"status": "error", "message": "AidRequest not found."})
-        updated_at_stamp = aid_request.updated_at.strftime('%Y%m%d%H%M')
-        sendcot_id = async_task(aidrequest_takcot, aid_request, kwargs={},
-                                task_name=(
-                                    f"AidRequest{aid_request.pk}-OnDemand-"
-                                    f"SendCot_LastUpdated-{updated_at_stamp}"))
+        message_type = request.POST.get("message_type", "update")
+        timestamp_lastupdate = aid_request.updated_at.strftime('%Y%m%d%H%M')
+        if message_type == "update":
+            task_title = f"AidRequest{aid_request.pk}-OnDemand-CotSend_Updated-{timestamp_lastupdate}"
+        elif message_type == "remove":
+            task_title = f"AidRequest{aid_request.pk}-OnDemand-COTRemove"
+        else:
+            return JsonResponse({"status": "error", "message": "Invalid message_type provided."})
+
+        sendcot_id = async_task(aidrequest_takcot, aid_request, message_type=message_type,
+                                task_name=task_title)
         return JsonResponse({"sendcot_id": sendcot_id})
 
 

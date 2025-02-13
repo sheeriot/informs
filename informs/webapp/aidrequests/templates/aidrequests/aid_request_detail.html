@@ -120,24 +120,25 @@
                 </table>
             </div>
         </div>
-        <!-- Some Action Buttons to notify by Email or TAK COT -->
+        <hr class="m-1">
         <div class="d-inline-flex align-items-left">
             <a href="{% url 'aid_request_notify' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-info btn-sm mx-1 p-1">
-                <i class="bi bi-send-fill"></i> Notify
+                <i class="bi bi-send-fill"></i> Email
             </a>
+            |
             <input type="hidden" id="aidrequest_id" value="{{ aid_request.pk }}">
-            <button id="delete-cot-button" class="btn btn-danger btn-sm mx-1 p-1">
-                <i class="bi bi-bullseye"></i> Delete Marker
+            <button id="send-cot-button" class="btn btn-danger  btn-sm mx-1 p-1">
+                <i class="bi bi-bullseye"></i> Alert TAK
             </button>
-            <button id="send-cot-button" class="btn btn-success btn-sm mx-1 p-1">
-                <i class="bi bi-bullseye"></i> Send COT
+            <button id="delete-cot-button" class="btn btn-success btn-sm mx-1 p-1">
+                <i class="bi bi-bullseye"></i> Clear TAK
             </button>
-            <div class="d-inline-flex align-items-left border border-success mx-1 p-1 bg-light text-dark font-monospace">
-                Info: <div id="send-cot-status" ></div>
+            <div class="d-inline-flex align-items-left mx-1 p-0 text-dark font-monospace">
+                <div id="send-cot-status"></div>
             </div>
         </div>
     </div>
-    <hr>
+    <hr class="m-1">
     <div class="row flex-row align-items-center my-1">
         <div class="col-auto font-monospace">
             <table class="table table-bordered table-data w-auto caption-top w-auto border border-3 border-warning font-monospace ms-4">
@@ -331,7 +332,7 @@
     $(document).ready(function(){
         $("#send-cot-button").click(function(){
             let aidrequest_id = $("#aidrequest_id").val()
-            $("send-cot-status").text("Status: Sending COT...")
+            $("#send-cot-status").text("Sending COT..")
             $.post("{% url 'sendcot_aidrequest' %}", { aidrequest_id: aidrequest_id, csrfmiddlewaretoken: csrftoken }, function(data){
                 if (data.status === "error") {
                     $("#send-cot-status").text("Error: " + data.message)
@@ -343,7 +344,7 @@
         })
         $("#delete-cot-button").click(function(){
             let aidrequest_id = $("#aidrequest_id").val()
-            $("send-cot-status").text("Status: Sending COT...")
+            $("#send-cot-status").text("Sending COT..")
             $.post("{% url 'sendcot_aidrequest' %}", { aidrequest_id: aidrequest_id, csrfmiddlewaretoken: csrftoken, message_type: 'remove' }, function(data){
                 if (data.status === "error") {
                     $("#send-cot-status").text("Error: " + data.message)
@@ -358,10 +359,10 @@
                 $.get("{% url 'sendcot_checkstatus' %}", {sendcot_id: sendcot_id}, function(response){
                     console.log(response)
                     if (response.status === "done") {
-                        $("#send-cot-status").text("Result:", response.result)
+                        $("#send-cot-status").text(response.result)
                         clearInterval(interval)
                     } else {
-                        $("#send-cot-status").text("Processing Send COT...")
+                        $("#send-cot-status").text("Sending COT...")
                     }
                 })
             }, 2000)
