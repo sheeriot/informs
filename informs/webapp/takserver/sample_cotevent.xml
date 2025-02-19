@@ -1,0 +1,12 @@
+<event version="2.0" type="a-u-G" uid="AR49" how="h-g-i-g-o" time="2025-02-05T14:12:27.170374Z" start="2025-02-05T14:12:27.170395Z" stale="2025-02-05T15:12:27.170407Z" access="Undefined">
+    <point lat="44.47028" lon="-76.69560" hae="250" ce="9999999.0" le="9999999.0" />
+    <detail>
+        <contact callsign="AidRequest.49" />
+        <status readiness="true" />
+        <archive />
+        <precisionlocation altsrc="DTED0" />
+        <remarks>Evacuation. Location Status: confirmed</remarks>
+        <color argb="-1" />
+        <usericon iconsetpath="COT_MAPPING_2525B/a-u/a-u-G" />
+    </detail>
+</event>

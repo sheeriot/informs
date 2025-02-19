@@ -2,19 +2,22 @@ from django.conf import settings
 
 from azure.communication.email import EmailClient
 from datetime import datetime
+# import json
+# from django.http import JsonResponse
 
 from .email_creator import email_connectstring, email_creator_html
 from .geocoder import get_azure_geocode, geocode_save
 from .views.maps import staticmap_aid, calculate_zoom
-from .models import FieldOpNotify
-from takserver.cot import send_cot
+from .models import FieldOpNotify, AidRequest
+from takserver.cot import send_cots
+
 # import asyncio
 
 from icecream import ic
 
 
 def aid_request_postsave(aid_request, **kwargs):
-    ic(kwargs)
+    # ic(kwargs)
     savetype = kwargs['savetype']
     if savetype == 'new':
         geocode_results = get_azure_geocode(aid_request)
@@ -116,13 +119,23 @@ def aid_request_notify(aid_request, **kwargs):
     return results
 
 
-def aidrequest_takcot(aid_request, **kwargs):
-    message_type = kwargs.get('message_type', 'update')
-    result = send_cot(aid_request, message_type=message_type)
-    ic(aid_request)
-    ic(result)
-    # return f"COT message sent successfully for aidrequest_id: {aidrequest_id}"
-    return result
+def aidrequest_takcot(aidrequest_id=None, aidrequest_list=None, message_type='update'):
+    ic(message_type)
+    if not aidrequest_list and aidrequest_id:
+        ic(aidrequest_id)
+        aidrequest_list = [aidrequest_id]
+    if aidrequest_list:
+        aidrequest_first = AidRequest.objects.get(pk=aidrequest_list[0])
+        fieldop_id = aidrequest_first.field_op.pk
+        try:
+            results = send_cots(fieldop_id=fieldop_id, aidrequest_list=aidrequest_list, message_type=message_type)
+        except Exception as e:
+            ic(e)
+            return e
+    else:
+        return 'No AidRequest List'
+
+    return results
 
 
 def send_email(message):

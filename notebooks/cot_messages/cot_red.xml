@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<event version="2.0" uid="0fefda0f-9013-49c4-946c-26580fb09b0e" type="a-h-G" time="2025-02-13T20:01:56.305Z" start="2025-02-13T20:01:56.305Z" stale="2025-02-13T20:06:56.305Z" how="h-g-i-g-o" access="Undefined">
+    <point lat="30.4276725" lon="-97.9419155" hae="192.311" ce="9999999.0" le="9999999.0"/>
+    <detail>
+        <status readiness="true"/>
+        <archive/>
+        <link uid="ANDROID-76fc34df88b3870e" production_time="2025-02-12T15:37:02.111Z" type="a-f-G-U-C" parent_callsign="Jynx" relation="p-p"/>
+        <contact callsign="N.12.093702"/>
+        <precisionlocation altsrc="SRTM1"/>
+        <usericon iconsetpath="COT_MAPPING_2525C/a-n/a-n-G"/>
+        <archive/>
+        <remarks/>
+        <color argb="-1"/>
+    </detail>
+</event>

@@ -1,0 +1,13 @@
+<event version="2.0" uid="B2D8F4C3-DE8A-4A8B-BB28-ADDA89A44CD4" type="a-n-G-U-C-I" how="h-g-i-g-o" time="2025-02-13T15:20:57Z" start="2025-02-13T15:20:57Z" stale="2025-02-13T15:22:57Z">
+    <point lat="30.425692356003637" lon="-97.94418736892119" hae="0.0" ce="0.0" le="0.0" />
+    <detail>
+        <contact callsign="Farts.12.122658"/>
+        <precisionlocation geopointsrc="???" altsrc="???"/>
+        <status readiness="true"/>
+        <archive/>
+        <link uid="55CBB0B5-AC6C-4078-ADAB-FDF3DEBD36B5" production_time="2025-02-13T15:20:57Z" type="a-f-G-U-C" parent_callsign="kdtz-ipad" relation="p-p"/>
+        <usericon iconsetpath="COT_MAPPING_2525C/a-n/a-n-G-U-C-I"/>
+        <color argb="-1"/>
+        <remarks></remarks>
+    </detail>
+</event>

@@ -1,0 +1,10 @@
+# remove a marker
+
+<?xml version="1.0" standalone="yes"?>
+<event start="2012-01-01T00:00:00Z" time="2012-01-01T00:00:00Z" stale="2020-01-01T00:00:00Z" how="m-g" type="t-x-d-d" uid="does-not-matter-must-be-unique" version="2.0">
+<detail>
+<link uid="the-uid-of-the-map-item-to-remove" relation="none" type="none"/>
+<__forcedelete/>
+</detail>
+<point ce="9999999" le="9999999" lat="36.789783" lon="-115.471535" hae="4433.086151"/>
+</event>

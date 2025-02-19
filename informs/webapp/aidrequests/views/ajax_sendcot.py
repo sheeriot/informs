@@ -1,34 +1,55 @@
-# import json
+import json
 from django.http import JsonResponse
 from django_q.tasks import async_task, fetch
 
 from ..tasks import aidrequest_takcot
-from ..models import AidRequest
+# from ..models import AidRequest
 
 from icecream import ic
+from datetime import datetime
 
 
 def sendcot_aidrequest(request):
     """ Starts the async_task and returns task ID """
+    ic('ajax - sendcot_aidrequest')
+
     if request.method == "POST":
-        aidrequest_id = request.POST.get("aidrequest_id", None)
-        if not aidrequest_id:
-            return JsonResponse({"status": "error", "message": "No aidrequest_id provided."})
+        ic(request.body)
         try:
-            aid_request = AidRequest.objects.get(pk=aidrequest_id)
-        except AidRequest.DoesNotExist:
-            return JsonResponse({"status": "error", "message": "AidRequest not found."})
-        message_type = request.POST.get("message_type", "update")
-        timestamp_lastupdate = aid_request.updated_at.strftime('%Y%m%d%H%M')
+            data = json.loads(request.body)  # Parse JSON request body
+        except Exception as e:
+            ic(e)
+            return e
+        ic(data)
+        aidrequests = data.get('aidrequests', [])
+        aidrequest_id = data.get('aidrequest_id', None)
+        message_type = data.get('message_type', 'update')
+        ic(message_type)
+
+        if not aidrequest_id and not aidrequests:
+            ic('not aidrequest_id and not aidrequests')
+            return JsonResponse({"status": "error", "message": "No aidrequest id or list provided."})
+
+        timestamp_now = datetime.now().strftime('%Y%m%d-%H%M%S')
+        # ic(timestamp_now)
         if message_type == "update":
-            task_title = f"AidRequest{aid_request.pk}-OnDemand-CotSend_Updated-{timestamp_lastupdate}"
+            task_title = f"TAKAlert-FO-OnDemand_{timestamp_now}"
         elif message_type == "remove":
-            task_title = f"AidRequest{aid_request.pk}-OnDemand-COTRemove"
+            task_title = f"TAKClear-FO-OnDemand_{timestamp_now}"
         else:
             return JsonResponse({"status": "error", "message": "Invalid message_type provided."})
 
-        sendcot_id = async_task(aidrequest_takcot, aid_request, message_type=message_type,
-                                task_name=task_title)
+        if aidrequests:
+            aidrequest_list = [int(aid) for aid in aidrequests]
+            # ic(aidrequest_list)
+            # ic(type(aidrequest_list))
+            sendcot_id = async_task(aidrequest_takcot, aidrequest_list=aidrequest_list, message_type=message_type,
+                                    task_name=task_title)
+        elif aidrequest_id:
+            ic(aidrequest_id)
+            sendcot_id = async_task(aidrequest_takcot, aidrequest_id=aidrequest_id, message_type=message_type,
+                                    task_name=task_title)
+
         return JsonResponse({"sendcot_id": sendcot_id})
 
 
@@ -39,6 +60,6 @@ def sendcot_checkstatus(request):
         return JsonResponse({"status": "error", "message": "No sendcot_id provided."})
     task_result = fetch(sendcot_id)
     if task_result:
-        ic(vars(task_result))
+        # ic(vars(task_result))
         return JsonResponse({"status": "done", "result": task_result.result})
     return JsonResponse({"status": "pending"})

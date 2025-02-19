@@ -80,7 +80,7 @@ class AidRequestCreateForm(forms.ModelForm):
             Field('different_contact', css_class="form-check-input", id="different_contact"),
             Div(
                 Fieldset(
-                    'Contact Details for Party Needing Assistance (if different)',
+                    'Contact Details for Party Needing Aid (if different)',
                     Row(
                         Column('aid_first_name', css_class='col-md-6 mb-2'),
                         Column('aid_last_name', css_class='col-md-6 mb-2'),

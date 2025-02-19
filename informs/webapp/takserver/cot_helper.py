@@ -5,7 +5,7 @@ from django.conf import settings
 
 import xml.etree.ElementTree as ET
 import pytak
-from icecream import ic
+# from icecream import ic
 
 
 def aidrequest_location(locations=None):
@@ -33,7 +33,6 @@ def make_cot(cot_type=None, message_type='update',
              remarks=None,
              poll_interval="3600"):
 
-    ic('make_cot:', message_type)
     red_diamond = 'a-h-G'
     # green_square = 'a-f-G'
     green_square_x = 'a-n-G-U-C-I'
@@ -80,7 +79,7 @@ def make_cot(cot_type=None, message_type='update',
     # cot_icon = 'a-n-G'
 
     usericon = ET.SubElement(detail, 'usericon')
-    usericon.set('iconsetpath', f'COT_MAPPING_2525C/a-n/a-n-G')
+    usericon.set('iconsetpath', 'COT_MAPPING_2525C/a-n/a-n-G')
     color = ET.SubElement(detail, 'color')
     color.set('argb', "-1")
     remarks_element = ET.SubElement(detail, 'remarks')
