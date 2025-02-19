@@ -11,12 +11,12 @@
             <i class="bi bi-truck text-primary"></i>
         </a>
     </h2>
-    <table class="table table-sm table-striped align-middle font-monospace caption-top w-auto">
+    <table id="aidrequest-list" class="table table-sm table-striped align-middle font-monospace caption-top w-auto">
         <form method="get">
-            <caption>Aid Requests: Sort {{ filter.form.ordering }}</caption>
+            <caption>Aid Requests: Sort {{ filter.form.ordering }}|<button type="submit"><i class="bi button-outline-success bi-funnel-fill text-success"></i></button></caption>
             <thead>
                     <th scope="col">ID</th>
-                    <th><button type="submit"><i class="bi button-outline-success bi-funnel-fill text-success"></i></button></th>
+                    <th><button id='checkall' type="submit"><i class="bi button-info bi-check text-success"></i></button></th>
                     <th scope="col"><label for="aid_type-filter">Type</label>{{ filter.form.aid_type }}</th>
                     <th scope="col">
                         <label for="priority-filter">Priority</label>
@@ -109,6 +109,12 @@
                 </button>
             </a>
         </div>
+        <button id="tak-alert-button" class="btn btn-danger btn-sm mx-1 p-1">
+            <i class="bi bi-bullseye"></i> Alert TAK
+        </button>
+        <div class="d-inline-flex align-items-left mx-1 p-0 text-dark font-monospace">
+            <div id="send-cot-status"></div>
+        </div>
         <div class="d-flex justify-content-end">
             <a href="{% url 'aid_requests_csv' field_op=field_op.slug %}">
                 <button class="btn btn-info p-1">
@@ -129,9 +135,10 @@
     {{ aid_locations|json_script:'aid-locations-data' }}
 
     <h2>Aid Request Map</h2>
-
     <div id="map2Container" style="position:relative;width:100%;min-width:290px;height:800px;"></div>
-    <script>
+
+</div>
+<script>
     const map2Context = {
             azure_maps_key: "{{ azure_maps_key|escapejs }}",
             map_zoom: "{{ map_zoom|safe  }}",
@@ -146,7 +153,73 @@
         document.addEventListener("DOMContentLoaded", function() {
             initMap2(map2Context);
         })
-    </script>
-</div>
+</script>
+<script>
+    var csrftoken = '{{ csrf_token }}'
+    const selectedRequests = []
+    document.addEventListener("DOMContentLoaded", function() {
+        const aidRequestList = document.getElementById('aidrequest-list')
+        aidRequestList.addEventListener('change', function(event) {
+            if (event.target.name === 'selected_requests') {
+                const requestId = event.target.value
+                if (event.target.checked) {
+                    selectedRequests.push(requestId)
+                } else {
+                    const index = selectedRequests.indexOf(requestId)
+                    if (index > -1) {
+                        selectedRequests.splice(index, 1)
+                    }
+                }
+                console.log('Selected Requests:', selectedRequests)
+            }
+        })
+        $("#tak-alert-button").click(function(){
+            $("#send-cot-status").text("Sending COT..")
+            console.log(selectedRequests)
+            $.ajax({
+                url: "{% url 'sendcot_aidrequest' %}",
+                type: "POST",
+                data: JSON.stringify({ aidrequests: selectedRequests }),  // Send as JSON
+                contentType: "application/json",  // Set correct content type
+                headers: { "X-CSRFToken": csrftoken },  // Set CSRF token in headers
+                success: function(data) {
+                    if (data.status === "error") {
+                        $("#send-cot-status").text("Error: " + data.message)
+                        return
+                    }
+                    let sendcot_id = data.sendcot_id
+                    console.log(data)
+                    pollSendCotStatus(sendcot_id)
+                },
+                error: function(xhr, status, error) {
+                    console.error("AJAX Error:", error)
+                }
+            })
+        })
+        $("#checkall").click(function(event){
+            event.preventDefault();
+            const checkboxes = document.querySelectorAll('input[name="selected_requests"]');
+            const allChecked = Array.from(checkboxes).every(checkbox => checkbox.checked);
+            checkboxes.forEach(checkbox => checkbox.checked = !allChecked);
+            selectedRequests.length = 0;
+            if (!allChecked) {
+            checkboxes.forEach(checkbox => selectedRequests.push(checkbox.value));
+            }
+            console.log('Selected Requests:', selectedRequests);
+        });
+    })
+    function pollSendCotStatus(sendcot_id) {
+            let interval = setInterval(function(){
+                $.get("{% url 'sendcot_checkstatus' %}", {sendcot_id: sendcot_id}, function(response){
+                    console.log(response)
+                    if (response.status === "done") {
+                        $("#send-cot-status").text(response.result)
+                        clearInterval(interval)
+                    } else {
+                        $("#send-cot-status").text("Sending COT...")
+                    }
+                })
+            }, 2000)}
 
+</script>
 {% endblock %}

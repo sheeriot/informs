@@ -143,6 +143,10 @@ class AidRequest(TimeStampedModel):
     aid_email = models.EmailField(blank=True)
     aid_phone = models.CharField(max_length=12, blank=True)
 
+    @property
+    def aid_contact(self):
+        return bool(self.aid_first_name or self.aid_last_name or self.aid_email or self.aid_phone)
+
     # 3. Location of assistance request
     street_address = models.CharField(max_length=50)
     city = models.CharField(max_length=25)

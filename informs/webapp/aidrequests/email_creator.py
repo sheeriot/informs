@@ -102,7 +102,7 @@ def email_creator_html(aid_request, aid_location, notify, map_file):
         </tr>
         <tr>
             <td colspan="3"><div style="font-weight: normal;">Methods:</div>
-            {', '.join(aid_request.contact_methods)}
+                {aid_request.contact_methods}
             </td>
         </tr>
     </table>

@@ -10,7 +10,7 @@ from jinja2 import Template
 
 from ..models import AidRequest, FieldOp, AidRequestLog
 from ..tasks import aid_request_postsave
-from takserver.cot import send_cot
+from takserver.cot import send_cots
 from .aid_request_forms import AidRequestCreateForm, AidRequestUpdateForm, AidRequestLogForm
 
 from icecream import ic
@@ -117,10 +117,10 @@ class AidRequestCreateView(CreateView):
             (aid_request_postsave, [self.object], {
                 'savetype': savetype,
                 'task_name': f"AR{self.object.pk}-AidRequestNew-Email-{updated_at_stamp}"}),
-            (send_cot, [self.object], {
+            (send_cots, [self.object], {
                 'task_name': f"AR{self.object.pk}-AidRequestNew-TAK-{updated_at_stamp}"})
                 ])
-        ic(postsave_tasks)
+        ic('postsave_tasks', postsave_tasks)
         return super().form_valid(form)
 
 
