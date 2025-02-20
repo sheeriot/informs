@@ -208,12 +208,6 @@ AZURE_MAPS_KEY = os.environ.get('AZURE_MAPS_KEY')
 AZURE_MAPS_STATIC_URL = 'https://atlas.microsoft.com/map/static'
 MAPS_PATH = 'media/maps'
 
-# TAK Server
-TAKSERVER_DNS = os.environ.get('TAKSERVER_DNS')
-PYTAK_TLS_CLIENT_CERT = os.environ.get('PYTAK_TLS_CLIENT_CERT')
-PYTAK_TLS_CLIENT_PASSWORD = os.environ.get('PYTAK_TLS_CLIENT_PASSWORD')
-PYTAK_TLS_CLIENT_CAFILE = os.environ.get('PYTAK_TLS_CLIENT_CAFILE')
-
 Q_CLUSTER = {
     'name': 'informs-queues',
     'label': 'queues',

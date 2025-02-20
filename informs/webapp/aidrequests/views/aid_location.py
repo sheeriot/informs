@@ -99,7 +99,7 @@ class AidLocationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
         ic(vars(self.aid_location))
         # ----- Send COT ------
         updated_at_stamp = self.aid_location.updated_at.strftime('%Y%m%d%H%M%S')
-        tasks.async_task(aidrequest_takcot, self.aid_request, kwargs={},
+        tasks.async_task(aidrequest_takcot, aidrequest_id=self.aid_request.pk,
                          task_name=f"AidLocation{self.aid_location.pk}-ManualCreate-SendCot-{updated_at_stamp}")
 
         return super().form_valid(form)
@@ -184,7 +184,7 @@ class AidLocationStatusUpdateView(LoginRequiredMixin, PermissionRequiredMixin, U
             ic(f"Log Error: {e}")
         # ----- Send COT ------
         updated_at_stamp = self.aid_request.updated_at.strftime('%Y%m%d%H%M%S')
-        tasks.async_task(aidrequest_takcot, self.aid_request, kwargs={},
+        tasks.async_task(aidrequest_takcot, aidrequest_id=self.aid_request.pk,
                          task_name=f"AidLocation{self.aid_location.pk}-StatusUpdate-SendCot-{updated_at_stamp}")
 
         return super().form_valid(form)

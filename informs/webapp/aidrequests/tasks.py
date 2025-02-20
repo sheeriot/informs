@@ -122,7 +122,6 @@ def aid_request_notify(aid_request, **kwargs):
 def aidrequest_takcot(aidrequest_id=None, aidrequest_list=None, message_type='update'):
     ic(message_type)
     if not aidrequest_list and aidrequest_id:
-        ic(aidrequest_id)
         aidrequest_list = [aidrequest_id]
     if aidrequest_list:
         aidrequest_first = AidRequest.objects.get(pk=aidrequest_list[0])
@@ -146,11 +145,8 @@ def send_email(message):
         time_elapsed = 0
 
         while not poller.done():
-            # ic("Email send poller status: " + poller.status())
-
             poller.wait(POLLER_WAIT_TIME)
             time_elapsed += POLLER_WAIT_TIME
-
             if time_elapsed > 5 * POLLER_WAIT_TIME:
                 raise RuntimeError("Polling timed out.")
 
