@@ -129,16 +129,14 @@ class CotSender(pytak.QueueWorker):
         return results
 
 
-def send_cots(fieldop_id=None, aidrequest_list=[], message_type='update', **kwargs):
-
+def send_cots(fieldop_id=None, aidrequest_list=[], message_type=None):
     try:
-        result = asyncio.run(
-                        asend_cot(
-                            fieldop_id=fieldop_id,
-                            aidrequest_list=aidrequest_list,
-                            message_type=message_type
-                            )
-                        )
+        result = asyncio.run(asend_cot(
+                                fieldop_id=fieldop_id,
+                                aidrequest_list=aidrequest_list,
+                                message_type=message_type
+                                )
+                             )
     except Exception as e:
         ic('asyncio.run exception:', e)
         return e
@@ -146,9 +144,7 @@ def send_cots(fieldop_id=None, aidrequest_list=[], message_type='update', **kwar
     return result
 
 
-async def asend_cot(fieldop_id=None, aidrequest_list=None, message_type=None, **kwargs):
-    # ic('asend_cot:', fieldop_id, message_type, aidrequest_list)
-
+async def asend_cot(fieldop_id=None, aidrequest_list=None, message_type=None):
     cot_config, cot_queues = await setup_cotqueues(
                                     fieldop_id=fieldop_id,
                                     aidrequest_list=aidrequest_list,
@@ -163,19 +159,17 @@ async def asend_cot(fieldop_id=None, aidrequest_list=None, message_type=None, **
     return result
 
 
-async def setup_cotqueues(fieldop_id=None, aidrequest_list=[], message_type=None, **kwargs):
-    # ic('setup queues')
+async def setup_cotqueues(fieldop_id=None, aidrequest_list=[], message_type=None):
     aidrequest_csv = ",".join(map(str, aidrequest_list))
     COTINFO = [message_type,
                fieldop_id,
                aidrequest_csv
                ]
-    # ic(COTINFO)
 
     try:
         fieldop = await FieldOp.objects.aget(pk=fieldop_id)
     except Exception as e:
-        ic('fieldop get exception', e)
+        ic('fieldop.get exception', e)
         return e
     try:
         tak_server = await TakServer.objects.aget(pk=fieldop.tak_server_id)

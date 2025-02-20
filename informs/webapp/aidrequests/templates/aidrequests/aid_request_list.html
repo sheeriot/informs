@@ -109,11 +109,19 @@
                 </button>
             </a>
         </div>
-        <button id="tak-alert-button" class="btn btn-danger btn-sm mx-1 p-1">
-            <i class="bi bi-bullseye"></i> Alert TAK
-        </button>
-        <div class="d-inline-flex align-items-left mx-1 p-0 text-dark font-monospace">
-            <div id="send-cot-status"></div>
+        <div class="d-flex-inline">
+            <button id="tak-alert-button" class="btn btn-danger btn-sm mx-1 p-1">
+                <i class="bi bi-bullseye"></i> Alert TAK
+            </button>
+            <button id="tak-clear-button" class="btn btn-success btn-sm mx-1 p-1">
+                <i class="bi bi-bullseye"></i> Clear TAK
+            </button>
+            <button id="tak-test-button" class="btn btn-info btn-sm mx-1 p-1">
+                <i class="bi bi-bullseye"></i> Food Icon
+            </button>
+            <div class="d-inline-flex align-items-left mx-1 p-0 text-dark font-monospace">
+                <div id="send-cot-status"></div>
+            </div>
         </div>
         <div class="d-flex justify-content-end">
             <a href="{% url 'aid_requests_csv' field_op=field_op.slug %}">
@@ -180,6 +188,52 @@
                 url: "{% url 'sendcot_aidrequest' %}",
                 type: "POST",
                 data: JSON.stringify({ aidrequests: selectedRequests }),  // Send as JSON
+                contentType: "application/json",  // Set correct content type
+                headers: { "X-CSRFToken": csrftoken },  // Set CSRF token in headers
+                success: function(data) {
+                    if (data.status === "error") {
+                        $("#send-cot-status").text("Error: " + data.message)
+                        return
+                    }
+                    let sendcot_id = data.sendcot_id
+                    console.log(data)
+                    pollSendCotStatus(sendcot_id)
+                },
+                error: function(xhr, status, error) {
+                    console.error("AJAX Error:", error)
+                }
+            })
+        })
+        $("#tak-clear-button").click(function(){
+            $("#send-cot-status").text("Sending COT..")
+            console.log(selectedRequests)
+            $.ajax({
+                url: "{% url 'sendcot_aidrequest' %}",
+                type: "POST",
+                data: JSON.stringify({ message_type: 'remove', aidrequests: selectedRequests }),  // Send as JSON
+                contentType: "application/json",  // Set correct content type
+                headers: { "X-CSRFToken": csrftoken },  // Set CSRF token in headers
+                success: function(data) {
+                    if (data.status === "error") {
+                        $("#send-cot-status").text("Error: " + data.message)
+                        return
+                    }
+                    let sendcot_id = data.sendcot_id
+                    console.log(data)
+                    pollSendCotStatus(sendcot_id)
+                },
+                error: function(xhr, status, error) {
+                    console.error("AJAX Error:", error)
+                }
+            })
+        })
+        $("#tak-test-button").click(function(){
+            $("#send-cot-status").text("Sending COT..")
+            console.log(selectedRequests)
+            $.ajax({
+                url: "{% url 'sendcot_aidrequest' %}",
+                type: "POST",
+                data: JSON.stringify({ message_type: 'test', aidrequests: selectedRequests }),  // Send as JSON
                 contentType: "application/json",  // Set correct content type
                 headers: { "X-CSRFToken": csrftoken },  // Set CSRF token in headers
                 success: function(data) {

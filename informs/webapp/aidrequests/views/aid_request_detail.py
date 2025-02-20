@@ -83,7 +83,7 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
                 ic(f"Log Error: {e}")
             # ic(timer()-time_start)
             updated_at_stamp = self.aid_location.updated_at.strftime('%Y%m%d%H%M%S')
-            async_task(aidrequest_takcot, self.aid_request, kwargs={},
+            async_task(aidrequest_takcot, aidrequest_id=self.aid_request.pk,
                        task_name=f"AidLocation{self.aid_location.pk}-New-SendCOT-{updated_at_stamp}")
             try:
                 self.aid_request.logs.create(
