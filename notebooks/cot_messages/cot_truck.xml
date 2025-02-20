@@ -1,0 +1,13 @@
+<event version="2.0" uid="808C426D-C5BE-4D54-91C3-D7E6B47DA7B3" type="a-u-G-E-V-C-U" how="h-g-i-g-o" time="2025-02-20T18:44:59Z" start="2025-02-20T18:44:59Z" stale="2025-02-20T18:46:59Z">
+    <point lat="30.426612875229594" lon="-97.92705333673737" hae="0.0" ce="0.0" le="0.0" />
+    <detail>
+        <contact callsign="KDTZipad.20.124210" />
+        <precisionlocation geopointsrc="???" altsrc="???" />
+        <status readiness="true" />
+        <archive />
+        <link uid="44CBB0B5-AC6C-4078-ADAB-FDF3DEBD36B5" production_time="2025-02-20T18:44:59Z" type="a-f-G-U-C" parent_callsign="KDTZipad" relation="p-p" />
+        <usericon iconsetpath="COT_MAPPING_2525C/a-u/a-u-G-E-V-C-U" />
+        <color argb="-1" />
+        <remarks></remarks>
+    </detail>
+</event>

@@ -2,7 +2,7 @@
 This module  for AidRequests and FieldOps
 """
 from django.db import models
-# from django.conf import settings
+from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
@@ -88,6 +88,9 @@ class AidType(models.Model):
         MinValueValidator(0.00),
         MaxValueValidator(5.00)
     ])
+
+    COT_ICON_CHOICES = [(key, key) for key in settings.COT_ICONS.keys()]
+    cot_icon = models.CharField(max_length=50, choices=COT_ICON_CHOICES, blank=True, null=True)
 
     class Meta:
         verbose_name = 'Aid Type'

@@ -12,7 +12,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
-# from icecream import ic
+import configparser
+from icecream import ic
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -222,3 +223,10 @@ DEBUG_TOOLBAR_CONFIG = {
     'SHOW_TOOLBAR_CALLBACK': lambda request: os.environ.get('DEBUG_TOOLBAR', False),  # Show the django-debug-toolbar?
     'INTERCEPT_REDIRECTS': False,  # Prevent toolbar from intercepting redirects
 }
+
+# read in icons for TAK
+icons_config = configparser.ConfigParser()
+icons_config.read(os.path.join(BASE_DIR, 'takserver/icon_info.ini'))
+
+COT_ICONS = {key: value for key, value in icons_config.items('Icons')}
+# ic(COT_ICONS)

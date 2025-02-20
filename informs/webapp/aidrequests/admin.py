@@ -49,7 +49,7 @@ class AidRequestAdmin(admin.ModelAdmin):
 class FieldOpAdmin(admin.ModelAdmin):
     """fieldops admin"""
 
-    list_display = ('slug', 'name', 'notify_count', 'latitude', 'longitude')
+    list_display = ('slug', 'name', 'tak_server', 'notify_count', 'latitude', 'longitude')
 
     readonly_fields = (
         'latitude',
@@ -152,7 +152,10 @@ class FieldOpNotifyAdmin(admin.ModelAdmin):
 
 class AidTypeAdmin(admin.ModelAdmin):
     """aid_type admin"""
-    list_display = ('slug', 'name', 'description', 'icon_name', 'icon_color', 'icon_scale')
+    list_display = (
+        'slug', 'name', 'description',
+        'icon_name', 'icon_color', 'cot_icon'
+    )
 
 
 admin.site.register(FieldOp, FieldOpAdmin)
