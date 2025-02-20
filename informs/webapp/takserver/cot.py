@@ -27,7 +27,6 @@ class CotSender(pytak.QueueWorker):
     async def run(self):
         cot_info = self.config['COTINFO']
         message_type = cot_info[0]
-
         aidrequest_csv = cot_info[2]
         aidrequest_list = list(map(int, aidrequest_csv.split(',')))
         results = [len(aidrequest_list)]
@@ -43,6 +42,8 @@ class CotSender(pytak.QueueWorker):
                 ic('failed to get AidRequest or AidLocations')
                 ic(e)
                 raise RuntimeError(f"Failed to get AidRequest or AidLocations: {e}")
+
+            aid_type = aid_request.aid_type
 
             contact_details = (
                 f'Requestor: {aid_request.requestor_first_name} {aid_request.requestor_last_name}\n'
@@ -63,7 +64,7 @@ class CotSender(pytak.QueueWorker):
             location_status, location = aidrequest_location(aid_locations)
 
             aid_details = (
-                f'Aid Type: {aid_request.aid_type}\n'
+                f'Aid Type: {aid_type}\n'
                 f'Priority: {aid_request.priority}\n'
                 f'Status: {aid_request.status}\n'
                 f'Location Status: {location_status}\n'
@@ -100,10 +101,13 @@ class CotSender(pytak.QueueWorker):
 
             aid_details += additional_info
 
+            cot_icon = aid_type.cot_icon
+
             if location:
                 try:
                     data = make_cot(
                         message_type=message_type,
+                        cot_icon=cot_icon,
                         name=f'{aid_request.aid_type.slug}.{aid_request.pk}',
                         uuid=f'AidRequest.{aid_request.pk}',
                         lat=location.latitude,

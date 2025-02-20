@@ -47,77 +47,73 @@
     <hr class="m-0" />
     <div class="container font-monospace mt-1">
         <div class="d-flex flex-column flex-lg-row">
-            <div class="table-responsive w-50">
-                <table class="table table-bordered table-data w-auto caption-top me-2 border border-3 border-success">
-                    <caption>Aid Summary</caption>
-                    <tr>
-                        <th class="col-auto">ID</th>
-                        <th class="col-auto">Field Op</th>
-                        <th class="col-auto">Aid Type</th>
-                        <th class="col-auto">Group Size</th>
-                    </tr>
-                    <tr>
-                        <td class="col-auto">
-                            <a href="{% url 'aid_request_update' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
-                                <i class="bi bi-pencil"></i> {{ object.pk }}
-                            </a>
-                        </td>
-                        <td class="col-auto">
-                            <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-outline-primary btn-sm mx-1 p-1">
-                                <i class="bi bi-truck text"></i> <span class="text-dark">{{ field_op.name }}</span>
-                            </a>
-                        </td>
-                        <td class="col-auto">{{ object.aid_type }}</td>
-                        <td class="col-auto text-center">{{ object.group_size }}</td>
-                    </tr>
-                    <tr><th colspan="4">Address Provided</th></tr>
-                    <tr>
-                        <td colspan="4">
-                            {{ object.street_address }}
-                            {{ object.city }}
-                            {{ object.state }}
-                            {{ object.zip_code }}
-                            {{ object.country }}
-                        </td>
-                    </tr>
-                    <tr><th colspan="4">Descripton</th></tr>
-                    <tr>
-                        <td colspan="4">
-                            {{ object.aid_description }}
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-bordered table-data border border-3 border-info w-auto caption-top mb-1">
-                    <caption>Contact Information</caption>
-                    <tr>
-                        <th class="col-auto">Requestor Name</th>
-                        <th class="col-auto">Requestor Phone</th>
-                        <th class="col-auto">Requestor Email</th>
-                    </tr>
-                    <tr>
-                        <td class="col-auto">{{ object.requestor_first_name }} {{ object.requestor_last_name }}</td>
-                        <td class="col-auto">{{ object.requestor_phone }}</td>
-                        <td class="col-auto">{{ object.requestor_email }}</td>
-                    </tr>
-                    <tr>
-                        <th class="col-auto">Contact Name</th>
-                        <th class="col-auto">Contact Phone</th>
-                        <th class="col-auto">Contact Email</th>
-                    </tr>
-                    <tr>
-                        <td class="col-auto">{{ object.aid_first_name|default:"None" }} {{ object.aid_last_name }}</td>
-                        <td class="col-auto">{{ object.aid_phone|default:"None" }}</td>
-                        <td class="col-auto">{{ object.aid_email|default:"None" }}</td>
-                    </tr>
-                    <tr>
-                        <td colspan="3">
-                            <strong>Methods</strong>:<br>{{ object.contact_methods }}
-                        </td>
-                    </tr>
-                </table>
-            </div>
+            <table class="table table-bordered table-data caption-top me-2 border border-3 border-success">
+                <caption>Aid Summary</caption>
+                <tr>
+                    <th class="col-auto">ID</th>
+                    <th class="col-auto">Field Op</th>
+                    <th class="col-auto">Aid Type</th>
+                    <th class="col-auto">Group Size</th>
+                </tr>
+                <tr>
+                    <td class="col-auto">
+                        <a href="{% url 'aid_request_update' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
+                            <i class="bi bi-pencil"></i> {{ object.pk }}
+                        </a>
+                    </td>
+                    <td class="col-auto">
+                        <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-outline-primary btn-sm mx-1 p-1">
+                            <i class="bi bi-truck text"></i> <span class="text-dark">{{ field_op.name }}</span>
+                        </a>
+                    </td>
+                    <td class="col-auto">{{ object.aid_type }}</td>
+                    <td class="col-auto text-center">{{ object.group_size }}</td>
+                </tr>
+                <tr><th colspan="4">Address Provided</th></tr>
+                <tr>
+                    <td colspan="4" class='text-wrap text-break overflow-hidden'>
+                        {{ object.street_address }}
+                        {{ object.city }}
+                        {{ object.state }}
+                        {{ object.zip_code }}
+                        {{ object.country }}
+                    </td>
+                </tr>
+                <tr><th colspan="4">Descripton</th></tr>
+                <tr>
+                    <td colspan="4">
+                        {{ object.aid_description }}
+                    </td>
+                </tr>
+            </table>
+            <table class="table table-bordered table-data border border-3 border-info w-auto caption-top mx-1">
+                <caption>Contact Information</caption>
+                <tr>
+                    <th class="col-auto">Requestor Name</th>
+                    <th class="col-auto">Requestor Phone</th>
+                    <th class="col-auto">Requestor Email</th>
+                </tr>
+                <tr>
+                    <td class="col-auto">{{ object.requestor_first_name }} {{ object.requestor_last_name }}</td>
+                    <td class="col-auto">{{ object.requestor_phone }}</td>
+                    <td class="col-auto">{{ object.requestor_email }}</td>
+                </tr>
+                <tr>
+                    <th class="col-auto">Contact Name</th>
+                    <th class="col-auto">Contact Phone</th>
+                    <th class="col-auto">Contact Email</th>
+                </tr>
+                <tr>
+                    <td class="col-auto">{{ object.aid_first_name|default:"None" }} {{ object.aid_last_name }}</td>
+                    <td class="col-auto">{{ object.aid_phone|default:"None" }}</td>
+                    <td class="col-auto">{{ object.aid_email|default:"None" }}</td>
+                </tr>
+                <tr>
+                    <td colspan="3">
+                        <strong>Methods</strong>:<br>{{ object.contact_methods }}
+                    </td>
+                </tr>
+            </table>
         </div>
         <hr class="m-1">
         <div class="d-inline-flex align-items-left">

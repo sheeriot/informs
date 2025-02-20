@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<event version="2.0" type="t-x-d-d" uid="takPing" how="m-g" time="2025-02-20T18:34:52.920205Z" start="2025-02-20T18:34:52.920229Z" stale="2025-02-20T18:36:52.920272Z">
+    <point lat="0.0" lon="0.0" le="9999999.0" hae="9999999.0" ce="9999999.0" />
+    <detail>
+        <_flow-tags_ pytak-edca3723fb76-v7.1.0="2025-02-20T18:34:52.920290Z" />
+    </detail>
+</event>
+
+<event version="2.0" uid="AidRequest.367.dev" type="food" how="h-g-i-g-o" time="2025-02-20T18:34:52.923902Z" start="2025-02-20T18:34:52.923917Z" stale="2025-02-20T19:34:52.923924Z">
+    <point lat="30.42753" lon="-97.92443" hae="250" ce="0.0" le="0.0" />
+    <detail>
+        <contact callsign="evac.367.dev" />
+        <precisionlocation geopointsrc="???" altsrc="???" />
+        <status readiness="true" />
+        <usericon iconsetpath="ad78aafb-83a6-4c07-b2b9-a897a8b6a38f/ShapesClr/convenience.png" />
+        <color argb="-1" />
+        <remarks>
+            Aid Type: Evacuation
+            Priority: None
+            Status: new
+            Location Status: confirmed
+            ------
+            Requestor: Back Strett
+            Email:
+            Phone: xx
+            ------
+            Group Size: None
+            Description:
+            ------
+            Street Address: 16200 Elm Dr
+            City: Austin
+            State: Texas
+            Zip Code: 78734
+            Country:
+            ------
+            Best Location ID: 637 (confirmed)
+            Address Searched: 16200 Elm Dr Austin Texas 78734
+            Address Found: 16200 Elm Dr, Austin, TX 78734
+            Distance: 2.39
+            Location Note:
+            Match Type: Address
+            Locality: Austin
+            Districts: ['Travis County', 'TX']
+            Match Codes: ['Good']
+            Confidence: High
+
+            --- Additional Info ---
+        </remarks>
+    </detail>
+</event>
