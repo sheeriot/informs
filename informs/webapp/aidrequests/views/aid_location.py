@@ -22,7 +22,7 @@ class AidLocationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
     """
     model = AidRequest
     form_class = AidLocationCreateForm
-    permission_required = 'aidrequests.create_aidlocation'
+    permission_required = 'aidrequests.add_aidlocation'
     template_name = 'aidrequests/aid_request_geocode.html'
 
     def get_success_url(self):
