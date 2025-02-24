@@ -93,7 +93,7 @@ class FieldOpCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
 
 # Update View for FieldOp
 class FieldOpUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
-    permission_required = 'aidrequests.view_fieldop'
+    permission_required = 'aidrequests.change_fieldop'
     model = FieldOp
     form_class = FieldOpForm
     template_name = 'aidrequests/field_op_form.html'
