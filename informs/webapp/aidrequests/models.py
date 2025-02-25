@@ -90,7 +90,7 @@ class AidType(models.Model):
     ])
 
     COT_ICON_CHOICES = [(key, key) for key in settings.COT_ICONS.keys()]
-    cot_icon = models.CharField(max_length=50, choices=COT_ICON_CHOICES, blank=True, null=True)
+    cot_icon = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
         verbose_name = 'Aid Type'

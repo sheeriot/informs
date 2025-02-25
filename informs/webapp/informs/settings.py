@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 import configparser
-from icecream import ic
+# from icecream import ic
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -226,7 +226,7 @@ DEBUG_TOOLBAR_CONFIG = {
 
 # read in icons for TAK
 icons_config = configparser.ConfigParser()
-icons_config.read(os.path.join(BASE_DIR, 'takserver/icon_info.ini'))
+icons_config.read(os.path.join(BASE_DIR, 'takserver/cot_icons.ini'))
 
 COT_ICONS = {key: value for key, value in icons_config.items('Icons')}
 # ic(COT_ICONS)

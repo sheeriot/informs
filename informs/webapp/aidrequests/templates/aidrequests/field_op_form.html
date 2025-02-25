@@ -15,6 +15,13 @@
     {% endif %}
 
     <div>Each "Field Op" is a distinct call to support (response) for a region.</div>
+    <span>
+        <em>
+        This form should be used to create and update Field Ops.<br>
+        Note, some settings (TAK Server, Notifies) are set in the /admin pages.
+        </em>
+    </span>
+    <hr>
     <p>
         Each "Field Op" will get a unique short name (aka slug), i.e.
         <strong>
@@ -24,18 +31,9 @@
         </ul>
         </strong>
     </p>
-    <span>
-        <em>
-        This form should only be used to create and update Field Ops. Each intake form will be associated to a distinct Field Op.
-        </em>
-    </span>
-    <hr>
-
-
     <div>
         {% crispy form %}
     </div>
-
     {% if form.action == "update" %}
     <hr class="my-1" />
     <div class="d-flex justify-content-between">
