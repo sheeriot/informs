@@ -102,7 +102,7 @@ class AidRequestCreateForm(forms.ModelForm):
                 css_class="col-md-8 fieldset-box p-3 border rounded"
             ),
             Fieldset(
-                'Type of Assistance Requested',
+                'Type of Aid Requested',
                 Row(
                     Column('aid_type', css_class='col-md-4 mb-2'),
                     Column('group_size', css_class='col-md-2 mb-2'),
@@ -111,7 +111,7 @@ class AidRequestCreateForm(forms.ModelForm):
                 css_class="fieldset-box p-3 border rounded"
             ),
             Fieldset(
-                'Location of Assistance Request',
+                'Location of Aid Request',
                 Row('street_address', css_class='col-12 mb-2'),
                 Row(
                     Column('city', css_class='col-md-4 mb-2'),
