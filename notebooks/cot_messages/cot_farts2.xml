@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<event version="2.0" uid="549256F8-F87D-423F-B0B1-6AAD68F624F3" type="a-f-G-E-V-C" how="m-g" time="2025-02-25T15:30:04Z" start="2025-02-25T15:30:04Z" stale="2025-02-25T15:32:04Z">
+    <point lat="30.423660582589264" lon="-97.93270776638062" hae="228.66654334869236" ce="9999999.0" le="9999999.0"/>
+    <detail>
+        <contact callsign="Farts" phone="5127502488" endpoint="*:-1:stcp"/>
+        <__group name="Teal" role="Team Lead"/>
+        <precisionlocation geopointsrc="GPS" altsrc="???"/>
+        <status battery="95"/>
+        <takv device="iPhone" platform="iTAK" os="18.3.1" version="2.10.3.641"/>
+        <track speed="2.0874759860848147" course="69.14496612548828"/>
+        <uid Droid="Farts"/>
+        <voice iceUserID="" takCallsign="Farts" isSpeaking="false"/>
+    </detail>
+</event>

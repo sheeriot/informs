@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<event version="2.0" uid="549256F8-F87D-423F-B0B1-6AAD68F624F3" type="a-f-G-E-V-C" how="m-g" time="2025-02-25T14:51:27Z" start="2025-02-25T14:51:27Z" stale="2025-02-25T14:53:27Z">
+    <point lat="30.42367293344065" lon="-97.93270695996596" hae="228.85182908646544" ce="9999999.0" le="9999999.0"/>
+    <detail>
+        <contact callsign="Farts" phone="5127502488" endpoint="*:-1:stcp"/>
+        <__group name="Teal" role="Team Lead"/>
+        <precisionlocation geopointsrc="GPS" altsrc="???"/>
+        <status battery="95"/>
+        <takv device="iPhone" platform="iTAK" os="18.3.1" version="2.10.3.641"/>
+        <track speed="-1.0" course="42.0169563293457"/>
+        <uid Droid="Farts"/>
+        <voice iceUserID="" takCallsign="Farts" isSpeaking="false"/>
+    </detail>
+</event>
+
+<event version="2.0" uid="BC21D96C-B129-4D6E-B1B3-696864136A18" type="a-u-G" how="h-g-i-g-o" time="2025-02-25T14:51:58Z" start="2025-02-25T14:51:58Z" stale="2025-02-25T14:53:58Z">
+    <point lat="30.44232137243436" lon="-97.93251810790696" hae="0.0" ce="0.0" le="0.0"/>
+    <detail>
+        <contact callsign="FoodDrop"/>
+        <precisionlocation geopointsrc="???" altsrc="???"/>
+        <status readiness="true"/>
+        <archive/>
+        <link uid="549256F8-F87D-423F-B0B1-6AAD68F624F3" production_time="2025-02-25T14:51:58Z" type="a-f-G-U-C" parent_callsign="Farts" relation="p-p"/>
+        <usericon iconsetpath="ad78aafb-83a6-4c07-b2b9-a897a8b6a38f/ShapesClr/convenience.png"/>
+        <color argb="-1"/>
+        <remarks>Eat here</remarks>
+    </detail>
+</event>

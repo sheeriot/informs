@@ -27,9 +27,34 @@ class CotSender(pytak.QueueWorker):
     async def run(self):
         cot_info = self.config['COTINFO']
         message_type = cot_info[0]
+        fieldop_id = cot_info[1]
         aidrequest_csv = cot_info[2]
         aidrequest_list = list(map(int, aidrequest_csv.split(',')))
         results = [len(aidrequest_list)]
+
+        field_op = await FieldOp.objects.select_related('tak_server').aget(pk=fieldop_id)
+        ic(field_op)
+
+        # get a field op marker in the queue
+        try:
+            data = make_cot(
+                message_type=message_type,
+                cot_icon='blob_dot_yellow',
+                name=f'{field_op.slug.upper()}',
+                uuid=f'FieldOp.{field_op.slug.upper()}',
+                lat=field_op.latitude,
+                lon=field_op.longitude,
+                remarks=f'Field Op:\n{field_op.name}',
+            )
+        except Exception as e:
+            ic('failed to make_cot for FieldOp', e)
+            raise RuntimeError(f"Could not FieldOp make_cot: {e}")
+        # next, handle the Field Op COT
+        try:
+            await self.handle_data(data)
+        except Exception as e:
+            ic(e)
+            return e
 
         for aid_request_id in aidrequest_list:
             # ic('Building COT for', aid_request_id)
@@ -103,7 +128,9 @@ class CotSender(pytak.QueueWorker):
 
             cot_icon = aid_type.cot_icon
 
+            # is this a bit late to be checking for Location?
             if location:
+                # first, make the COT
                 try:
                     data = make_cot(
                         message_type=message_type,
@@ -112,12 +139,15 @@ class CotSender(pytak.QueueWorker):
                         uuid=f'AidRequest.{aid_request.pk}',
                         lat=location.latitude,
                         lon=location.longitude,
-                        remarks=aid_details
+                        remarks=aid_details,
+                        parent_name=f'{field_op.slug.upper()}',
+                        parent_uuid=f'FieldOp.{field_op.slug.upper()}',
                     )
                 except Exception as e:
                     ic('failed to make data for cot', e)
                     raise RuntimeError(f"Could not make_cot: {e}")
 
+                # next, handle the COT
                 try:
                     result = await self.handle_data(data)
 
@@ -127,9 +157,11 @@ class CotSender(pytak.QueueWorker):
                 finally:
                     while not self.queue.empty():
                         await asyncio.sleep(1)
+
             else:
                 result = f'No Location for Aid Request {aid_request.pk}'
             results.append(result)
+
         return results
 
 
