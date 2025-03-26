@@ -3,6 +3,14 @@
 {% load static %}
 {% load custom_tags %}
 
+<script>
+// Pre-define config object to make sure debug mode is set early
+window.aidRequestTableConfig = {
+    debug: true,
+    preferHtmlData: true
+};
+</script>
+
 {% block content %}
 
 <div class="container m-4">
@@ -12,116 +20,193 @@
         </a>
     </h2>
 
-    <!-- Filter and stats section -->
+    <!-- Summary cards -->
     <div class="row mb-3">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header bg-light">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Filters</h5>
-                        <span id="results-counter" class="badge bg-secondary">{{ object_list|length }} results</span>
-                    </div>
+        <!-- Aid Types Summary Card -->
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Aid Types</h5>
                 </div>
                 <div class="card-body">
-                    <div id="filter-controls" class="d-flex flex-wrap">
-                        <!-- JavaScript will populate this -->
-                        <div class="alert alert-info mb-0">
-                            Loading filters...
-                        </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for aid_type, data in aid_type_counts.items %}
+                            <span class="summary-item badge rounded-pill bg-primary fs-6 py-2 px-3 mb-2"
+                                  data-filter-type="aid_type"
+                                  data-filter-value="{{ data.value }}">
+                                {{ aid_type }}: <strong>{{ data.count }}</strong>
+                            </span>
+                        {% empty %}
+                            <p class="text-muted">No aid requests found.</p>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">Summary</h5>
+
+        <!-- Status Summary Card -->
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">Status</h5>
                 </div>
                 <div class="card-body">
-                    <ul class="nav nav-tabs" id="summaryTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="aid-types-tab" data-bs-toggle="tab" data-bs-target="#aid-types" type="button" role="tab" aria-controls="aid-types" aria-selected="true">Aid Types</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="status-tab" data-bs-toggle="tab" data-bs-target="#status" type="button" role="tab" aria-controls="status" aria-selected="false">Status</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="priority-tab" data-bs-toggle="tab" data-bs-target="#priority" type="button" role="tab" aria-controls="priority" aria-selected="false">Priority</button>
-                        </li>
-                    </ul>
-                    <div class="tab-content pt-2" id="summaryTabContent">
-                        <div class="tab-pane fade show active" id="aid-types" role="tabpanel" aria-labelledby="aid-types-tab">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Aid Type</th>
-                                        <th>Count</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for aid_type, count in aid_type_counts.items %}
-                                    <tr>
-                                        <td><span class="badge bg-primary">{{ aid_type }}</span></td>
-                                        <td>{{ count }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="tab-pane fade" id="status" role="tabpanel" aria-labelledby="status-tab">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Status</th>
-                                        <th>Count</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for status, count in status_counts.items %}
-                                    <tr>
-                                        <td><span class="badge bg-secondary">{{ status }}</span></td>
-                                        <td>{{ count }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="tab-pane fade" id="priority" role="tabpanel" aria-labelledby="priority-tab">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Priority</th>
-                                        <th>Count</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for priority, count in priority_counts.items %}
-                                    <tr>
-                                        <td><span class="badge bg-secondary">{{ priority }}</span></td>
-                                        <td>{{ count }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for status, data in status_counts.items %}
+                            <span class="summary-item badge rounded-pill bg-info fs-6 py-2 px-3 mb-2"
+                                  data-filter-type="status"
+                                  data-filter-value="{{ data.value }}">
+                                {{ status }}: <strong>{{ data.count }}</strong>
+                            </span>
+                        {% empty %}
+                            <p class="text-muted">No aid requests found.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Priority Summary Card -->
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="card-title mb-0">Priority</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for priority, data in priority_counts.items %}
+                            <span class="summary-item badge rounded-pill bg-warning text-dark fs-6 py-2 px-3 mb-2"
+                                  data-filter-type="priority"
+                                  data-filter-value="{{ data.value }}">
+                                {{ priority }}: <strong>{{ data.count }}</strong>
+                            </span>
+                        {% empty %}
+                            <p class="text-muted">No aid requests found.</p>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Aid Request Table -->
-    <table id="aidrequest-table" class="table table-sm table-striped align-middle font-monospace caption-top w-auto">
-        <caption>Aid Requests</caption>
-        <thead>
-            <tr>
-                <!-- JavaScript will populate this with sortable headers -->
-            </tr>
-        </thead>
-        <tbody id="aidrequest-table-body">
-            <!-- JavaScript will populate this with aid request data -->
-        </tbody>
-    </table>
+    <!-- Filter section -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Filters</h5>
+                        <span id="results-counter" class="badge bg-light text-dark">
+                            {{ filtered_aid_requests|length }} results
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form id="filter-form" method="get" class="row g-3">
+                        <!-- Search input -->
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" id="aid-request-search" class="form-control" placeholder="Search aid requests...">
+                            </div>
+                        </div>
+
+                        <!-- Aid Type Filter -->
+                        <div class="col-md-2">
+                            <select id="aid-type-filter" name="aid_type" class="form-select">
+                                <option value="">All Aid Types</option>
+                                {% for aid_type in aid_types_list %}
+                                    <option value="{{ aid_type.slug }}">{{ aid_type.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Status Filter -->
+                        <div class="col-md-2">
+                            <select id="status-filter" name="status" class="form-select">
+                                <option value="">All Statuses</option>
+                                {% for status_code, status_name in status_choices_list %}
+                                    <option value="{{ status_code }}">{{ status_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Priority Filter -->
+                        <div class="col-md-2">
+                            <select id="priority-filter" name="priority" class="form-select">
+                                <option value="">All Priorities</option>
+                                {% for priority_code, priority_name in priority_choices_list %}
+                                    <option value="{{ priority_code }}">{{ priority_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aid Requests Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="card-title mb-0">Aid Requests</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table id="aidrequest-table" class="table table-striped table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th data-sort="pk">ID</th>
+                                    <th data-sort="aid_type">Type</th>
+                                    <th data-sort="address">Address</th>
+                                    <th data-sort="city">City</th>
+                                    <th data-sort="zip_code">ZIP</th>
+                                    <th data-sort="status">Status</th>
+                                    <th data-sort="priority">Priority</th>
+                                    <th data-sort="created_at">Created</th>
+                                    <th data-sort="updated_at">Updated</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="aidrequest-table-body">
+                                {% for aid_request in filtered_aid_requests %}
+                                    <tr data-aid-type="{{ aid_request.aid_type.slug }}"
+                                        data-status="{{ aid_request.status }}"
+                                        data-priority="{{ aid_request.priority }}">
+                                        <td>{{ aid_request.pk }}</td>
+                                        <td><span class="badge bg-primary">{{ aid_request.aid_type.name }}</span></td>
+                                        <td>{{ aid_request.street_address }}</td>
+                                        <td>{{ aid_request.city }}</td>
+                                        <td>{{ aid_request.zip_code }}</td>
+                                        <td><span class="badge bg-info">{{ aid_request.status_display }}</span></td>
+                                        <td><span class="badge bg-warning text-dark">{{ aid_request.priority_display }}</span></td>
+                                        <td>{{ aid_request.created_at|date:"M d, H:i" }}</td>
+                                        <td>{{ aid_request.updated_at|date:"M d, H:i" }}</td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <a href="/aidrequests/{{ field_op.slug }}/{{ aid_request.pk }}/" class="btn btn-sm btn-info p-1">
+                                                    <i class="bi bi-eye-fill"></i>
+                                                </a>
+                                                <a href="/aidrequests/{{ field_op.slug }}/{{ aid_request.pk }}/update/" class="btn btn-sm btn-warning p-1">
+                                                    <i class="bi bi-pencil-fill"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="10" class="text-center">No aid requests found.</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="d-flex justify-content-between">
         <div class="me-2">
@@ -178,10 +263,45 @@
     <!-- CSRF Token for AJAX requests -->
     <meta name="csrf-token" content="{{ csrf_token }}">
 
+    <!-- Hidden debug info -->
+    <div id="debug-info" style="display: none;">
+        <h4>Debug Information</h4>
+        <p>Aid Types:</p>
+        <pre>{{ aid_type_counts|pprint }}</pre>
+        <p>Status Values:</p>
+        <pre>{{ status_counts|pprint }}</pre>
+        <p>Priority Values:</p>
+        <pre>{{ priority_counts|pprint }}</pre>
+    </div>
+
     <h2>Aid Request Map</h2>
     <div id="map2Container" style="position:relative;width:100%;min-width:290px;height:800px;"></div>
 
 </div>
+
+<style>
+    /* Custom styles for summary items */
+    .summary-item {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+        font-size: 1rem;
+    }
+
+    .summary-item:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .summary-item.active {
+        transform: scale(1.2);
+        border: 2px solid #fff;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        font-weight: bold;
+        z-index: 10;
+    }
+</style>
+
 <script>
     const map2Context = {
             azure_maps_key: "{{ azure_maps_key|escapejs }}",
@@ -194,9 +314,70 @@
             fieldop_lon: "{{ field_op.longitude|safe }}",
             ring_size: "{{ ring_size|safe }}"
         }
+
+        // Enable debug mode for aid request table
+        if (typeof aidRequestTableConfig !== 'undefined') {
+            aidRequestTableConfig.debug = true;
+            console.log("Debug mode enabled for aid request table");
+        }
+
         document.addEventListener("DOMContentLoaded", function() {
             try {
-                // Removed console.log to reduce logging
+                // Add click handler for summary items
+                document.querySelectorAll('.summary-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const filterType = this.dataset.filterType;
+                        const filterValue = this.dataset.filterValue;
+
+                        console.log('Filtering by:', filterType, filterValue);
+
+                        // Highlight this item
+                        document.querySelectorAll('.summary-item').forEach(el => {
+                            el.classList.remove('active');
+                        });
+                        this.classList.add('active');
+
+                        // Reset all filters first
+                        document.getElementById('aid-type-filter').value = '';
+                        document.getElementById('status-filter').value = '';
+                        document.getElementById('priority-filter').value = '';
+
+                        // Set the appropriate filter dropdown
+                        if (filterType === 'aid_type') {
+                            document.getElementById('aid-type-filter').value = filterValue;
+                        } else if (filterType === 'status') {
+                            document.getElementById('status-filter').value = filterValue;
+                        } else if (filterType === 'priority') {
+                            document.getElementById('priority-filter').value = filterValue;
+                        }
+
+                        // Use both approaches for maximum compatibility:
+
+                        // 1. Emit event on our event bus if available
+                        if (window.aidRequestEventBus) {
+                            window.aidRequestEventBus.emit('filter', {
+                                type: filterType,
+                                value: filterValue
+                            });
+                            console.log('Emitted filter event on event bus');
+                        }
+                        // 2. Dispatch DOM event as fallback
+                        else {
+                            // Create and dispatch a custom event
+                            const filterEvent = new CustomEvent('aidrequest:filter', {
+                                detail: {
+                                    type: filterType,
+                                    value: filterValue
+                                },
+                                bubbles: true
+                            });
+
+                            // Dispatch the event on the document
+                            document.dispatchEvent(filterEvent);
+                            console.log('Dispatched DOM event (fallback)');
+                        }
+                    });
+                });
 
                 // Check for required map properties before initializing
                 if (!map2Context.center_lat || !map2Context.center_lon || !map2Context.fieldop_lat || !map2Context.fieldop_lon) {

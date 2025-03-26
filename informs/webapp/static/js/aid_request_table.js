@@ -2,20 +2,50 @@
  * Aid Request Table - Client-side filtering and sorting
  *
  * This script handles the dynamic filtering and sorting of aid request data
- * without requiring page reloads. It replaces the Django server-side filtering
- * with more responsive client-side processing.
+ * without requiring page reloads. It can either read from server-rendered HTML
+ * or replace with client-side processing for enhanced interactivity.
  */
+
+// Simple event bus to handle app-wide events
+class EventBus {
+    constructor() {
+        this.events = {};
+    }
+
+    // Subscribe to an event
+    on(event, callback) {
+        if (!this.events[event]) {
+            this.events[event] = [];
+        }
+        this.events[event].push(callback);
+        return () => this.off(event, callback);
+    }
+
+    // Unsubscribe from an event
+    off(event, callback) {
+        if (!this.events[event]) return;
+        this.events[event] = this.events[event].filter(cb => cb !== callback);
+    }
+
+    // Emit an event with data
+    emit(event, data) {
+        if (!this.events[event]) return;
+        this.events[event].forEach(callback => callback(data));
+    }
+}
+
+// Create global event bus
+window.aidRequestEventBus = new EventBus();
 
 // Global configuration with debug option
 const aidRequestTableConfig = {
-    debug: false  // Set to false to disable debug logging in production
+    debug: true,  // Enable debug logging temporarily to diagnose issues
+    preferHtmlData: true  // When true, will use HTML data if available
 };
 
 class AidRequestTable {
     constructor(options) {
-        if (aidRequestTableConfig.debug) console.log('[DEBUG] Initializing table with',
-            options.requestsData.length, 'requests,',
-            options.aidTypesData.length, 'aid types');
+        if (aidRequestTableConfig.debug) console.log('[DEBUG] Initializing table with options:', options);
 
         this.tableId = options.tableId || 'aidrequest-table';
         this.tableBodyId = options.tableBodyId || 'aidrequest-table-body';
@@ -42,6 +72,9 @@ class AidRequestTable {
         // Selected requests for TAK alerts
         this.selectedRequests = [];
 
+        // If true, data was loaded from HTML
+        this.dataFromHtml = false;
+
         this.initialize();
     }
 
@@ -50,24 +83,32 @@ class AidRequestTable {
      */
     initialize() {
         try {
-            // Create filter controls
-            this.createFilterControls();
+            // First, try to read data from the HTML table if configured to do so
+            if (aidRequestTableConfig.preferHtmlData) {
+                this.dataFromHtml = this.tryLoadDataFromHtml();
+            }
 
-            // Create the table headers with sorting functionality
-            this.createTableHeaders();
+            if (aidRequestTableConfig.debug) {
+                console.log('[DEBUG] Data loaded from HTML:', this.dataFromHtml);
+                console.log('[DEBUG] Initial filter state:', this.filters);
+            }
 
-            // Render the table
-            this.renderTable();
+            // Set up filter event listeners - these work regardless of data source
+            this.setupFilterListeners();
 
-            // Add event listeners for search input
-            const searchInput = document.getElementById('aid-request-search');
-            if (searchInput) {
-                searchInput.addEventListener('input', (e) => {
-                    this.filters.searchText = e.target.value.toLowerCase();
-                    this.renderTable();
-                });
-            } else if (aidRequestTableConfig.debug) {
-                console.log('[DEBUG] Search input element not found');
+            // Subscribe to events from our event bus
+            this.setupEventBusListeners();
+
+            // Set up sorting on table headers
+            this.setupSortingListeners();
+
+            // If we're not using HTML data, create headers and render table from JSON
+            if (!this.dataFromHtml) {
+                if (aidRequestTableConfig.debug) console.log('[DEBUG] Using JSON data to render table');
+                this.renderTable();
+            } else {
+                // Even with HTML data, we need to apply initial filters
+                this.applyFiltersToExistingRows();
             }
 
             // Initialize TAK alert functionality
@@ -93,9 +134,367 @@ class AidRequestTable {
     }
 
     /**
+     * Try to load data from the existing HTML table
+     * @returns {boolean} True if data was successfully loaded from HTML
+     */
+    tryLoadDataFromHtml() {
+        const tableBody = document.getElementById(this.tableBodyId);
+        if (!tableBody) return false;
+
+        const rows = tableBody.querySelectorAll('tr');
+        if (!rows || rows.length === 0) return false;
+
+        if (aidRequestTableConfig.debug) {
+            console.log('[DEBUG] Found', rows.length, 'rows in HTML table');
+        }
+
+        // We have rows, extract data from them
+        this.requestsData = [];
+
+        rows.forEach(row => {
+            // Skip rows without data attributes or error messages
+            if (!row.dataset.aidType) return;
+
+            // Extract data from row
+            const cells = row.querySelectorAll('td');
+            if (cells.length < 9) return;
+
+            const request = {
+                pk: cells[0].textContent.trim(),
+                aid_type: row.dataset.aidType,
+                address: cells[2].textContent.trim(),
+                city: cells[3].textContent.trim(),
+                zip_code: cells[4].textContent.trim(),
+                status: row.dataset.status,
+                priority: row.dataset.priority,
+                // We don't need exact dates for filtering
+                created_at: cells[7].textContent.trim(),
+                updated_at: cells[8].textContent.trim()
+            };
+
+            this.requestsData.push(request);
+        });
+
+        return this.requestsData.length > 0;
+    }
+
+    /**
+     * Set up event listeners for the filter controls
+     */
+    setupFilterListeners() {
+        // Add event listeners for aid type filter
+        const aidTypeFilter = document.getElementById('aid-type-filter');
+        if (aidTypeFilter) {
+            aidTypeFilter.addEventListener('change', (e) => {
+                this.filters.aidType = e.target.value;
+                this.applyFilters();
+            });
+        }
+
+        // Add event listeners for status filter
+        const statusFilter = document.getElementById('status-filter');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', (e) => {
+                this.filters.status = e.target.value;
+                this.applyFilters();
+            });
+        }
+
+        // Add event listeners for priority filter
+        const priorityFilter = document.getElementById('priority-filter');
+        if (priorityFilter) {
+            priorityFilter.addEventListener('change', (e) => {
+                this.filters.priority = e.target.value;
+                this.applyFilters();
+            });
+        }
+
+        // Add event listeners for search input
+        const searchInput = document.getElementById('aid-request-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.filters.searchText = e.target.value.toLowerCase();
+                this.applyFilters();
+            });
+        }
+
+        // Set up a listener for our custom filter event
+        document.addEventListener('aidrequest:filter', (e) => {
+            if (aidRequestTableConfig.debug) {
+                console.log('[DEBUG] Received aidrequest:filter event:', e.detail);
+            }
+
+            // Reset all filters first
+            this.filters.aidType = '';
+            this.filters.status = '';
+            this.filters.priority = '';
+
+            // Set the appropriate filter based on the event detail
+            const { type, value } = e.detail;
+            if (type === 'aid_type') {
+                this.filters.aidType = value;
+            } else if (type === 'status') {
+                this.filters.status = value;
+            } else if (type === 'priority') {
+                this.filters.priority = value;
+            }
+
+            // Apply the filters
+            this.applyFilters();
+        });
+    }
+
+    /**
+     * Set up event listeners for table header sorting
+     */
+    setupSortingListeners() {
+        const headers = document.querySelectorAll(`#${this.tableId} th[data-sort]`);
+
+        headers.forEach(header => {
+            header.style.cursor = 'pointer';
+            header.title = 'Click to sort';
+
+            // Add sorting indicators
+            const sortIndicator = document.createElement('span');
+            sortIndicator.className = 'ms-1';
+            sortIndicator.innerHTML = '↕️';
+            header.appendChild(sortIndicator);
+
+            header.addEventListener('click', () => {
+                const column = header.dataset.sort;
+
+                // Toggle direction if clicking the same column
+                if (this.sort.column === column) {
+                    this.sort.direction = this.sort.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    this.sort.column = column;
+                    this.sort.direction = 'asc';
+                }
+
+                // Update UI to show sort direction
+                headers.forEach(h => {
+                    const indicator = h.querySelector('span');
+                    if (indicator) {
+                        if (h.dataset.sort === this.sort.column) {
+                            indicator.innerHTML = this.sort.direction === 'asc' ? '↑' : '↓';
+                        } else {
+                            indicator.innerHTML = '↕️';
+                        }
+                    }
+                });
+
+                this.applyFilters(); // This will also apply sorting
+            });
+        });
+    }
+
+    /**
+     * Apply filters to the table
+     */
+    applyFilters() {
+        if (this.dataFromHtml) {
+            this.applyFiltersToExistingRows();
+        } else {
+            this.renderTable();
+        }
+    }
+
+    /**
+     * Apply filters to existing HTML table rows without rebuilding the table
+     */
+    applyFiltersToExistingRows() {
+        const { aidType, status, priority, searchText } = this.filters;
+        const tableBody = document.getElementById(this.tableBodyId);
+        const rows = tableBody.querySelectorAll('tr');
+
+        if (aidRequestTableConfig.debug) {
+            console.log('[DEBUG] Applying filters to existing rows:', {
+                aidType: aidType,
+                status: status,
+                priority: priority,
+                searchText: searchText
+            });
+        }
+
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            // Check for data attributes existence - accept either kebab-case or camelCase
+            const hasDataAttributes =
+                row.hasAttribute('data-aid-type') ||
+                row.hasAttribute('data-aidType');
+
+            // Skip rows without data attributes (like "no results" row)
+            if (!hasDataAttributes) {
+                if (aidRequestTableConfig.debug) {
+                    console.log('[DEBUG] Row has no data attributes, skipping:', row);
+                }
+                return;
+            }
+
+            // Get data attributes, checking both potential formats
+            const rowAidType = row.getAttribute('data-aid-type') || row.getAttribute('data-aidType') || '';
+            const rowStatus = row.getAttribute('data-status') || '';
+            const rowPriority = row.getAttribute('data-priority') || '';
+            const rowText = row.textContent.toLowerCase();
+
+            if (aidRequestTableConfig.debug) {
+                console.log('[DEBUG] Row attributes:', {
+                    'data-aid-type': rowAidType,
+                    'data-status': rowStatus,
+                    'data-priority': rowPriority
+                });
+            }
+
+            // Check if row matches all filters
+            const matchesAidType = !aidType || rowAidType === aidType;
+            const matchesStatus = !status || rowStatus === status;
+            const matchesPriority = !priority || rowPriority === priority;
+            const matchesSearch = !searchText || rowText.includes(searchText);
+
+            const isVisible = matchesAidType && matchesStatus && matchesPriority && matchesSearch;
+
+            if (aidRequestTableConfig.debug) {
+                console.log(`[DEBUG] Row ${row.querySelector('td')?.textContent || 'unknown'} visibility:`, {
+                    matchesAidType,
+                    matchesStatus,
+                    matchesPriority,
+                    matchesSearch,
+                    isVisible
+                });
+            }
+
+            // Apply visibility
+            row.style.display = isVisible ? '' : 'none';
+
+            if (isVisible) {
+                visibleCount++;
+
+                // Highlight filtered values for better visibility
+                if (aidType || status || priority) {
+                    // Add highlighting to filtered columns
+                    if (aidType && rowAidType === aidType) {
+                        const cell = row.querySelector('td:nth-child(2) .badge');
+                        if (cell) this.highlightElement(cell);
+                    }
+
+                    if (status && rowStatus === status) {
+                        const cell = row.querySelector('td:nth-child(6) .badge');
+                        if (cell) this.highlightElement(cell);
+                    }
+
+                    if (priority && rowPriority === priority) {
+                        const cell = row.querySelector('td:nth-child(7) .badge');
+                        if (cell) this.highlightElement(cell);
+                    }
+                } else {
+                    // Remove highlighting when filter is cleared
+                    row.querySelectorAll('.highlighted').forEach(el => {
+                        el.classList.remove('highlighted');
+                        el.style.transform = '';
+                    });
+                }
+            }
+        });
+
+        // Update results counter
+        this.updateResultsCounter(visibleCount);
+
+        // Sort the visible rows
+        this.sortExistingRows();
+    }
+
+    /**
+     * Highlight an element to make it stand out
+     */
+    highlightElement(element) {
+        if (!element.classList.contains('highlighted')) {
+            element.classList.add('highlighted');
+            element.style.transform = 'scale(1.2)';
+            element.style.fontWeight = 'bold';
+        }
+    }
+
+    /**
+     * Sort the existing table rows without rebuilding the table
+     */
+    sortExistingRows() {
+        const tableBody = document.getElementById(this.tableBodyId);
+        // Select rows with either data-aid-type or data-aidType attribute
+        const rows = Array.from(tableBody.querySelectorAll('tr[data-aid-type], tr[data-aidType]'));
+
+        if (aidRequestTableConfig.debug) {
+            console.log('[DEBUG] Sorting rows:', rows.length);
+        }
+
+        if (rows.length === 0) {
+            console.warn("No rows found to sort");
+            return;
+        }
+
+        // Map column names to numeric indices
+        const columnMap = {
+            'pk': 0,
+            'aid_type': 1,
+            'address': 2,
+            'city': 3,
+            'zip_code': 4,
+            'status': 5,
+            'priority': 6,
+            'created_at': 7,
+            'updated_at': 8
+        };
+
+        // Get the column index to sort by
+        const columnIndex = columnMap[this.sort.column] || 0;
+
+        if (aidRequestTableConfig.debug) {
+            console.log('[DEBUG] Sorting by column:', this.sort.column, 'index:', columnIndex);
+        }
+
+        // Sort the rows
+        rows.sort((a, b) => {
+            const aCell = a.querySelector(`td:nth-child(${columnIndex + 1})`);
+            const bCell = b.querySelector(`td:nth-child(${columnIndex + 1})`);
+
+            if (!aCell || !bCell) return 0;
+
+            let aValue = aCell.textContent.trim();
+            let bValue = bCell.textContent.trim();
+
+            if (aidRequestTableConfig.debug) {
+                console.log('[DEBUG] Comparing values:', aValue, bValue);
+            }
+
+            // Special handling for dates
+            if (this.sort.column === 'created_at' || this.sort.column === 'updated_at') {
+                aValue = new Date(aValue).getTime();
+                bValue = new Date(bValue).getTime();
+            }
+
+            // Numeric comparison for IDs
+            if (this.sort.column === 'pk') {
+                aValue = parseInt(aValue, 10);
+                bValue = parseInt(bValue, 10);
+            }
+
+            // Compare values
+            if (aValue < bValue) return this.sort.direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return this.sort.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        // Reorder rows in the DOM
+        rows.forEach(row => tableBody.appendChild(row));
+    }
+
+    /**
      * Create filter controls for the table
      */
     createFilterControls() {
+        // Skip this if we're using the server-rendered filter controls
+        if (this.dataFromHtml) return;
+
         const filterContainer = document.getElementById('filter-controls');
         if (!filterContainer) {
             if (aidRequestTableConfig.debug) console.log('[DEBUG] Filter container element not found');
@@ -234,9 +633,12 @@ class AidRequestTable {
     }
 
     /**
-     * Create table headers with sorting functionality
+     * Create the table headers with sorting functionality
      */
     createTableHeaders() {
+        // Skip this if we're using the server-rendered headers
+        if (this.dataFromHtml) return;
+
         const tableHead = document.querySelector(`#${this.tableId} thead tr`);
         if (!tableHead) return;
 
@@ -316,228 +718,140 @@ class AidRequestTable {
     }
 
     /**
-     * Filter the data based on current filter settings
+     * Render the table with filtered and sorted data
      */
-    getFilteredData() {
-        return this.requestsData.filter(request => {
-            // Aid type filter
-            if (this.filters.aidType && request.aid_type_id &&
-                request.aid_type_id.toString() !== this.filters.aidType.toString()) {
-                return false;
-            }
+    renderTable() {
+        const tableBody = document.getElementById(this.tableBodyId);
+        if (!tableBody) {
+            console.error("Table body element not found");
+            return;
+        }
 
-            // Status filter
-            if (this.filters.status && request.status &&
-                request.status.toString() !== this.filters.status.toString()) {
-                return false;
-            }
+        // Apply filters
+        const { aidType, status, priority, searchText } = this.filters;
+        const filteredData = this.requestsData.filter(request => {
+            const matchesAidType = !aidType || request.aid_type === aidType;
+            const matchesStatus = !status || request.status === status;
+            const matchesPriority = !priority || request.priority === priority;
 
-            // Priority filter
-            if (this.filters.priority && request.priority !== null && request.priority !== undefined) {
-                // Only compare if both values exist
-                if (request.priority.toString() !== this.filters.priority.toString()) {
-                    return false;
-                }
-            } else if (this.filters.priority) {
-                // If filter is set but request has no priority, exclude it
-                return false;
-            }
-
-            // Search text
-            if (this.filters.searchText) {
-                const searchText = this.filters.searchText.toLowerCase();
-                return (
-                    (request.requester_name && request.requester_name.toLowerCase().includes(searchText)) ||
-                    (request.address && request.address.toLowerCase().includes(searchText)) ||
-                    (request.status_display && request.status_display.toLowerCase().includes(searchText)) ||
-                    (request.priority_display && request.priority_display.toLowerCase().includes(searchText)) ||
-                    (request.aid_type_name && request.aid_type_name.toLowerCase().includes(searchText))
+            // Search across all text fields
+            const matchesSearch = !searchText ||
+                Object.values(request).some(value =>
+                    value && value.toString().toLowerCase().includes(searchText)
                 );
-            }
 
-            return true;
+            return matchesAidType && matchesStatus && matchesPriority && matchesSearch;
         });
+
+        // Sort the data
+        const sortedData = this.sortData(filteredData);
+
+        // Update results counter
+        this.updateResultsCounter(sortedData.length);
+
+        // Build the table rows
+        let html = '';
+
+        if (sortedData.length === 0) {
+            html = `
+                <tr>
+                    <td colspan="10" class="text-center">No matching aid requests found.</td>
+                </tr>
+            `;
+        } else {
+            sortedData.forEach(request => {
+                const aidTypeBadge = `<span class="badge bg-primary ${aidType === request.aid_type ? 'highlighted' : ''}">${request.aid_type}</span>`;
+                const statusBadge = `<span class="badge bg-info ${status === request.status ? 'highlighted' : ''}">${request.status}</span>`;
+                const priorityBadge = `<span class="badge bg-warning text-dark ${priority === request.priority ? 'highlighted' : ''}">${request.priority}</span>`;
+
+                const createdDate = typeof request.created_at === 'string'
+                    ? request.created_at
+                    : new Date(request.created_at).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      });
+
+                const updatedDate = typeof request.updated_at === 'string'
+                    ? request.updated_at
+                    : new Date(request.updated_at).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      });
+
+                html += `
+                    <tr data-aid-type="${request.aid_type}" data-status="${request.status}" data-priority="${request.priority}">
+                        <td>${request.pk}</td>
+                        <td>${aidTypeBadge}</td>
+                        <td>${request.address || ''}</td>
+                        <td>${request.city || ''}</td>
+                        <td>${request.zip_code || ''}</td>
+                        <td>${statusBadge}</td>
+                        <td>${priorityBadge}</td>
+                        <td>${createdDate}</td>
+                        <td>${updatedDate}</td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="/aidrequests/${this.fieldOp.slug}/${request.pk}/" class="btn btn-sm btn-info p-1">
+                                    <i class="bi bi-eye-fill"></i>
+                                </a>
+                                <a href="/aidrequests/${this.fieldOp.slug}/${request.pk}/update/" class="btn btn-sm btn-warning p-1">
+                                    <i class="bi bi-pencil-fill"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        tableBody.innerHTML = html;
     }
 
     /**
-     * Sort the filtered data based on current sort settings
+     * Sort data based on current sort settings
+     * @param {Array} data Data to sort
+     * @returns {Array} Sorted data
      */
-    getSortedData() {
-        const filteredData = this.getFilteredData();
+    sortData(data) {
+        const { column, direction } = this.sort;
 
-        return filteredData.sort((a, b) => {
-            let aValue = a[this.sort.column];
-            let bValue = b[this.sort.column];
+        return [...data].sort((a, b) => {
+            let aValue = a[column];
+            let bValue = b[column];
+
+            // Handle dates
+            if (column === 'created_at' || column === 'updated_at') {
+                aValue = new Date(aValue).getTime();
+                bValue = new Date(bValue).getTime();
+            }
 
             // Handle null values
-            if (aValue === null) return 1;
-            if (bValue === null) return -1;
+            if (aValue === null || aValue === undefined) aValue = '';
+            if (bValue === null || bValue === undefined) bValue = '';
 
-            // Convert to comparable values
-            if (typeof aValue === 'string') {
-                aValue = aValue.toLowerCase();
-                bValue = bValue.toLowerCase();
-            }
+            // Convert to strings for comparison if not dates
+            if (typeof aValue !== 'number') aValue = aValue.toString().toLowerCase();
+            if (typeof bValue !== 'number') bValue = bValue.toString().toLowerCase();
 
             // Compare
-            if (aValue < bValue) {
-                return this.sort.direction === 'asc' ? -1 : 1;
-            }
-            if (aValue > bValue) {
-                return this.sort.direction === 'asc' ? 1 : -1;
-            }
+            if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return direction === 'asc' ? 1 : -1;
             return 0;
         });
     }
 
     /**
-     * Render the table with filtered and sorted data
+     * Update the results counter
+     * @param {number} count Number of results
      */
-    renderTable() {
-        const tableBody = document.getElementById(this.tableBodyId);
-        if (!tableBody) return;
-
-        // Get sorted and filtered data
-        const data = this.getSortedData();
-
-        // Clear table body
-        tableBody.innerHTML = '';
-
-        // Show message if no data
-        if (data.length === 0) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td colspan="13" class="text-center">No aid requests found matching the criteria</td>`;
-            tableBody.appendChild(tr);
-            return;
-        }
-
-        // Format date for display
-        const formatDate = (dateString) => {
-            if (!dateString) return '';
-            const date = new Date(dateString);
-            return date.toLocaleString();
-        };
-
-        // Calculate time ago for display
-        const getTimeAgo = (dateString) => {
-            if (!dateString) return '';
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffSec = Math.floor(diffMs / 1000);
-            const diffMin = Math.floor(diffSec / 60);
-            const diffHour = Math.floor(diffMin / 60);
-            const diffDay = Math.floor(diffHour / 24);
-
-            if (diffDay > 0) return `${diffDay}d ago`;
-            if (diffHour > 0) return `${diffHour}h ago`;
-            if (diffMin > 0) return `${diffMin}m ago`;
-            return `${diffSec}s ago`;
-        };
-
-        // Get age-based color
-        const getAgeColor = (dateString) => {
-            if (!dateString) return 'secondary';
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffHours = (now - date) / (1000 * 60 * 60);
-
-            if (diffHours < 6) return 'success';
-            if (diffHours < 24) return 'info';
-            if (diffHours < 72) return 'warning';
-            return 'danger';
-        };
-
-        // Add rows
-        data.forEach(request => {
-            const tr = document.createElement('tr');
-
-            // Format coordinates
-            const coords = request.latitude && request.longitude ?
-                `${request.latitude.toFixed(5)}, ${request.longitude.toFixed(5)}` : '';
-
-            // Format distance
-            const distance = request.distance ?
-                `${request.distance.toFixed(2)} km` : '';
-
-            // Check if request is selected
-            const isSelected = this.selectedRequests.includes(request.id.toString());
-
-            tr.innerHTML = `
-                <td>
-                    <a href="aid_request_detail/${request.id}/" class="btn btn-outline-info btn-sm text-dark me-2">
-                        ${request.id}
-                        <i class="bi bi-life-preserver text-danger"></i>
-                    </a>
-                </td>
-                <td>
-                    <input type="checkbox" class="request-checkbox" value="${request.id}" ${isSelected ? 'checked' : ''}>
-                </td>
-                <td>${request.aid_type_name}</td>
-                <td><span class="badge bg-${getPriorityColor(request.priority)}">${request.priority_display}</span></td>
-                <td><span class="badge bg-${getStatusColor(request.status)}">${request.status_display}</span></td>
-                <td>${request.requester_name}</td>
-                <td>
-                    ${request.address}
-                    <hr class="m-0">
-                    ${request.address_found || ''}
-                </td>
-                <td>${request.location_status || ''}</td>
-                <td><div class="small">${coords}</div></td>
-                <td>${distance}</td>
-                <td class="small">
-                    <span>${formatDate(request.updated_at)}</span>
-                    <hr class="m-0">
-                    <span class="text-${getAgeColor(request.updated_at)}">
-                        ${getTimeAgo(request.updated_at)}
-                    </span>
-                </td>
-                <td class="small">
-                    <span>${formatDate(request.created_at)}</span>
-                    <hr class="m-0">
-                    <span class="text-${getAgeColor(request.created_at)}">
-                        ${getTimeAgo(request.created_at)}
-                    </span>
-                </td>
-                <td>
-                    <a href="aid_request_update/${request.id}/" class="btn btn-outline-warning btn-sm me-2">
-                        <i class="bi bi-pencil"></i>
-                    </a>
-                </td>
-            `;
-
-            tableBody.appendChild(tr);
-        });
-
-        // Add event listeners for checkboxes
-        document.querySelectorAll(`#${this.tableBodyId} input.request-checkbox`).forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                const requestId = e.target.value;
-
-                if (e.target.checked) {
-                    // Add to selected requests if not already there
-                    if (!this.selectedRequests.includes(requestId)) {
-                        this.selectedRequests.push(requestId);
-                    }
-                } else {
-                    // Remove from selected requests
-                    const index = this.selectedRequests.indexOf(requestId);
-                    if (index > -1) {
-                        this.selectedRequests.splice(index, 1);
-                    }
-                }
-
-                // Update "Select All" checkbox state
-                const allChecked = document.querySelectorAll(`#${this.tableBodyId} input.request-checkbox`).length ===
-                    document.querySelectorAll(`#${this.tableBodyId} input.request-checkbox:checked`).length;
-                document.getElementById('select-all').checked = allChecked;
-            });
-        });
-
-        // Update counter
+    updateResultsCounter(count) {
         const counter = document.getElementById('results-counter');
         if (counter) {
-            counter.textContent = `${data.length} results`;
+            counter.textContent = `${count} results`;
         }
     }
 
@@ -634,6 +948,41 @@ class AidRequestTable {
                 });
         }, 2000);
     }
+
+    /**
+     * Set up listeners for the event bus
+     */
+    setupEventBusListeners() {
+        if (!window.aidRequestEventBus) {
+            console.error("Event bus not available");
+            return;
+        }
+
+        // Subscribe to filter events
+        window.aidRequestEventBus.on('filter', (data) => {
+            if (aidRequestTableConfig.debug) {
+                console.log('[DEBUG] Received filter event from bus:', data);
+            }
+
+            // Reset all filters first
+            this.filters.aidType = '';
+            this.filters.status = '';
+            this.filters.priority = '';
+
+            // Set the appropriate filter based on the event data
+            const { type, value } = data;
+            if (type === 'aid_type') {
+                this.filters.aidType = value;
+            } else if (type === 'status') {
+                this.filters.status = value;
+            } else if (type === 'priority') {
+                this.filters.priority = value;
+            }
+
+            // Apply the filters
+            this.applyFilters();
+        });
+    }
 }
 
 /**
@@ -667,134 +1016,43 @@ function getStatusColor(status) {
  * Initialize the aid request table when the DOM is loaded
  */
 document.addEventListener('DOMContentLoaded', function() {
-    if (aidRequestTableConfig.debug) console.log('[DEBUG] Initializing aid request table');
-
-    // Check if required elements exist
-    const aidRequestsDataEl = document.getElementById('aid-requests-data');
-    const aidTypesDataEl = document.getElementById('aid-types-json');
-    const statusChoicesDataEl = document.getElementById('status-choices-data');
-    const priorityChoicesDataEl = document.getElementById('priority-choices-data');
-    const fieldOpNameEl = document.getElementById('field-op-name');
-    const fieldOpSlugEl = document.getElementById('field-op-slug');
-
-    // Check for missing elements
-    const missingElements = [];
-    if (!aidRequestsDataEl) missingElements.push('aid-requests-data');
-    if (!aidTypesDataEl) missingElements.push('aid-types-json');
-    if (!statusChoicesDataEl) missingElements.push('status-choices-data');
-    if (!priorityChoicesDataEl) missingElements.push('priority-choices-data');
-    if (!fieldOpNameEl || !fieldOpSlugEl) missingElements.push('field-op elements');
-
-    if (missingElements.length > 0) {
-        console.error("Missing required elements:", missingElements.join(', '));
-        return;
-    }
-
     try {
-        // Parse aid requests data
-        let requestsData;
-        try {
-            // Handle double-stringified JSON
-            const rawContent = aidRequestsDataEl.textContent;
-            requestsData = JSON.parse(rawContent);
+        // Get field op information
+        const fieldOpName = document.getElementById('field-op-name')?.textContent.trim();
+        const fieldOpSlug = document.getElementById('field-op-slug')?.textContent.trim();
 
-            // If the result is a string, parse it again
-            if (typeof requestsData === 'string') {
-                requestsData = JSON.parse(requestsData);
-            }
+        // Parse JSON data from script tags
+        const requestsData = JSON.parse(document.getElementById('aid-requests-data')?.textContent || '[]');
+        const aidTypesData = JSON.parse(document.getElementById('aid-types-json')?.textContent || '[]');
+        const statusChoices = JSON.parse(document.getElementById('status-choices-data')?.textContent || '[]');
+        const priorityChoices = JSON.parse(document.getElementById('priority-choices-data')?.textContent || '[]');
 
-            // Ensure requestsData is an array
-            if (!Array.isArray(requestsData)) {
-                console.error("Aid requests data is not an array");
-                requestsData = [];
-            } else if (aidRequestTableConfig.debug) {
-                console.log(`[DEBUG] Parsed ${requestsData.length} aid requests`);
-            }
-        } catch (error) {
-            console.error("Error parsing aid requests data:", error);
-            requestsData = [];
-        }
-
-        // Parse aid types data
-        let aidTypesData;
-        try {
-            const rawContent = aidTypesDataEl.textContent;
-            let parsed = JSON.parse(rawContent);
-
-            // If the result is a string, parse it again
-            if (typeof parsed === 'string') {
-                parsed = JSON.parse(parsed);
-            }
-
-            if (Array.isArray(parsed)) {
-                aidTypesData = parsed;
-                if (aidRequestTableConfig.debug) console.log(`[DEBUG] Parsed ${aidTypesData.length} aid types`);
-            } else if (typeof parsed === 'object' && parsed !== null) {
-                aidTypesData = parsed;
-            } else {
-                aidTypesData = [];
-            }
-        } catch (error) {
-            console.error("Error parsing aid types data:", error);
-            aidTypesData = [];
-        }
-
-        // Parse status choices
-        let statusChoices;
-        try {
-            const rawContent = statusChoicesDataEl.textContent;
-            let parsed = JSON.parse(rawContent);
-
-            // If the result is a string, parse it again
-            if (typeof parsed === 'string') {
-                parsed = JSON.parse(parsed);
-            }
-
-            statusChoices = parsed;
-            if (aidRequestTableConfig.debug && Array.isArray(statusChoices)) {
-                console.log(`[DEBUG] Parsed ${statusChoices.length} status choices`);
-            }
-        } catch (error) {
-            console.error("Error parsing status choices:", error);
-            statusChoices = [];
-        }
-
-        // Parse priority choices
-        let priorityChoices;
-        try {
-            const rawContent = priorityChoicesDataEl.textContent;
-            let parsed = JSON.parse(rawContent);
-
-            // If the result is a string, parse it again
-            if (typeof parsed === 'string') {
-                parsed = JSON.parse(parsed);
-            }
-
-            priorityChoices = parsed;
-            if (aidRequestTableConfig.debug && Array.isArray(priorityChoices)) {
-                console.log(`[DEBUG] Parsed ${priorityChoices.length} priority choices`);
-            }
-        } catch (error) {
-            console.error("Error parsing priority choices:", error);
-            priorityChoices = [];
-        }
-
-        const fieldOp = {
-            name: fieldOpNameEl.textContent,
-            slug: fieldOpSlugEl.textContent
-        };
-
-        // Initialize the table
-        const aidRequestTable = new AidRequestTable({
-            tableId: 'aidrequest-table',
-            tableBodyId: 'aidrequest-table-body',
+        // Initialize the table and store the instance globally
+        window.aidRequestTable = new AidRequestTable({
             requestsData: requestsData,
             aidTypesData: aidTypesData,
             statusChoices: statusChoices,
             priorityChoices: priorityChoices,
-            fieldOp: fieldOp
+            fieldOp: {
+                name: fieldOpName,
+                slug: fieldOpSlug
+            }
         });
-    } catch (e) {
-        console.error("Error initializing aid request table:", e);
+
+        console.log('Aid request table initialized and stored globally as window.aidRequestTable');
+    } catch (error) {
+        console.error('Error initializing aid request table:', error);
     }
 });
+
+// Add custom CSS for highlighted elements
+const style = document.createElement('style');
+style.textContent = `
+.highlighted {
+    transform: scale(1.2) !important;
+    font-weight: bold !important;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+`;
+document.head.appendChild(style);

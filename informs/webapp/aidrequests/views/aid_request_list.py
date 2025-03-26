@@ -95,17 +95,20 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
         aid_types_data = [{'id': aid_type.id, 'name': aid_type.name, 'slug': aid_type.slug}
                          for aid_type in aid_types]
         context['aid_types_json'] = json.dumps(aid_types_data, cls=DecimalEncoder)
+        context['aid_types_list'] = aid_types_data  # Add non-JSON version for server-side rendering
 
         ic(f"Prepared aid_types_json with {len(aid_types_data)} distinct types")
 
         # Get all status options for client-side filtering
         status_choices = [[status[0], status[1]] for status in AidRequest.STATUS_CHOICES]
         context['status_choices_json'] = json.dumps(status_choices, cls=DecimalEncoder)
+        context['status_choices_list'] = status_choices  # Add non-JSON version
         ic(f"Status choices: {status_choices}")
 
         # Get all priority options for client-side filtering
         priority_choices = [[priority[0], priority[1]] for priority in AidRequest.PRIORITY_CHOICES]
         context['priority_choices_json'] = json.dumps(priority_choices, cls=DecimalEncoder)
+        context['priority_choices_list'] = priority_choices  # Add non-JSON version
         ic(f"Priority choices: {priority_choices}")
 
         # Prepare aid request data for client-side filtering and sorting
@@ -119,7 +122,17 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
         distinct_count = self.filterset.qs.values_list('id', flat=True).distinct().count()
         ic(f"There are {distinct_count} distinct aid request IDs in the filtered queryset")
 
-        for aid_request in self.filterset.qs:
+        # Get filtered queryset in list format for HTML rendering
+        filtered_aid_requests = list(self.filterset.qs.distinct())
+
+        # Pre-format the status and priority displays for each request
+        for aid_request in filtered_aid_requests:
+            aid_request.status_display = aid_request.get_status_display()
+            aid_request.priority_display = aid_request.get_priority_display()
+
+        context['filtered_aid_requests'] = filtered_aid_requests
+
+        for aid_request in filtered_aid_requests:
             # Skip if we've already processed this ID
             if aid_request.id in processed_ids:
                 continue
@@ -154,15 +167,22 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
             # Prepare data for client-side table
             aid_requests_data.append({
                 'id': aid_request.pk,
+                'pk': aid_request.pk,  # For consistency with JavaScript updates
                 'aid_type_id': aid_request.aid_type.id,
                 'aid_type_name': aid_request.aid_type.name,
                 'aid_type_slug': aid_request.aid_type.slug,
+                'aid_type': aid_request.aid_type.slug,  # For consistency with JavaScript updates
                 'priority': aid_request.priority,
-                'priority_display': aid_request.get_priority_display(),
+                'priority_display': aid_request.priority_display,
                 'status': aid_request.status,
-                'status_display': aid_request.get_status_display(),
+                'status_display': aid_request.status_display,
                 'requester_name': f"{aid_request.requestor_first_name} {aid_request.requestor_last_name}",
-                'address': f"{aid_request.street_address}, {aid_request.city}, {aid_request.state}, {aid_request.zip_code}, {aid_request.country}",
+                'address': aid_request.street_address,
+                'city': aid_request.city,
+                'state': aid_request.state,
+                'zip_code': aid_request.zip_code,
+                'country': aid_request.country,
+                'full_address': f"{aid_request.street_address}, {aid_request.city}, {aid_request.state}, {aid_request.zip_code}, {aid_request.country}",
                 'address_found': aid_request.location.address_found if aid_request.location else None,
                 'location_status': aid_request.location_status,
                 'latitude': float(aid_request.location.latitude) if aid_request.location else None,
@@ -187,13 +207,25 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
         # Use the already filtered and de-duplicated aid_requests_data
         for aid_request_data in aid_requests_data:
             status = aid_request_data['status_display']
-            status_counts[status] = status_counts.get(status, 0) + 1
+            status_value = aid_request_data['status']  # Add the raw value for filtering
+            status_counts[status] = {
+                'count': status_counts.get(status, {}).get('count', 0) + 1,
+                'value': status_value
+            }
 
             priority = aid_request_data['priority_display']
-            priority_counts[priority] = priority_counts.get(priority, 0) + 1
+            priority_value = aid_request_data['priority']  # Add the raw value for filtering
+            priority_counts[priority] = {
+                'count': priority_counts.get(priority, {}).get('count', 0) + 1,
+                'value': priority_value
+            }
 
             aid_type = aid_request_data['aid_type_name']
-            aid_type_counts[aid_type] = aid_type_counts.get(aid_type, 0) + 1
+            aid_type_value = aid_request_data['aid_type']  # Add the raw value for filtering
+            aid_type_counts[aid_type] = {
+                'count': aid_type_counts.get(aid_type, {}).get('count', 0) + 1,
+                'value': aid_type_value
+            }
 
         context['status_counts'] = status_counts
         context['priority_counts'] = priority_counts
