@@ -22,9 +22,12 @@
   <!-- more customizations? -->
   <link rel="stylesheet" href="{% static 'css/custom.css' %}?v={{ static_version }}" type="text/css">
 
+  <!-- JavaScript files -->
   <script type="text/javascript" src="{% static 'js/time-helper.js' %}"></script>
   <!-- Export tables to CSV -->
   <script type="text/javascript" src="{% static 'js/export_csv.js' %}"></script>
+  <!-- Disable Django Debug Toolbar logs -->
+  <script type="text/javascript" src="{% static 'js/disable-djdt-logs.js' %}"></script>
   <!-- JQuery Support -->
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 

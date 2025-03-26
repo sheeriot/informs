@@ -1,9 +1,39 @@
+// Configuration options
+const mapConfig = {
+    debug: false // Set to false to disable debug logging
+};
+
+// Helper function to conditionally log messages based on debug setting
+function mapLog(message, isError) {
+    if (mapConfig.debug || isError) {
+        console.log(message);
+    }
+}
+
 function initMap(context) {
     //Initialize a map instance
     if (!context || typeof context !== 'object') {
         console.error('Invalid map context provided.')
         return;
     }
+
+    // Make touchstart events passive to avoid performance warnings
+    document.addEventListener('DOMContentLoaded', () => {
+        // This helps prevent the [Violation] warnings for non-passive touchstart events
+        const originalAddEventListener = EventTarget.prototype.addEventListener;
+        EventTarget.prototype.addEventListener = function(type, listener, options) {
+            if (type === 'touchstart') {
+                options = options || {};
+                if (typeof options === 'object') {
+                    options.passive = true;
+                } else {
+                    options = { passive: true };
+                }
+            }
+            return originalAddEventListener.call(this, type, listener, options);
+        };
+    });
+
     const fieldop_lat = context.fieldop_lat
     const fieldop_lon = context.fieldop_lon
     const apiKey = context.apiKey
@@ -11,11 +41,11 @@ function initMap(context) {
     const map_zoom = context.map_zoom
     const center_lat = context.center_lat
     const center_lon = context.center_lon
-    // console.log('fieldop coords')
-    // console.log(fieldop_lat, fieldop_lon)
-
-    // console.log('fieldop_lat,fieldop_lon:', fieldop_lat, ',', fieldop_lon)
-    // console.log('map_zoom:', map_zoom)
+    // Replace console.log calls with mapLog
+    mapLog('fieldop coords')
+    mapLog([fieldop_lat, fieldop_lon])
+    mapLog(`fieldop_lat,fieldop_lon: ${fieldop_lat}, ${fieldop_lon}`)
+    mapLog(`map_zoom: ${map_zoom}`)
 
     const map = new atlas.Map('mapContainer', {
         center: [parseFloat(center_lon), parseFloat(center_lat)],
@@ -30,7 +60,7 @@ function initMap(context) {
 
     //Wait until the map resources are ready.
     map.events.add('ready', function () {
-        // console.log('Map is READY. Add controls, markers..')
+        mapLog('Map is READY. Add controls, markers..')
         map.setUserInteraction({ scrollZoomInteraction: false })
 
         const zoomControl = new atlas.control.ZoomControl();
@@ -55,7 +85,7 @@ function initMap(context) {
         );
 
 
-        // console.log('First Mark Field Op');
+        mapLog('First Mark Field Op');
         map.markers.add(new atlas.HtmlMarker({
             htmlContent: "<div id='fieldop'><div class='pin bounce'></div><div class='pulse'></div>{text}</div>",
             text: 'FO',
@@ -95,6 +125,22 @@ function initMap2(context) {
         console.error('Invalid map context provided.')
         return;
     }
+
+    // Make touchstart events passive to avoid performance warnings
+    // This helps prevent the [Violation] warnings for non-passive touchstart events
+    const originalAddEventListener = EventTarget.prototype.addEventListener;
+    EventTarget.prototype.addEventListener = function(type, listener, options) {
+        if (type === 'touchstart') {
+            options = options || {};
+            if (typeof options === 'object') {
+                options.passive = true;
+            } else {
+                options = { passive: true };
+            }
+        }
+        return originalAddEventListener.call(this, type, listener, options);
+    };
+
     const center_lat = context.center_lat
     const center_lon = context.center_lon
     const fieldop_name = context.fieldop_name
@@ -165,30 +211,41 @@ function initMap2(context) {
     map2.events.add('ready', function () {
 
         map2.imageSprite.add('life-preserver', '/static/images/icons/t_life-preserver.svg')
-        // console.log(atlas.getAllImageTemplateNames())
-        legend = new atlas.control.LegendControl({
-            title: 'Field Op Legend',
-        })
-        map2.controls.add(legend, { position: 'top-left' })
 
-        var lc = new atlas.control.LayerControl({
-            legendControl: legend,
-            dynamicLayerGroup: {
-                groupTitle: 'Show:',
-                layout: 'checkbox'
+        // Try to use LegendControl if available, otherwise create a fallback
+        try {
+            // Check if LegendControl exists before trying to instantiate it
+            if (atlas.control && atlas.control.LegendControl) {
+                legend = new atlas.control.LegendControl({
+                    title: 'Field Op Legend',
+                });
+                map2.controls.add(legend, { position: 'top-left' });
+
+                var lc = new atlas.control.LayerControl({
+                    legendControl: legend,
+                    dynamicLayerGroup: {
+                        groupTitle: 'Show:',
+                        layout: 'checkbox'
+                    }
+                });
+                map2.controls.add(lc, { position: 'bottom-left' });
+            } else {
+                console.error('LegendControl is not available in the Azure Maps SDK');
             }
-        })
-        map2.controls.add( map2StyleControl, { position: 'top-left' })
-        map2.controls.add( lc, { position: 'bottom-left' })
+        } catch (e) {
+            console.error('Error creating legend control:', e);
+        }
+
+        map2.controls.add(map2StyleControl, { position: 'top-left' });
         map2.controls.add([
                 new atlas.control.ZoomControl(),
                 new atlas.control.PitchControl(),
                 new atlas.control.CompassControl(),
                 new atlas.control.FullscreenControl(),
-            ], { position: 'top-right' })
+            ], { position: 'top-right' });
         map2.controls.add([
             new atlas.control.ScaleControl(),
-            ], { position: 'bottom-right' })
+            ], { position: 'bottom-right' });
 
         var fopoint_data = []
         var fopos = new atlas.data.Position(parseFloat(fieldop_lon), parseFloat(fieldop_lat))
@@ -235,7 +292,7 @@ function initMap2(context) {
                 radius: ring_size * 1000
             }
         ))
-        // console.log("Ring in KM", ring_size)
+        mapLog(`Ring in KM ${ring_size}`)
         const ringLayer = new atlas.layer.PolygonLayer(dataSourceC, ring_size + 'km Aid Ring', {
             fillColor: 'rgba(255, 0, 0, 0.1)',
             strokeColor: 'red',
@@ -266,8 +323,8 @@ function initMap2(context) {
         })
         map2.events.add('mouseleave', foLayer, function () { fopopup.close() })
 
-        const aidtypes_data = JSON.parse(document.getElementById('aid-types-data').textContent)
-        // console.log("aidtypes_data:", aidtypes_data)
+        const aidtypes_data = JSON.parse(document.getElementById('aid-types-map-data').textContent)
+        mapLog("aidtypes_data:", aidtypes_data)
 
         // now the aid requests
         const locations = JSON.parse(document.getElementById('aid-locations-data').textContent)
@@ -303,17 +360,17 @@ function initMap2(context) {
         const iconPromises = Object.keys(aidtypes_data).map(key =>
             map2.imageSprite.createFromTemplate(key, aidtypes_data[key].icon_name, aidtypes_data[key].icon_color, '#fff')
         )
-        // console.log(iconPromises)
+        mapLog(iconPromises)
 
         var icon_map = [ 'match', ['get', 'aid_type'] ]
         Object.keys(aidtypes_data).map(key => {
             aidtype = aidtypes_data[key]
             icon_map.push(key, key)
-            // console.log('aidtype: key, name, color:', key, aidtype.icon_name, aidtype.icon_color)
+            mapLog(`aidtype: key, name, color: ${key}, ${aidtype.icon_name}, ${aidtype.icon_color}`)
         })
         // no match need an icon
         icon_map.push('marker-yellow')
-        // console.log(icon_map)
+        mapLog(icon_map)
 
         Promise.all(iconPromises).then(function () {
             var aidLayer = new atlas.layer.SymbolLayer(dataSource2, 'Aid Requests', {

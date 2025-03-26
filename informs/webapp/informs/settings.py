@@ -20,10 +20,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
-ENV_NAME = os.environ.get('ENV_NAME')
+ENV_NAME = os.environ.get('ENV_NAME', '')
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-))gr)koo$_$jilzn-gcqe!q82%s&ce6de*vxu7@#rc4#j_0!l5'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-))gr)koo$_$jilzn-gcqe!q82%s&ce6de*vxu7@#rc4#j_0!l5')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 if os.environ.get('DJANGO_DEBUG') == 'False':
@@ -31,18 +31,58 @@ if os.environ.get('DJANGO_DEBUG') == 'False':
 else:
     DEBUG = True
 
-SERVERNAME1 = os.environ.get('SERVERNAME1')
-SERVERNAME2 = os.environ.get('SERVERNAME2')
+SERVERNAME1 = os.environ.get('SERVERNAME1', 'localhost')
+SERVERNAME2 = os.environ.get('SERVERNAME2', 'localhost')
 
-ALLOWED_HOSTS = ["127.0.0.1", SERVERNAME1, SERVERNAME2]
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", SERVERNAME1, SERVERNAME2]
 
 SITE_ID = 1
-STATIC_VERSION = os.environ.get('STATIC_VERSION')
+STATIC_VERSION = os.environ.get('STATIC_VERSION', '1.0')
 
-CSRF_TRUSTED_ORIGINS = [
-    'https://' + SERVERNAME1,
-    'https://' + SERVERNAME2,
+# CSRF settings
+CSRF_TRUSTED_ORIGINS = []
+
+# Add servernames only if they're not localhost (avoid duplicates)
+if SERVERNAME1 and SERVERNAME1 != 'localhost':
+    CSRF_TRUSTED_ORIGINS.extend([
+        'https://' + SERVERNAME1,
+        'http://' + SERVERNAME1,
+    ])
+
+if SERVERNAME2 and SERVERNAME2 != 'localhost':
+    CSRF_TRUSTED_ORIGINS.extend([
+        'https://' + SERVERNAME2,
+        'http://' + SERVERNAME2,
+    ])
+
+# Always include localhost origins
+CSRF_TRUSTED_ORIGINS.extend([
+    'http://127.0.0.1',
+    'http://localhost',
+])
+
+CSRF_COOKIE_SECURE = False if DEBUG else True
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_HTTPONLY = False
+CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
+CSRF_COOKIE_NAME = 'csrftoken'
+
+# CORS Settings
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
 ]
+
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+    CSRF_TRUSTED_ORIGINS.extend(['http://localhost:*', 'http://127.0.0.1:*'])
 
 # Application definition
 
@@ -63,6 +103,8 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'mathfilters',
+    'corsheaders',
+    'widget_tweaks',
     'accounts.apps.AccountsConfig',
     'aidrequests.apps.AidRequestsConfig',
     'takserver.apps.TakServerConfig'
@@ -71,6 +113,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -86,7 +129,10 @@ ROOT_URLCONF = 'informs.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['informs/templates', 'templates'],
+        'DIRS': [
+            BASE_DIR / 'informs' / 'templates',
+            BASE_DIR / 'templates',
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -94,8 +140,12 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.static',
                 'aidrequests.context_processors.fieldops_active',
                 'aidrequests.context_processors.basevars',
+            ],
+            'builtins': [
+                'django.templatetags.static',
             ],
         },
     },
@@ -106,7 +156,7 @@ WSGI_APPLICATION = 'informs.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-SQLITE_FILE = os.environ.get('SQLITE_FILE')
+SQLITE_FILE = os.environ.get('SQLITE_FILE', BASE_DIR / 'db.sqlite3')
 
 DATABASES = {
     'default': {
@@ -170,42 +220,77 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 SESSION_ENGINE = "django.contrib.sessions.backends.file"
 SESSION_COOKIE_AGE = 1 * 24 * 60 * 60  # 1 day cookie
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_SECURE = False if DEBUG else True  # Set to False for HTTP in development
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 500
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB max upload size
 
 BOOTSTRAP5 = {
     "css_url": {
         "href": "{% static 'css/custom-bootstrap.css' %}",  # your custom CSS file
     },
 }
+
+# Authentication settings
 LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
+LOGIN_URL = '/accounts/login/'
+
+# Message settings
+MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
 LOGGING = {
     'version': 1,
-    "handlers": {
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose'
+        },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'app.log'),
+            'formatter': 'verbose',
+        },
         "null": {
             "class": "logging.NullHandler",
         },
     },
-    "loggers": {
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
         "django.security.DisallowedHost": {
             "handlers": ["null"],
             "propagate": False,
         },
     },
-    # ...
 }
 
 # Email Setup
-MAIL_FROM_DOMAIN = os.environ.get('MAIL_FROM_DOMAIN')
-MAIL_FROM_USER = os.environ.get('MAIL_FROM_USER')
-MAIL_FROM_KEY = os.environ.get('MAIL_FROM_KEY')
+MAIL_FROM_DOMAIN = os.environ.get('MAIL_FROM_DOMAIN', 'example.com')
+MAIL_FROM_USER = os.environ.get('MAIL_FROM_USER', 'noreply')
+MAIL_FROM_KEY = os.environ.get('MAIL_FROM_KEY', '')
 MAIL_FROM = f'{MAIL_FROM_USER}@{MAIL_FROM_DOMAIN}'
-MAIL_TO_TEST = os.environ.get('MAIL_TO_TEST')
-MAIL_ENDPOINT = os.environ.get('MAIL_ENDPOINT')
+MAIL_TO_TEST = os.environ.get('MAIL_TO_TEST', '')
+MAIL_ENDPOINT = os.environ.get('MAIL_ENDPOINT', '')
 
 # MAPS
-AZURE_MAPS_KEY = os.environ.get('AZURE_MAPS_KEY')
+AZURE_MAPS_KEY = os.environ.get('AZURE_MAPS_KEY', '')
 AZURE_MAPS_STATIC_URL = 'https://atlas.microsoft.com/map/static'
 MAPS_PATH = 'media/maps'
 
@@ -220,9 +305,27 @@ Q_CLUSTER = {
 }
 
 DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda request: os.environ.get('DEBUG_TOOLBAR', False),  # Show the django-debug-toolbar?
+    'SHOW_TOOLBAR_CALLBACK': lambda request: os.environ.get('DEBUG_TOOLBAR', 'False') == 'True',  # Show the django-debug-toolbar?
     'INTERCEPT_REDIRECTS': False,  # Prevent toolbar from intercepting redirects
+    'DISABLE_PANELS': {'debug_toolbar.panels.redirects.RedirectsPanel',
+                      'debug_toolbar.panels.profiling.ProfilingPanel'},  # Disable noisy panels
+    'RESULTS_CACHE_SIZE': 5,  # Reduce cache size to minimize overhead
+    'RENDER_PANELS': False,  # Only render panels when requested (reduces initial load)
+    'SHOW_TEMPLATE_CONTEXT': False,  # Don't show template context by default
+    'ENABLE_STACKTRACES': False,  # Disable stack traces for SQL queries
+    'SQL_WARNING_THRESHOLD': 500,  # Only warn for slow queries
+    'SHOW_COLLAPSED': True,  # Start with toolbar collapsed
+    # Minimize JavaScript console output
+    'JAVASCRIPT_CONSOLE_OUTPUT_DISABLED': True,
 }
+
+# Security settings
+X_FRAME_OPTIONS = 'SAMEORIGIN'  # Allow same origin framing (for maps, etc.)
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_SSL_REDIRECT = False if DEBUG else True  # Don't redirect to HTTPS in development
+SECURE_PROXY_SSL_HEADER = None
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
 
 # read in icons for TAK
 icons_config = configparser.ConfigParser()

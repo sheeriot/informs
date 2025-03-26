@@ -11,95 +11,118 @@
             <i class="bi bi-truck text-primary"></i>
         </a>
     </h2>
-    <table id="aidrequest-list" class="table table-sm table-striped align-middle font-monospace caption-top w-auto">
-        <form method="get">
-            <caption>Aid Requests: Sort {{ filter.form.ordering }}|<button type="submit"><i class="bi button-outline-success bi-funnel-fill text-success"></i></button></caption>
-            <thead>
-                    <th scope="col">ID</th>
-                    <th><button id='checkall' type="submit"><i class="bi button-info bi-check text-success"></i></button></th>
-                    <th scope="col"><label for="aid_type-filter">Type</label>{{ filter.form.aid_type }}</th>
-                    <th scope="col">
-                        <label for="priority-filter">Priority</label>
-                        {{ filter.form.priority }}
-                    </th>
-                    <th scope="col">
-                        <label for="status-filter">Status</label>
-                        {{ filter.form.status }}
-                    </th>
-                    <th scope="col">Requester</th>
-                    <th scope="col">Address</th>
-                    <th scope="col">Locations</th>
-                    <th scope="col">Coords</th>
-                    <th scope="col">Distance</th>
-                    <th scope="col">Updated</th>
-                    <th scope="col">Created</th>
-                </tr>
-            </thead>
-        </form>
-        <tbody>
-            {% for aid_request in object_list %}
-            <tr>
-                <td>
-                    <div class="d-flex">
-                        <div class="d-inline-block">
-                            <a href="{% url 'aid_request_detail' field_op=field_op.slug pk=aid_request.pk %}" class="btn btn-outline-info btn-sm text-dark me-2">
-                                {{ aid_request.pk }}
-                                <i class="bi bi-life-preserver text-danger"></i>
-                            </a>
-                        </div>
-                        <div class="d-inline-block">
-                            <a href="{% url 'aid_request_update' field_op=field_op.slug pk=aid_request.pk %}" class="btn btn-outline-warning btn-sm me-2">
-                                <i class="bi bi-pencil"></i>
-                            </a>
+
+    <!-- Filter and stats section -->
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Filters</h5>
+                        <span id="results-counter" class="badge bg-secondary">{{ object_list|length }} results</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="filter-controls" class="d-flex flex-wrap">
+                        <!-- JavaScript will populate this -->
+                        <div class="alert alert-info mb-0">
+                            Loading filters...
                         </div>
                     </div>
-                </td>
-                <td>
-                    <input type="checkbox" name="selected_requests" value="{{ aid_request.pk }}">
-                </td>
-                <td>{{ aid_request.aid_type }}</td>
-                <td>{{ aid_request.priority }}</td>
-                <td>{{ aid_request.status }}</td>
-                <td>{{ aid_request.requestor_first_name }} {{ aid_request.requestor_last_name }}</td>
-                <td>{{ aid_request.street_address }},{{ aid_request.city }},{{ aid_request.state }},{{ aid_request.zip_code }},{{ aid_request.country }}
-                    <hr class="m-0">
-                    {{aid_request.location.address_found}}
-                </td>
-                <td>
-                    {{ aid_request.location_status }}
-                </td>
-                <td>
-                    {% if aid_request.location %}
-                    <div class="small">{{ aid_request.location.latitude }},{{ aid_request.location.longitude }}</div>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if aid_request.location %}
-                        {{ aid_request.location.distance }}
-                    {% endif %}
-                </td>
-                <td class="small">
-                    <span>
-                        {{ aid_request.updated_at|date:"Y-m-d H:i" }}
-                    </span>
-                    <hr class="m-0">
-                    <span class="text-{{ aid_request.updated_at|age_color }}">
-                        +{{ aid_request.updated_at|timesince|upto:',' }}
-                    </span>
-                </td>
-                <td class="small">
-                    <span>
-                        {{ aid_request.created_at|date:"Y-m-d H:i" }}
-                    </span>
-                    <hr class="m-0">
-                    <span class="text-{{ aid_request.created_at|age_color }}">
-                        +{{ aid_request.created_at|timesince|upto:',' }}
-                    </span>
-                </td>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Summary</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="summaryTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="aid-types-tab" data-bs-toggle="tab" data-bs-target="#aid-types" type="button" role="tab" aria-controls="aid-types" aria-selected="true">Aid Types</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="status-tab" data-bs-toggle="tab" data-bs-target="#status" type="button" role="tab" aria-controls="status" aria-selected="false">Status</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="priority-tab" data-bs-toggle="tab" data-bs-target="#priority" type="button" role="tab" aria-controls="priority" aria-selected="false">Priority</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content pt-2" id="summaryTabContent">
+                        <div class="tab-pane fade show active" id="aid-types" role="tabpanel" aria-labelledby="aid-types-tab">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Aid Type</th>
+                                        <th>Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for aid_type, count in aid_type_counts.items %}
+                                    <tr>
+                                        <td><span class="badge bg-primary">{{ aid_type }}</span></td>
+                                        <td>{{ count }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="tab-pane fade" id="status" role="tabpanel" aria-labelledby="status-tab">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Status</th>
+                                        <th>Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for status, count in status_counts.items %}
+                                    <tr>
+                                        <td><span class="badge bg-secondary">{{ status }}</span></td>
+                                        <td>{{ count }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="tab-pane fade" id="priority" role="tabpanel" aria-labelledby="priority-tab">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Priority</th>
+                                        <th>Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for priority, count in priority_counts.items %}
+                                    <tr>
+                                        <td><span class="badge bg-secondary">{{ priority }}</span></td>
+                                        <td>{{ count }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aid Request Table -->
+    <table id="aidrequest-table" class="table table-sm table-striped align-middle font-monospace caption-top w-auto">
+        <caption>Aid Requests</caption>
+        <thead>
+            <tr>
+                <!-- JavaScript will populate this with sortable headers -->
             </tr>
-            {% endfor %}
+        </thead>
+        <tbody id="aidrequest-table-body">
+            <!-- JavaScript will populate this with aid request data -->
         </tbody>
     </table>
+
     <div class="d-flex justify-content-between">
         <div class="me-2">
             <a href="{% url 'aid_request_create' field_op=field_op.slug %}">
@@ -136,11 +159,24 @@
     <hr class="m-1">
     <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
     <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
-    <script src="{% static 'js/azure-maps-layer-legend.js' %}?v4"></script>
+    <script src="{% static 'js/azure-maps-layer-legend.js' %}?v={{static_version}}"></script>
     <link href="{% static 'css/azure-maps-layer-legend.css' %}" rel="stylesheet" />
-    <script type="text/javascript" src="{% static 'js/map_aidrequests.js' %}?v8"></script>
-    {{ aid_types|json_script:'aid-types-data' }}
+    <script type="text/javascript" src="{% static 'js/map_aidrequests.js' %}?v={{static_version}}"></script>
+    <!-- New script for client-side table handling -->
+    <script type="text/javascript" src="{% static 'js/aid_request_table.js' %}?v={{static_version}}"></script>
+
+    <!-- Pass data to JavaScript -->
+    {{ aid_types|json_script:'aid-types-map-data' }}
     {{ aid_locations|json_script:'aid-locations-data' }}
+    {{ aid_requests_json|json_script:'aid-requests-data' }}
+    {{ aid_types_json|json_script:'aid-types-json' }}
+    {{ status_choices_json|json_script:'status-choices-data' }}
+    {{ priority_choices_json|json_script:'priority-choices-data' }}
+    <span id="field-op-name" class="d-none">{{ field_op.name }}</span>
+    <span id="field-op-slug" class="d-none">{{ field_op.slug }}</span>
+
+    <!-- CSRF Token for AJAX requests -->
+    <meta name="csrf-token" content="{{ csrf_token }}">
 
     <h2>Aid Request Map</h2>
     <div id="map2Container" style="position:relative;width:100%;min-width:290px;height:800px;"></div>
@@ -159,121 +195,31 @@
             ring_size: "{{ ring_size|safe }}"
         }
         document.addEventListener("DOMContentLoaded", function() {
-            initMap2(map2Context);
-        })
-</script>
-<script>
-    var csrftoken = '{{ csrf_token }}'
-    const selectedRequests = []
-    document.addEventListener("DOMContentLoaded", function() {
-        const aidRequestList = document.getElementById('aidrequest-list')
-        aidRequestList.addEventListener('change', function(event) {
-            if (event.target.name === 'selected_requests') {
-                const requestId = event.target.value
-                if (event.target.checked) {
-                    selectedRequests.push(requestId)
-                } else {
-                    const index = selectedRequests.indexOf(requestId)
-                    if (index > -1) {
-                        selectedRequests.splice(index, 1)
-                    }
-                }
-                console.log('Selected Requests:', selectedRequests)
-            }
-        })
-        $("#tak-alert-button").click(function(){
-            $("#send-cot-status").text("Sending COT..")
-            console.log(selectedRequests)
-            $.ajax({
-                url: "{% url 'sendcot_aidrequest' %}",
-                type: "POST",
-                data: JSON.stringify({ aidrequests: selectedRequests }),  // Send as JSON
-                contentType: "application/json",  // Set correct content type
-                headers: { "X-CSRFToken": csrftoken },  // Set CSRF token in headers
-                success: function(data) {
-                    if (data.status === "error") {
-                        $("#send-cot-status").text("Error: " + data.message)
-                        return
-                    }
-                    let sendcot_id = data.sendcot_id
-                    console.log(data)
-                    pollSendCotStatus(sendcot_id)
-                },
-                error: function(xhr, status, error) {
-                    console.error("AJAX Error:", error)
-                }
-            })
-        })
-        $("#tak-clear-button").click(function(){
-            $("#send-cot-status").text("Sending COT..")
-            console.log(selectedRequests)
-            $.ajax({
-                url: "{% url 'sendcot_aidrequest' %}",
-                type: "POST",
-                data: JSON.stringify({ message_type: 'remove', aidrequests: selectedRequests }),  // Send as JSON
-                contentType: "application/json",  // Set correct content type
-                headers: { "X-CSRFToken": csrftoken },  // Set CSRF token in headers
-                success: function(data) {
-                    if (data.status === "error") {
-                        $("#send-cot-status").text("Error: " + data.message)
-                        return
-                    }
-                    let sendcot_id = data.sendcot_id
-                    console.log(data)
-                    pollSendCotStatus(sendcot_id)
-                },
-                error: function(xhr, status, error) {
-                    console.error("AJAX Error:", error)
-                }
-            })
-        })
-        $("#tak-test-button").click(function(){
-            $("#send-cot-status").text("Sending COT..")
-            console.log(selectedRequests)
-            $.ajax({
-                url: "{% url 'sendcot_aidrequest' %}",
-                type: "POST",
-                data: JSON.stringify({ message_type: 'test', aidrequests: selectedRequests }),  // Send as JSON
-                contentType: "application/json",  // Set correct content type
-                headers: { "X-CSRFToken": csrftoken },  // Set CSRF token in headers
-                success: function(data) {
-                    if (data.status === "error") {
-                        $("#send-cot-status").text("Error: " + data.message)
-                        return
-                    }
-                    let sendcot_id = data.sendcot_id
-                    console.log(data)
-                    pollSendCotStatus(sendcot_id)
-                },
-                error: function(xhr, status, error) {
-                    console.error("AJAX Error:", error)
-                }
-            })
-        })
-        $("#checkall").click(function(event){
-            event.preventDefault();
-            const checkboxes = document.querySelectorAll('input[name="selected_requests"]');
-            const allChecked = Array.from(checkboxes).every(checkbox => checkbox.checked);
-            checkboxes.forEach(checkbox => checkbox.checked = !allChecked);
-            selectedRequests.length = 0;
-            if (!allChecked) {
-            checkboxes.forEach(checkbox => selectedRequests.push(checkbox.value));
-            }
-            console.log('Selected Requests:', selectedRequests);
-        });
-    })
-    function pollSendCotStatus(sendcot_id) {
-            let interval = setInterval(function(){
-                $.get("{% url 'sendcot_checkstatus' %}", {sendcot_id: sendcot_id}, function(response){
-                    console.log(response)
-                    if (response.status === "done") {
-                        $("#send-cot-status").text(response.result)
-                        clearInterval(interval)
-                    } else {
-                        $("#send-cot-status").text("Sending COT...")
-                    }
-                })
-            }, 2000)}
+            try {
+                // Removed console.log to reduce logging
 
+                // Check for required map properties before initializing
+                if (!map2Context.center_lat || !map2Context.center_lon || !map2Context.fieldop_lat || !map2Context.fieldop_lon) {
+                    console.error("Missing required map coordinates. Using fallback values.");
+                    // Provide fallback values
+                    if (!map2Context.center_lat) map2Context.center_lat = map2Context.fieldop_lat || "0";
+                    if (!map2Context.center_lon) map2Context.center_lon = map2Context.fieldop_lon || "0";
+                    if (!map2Context.fieldop_lat) map2Context.fieldop_lat = map2Context.center_lat;
+                    if (!map2Context.fieldop_lon) map2Context.fieldop_lon = map2Context.center_lon;
+                }
+
+                // Ensure map_zoom is valid
+                if (!map2Context.map_zoom || isNaN(parseInt(map2Context.map_zoom))) {
+                    console.error("Invalid map zoom. Using fallback value.");
+                    map2Context.map_zoom = "10";
+                }
+
+                initMap2(map2Context);
+            } catch (error) {
+                console.error("Error initializing map:", error);
+                document.getElementById('map2Container').innerHTML =
+                    '<div class="alert alert-danger">Error initializing map. Please check the console for details.</div>';
+            }
+        })
 </script>
 {% endblock %}

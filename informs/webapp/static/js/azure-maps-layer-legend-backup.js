@@ -25,18 +25,6 @@ MIT License
 (function (exports, azmaps) {
     'use strict';
 
-    // Configuration options for logging - you can set to false in production
-    const legendConfig = {
-        debug: false
-    };
-
-    // Only log errors in production, use debug flag for verbose logging
-    function legendLog(message, isError) {
-        if (isError || legendConfig.debug) {
-            console.log(message);
-        }
-    }
-
     var azmaps__default = 'default' in azmaps ? azmaps['default'] : azmaps;
 
     /*! *****************************************************************************

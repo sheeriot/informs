@@ -9,6 +9,8 @@ django-auditlog
 django-q2
 django-picklefield
 django-filter
+django-cors-headers
+django-widget-tweaks
 
 blessed
 
