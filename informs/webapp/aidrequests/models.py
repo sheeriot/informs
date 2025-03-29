@@ -196,10 +196,10 @@ class AidRequest(TimeStampedModel):
     )
 
     PRIORITY_CHOICES = [
-        (None, 'None'),
         ('high', 'High'),
         ('medium', 'Medium'),
         ('low', 'Low'),
+        (None, 'None'),
     ]
 
     priority = models.CharField(

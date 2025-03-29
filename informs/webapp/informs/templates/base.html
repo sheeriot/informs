@@ -22,15 +22,6 @@
   <!-- more customizations? -->
   <link rel="stylesheet" href="{% static 'css/custom.css' %}?v={{ static_version }}" type="text/css">
 
-  <!-- JavaScript files -->
-  <script type="text/javascript" src="{% static 'js/time-helper.js' %}"></script>
-  <!-- Export tables to CSV -->
-  <script type="text/javascript" src="{% static 'js/export_csv.js' %}"></script>
-  <!-- Disable Django Debug Toolbar logs -->
-  <script type="text/javascript" src="{% static 'js/disable-djdt-logs.js' %}"></script>
-  <!-- JQuery Support -->
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-
 </head>
 
 <body>
@@ -66,18 +57,18 @@
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                       <li>
-                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_list' %}'">
+                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_list' %}'; return false;">
                           <i class="bi bi-truck"></i> <i class="bi bi-truck"></i>  All Field Ops
                         </button>
                       </li>
                       <li>
-                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_create' %}'">
+                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_create' %}'; return false;">
                           <i class="bi bi-plus-circle"></i> New Field Op <i class="bi bi-truck"></i>
                         </button>
                       </li>
                       {% for fieldop in fieldops_active %}
                         <li>
-                            <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'aid_request_list' field_op=fieldop.slug %}'">
+                            <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'aid_request_list' field_op=fieldop.slug %}'; return false;">
                               <i class="bi life-preserver text-danger"></i>  {{ fieldop.name }} - Aid Requests
                             </button>
                         </li>
@@ -191,5 +182,19 @@
     integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
     crossorigin="anonymous">
   </script>
+
+  <!-- JavaScript files -->
+  <script type="text/javascript" src="{% static 'js/time-helper.js' %}"></script>
+  <!-- Export tables to CSV -->
+  <script type="text/javascript" src="{% static 'js/export_csv.js' %}"></script>
+  <!-- JQuery Support -->
+  <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script> -->
+
+  <!-- List.js - For dynamic lists and tables -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/list.js/2.3.1/list.min.js"></script>
+
+  {% block extra_js %}
+  <!-- Page-specific JavaScript will be inserted here -->
+  {% endblock %}
 </body>
 </html>

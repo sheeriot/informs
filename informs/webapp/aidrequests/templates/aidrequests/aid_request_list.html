@@ -3,14 +3,6 @@
 {% load static %}
 {% load custom_tags %}
 
-<script>
-// Pre-define config object to make sure debug mode is set early
-window.aidRequestTableConfig = {
-    debug: true,
-    preferHtmlData: true
-};
-</script>
-
 {% block content %}
 
 <div class="container m-4">
@@ -89,126 +81,103 @@ window.aidRequestTableConfig = {
         </div>
     </div>
 
-    <!-- Filter section -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-secondary text-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">Filters</h5>
-                        <span id="results-counter" class="badge bg-light text-dark">
-                            {{ filtered_aid_requests|length }} results
-                        </span>
+    <!-- List.js container -->
+    <div id="aidrequest-list-container">
+        <!-- Filter section -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Filters</h5>
+                            <span id="results-counter" class="badge bg-light text-dark">
+                                {{ filtered_aid_requests|length }} results
+                            </span>
+                        </div>
                     </div>
-                </div>
-                <div class="card-body">
-                    <form id="filter-form" method="get" class="row g-3">
-                        <!-- Search input -->
-                        <div class="col-md-6">
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                <input type="text" id="aid-request-search" class="form-control" placeholder="Search aid requests...">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <!-- Search input -->
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                    <input type="text" id="aid-request-search" class="search form-control" placeholder="Search aid requests...">
+                                </div>
+                            </div>
+
+                            <!-- Aid Type Filter -->
+                            <div class="col-md-2">
+                                <select id="aid-type-filter" class="form-select">
+                                    <option value="">All Aid Types</option>
+                                    {% for aid_type in aid_types_list %}
+                                        <option value="{{ aid_type.slug }}">{{ aid_type.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Status Group Filter -->
+                            <div class="col-md-2">
+                                <select id="status-filter" class="form-select">
+                                    <option value="active" selected>Active Status</option>
+                                    <option value="inactive">Inactive Status</option>
+                                    <option value="">All Statuses</option>
+                                    {% for status_code, status_name in status_choices_list %}
+                                        <option value="{{ status_code }}">{{ status_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Priority Filter -->
+                            <div class="col-md-2">
+                                <select id="priority-filter" class="form-select">
+                                    <option value="">All Priorities</option>
+                                    {% for priority_code, priority_name in priority_choices_list %}
+                                        <option value="{{ priority_code }}">{{ priority_name }}</option>
+                                    {% endfor %}
+                                </select>
                             </div>
                         </div>
-
-                        <!-- Aid Type Filter -->
-                        <div class="col-md-2">
-                            <select id="aid-type-filter" name="aid_type" class="form-select">
-                                <option value="">All Aid Types</option>
-                                {% for aid_type in aid_types_list %}
-                                    <option value="{{ aid_type.slug }}">{{ aid_type.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <!-- Status Filter -->
-                        <div class="col-md-2">
-                            <select id="status-filter" name="status" class="form-select">
-                                <option value="">All Statuses</option>
-                                {% for status_code, status_name in status_choices_list %}
-                                    <option value="{{ status_code }}">{{ status_name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <!-- Priority Filter -->
-                        <div class="col-md-2">
-                            <select id="priority-filter" name="priority" class="form-select">
-                                <option value="">All Priorities</option>
-                                {% for priority_code, priority_name in priority_choices_list %}
-                                    <option value="{{ priority_code }}">{{ priority_name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Aid Requests Table -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-dark text-white">
-                    <h5 class="card-title mb-0">Aid Requests</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table id="aidrequest-table" class="table table-striped table-hover mb-0">
-                            <thead>
-                                <tr>
-                                    <th data-sort="pk">ID</th>
-                                    <th data-sort="aid_type">Type</th>
-                                    <th data-sort="address">Address</th>
-                                    <th data-sort="city">City</th>
-                                    <th data-sort="zip_code">ZIP</th>
-                                    <th data-sort="status">Status</th>
-                                    <th data-sort="priority">Priority</th>
-                                    <th data-sort="created_at">Created</th>
-                                    <th data-sort="updated_at">Updated</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="aidrequest-table-body">
-                                {% for aid_request in filtered_aid_requests %}
-                                    <tr data-aid-type="{{ aid_request.aid_type.slug }}"
-                                        data-status="{{ aid_request.status }}"
-                                        data-priority="{{ aid_request.priority }}">
-                                        <td>{{ aid_request.pk }}</td>
-                                        <td><span class="badge bg-primary">{{ aid_request.aid_type.name }}</span></td>
-                                        <td>{{ aid_request.street_address }}</td>
-                                        <td>{{ aid_request.city }}</td>
-                                        <td>{{ aid_request.zip_code }}</td>
-                                        <td><span class="badge bg-info">{{ aid_request.status_display }}</span></td>
-                                        <td><span class="badge bg-warning text-dark">{{ aid_request.priority_display }}</span></td>
-                                        <td>{{ aid_request.created_at|date:"M d, H:i" }}</td>
-                                        <td>{{ aid_request.updated_at|date:"M d, H:i" }}</td>
-                                        <td>
-                                            <div class="btn-group">
-                                                <a href="/aidrequests/{{ field_op.slug }}/{{ aid_request.pk }}/" class="btn btn-sm btn-info p-1">
-                                                    <i class="bi bi-eye-fill"></i>
-                                                </a>
-                                                <a href="/aidrequests/{{ field_op.slug }}/{{ aid_request.pk }}/update/" class="btn btn-sm btn-warning p-1">
-                                                    <i class="bi bi-pencil-fill"></i>
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% empty %}
+        <!-- Aid Requests Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="card-title mb-0">Aid Requests</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table id="aidrequest-table" class="table table-striped table-hover mb-0">
+                                <thead>
                                     <tr>
-                                        <td colspan="10" class="text-center">No aid requests found.</td>
+                                        <th data-sort="aid-request-id">ID</th>
+                                        <th data-sort="aid-type-name">Type</th>
+                                        <th data-sort="address">Address</th>
+                                        <th data-sort="city">City</th>
+                                        <th data-sort="zip-code">ZIP</th>
+                                        <th data-sort="status-display">Status</th>
+                                        <th data-sort="priority-display">Priority</th>
+                                        <th data-sort="created-at">Created</th>
+                                        <th data-sort="updated-at">Updated</th>
+                                        <th>Actions</th>
                                     </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody class="list">
+                                    <!-- List.js will populate this -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="d-flex justify-content-between">
+    <div class="d-flex justify-content-between mt-3">
         <div class="me-2">
             <a href="{% url 'aid_request_create' field_op=field_op.slug %}">
                 <button class="btn btn-success p-1">
@@ -242,165 +211,65 @@ window.aidRequestTableConfig = {
     </div>
 
     <hr class="m-1">
-    <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
-    <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
-    <script src="{% static 'js/azure-maps-layer-legend.js' %}?v={{static_version}}"></script>
-    <link href="{% static 'css/azure-maps-layer-legend.css' %}" rel="stylesheet" />
-    <script type="text/javascript" src="{% static 'js/map_aidrequests.js' %}?v={{static_version}}"></script>
-    <!-- New script for client-side table handling -->
-    <script type="text/javascript" src="{% static 'js/aid_request_table.js' %}?v={{static_version}}"></script>
-
-    <!-- Pass data to JavaScript -->
-    {{ aid_types|json_script:'aid-types-map-data' }}
-    {{ aid_locations|json_script:'aid-locations-data' }}
-    {{ aid_requests_json|json_script:'aid-requests-data' }}
-    {{ aid_types_json|json_script:'aid-types-json' }}
-    {{ status_choices_json|json_script:'status-choices-data' }}
-    {{ priority_choices_json|json_script:'priority-choices-data' }}
-    <span id="field-op-name" class="d-none">{{ field_op.name }}</span>
-    <span id="field-op-slug" class="d-none">{{ field_op.slug }}</span>
-
-    <!-- CSRF Token for AJAX requests -->
-    <meta name="csrf-token" content="{{ csrf_token }}">
-
-    <!-- Hidden debug info -->
-    <div id="debug-info" style="display: none;">
-        <h4>Debug Information</h4>
-        <p>Aid Types:</p>
-        <pre>{{ aid_type_counts|pprint }}</pre>
-        <p>Status Values:</p>
-        <pre>{{ status_counts|pprint }}</pre>
-        <p>Priority Values:</p>
-        <pre>{{ priority_counts|pprint }}</pre>
-    </div>
 
     <h2>Aid Request Map</h2>
     <div id="map2Container" style="position:relative;width:100%;min-width:290px;height:800px;"></div>
 
 </div>
 
-<style>
-    /* Custom styles for summary items */
-    .summary-item {
-        cursor: pointer;
-        transition: all 0.2s ease;
-        border: 2px solid transparent;
-        font-size: 1rem;
-    }
+<!-- Pass data to JavaScript -->
+{{ aid_types|json_script:'aid-types-map-data' }}
+{{ aid_locations|json_script:'aid-locations-data' }}
+{% if aid_requests_json %}
+    {{ aid_requests_json|json_script:'aid-requests-data' }}
+{% else %}
+    <script id="aid-requests-data" type="application/json">[]</script>
+{% endif %}
+{% if aid_types_json %}
+    {{ aid_types_json|json_script:'aid-types-json' }}
+{% else %}
+    <script id="aid-types-json" type="application/json">{}</script>
+{% endif %}
+{{ status_choices_json|default:'[]'|json_script:'status-choices-data' }}
+{{ priority_choices_json|default:'[]'|json_script:'priority-choices-data' }}
+<span id="field-op-name" class="d-none">{{ field_op.name }}</span>
+<span id="field-op-slug" class="d-none">{{ field_op.slug }}</span>
 
-    .summary-item:hover {
-        transform: scale(1.05);
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
+<!-- CSRF Token for AJAX requests -->
+{% csrf_token %}
 
-    .summary-item.active {
-        transform: scale(1.2);
-        border: 2px solid #fff;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-        font-weight: bold;
-        z-index: 10;
-    }
-</style>
+<!-- Hidden debug info -->
+<div id="debug-info" style="display: none;">
+    <h4>Debug Information</h4>
+    <p>Aid Types:</p>
+    <pre>{{ aid_type_counts|pprint }}</pre>
+    <p>Status Values:</p>
+    <pre>{{ status_counts|pprint }}</pre>
+    <p>Priority Values:</p>
+    <pre>{{ priority_counts|pprint }}</pre>
+</div>
 
-<script>
-    const map2Context = {
-            azure_maps_key: "{{ azure_maps_key|escapejs }}",
-            map_zoom: "{{ map_zoom|safe  }}",
-            center_lat: "{{ center_lat|safe }}",
-            center_lon: "{{ center_lon|safe }}",
-            fieldop_name: "{{ field_op.name|safe }}",
-            fieldop_slug: "{{ field_op.slug|safe }}",
-            fieldop_lat: "{{ field_op.latitude|safe }}",
-            fieldop_lon: "{{ field_op.longitude|safe }}",
-            ring_size: "{{ ring_size|safe }}"
-        }
+{% endblock %}
 
-        // Enable debug mode for aid request table
-        if (typeof aidRequestTableConfig !== 'undefined') {
-            aidRequestTableConfig.debug = true;
-            console.log("Debug mode enabled for aid request table");
-        }
+{% block extra_css %}
+<link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
+<link href="{% static 'css/azure-maps-layer-legend.css' %}" rel="stylesheet" />
+<link href="{% static 'css/aid_request_list.css' %}?v={{static_version}}" rel="stylesheet" />
+{% endblock %}
 
-        document.addEventListener("DOMContentLoaded", function() {
-            try {
-                // Add click handler for summary items
-                document.querySelectorAll('.summary-item').forEach(item => {
-                    item.addEventListener('click', function() {
-                        const filterType = this.dataset.filterType;
-                        const filterValue = this.dataset.filterValue;
+{% block extra_js %}
+<script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+<script src="{% static 'js/azure-maps-layer-legend.js' %}?v={{static_version}}"></script>
+<script src="{% static 'js/map_aidrequests.js' %}?v={{static_version}}"></script>
+<script src="{% static 'js/list-aid-requests.js' %}?v={{static_version}}"></script>
+<script src="{% static 'js/map-visibility-handler.js' %}?v={{static_version}}"></script>
 
-                        console.log('Filtering by:', filterType, filterValue);
-
-                        // Highlight this item
-                        document.querySelectorAll('.summary-item').forEach(el => {
-                            el.classList.remove('active');
-                        });
-                        this.classList.add('active');
-
-                        // Reset all filters first
-                        document.getElementById('aid-type-filter').value = '';
-                        document.getElementById('status-filter').value = '';
-                        document.getElementById('priority-filter').value = '';
-
-                        // Set the appropriate filter dropdown
-                        if (filterType === 'aid_type') {
-                            document.getElementById('aid-type-filter').value = filterValue;
-                        } else if (filterType === 'status') {
-                            document.getElementById('status-filter').value = filterValue;
-                        } else if (filterType === 'priority') {
-                            document.getElementById('priority-filter').value = filterValue;
-                        }
-
-                        // Use both approaches for maximum compatibility:
-
-                        // 1. Emit event on our event bus if available
-                        if (window.aidRequestEventBus) {
-                            window.aidRequestEventBus.emit('filter', {
-                                type: filterType,
-                                value: filterValue
-                            });
-                            console.log('Emitted filter event on event bus');
-                        }
-                        // 2. Dispatch DOM event as fallback
-                        else {
-                            // Create and dispatch a custom event
-                            const filterEvent = new CustomEvent('aidrequest:filter', {
-                                detail: {
-                                    type: filterType,
-                                    value: filterValue
-                                },
-                                bubbles: true
-                            });
-
-                            // Dispatch the event on the document
-                            document.dispatchEvent(filterEvent);
-                            console.log('Dispatched DOM event (fallback)');
-                        }
-                    });
-                });
-
-                // Check for required map properties before initializing
-                if (!map2Context.center_lat || !map2Context.center_lon || !map2Context.fieldop_lat || !map2Context.fieldop_lon) {
-                    console.error("Missing required map coordinates. Using fallback values.");
-                    // Provide fallback values
-                    if (!map2Context.center_lat) map2Context.center_lat = map2Context.fieldop_lat || "0";
-                    if (!map2Context.center_lon) map2Context.center_lon = map2Context.fieldop_lon || "0";
-                    if (!map2Context.fieldop_lat) map2Context.fieldop_lat = map2Context.center_lat;
-                    if (!map2Context.fieldop_lon) map2Context.fieldop_lon = map2Context.center_lon;
-                }
-
-                // Ensure map_zoom is valid
-                if (!map2Context.map_zoom || isNaN(parseInt(map2Context.map_zoom))) {
-                    console.error("Invalid map zoom. Using fallback value.");
-                    map2Context.map_zoom = "10";
-                }
-
-                initMap2(map2Context);
-            } catch (error) {
-                console.error("Error initializing map:", error);
-                document.getElementById('map2Container').innerHTML =
-                    '<div class="alert alert-danger">Error initializing map. Please check the console for details.</div>';
-            }
-        })
-</script>
+<!-- Map configuration data -->
+<meta id="fieldop-lat" content="{{ field_op.latitude|stringformat:".6f"|default:"0" }}">
+<meta id="fieldop-lon" content="{{ field_op.longitude|stringformat:".6f"|default:"0" }}">
+<meta id="azure-maps-key" content="{{ azure_maps_key }}">
+<meta id="map-zoom" content="{{ field_op.map_zoom|default:"8" }}">
+<meta id="center-lat" content="{{ field_op.latitude|stringformat:".6f"|default:"0" }}">
+<meta id="center-lon" content="{{ field_op.longitude|stringformat:".6f"|default:"0" }}">
+<meta id="ring-size" content="{{ field_op.ring_km|default:"5" }}">
 {% endblock %}

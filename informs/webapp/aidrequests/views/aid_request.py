@@ -12,6 +12,7 @@ from ..models import AidRequest, FieldOp, AidRequestLog
 from ..tasks import aid_request_postsave
 from takserver.cot import send_cots
 from .aid_request_forms import AidRequestCreateForm, AidRequestUpdateForm, AidRequestLogForm
+from ..context_processors import get_field_op_from_kwargs
 
 from icecream import ic
 
@@ -78,11 +79,15 @@ class AidRequestCreateView(CreateView):
 
     def setup(self, request, *args, **kwargs):
         super().setup(request, *args, **kwargs)
-        self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
+        self.field_op, self.fieldop_slug = get_field_op_from_kwargs(kwargs)
+        if not self.field_op:
+            raise Http404("Field operation not found")
+        ic(f"Setup AidRequestCreateView for field_op: {self.fieldop_slug}")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['field_op'] = self.field_op
+        context['fieldop_slug'] = self.fieldop_slug
         if self.object is None:
             context['New'] = True
         else:
@@ -91,7 +96,10 @@ class AidRequestCreateView(CreateView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['initial'] = {'field_op': self.field_op.pk}
+        kwargs['initial'] = {
+            'field_op': self.field_op.pk,
+            'fieldop_slug': self.fieldop_slug
+        }
         return kwargs
 
     def form_valid(self, form):
@@ -121,6 +129,9 @@ class AidRequestCreateView(CreateView):
                 'task_name': f"AR{self.object.pk}-AidRequestNew-TAK-{updated_at_stamp}"})
                 ])
         ic('postsave_tasks', postsave_tasks)
+
+        # Redirect to the list view for this field_op after creating
+        self.success_url = reverse_lazy('aid_request_list', kwargs={'field_op': self.fieldop_slug})
         return super().form_valid(form)
 
 
@@ -131,22 +142,32 @@ class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVi
     form_class = AidRequestUpdateForm
     template_name = 'aidrequests/aid_request_update.html'
 
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.field_op, self.fieldop_slug = get_field_op_from_kwargs(kwargs)
+        if not self.field_op:
+            raise Http404("Field operation not found")
+
     def get_success_url(self):
-        return reverse_lazy('aid_request_list', kwargs={'field_op': self.kwargs['field_op']})
+        return reverse_lazy('aid_request_list', kwargs={'field_op': self.fieldop_slug})
 
     def get_context_data(self, **kwargs):
-        field_op_slug = self.kwargs['field_op']
         context = super().get_context_data(**kwargs)
-        field_op = get_object_or_404(FieldOp, slug=field_op_slug)
-        context['field_op'] = field_op
+        context['field_op'] = self.field_op
+        context['fieldop_slug'] = self.fieldop_slug
         return context
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if 'initial' not in kwargs:
+            kwargs['initial'] = {}
+        kwargs['initial']['fieldop_slug'] = self.fieldop_slug
+        return kwargs
 
     def form_valid(self, form):
         self.object = form.save()
-        field_op_slug = self.kwargs['field_op']
-        field_op = FieldOp.objects.get(slug=field_op_slug)
         # this locks the field_op to the URL regardless of form values
-        self.object.field_op = field_op
+        self.object.field_op = self.field_op
         # check either or email/phone
         if not self.object.requestor_email and not self.object.requestor_phone:
             form.add_error(None, 'Provide one of phone or email.')
@@ -165,25 +186,25 @@ class AidRequestLogCreateView(LoginRequiredMixin, CreateView):
     model = AidRequestLog
     form_class = AidRequestLogForm
 
-    def get_success_url(self):
-        return reverse('aid_request_detail',
-                       kwargs={
-                           'field_op': self.field_op.slug,
-                           'pk': self.aid_request.pk}
-                       )
-
     def setup(self, request, *args, **kwargs):
         """Initialize attributes shared by all view methods."""
         super().setup(request, *args, **kwargs)
         # custom setup
-        self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
+        self.field_op, self.fieldop_slug = get_field_op_from_kwargs(kwargs)
+        if not self.field_op:
+            raise Http404("Field operation not found")
         self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
+
+    def get_success_url(self):
+        return reverse('aid_request_detail',
+                       kwargs={
+                           'field_op': self.fieldop_slug,
+                           'pk': self.aid_request.pk}
+                       )
 
     def form_valid(self, form):
         self.object = form.save()
-        field_op_slug = self.kwargs['field_op']
-        field_op = FieldOp.objects.get(slug=field_op_slug)
-        self.object.field_op = field_op
+        self.object.field_op = self.field_op
 
         user = self.request.user
         if user.is_authenticated:
@@ -198,7 +219,7 @@ class AidRequestLogCreateView(LoginRequiredMixin, CreateView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['initial'] = {
-                'aid_request': self.aid_request.pk,
-                'field_op': self.field_op.slug,
+            'aid_request': self.aid_request.pk,
+            'fieldop_slug': self.fieldop_slug
         }
         return kwargs

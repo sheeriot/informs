@@ -97,7 +97,7 @@ INSTALLED_APPS = [
     'django_bootstrap_icons',
     'django_q',
     'django_filters',
-    'debug_toolbar',
+    # 'debug_toolbar',
     'auditlog',
     'tz_detect',
     'crispy_forms',
@@ -115,7 +115,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
+    # 'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -143,6 +143,7 @@ TEMPLATES = [
                 'django.template.context_processors.static',
                 'aidrequests.context_processors.fieldops_active',
                 'aidrequests.context_processors.basevars',
+                'aidrequests.context_processors.field_op_context',
             ],
             'builtins': [
                 'django.templatetags.static',
@@ -304,20 +305,20 @@ Q_CLUSTER = {
     'recycle': 500
 }
 
-DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda request: os.environ.get('DEBUG_TOOLBAR', 'False') == 'True',  # Show the django-debug-toolbar?
-    'INTERCEPT_REDIRECTS': False,  # Prevent toolbar from intercepting redirects
-    'DISABLE_PANELS': {'debug_toolbar.panels.redirects.RedirectsPanel',
-                      'debug_toolbar.panels.profiling.ProfilingPanel'},  # Disable noisy panels
-    'RESULTS_CACHE_SIZE': 5,  # Reduce cache size to minimize overhead
-    'RENDER_PANELS': False,  # Only render panels when requested (reduces initial load)
-    'SHOW_TEMPLATE_CONTEXT': False,  # Don't show template context by default
-    'ENABLE_STACKTRACES': False,  # Disable stack traces for SQL queries
-    'SQL_WARNING_THRESHOLD': 500,  # Only warn for slow queries
-    'SHOW_COLLAPSED': True,  # Start with toolbar collapsed
-    # Minimize JavaScript console output
-    'JAVASCRIPT_CONSOLE_OUTPUT_DISABLED': True,
-}
+# DEBUG_TOOLBAR_CONFIG = {
+#     'SHOW_TOOLBAR_CALLBACK': lambda request: os.environ.get('DEBUG_TOOLBAR', 'False') == 'True',  # Show the django-debug-toolbar?
+#     'INTERCEPT_REDIRECTS': False,  # Prevent toolbar from intercepting redirects
+#     'DISABLE_PANELS': {'debug_toolbar.panels.redirects.RedirectsPanel',
+#                       'debug_toolbar.panels.profiling.ProfilingPanel'},  # Disable noisy panels
+#     'RESULTS_CACHE_SIZE': 5,  # Reduce cache size to minimize overhead
+#     'RENDER_PANELS': False,  # Only render panels when requested (reduces initial load)
+#     'SHOW_TEMPLATE_CONTEXT': False,  # Don't show template context by default
+#     'ENABLE_STACKTRACES': False,  # Disable stack traces for SQL queries
+#     'SQL_WARNING_THRESHOLD': 500,  # Only warn for slow queries
+#     'SHOW_COLLAPSED': True,  # Start with toolbar collapsed
+#     # Minimize JavaScript console output
+#     'JAVASCRIPT_CONSOLE_OUTPUT_DISABLED': True,
+# }
 
 # Security settings
 X_FRAME_OPTIONS = 'SAMEORIGIN'  # Allow same origin framing (for maps, etc.)

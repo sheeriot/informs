@@ -8,6 +8,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Field, Submit, Row, Column, Div, Hidden
 
 from ..models import FieldOp, AidRequest, AidRequestLog
+from ..context_processors import get_field_op_for_form
 
 # from icecream import ic
 
@@ -54,8 +55,10 @@ class AidRequestCreateForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.form_method = 'post'
 
-        field_op = get_object_or_404(FieldOp, id=kwargs['initial']['field_op'])
-        self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in field_op.aid_types.all()]
+        # Get field_op using our utility function
+        self.field_op, self.fieldop_slug = get_field_op_for_form(kwargs['initial'])
+
+        self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in self.field_op.aid_types.all()]
 
         self.fields['contact_methods'].widget.attrs['rows'] = 4
         self.fields['medical_needs'].widget.attrs['rows'] = 4
@@ -64,7 +67,7 @@ class AidRequestCreateForm(forms.ModelForm):
         self.fields['additional_info'].widget.attrs['rows'] = 4
 
         self.helper.layout = Layout(
-            Hidden('field_op', kwargs['initial']['field_op']),
+            Hidden('field_op', self.field_op.id),
             Fieldset(
                 'Requestor Details',
                 Row(
@@ -132,6 +135,19 @@ class AidRequestCreateForm(forms.ModelForm):
             Submit('submit', 'Create Aid Request', css_class='btn btn-primary')
         )
 
+    def clean(self):
+        cleaned_data = super().clean()
+        # Validate field_op if fieldop_slug was provided
+        if hasattr(self, 'fieldop_slug') and self.fieldop_slug:
+            field_op_from_form = cleaned_data.get('field_op')
+            try:
+                expected_field_op = FieldOp.objects.get(slug=self.fieldop_slug)
+                if field_op_from_form and field_op_from_form != expected_field_op:
+                    self.add_error('field_op', "Field operation does not match the URL parameter")
+            except FieldOp.DoesNotExist:
+                self.add_error('field_op', "Invalid field operation specified in URL")
+        return cleaned_data
+
 
 class AidRequestUpdateForm(forms.ModelForm):
     """ Aid Request Form """
@@ -177,14 +193,23 @@ class AidRequestUpdateForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         button_text = 'Update'
-        field_op = kwargs['instance'].field_op
-        # ic(field_op)
-        self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in field_op.aid_types.all()]
+
+        # Get the field_op from the instance
+        self.field_op = kwargs['instance'].field_op
+
+        # Store fieldop_slug from initial data if provided
+        self.fieldop_slug = kwargs.get('initial', {}).get('fieldop_slug')
+
+        # Set up aid type choices
+        self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in self.field_op.aid_types.all()]
+
+        # Configure textarea row sizes
         self.fields['contact_methods'].widget.attrs['rows'] = 4
         self.fields['medical_needs'].widget.attrs['rows'] = 4
         self.fields['supplies_needed'].widget.attrs['rows'] = 4
         self.fields['welfare_check_info'].widget.attrs['rows'] = 4
         self.fields['additional_info'].widget.attrs['rows'] = 4
+
         self.helper.layout = Layout(
             Fieldset(
                 'Ticket Status',
@@ -261,6 +286,18 @@ class AidRequestUpdateForm(forms.ModelForm):
             Submit('submit', button_text, css_class='btn btn-primary')
         )
 
+    def clean(self):
+        cleaned_data = super().clean()
+        # Validate that the aid request belongs to the field_op in the URL
+        if hasattr(self, 'fieldop_slug') and self.fieldop_slug:
+            try:
+                expected_field_op = FieldOp.objects.get(slug=self.fieldop_slug)
+                if self.instance.field_op != expected_field_op:
+                    self.add_error(None, "The aid request does not belong to the specified field operation")
+            except FieldOp.DoesNotExist:
+                self.add_error(None, "Invalid field operation specified in URL")
+        return cleaned_data
+
 
 class AidRequestLogForm(forms.ModelForm):
     """ Activity Log Form """
@@ -275,10 +312,16 @@ class AidRequestLogForm(forms.ModelForm):
         initial = kwargs['initial']
         self.helper = FormHelper()
         self.helper.form_method = 'post'
+
+        # Get fieldop_slug in a consistent way - use what's provided
+        fieldop_slug = initial.get('fieldop_slug')
+        if not fieldop_slug:
+            fieldop_slug = initial.get('field_op')
+
         self.helper.form_action = reverse(
             'aid_request_addlog',
             kwargs={
-                'field_op': initial['field_op'],
+                'field_op': fieldop_slug,
                 'pk': initial['aid_request']
                 }
             )
