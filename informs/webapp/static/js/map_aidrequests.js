@@ -257,6 +257,166 @@ function initializeMap(config) {
             });
 
             map.layers.add(foLayer);
+
+            // Mark an Aid Ring
+            const dataSourceC = new atlas.source.DataSource()
+            map.sources.add(dataSourceC)
+            //Create a circle
+            dataSourceC.add(new atlas.data.Feature(
+                new atlas.data.Point([parseFloat(config.centerLon), parseFloat(config.centerLat)]),
+                {
+                    subType: "Circle",
+                    radius: config.ringSize * 1000
+                }
+            ))
+            // console.log("Ring in KM", ring_size)
+            const ringLayer = new atlas.layer.PolygonLayer(dataSourceC, config.ringSize + 'km Aid Ring', {
+                fillColor: 'rgba(255, 0, 0, 0.1)',
+                strokeColor: 'red',
+                strokeWidth: 2
+            })
+            map.layers.add(ringLayer)
+
+            // Add aid request locations
+            const dataSource2 = new atlas.source.DataSource(undefined, {
+                cluster: false
+            });
+            map.sources.add(dataSource2);
+
+            // Create points from pre-parsed aid locations
+            const points = mapConfig.aidLocations
+                .filter(location => location.latitude && location.longitude)
+                .map(location => {
+                    const position = new atlas.data.Position(
+                        parseFloat(location.longitude),
+                        parseFloat(location.latitude)
+                    );
+                    return new atlas.data.Feature(new atlas.data.Point(position), location);
+                });
+
+            dataSource2.add(points);
+
+            // Get aid type configuration
+            const aidTypesElement = document.getElementById('aid-types-json');
+            let aidTypesConfig = {};
+            if (aidTypesElement) {
+                try {
+                    const aidTypesArray = JSON.parse(aidTypesElement.textContent);
+                    // Convert array to object with slug as key
+                    aidTypesConfig = aidTypesArray.reduce((acc, type) => {
+                        acc[type.slug] = type;
+                        return acc;
+                    }, {});
+
+                    if (mapConfig.debug) {
+                        console.log('Aid Types Configuration loaded:', aidTypesConfig);
+                        console.log('Number of aid types:', Object.keys(aidTypesConfig).length);
+                    }
+                } catch (error) {
+                    console.error('Error parsing aid types configuration:', error);
+                    console.log('Raw content:', aidTypesElement.textContent);
+                }
+            } else {
+                console.warn('Aid types element not found in DOM');
+            }
+
+            // Create custom icon templates for each aid type
+            console.log('Creating icon templates...');
+            const iconPromises = Object.entries(aidTypesConfig).map(([slug, config]) => {
+                console.log(`Creating template for ${slug}:`, config);
+                return map.imageSprite.createFromTemplate(
+                    slug,  // Use the slug as the icon ID
+                    config.icon_name,
+                    config.icon_color,
+                    '#fff'  // White outline
+                ).catch(error => {
+                    console.error(`Error creating template for ${slug}:`, error);
+                    return null;
+                });
+            });
+
+            // Wait for all icons to be created before adding the layers
+            console.log('Waiting for icon templates to be created...');
+            Promise.all(iconPromises).then(function(results) {
+                console.log('Icon templates created:', results);
+
+                // Create a data source for each aid type
+                const aidTypeSources = {};
+                Object.keys(aidTypesConfig).forEach(slug => {
+                    aidTypeSources[slug] = new atlas.source.DataSource(undefined, {
+                        cluster: false
+                    });
+                    map.sources.add(aidTypeSources[slug]);
+                });
+
+                // Distribute points to their respective data sources
+                points.forEach(point => {
+                    const aidType = point.properties.aid_type;
+                    if (aidTypeSources[aidType]) {
+                        aidTypeSources[aidType].add(point);
+                    } else {
+                        console.warn(`Unknown aid type: ${aidType}`);
+                    }
+                });
+
+                // Create a layer for each aid type
+                Object.entries(aidTypesConfig).forEach(([slug, config]) => {
+                    console.log(`Creating layer for aid type: ${slug}`);
+                    const layer = new atlas.layer.SymbolLayer(aidTypeSources[slug], config.name, {
+                        iconOptions: {
+                            ignorePlacement: false,
+                            allowOverlap: true,
+                            anchor: "bottom",
+                            image: slug,
+                            size: config.icon_scale
+                        },
+                        textOptions: {
+                            textField: ['get', 'pk'],
+                            offset: [0, 0.5],
+                            allowOverlap: true,
+                            ignorePlacement: false,
+                            font: ['StandardFont-Bold'],
+                            size: 12,
+                            color: 'black',
+                            haloColor: 'white',
+                            haloWidth: 2
+                        }
+                    });
+
+                    map.layers.add(layer);
+                    console.log(`Added layer for ${slug}`);
+
+                    // Add mouse events for this layer
+                    const popup = new atlas.Popup({
+                        pixelOffset: [0, -20]
+                    });
+
+                    map.events.add('mouseover', layer, (e) => {
+                        if (e.shapes && e.shapes[0].properties) {
+                            const prop = e.shapes[0].properties;
+                            const content = `
+                                <div style="padding: 10px;">
+                                    <strong>Status:</strong> ${prop.status}<br>
+                                    <strong>Priority:</strong> ${prop.priority}<br>
+                                    <strong>Type:</strong> ${config.name}
+                                </div>`;
+                            popup.setOptions({
+                                content: content,
+                                position: e.position
+                            });
+                            popup.open(map);
+                        }
+                    });
+
+                    map.events.add('mouseout', layer, () => {
+                        popup.close();
+                    });
+                });
+
+                // Log layer information
+                const layers = map.layers.getLayers();
+                console.log('Current map layers:', layers);
+            });
         });
 
     } catch (error) {

@@ -92,8 +92,14 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
 
         # Get all aid types for client-side filtering
         aid_types = self.field_op.aid_types.all().distinct()
-        aid_types_data = [{'id': aid_type.id, 'name': aid_type.name, 'slug': aid_type.slug}
-                         for aid_type in aid_types]
+        aid_types_data = [{
+            'id': aid_type.id,
+            'name': aid_type.name,
+            'slug': aid_type.slug,
+            'icon_name': aid_type.icon_name,
+            'icon_color': aid_type.icon_color,
+            'icon_scale': float(aid_type.icon_scale)  # Convert Decimal to float for JSON
+        } for aid_type in aid_types]
         context['aid_types_json'] = json.dumps(aid_types_data, cls=DecimalEncoder)
         context['aid_types_list'] = aid_types_data  # Add non-JSON version for server-side rendering
 
