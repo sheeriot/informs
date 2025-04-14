@@ -22,7 +22,6 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Starting map initialization...');
     }
 
-    // Get map container and its data attributes
     const mapContainer = document.getElementById('aid-request-map');
     if (!mapContainer) {
         console.error('Map container not found');
@@ -30,8 +29,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Get configuration from data attributes
-    const config = transformDataset(mapContainer.dataset);
-    if (!config.azureMapsKey) {
+    const config = {
+        key: mapContainer.dataset.azureMapsKey,
+        center: [
+            parseFloat(mapContainer.dataset.centerLon),
+            parseFloat(mapContainer.dataset.centerLat)
+        ],
+        zoom: parseInt(mapContainer.dataset.mapZoom),
+        ringSize: parseInt(mapContainer.dataset.ringSize),
+        fieldOpName: mapContainer.dataset.fieldOpName,
+        fieldOpSlug: mapContainer.dataset.fieldOpSlug
+    };
+
+    if (!config.key) {
         console.error('Azure Maps key not found in data attributes');
         return;
     }
@@ -70,14 +80,8 @@ document.addEventListener('DOMContentLoaded', function() {
         mapConfig.aidLocations = [];
     }
 
-    // Set up load map button click handler
-    const loadButton = document.getElementById('load-map-button');
-    if (loadButton) {
-        loadButton.onclick = function() {
-            this.style.display = 'none';
-            initializeMap(mapConfig.config);
-        };
-    }
+    // Initialize map immediately
+    initializeMap(config);
 });
 
 // Functions in order of execution
@@ -154,28 +158,41 @@ function initializeConfig() {
 // Initialize the map with minimum configuration
 function initializeMap(config) {
     try {
+        // Validate and parse configuration values
+        const centerLon = parseFloat(config.center[0]);
+        const centerLat = parseFloat(config.center[1]);
+        const zoomLevel = parseInt(config.zoom);
+
+        if (isNaN(centerLon) || isNaN(centerLat) || isNaN(zoomLevel)) {
+            console.error('Invalid map configuration:', {
+                centerLon,
+                centerLat,
+                zoomLevel,
+                rawConfig: config
+            });
+            return;
+        }
+
         if (mapConfig.debug) {
-            console.log('Map Initialization', 'font-weight: bold; color: #2196F3;');
-            console.table({
-                'Container ID': 'aid-request-map',
-                'Center': [parseFloat(config.centerLon), parseFloat(config.centerLat)],
-                'Zoom': config.mapZoom,
-                'Field Op': config.fieldOpName,
-                'Locations': mapConfig.aidLocations.length
+            console.log('Map Initialization with parsed values:', {
+                centerLon,
+                centerLat,
+                zoomLevel,
+                locations: mapConfig.aidLocations.length
             });
         }
 
-        // Initialize a map instance
+        // Initialize map with validated values
         map = new atlas.Map('aid-request-map', {
-            center: [parseFloat(config.centerLon), parseFloat(config.centerLat)],
-            zoom: parseInt(config.mapZoom),
+            center: [centerLon, centerLat],
+            zoom: zoomLevel,
             style: 'road',
             view: 'Auto',
             showFeedbackLink: false,
             showLogo: false,
             authOptions: {
                 authType: 'subscriptionKey',
-                subscriptionKey: config.azureMapsKey
+                subscriptionKey: config.key
             }
         });
 
