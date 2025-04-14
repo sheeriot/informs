@@ -226,11 +226,11 @@ SESSION_COOKIE_SECURE = False if DEBUG else True  # Set to False for HTTP in dev
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 500
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB max upload size
 
-BOOTSTRAP5 = {
-    "css_url": {
-        "href": "{% static 'css/custom-bootstrap.css' %}",  # your custom CSS file
-    },
-}
+# BOOTSTRAP5 = {
+#     "css_url": {
+#         "href": "{% static 'css/custom-bootstrap.css' %}",  # your custom CSS file
+#     },
+# }
 
 # Authentication settings
 LOGIN_REDIRECT_URL = '/'

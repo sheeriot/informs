@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+- Always use bootstrap5 for web styling. 
+- Only use [custom.css](mdc:informs/webapp/static/css/custom.css) as a last resort if bootstrap5 does not meet our needs

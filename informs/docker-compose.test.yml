@@ -1,0 +1,39 @@
+version: '3'
+
+services:
+  test-informs:
+    build:
+      context: ./informs
+    image: informs-app
+    env_file:
+      - informs/env/django.env
+    entrypoint: /opt/app/docker-entrypoint.sh
+    command: bash -c "cd /opt/app && chmod +x /opt/app/run_tests.sh && /opt/app/run_tests.sh"
+    volumes:
+      - ./run_tests.sh:/opt/app/run_tests.sh
+      - informs_test_staticfiles:/opt/app/static_files
+      - informs_test_db:/opt/app/db
+      - test_certs:/opt/app/certs:z
+
+  test-coverage:
+    build:
+      context: ./informs
+    image: informs-app
+    env_file:
+      - informs/env/django.env
+    entrypoint: /opt/app/docker-entrypoint.sh
+    command: bash -c "cd /opt/app/webapp && pip install coverage && coverage run --source='.' manage.py test --settings=informs.settings && coverage report -m"
+    volumes:
+      - informs_test_staticfiles:/opt/app/static_files
+      - informs_test_db:/opt/app/db
+      - test_certs:/opt/app/certs:z
+      - ./reports:/opt/app/reports
+
+volumes:
+  informs_test_staticfiles:
+  informs_test_db:
+  test_certs:
+
+networks:
+  default:
+    name: test_webhost

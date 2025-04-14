@@ -153,6 +153,8 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
                 aid_location = {
                     'pk': aid_request.pk,
                     'aid_type': aid_request.aid_type.slug,
+                    'status': aid_request.status,
+                    'priority': aid_request.priority,
                     'latitude': float(aid_request.location.latitude),
                     'longitude': float(aid_request.location.longitude),
                     'address': (
@@ -194,7 +196,7 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
 
         # Use the custom JSON encoder to handle Decimal objects
         context['aid_requests_json'] = json.dumps(aid_requests_data, cls=DecimalEncoder)
-        context['aid_locations'] = aid_locations
+        context['aid_locations'] = json.dumps(aid_locations, cls=DecimalEncoder)
 
         ic(f"Sending {len(aid_requests_data)} unique aid requests to the client")
         ic(f"Sending {len(aid_locations)} aid locations to the map")
@@ -234,6 +236,13 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
         ic(f"Status counts (from unique records): {status_counts}")
         ic(f"Priority counts (from unique records): {priority_counts}")
         ic(f"Aid type counts (from unique records): {aid_type_counts}")
+
+        # Define status groups for filter buttons
+        status_groups = {
+            'active': ['new', 'assigned', 'resolved'],
+            'inactive': ['closed', 'rejected', 'other']
+        }
+        context['status_groups'] = status_groups
 
         aid_types = self.field_op.aid_types
 

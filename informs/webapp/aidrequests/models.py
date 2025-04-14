@@ -137,6 +137,10 @@ class AidRequest(TimeStampedModel):
     requestor_first_name = models.CharField(max_length=20)
     requestor_last_name = models.CharField(max_length=30)
 
+    @property
+    def requester_name(self):
+        return f"{self.requestor_first_name} {self.requestor_last_name}".strip()
+
     requestor_email = models.EmailField(blank=True)
     requestor_phone = models.CharField(blank=True, max_length=12)  # Format: 555-555-5555
 
