@@ -268,43 +268,30 @@ class AidRequest(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
-        if not is_new:
-            # Get the old instance to compare changes
-            old_instance = AidRequest.objects.get(pk=self.pk)
-            status_changed = old_instance.status != self.status
-            priority_changed = old_instance.priority != self.priority
 
         # Call the "real" save() method
         super().save(*args, **kwargs)
 
-        # Send COT if:
-        # 1. New instance with active status
-        # 2. Status changed AND new status is active
-        # 3. Priority changed AND current status is active
-        if (
-            (is_new and self.status in self.ACTIVE_STATUSES) or
-            (not is_new and status_changed and self.status in self.ACTIVE_STATUSES) or
-            (not is_new and priority_changed and self.status in self.ACTIVE_STATUSES)
-        ):
-            from django_q.tasks import async_task
-            from .tasks import aidrequest_takcot
-            updated_at_stamp = self.updated_at.strftime('%Y%m%d%H%M%S')
-            task_name = f"AidRequest{self.pk}-{'New' if is_new else 'StatusChange'}-SendCot-{updated_at_stamp}"
+        # Always send COT on save
+        from django_q.tasks import async_task
+        from .tasks import aidrequest_takcot
+        updated_at_stamp = self.updated_at.strftime('%Y%m%d%H%M%S')
+        task_name = f"AidRequest{self.pk}-{'New' if is_new else 'Update'}-SendCot-{updated_at_stamp}"
 
-            # Separate task arguments from Django-Q options
-            task_args = {
-                'aidrequest_id': self.pk,
-                'message_type': 'update'
-            }
-            q_options = {
-                'task_name': task_name
-            }
+        # Separate task arguments from Django-Q options
+        task_args = {
+            'aidrequest_id': self.pk,
+            'message_type': 'update'
+        }
+        q_options = {
+            'task_name': task_name
+        }
 
-            async_task(
-                aidrequest_takcot,
-                **task_args,
-                q_options=q_options
-            )
+        async_task(
+            aidrequest_takcot,
+            **task_args,
+            q_options=q_options
+        )
 
 
 class AidLocation(TimeStampedModel):
@@ -359,7 +346,7 @@ class AidLocation(TimeStampedModel):
         # Call the "real" save() method
         super().save(*args, **kwargs)
 
-        # Send COT for both new and updated locations
+        # Always send COT on save
         from django_q.tasks import async_task
         from .tasks import aidrequest_takcot
         updated_at_stamp = self.updated_at.strftime('%Y%m%d%H%M%S')
