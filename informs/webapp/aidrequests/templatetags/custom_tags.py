@@ -28,3 +28,48 @@ def upto(value, delimiter=None):
 
 
 upto.is_safe = True
+
+
+@register.filter
+def get_item(dictionary, key):
+    """
+    Get item from dictionary by key
+    Usage: {{ mydict|get_item:key_variable }}
+    """
+    if key is None:
+        return None
+    return dictionary.get(key, None)
+
+
+@register.filter
+@stringfilter
+def status_bootstrap_color(status):
+    """
+    Convert status values to Bootstrap color classes
+    Usage: {{ status_value|status_bootstrap_color }}
+    """
+    status_colors = {
+        'new': 'warning',
+        'assigned': 'primary',
+        'resolved': 'info',
+        'closed': 'success',
+        'rejected': 'danger',
+        'other': 'secondary'
+    }
+    return status_colors.get(status.lower(), 'secondary')
+
+
+@register.filter
+@stringfilter
+def priority_bootstrap_color(priority):
+    """
+    Convert priority values to Bootstrap color classes
+    Usage: {{ priority_value|priority_bootstrap_color }}
+    """
+    priority_colors = {
+        'high': 'danger',
+        'medium': 'warning',
+        'low': 'info',
+        'none': 'secondary'
+    }
+    return priority_colors.get(priority.lower(), 'secondary')

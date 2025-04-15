@@ -25,6 +25,18 @@ MIT License
 (function (exports, azmaps) {
     'use strict';
 
+    // Configuration options for logging - you can set to false in production
+    const legendConfig = {
+        debug: false
+    };
+
+    // Only log errors in production, use debug flag for verbose logging
+    function legendLog(message, isError) {
+        if (isError || legendConfig.debug) {
+            console.log(message);
+        }
+    }
+
     var azmaps__default = 'default' in azmaps ? azmaps['default'] : azmaps;
 
     /*! *****************************************************************************
@@ -1105,14 +1117,11 @@ MIT License
          * @returns Image source string, or null.
          */
         DynamicLegend._getImage = function (map, imgName) {
-            // console.log('map.imageSprite:', map.imageSprite)
-            // console.log('imgName:', imgName)
             if (map && imgName !== 'none') {
                 //Check user defined images.
                 if (map.imageSprite.hasImage(imgName)) {
-                    // console.log('Image Found:', map.imageSprite.userImages.get(imgName).image.src)
                     //@ts-ignore
-                    return map.imageSprite.userImages.get(imgName).image.src
+                    return map.imageSprite.userImages.get(imgName).src;
                 }
                 //Try built in images.
                 var template = void 0;
