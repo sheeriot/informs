@@ -17,48 +17,48 @@
             <div class="card" id="aid-request-filter-card">
                 <div class="card-header bg-secondary text-white py-1">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">Filter Aid Requests</h6>
+                        <h6 class="mb-0 small">Filter Aid Requests</h6>
                         <div>
-                            <button class="btn btn-sm btn-outline-light me-2" id="reset-all-filters">
-                                <i class="bi bi-arrow-counterclockwise"></i> Reset Filters
+                            <button class="btn btn-sm btn-outline-light py-0 me-2" id="reset-all-filters">
+                                <i class="bi bi-arrow-counterclockwise"></i> Reset
                             </button>
-                            <span id="results-counter" class="badge bg-light text-dark rounded-pill px-2 py-1">
+                            <span id="results-counter" class="badge bg-light text-dark rounded-pill px-2 py-0">
                                 {{ filtered_aid_requests|length }} results
                             </span>
                         </div>
                     </div>
                 </div>
-                <div class="card-body p-1">
+                <div class="card-body p-0">
                     <!-- Filter Buttons -->
                     <div class="p-1 bg-light rounded" id="aid-filter-buttons-container">
                         <!-- Row 1: Aid Types -->
-                        <div class="row mb-1">
+                        <div class="row mb-0">
                             <div class="col-12">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <h6 class="small fw-bold text-secondary mb-0">Aid Types:</h6>
+                                    <h6 class="small fw-bold text-secondary mb-0 ms-1">Aid Types:</h6>
                                 </div>
                                 <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-1" id="aid-type-filter-buttons">
                                     <div class="col">
-                                        <div class="form-check">
-                                            <input class="form-check-input form-check-input-lg filter-checkbox" type="checkbox"
+                                        <div class="form-check my-0 py-0">
+                                            <input class="form-check-input form-check-input-sm filter-checkbox" type="checkbox"
                                                    id="aid-type-filter-all"
                                                    data-filter-type="aid_type"
                                                    data-filter-value="all"
                                                    checked>
-                                            <label class="form-check-label fw-bold" for="aid-type-filter-all">
+                                            <label class="form-check-label small fw-bold" for="aid-type-filter-all">
                                                 All ({{ filtered_aid_requests|length }})
                                             </label>
                                         </div>
                                     </div>
                                     {% for aid_type, data in aid_type_counts.items %}
                                     <div class="col">
-                                        <div class="form-check">
-                                            <input class="form-check-input form-check-input-lg filter-checkbox" type="checkbox"
+                                        <div class="form-check my-0 py-0">
+                                            <input class="form-check-input form-check-input-sm filter-checkbox" type="checkbox"
                                                    id="aid-type-filter-{{ data.value }}"
                                                    data-filter-type="aid_type"
                                                    data-filter-value="{{ data.value }}"
                                                    checked>
-                                            <label class="form-check-label" for="aid-type-filter-{{ data.value }}">
+                                            <label class="form-check-label small" for="aid-type-filter-{{ data.value }}">
                                                 {{ aid_type }} <span id="aid-type-{{ data.value }}-count">({{ data.count }})</span>
                                             </label>
                                         </div>
@@ -69,25 +69,25 @@
                         </div>
 
                         <!-- Status Groups Container -->
-                        <div class="row mb-1">
+                        <div class="row mb-0 mt-1">
                             <div class="col-12">
                                 <div class="card">
-                                    <div class="card-header bg-light py-1">
+                                    <div class="card-header bg-light py-0">
                                         <div class="d-flex justify-content-between align-items-center">
-                                            <h6 class="mb-0">Status</h6>
+                                            <h6 class="small mb-0">Status</h6>
                                         </div>
                                     </div>
                                     <div class="card-body p-1">
                                         <!-- Active Status Group -->
-                                        <div class="mb-2">
+                                        <div class="mb-1">
                                             <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-1" id="active-status-filter-buttons">
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input form-check-input-lg filter-checkbox filter-active" type="checkbox"
+                                                    <div class="form-check my-0 py-0">
+                                                        <input class="form-check-input form-check-input-sm filter-checkbox filter-active" type="checkbox"
                                                                id="status-group-filter-active"
                                                                data-filter-type="status_group"
                                                                data-filter-value="active" checked>
-                                                        <label class="form-check-label fw-bold" for="status-group-filter-active">
+                                                        <label class="form-check-label small fw-bold" for="status-group-filter-active">
                                                             Active <span id="status-group-filter-active-total">({% with active_count=0 %}
                                                                 {% for status_code, status_name in status_choices_list %}
                                                                     {% if status_code in status_groups.active %}
@@ -99,21 +99,34 @@
                                                                     {% endif %}
                                                                 {% endfor %}
                                                                 {{ active_count }}
-                                                            {% endwith %})
+                                                            {% endwith %})</span>
                                                         </label>
                                                     </div>
                                                 </div>
                                                 {% for status_code, status_name in status_choices_list %}
                                                     {% if status_code in status_groups.active %}
                                                     <div class="col">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input form-check-input-lg filter-checkbox" type="checkbox"
+                                                        <div class="form-check my-0 py-0">
+                                                            <input class="form-check-input form-check-input-sm filter-checkbox" type="checkbox"
                                                                    id="status-filter-{{ status_code }}"
                                                                    data-filter-type="status"
                                                                    data-filter-value="{{ status_code }}"
                                                                    data-group="active"
                                                                    checked>
-                                                            <label class="form-check-label" for="status-filter-{{ status_code }}">
+                                                            <label class="form-check-label small" for="status-filter-{{ status_code }}">
+                                                                {% if status_code == 'new' %}
+                                                                <i class="bi bi-download text-warning"></i>
+                                                                {% elif status_code == 'assigned' %}
+                                                                <i class="bi bi-clock text-orange"></i>
+                                                                {% elif status_code == 'resolved' %}
+                                                                <i class="bi bi-hand-thumbs-up text-success"></i>
+                                                                {% elif status_code == 'closed' %}
+                                                                <i class="bi bi-door-closed text-primary"></i>
+                                                                {% elif status_code == 'rejected' %}
+                                                                <i class="bi bi-hand-thumbs-down text-danger"></i>
+                                                                {% else %}
+                                                                <i class="bi bi-question-lg text-secondary"></i>
+                                                                {% endif %}
                                                                 {{ status_name }} <span id="status-filter-{{ status_code }}-count">({% if status_counts and status_name in status_counts %}{{ status_counts|get_item:status_name|get_item:"count"|default:0 }}{% else %}0{% endif %})</span>
                                                             </label>
                                                         </div>
@@ -123,18 +136,18 @@
                                             </div>
                                         </div>
 
-                                        <hr class="my-3">
+                                        <hr class="my-1">
 
                                         <!-- Inactive Status Group -->
                                         <div>
                                             <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-1" id="inactive-status-filter-buttons">
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input form-check-input-lg filter-checkbox filter-inactive" type="checkbox"
+                                                    <div class="form-check my-0 py-0">
+                                                        <input class="form-check-input form-check-input-sm filter-checkbox filter-inactive" type="checkbox"
                                                                id="status-group-filter-inactive"
                                                                data-filter-type="status_group"
                                                                data-filter-value="inactive">
-                                                        <label class="form-check-label fw-bold" for="status-group-filter-inactive">
+                                                        <label class="form-check-label small fw-bold" for="status-group-filter-inactive">
                                                             Inactive <span id="status-group-filter-inactive-total">({% with inactive_count=0 %}
                                                                 {% for status_code, status_name in status_choices_list %}
                                                                     {% if status_code in status_groups.inactive %}
@@ -146,20 +159,27 @@
                                                                     {% endif %}
                                                                 {% endfor %}
                                                                 {{ inactive_count }}
-                                                            {% endwith %})
+                                                            {% endwith %})</span>
                                                         </label>
                                                     </div>
                                                 </div>
                                                 {% for status_code, status_name in status_choices_list %}
                                                     {% if status_code in status_groups.inactive %}
                                                     <div class="col">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input form-check-input-lg filter-checkbox" type="checkbox"
+                                                        <div class="form-check my-0 py-0">
+                                                            <input class="form-check-input form-check-input-sm filter-checkbox" type="checkbox"
                                                                    id="status-filter-{{ status_code }}"
                                                                    data-filter-type="status"
                                                                    data-filter-value="{{ status_code }}"
                                                                    data-group="inactive">
-                                                            <label class="form-check-label" for="status-filter-{{ status_code }}">
+                                                            <label class="form-check-label small" for="status-filter-{{ status_code }}">
+                                                                {% if status_code == 'closed' %}
+                                                                <i class="bi bi-door-closed text-primary"></i>
+                                                                {% elif status_code == 'rejected' %}
+                                                                <i class="bi bi-hand-thumbs-down text-danger"></i>
+                                                                {% else %}
+                                                                <i class="bi bi-question-lg text-secondary"></i>
+                                                                {% endif %}
                                                                 {{ status_name }} <span id="status-filter-{{ status_code }}-count">({% if status_counts and status_name in status_counts %}{{ status_counts|get_item:status_name|get_item:"count"|default:0 }}{% else %}0{% endif %})</span>
                                                             </label>
                                                         </div>
@@ -174,33 +194,33 @@
                         </div>
 
                         <!-- Row 4: Priorities -->
-                        <div class="row mb-1">
+                        <div class="row mb-0 mt-1">
                             <div class="col-12">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <h6 class="small fw-bold text-secondary mb-0">Priority:</h6>
+                                    <h6 class="small fw-bold text-secondary mb-0 ms-1">Priority:</h6>
                                 </div>
                                 <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-1" id="priority-filter-buttons">
                                     <div class="col">
-                                        <div class="form-check">
-                                            <input class="form-check-input form-check-input-lg filter-checkbox" type="checkbox"
+                                        <div class="form-check my-0 py-0">
+                                            <input class="form-check-input form-check-input-sm filter-checkbox" type="checkbox"
                                                    id="priority-filter-all"
                                                    data-filter-type="priority"
                                                    data-filter-value="all"
                                                    checked>
-                                            <label class="form-check-label fw-bold" for="priority-filter-all">
+                                            <label class="form-check-label small fw-bold" for="priority-filter-all">
                                                 All ({{ filtered_aid_requests|length }})
                                             </label>
                                         </div>
                                     </div>
                                     {% for priority_code, priority_name in priority_choices_list %}
                                     <div class="col">
-                                        <div class="form-check">
-                                            <input class="form-check-input form-check-input-lg filter-checkbox" type="checkbox"
+                                        <div class="form-check my-0 py-0">
+                                            <input class="form-check-input form-check-input-sm filter-checkbox" type="checkbox"
                                                    id="priority-filter-{{ priority_code }}"
                                                    data-filter-type="priority"
                                                    data-filter-value="{{ priority_code }}"
                                                    checked>
-                                            <label class="form-check-label" for="priority-filter-{{ priority_code }}">
+                                            <label class="form-check-label small" for="priority-filter-{{ priority_code }}">
                                                 {{ priority_name }} <span id="priority-{{ priority_code }}-count">({% if priority_counts|get_item:priority_name %}{{ priority_counts|get_item:priority_name|get_item:"count" }}{% else %}0{% endif %})</span>
                                             </label>
                                         </div>
@@ -245,14 +265,32 @@
                         data-priority="{{ aid_request.priority }}">
                         <td class="py-1">{{ aid_request.id }}</td>
                         <td class="py-1">{{ aid_request.requester_name|default:"Unknown" }}</td>
+                        <td class="py-1">{{ aid_request.aid_type.name|default:"Unknown" }}</td>
                         <td class="py-1">
-                            <span class="badge bg-primary text-white aid-type-badge">{{ aid_request.aid_type.name|default:"Unknown" }}</span>
-                        </td>
-                        <td class="py-1">
-                            {% if aid_request.status in status_groups.active %}
-                                <span class="badge bg-info text-white status-badge status-active">{{ aid_request.get_status_display }}</span>
+                            {% if aid_request.status == 'new' %}
+                            <span class="status-text status-new">
+                                <i class="bi bi-download"></i> {{ aid_request.get_status_display }}
+                            </span>
+                            {% elif aid_request.status == 'assigned' %}
+                            <span class="status-text status-assigned">
+                                <i class="bi bi-clock"></i> {{ aid_request.get_status_display }}
+                            </span>
+                            {% elif aid_request.status == 'resolved' %}
+                            <span class="status-text status-resolved">
+                                <i class="bi bi-hand-thumbs-up"></i> {{ aid_request.get_status_display }}
+                            </span>
+                            {% elif aid_request.status == 'closed' %}
+                            <span class="status-text status-closed">
+                                <i class="bi bi-door-closed"></i> {{ aid_request.get_status_display }}
+                            </span>
+                            {% elif aid_request.status == 'rejected' %}
+                            <span class="status-text status-rejected">
+                                <i class="bi bi-hand-thumbs-down"></i> {{ aid_request.get_status_display }}
+                            </span>
                             {% else %}
-                                <span class="badge bg-secondary text-white status-badge status-inactive">{{ aid_request.get_status_display }}</span>
+                            <span class="status-text status-other">
+                                <i class="bi bi-question-lg"></i> {{ aid_request.get_status_display }}
+                            </span>
                             {% endif %}
                         </td>
                         <td class="py-1">
@@ -270,7 +308,12 @@
                             {{ aid_request.created_at|date:"M d, Y" }}
                             <small class="text-muted d-block">{{ aid_request.created_at|timesince }} ago</small>
                         </td>
-                        <td class="py-1">{{ aid_request.address|default:"No address" }}</td>
+                        <td class="py-1">
+                            {{ aid_request.street_address }},
+                            {{ aid_request.city }},
+                            {{ aid_request.state }}
+                            {% if aid_request.zip_code %}{{ aid_request.zip_code }}{% endif %}
+                        </td>
                         <td class="py-1">
                             {% if aid_request.updated_at %}
                                 {{ aid_request.updated_at|date:"M d, Y" }}

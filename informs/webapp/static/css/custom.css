@@ -189,3 +189,55 @@ div.aid-coords label {
 .form-check-input-lg:focus {
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.4);
 }
+
+/* Custom background color for status badges */
+.bg-orange {
+    background-color: #fd7e14 !important;
+}
+
+/* Status icon spacing */
+.status-badge i {
+    margin-right: 0.25rem;
+}
+
+/* Status text styling */
+.status-text {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-text i {
+    margin-right: 0.25rem;
+}
+
+/* Status colors */
+.status-new {
+    color: #ffc107; /* Bootstrap warning yellow */
+}
+
+.status-assigned {
+    color: #fd7e14; /* Bootstrap orange */
+}
+
+.status-resolved {
+    color: #198754; /* Bootstrap success green */
+}
+
+.status-closed {
+    color: #0d6efd; /* Bootstrap primary blue */
+}
+
+.status-rejected {
+    color: #dc3545; /* Bootstrap danger red */
+}
+
+.status-other {
+    color: #6c757d; /* Bootstrap secondary grey */
+}
+
+/* Status filter icons */
+.form-check-label i {
+    margin-right: 0.25rem;
+    width: 1rem;
+    text-align: center;
+}

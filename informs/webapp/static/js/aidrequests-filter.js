@@ -476,7 +476,11 @@ function updateMapFilterSummary() {
 
     // Add aid type filter summary
     if (!checkedAidTypes.includes('all') && checkedAidTypes.length > 0) {
-        parts.push(`aid_type=[${checkedAidTypes.join('|')}]`);
+        const aidTypeNames = checkedAidTypes.map(type => {
+            const countElement = document.querySelector(`label[for="aid-type-filter-${type}"]`);
+            return countElement ? countElement.textContent.split('(')[0].trim() : type;
+        });
+        parts.push(`type=[${aidTypeNames.join('|')}]`);
     }
 
     // Add priority filter summary
@@ -484,14 +488,16 @@ function updateMapFilterSummary() {
         parts.push(`priority=[${checkedPriorities.join('|')}]`);
     }
 
-    // Add matched count
-    parts.push(`matched=${statusFilterConfig.counts.matched}`);
+    // Add matched count from the statusFilterConfig
+    const totalMatched = statusFilterConfig.counts.matched;
+    const totalRequests = statusFilterConfig.counts.total;
+    parts.push(`showing ${totalMatched} of ${totalRequests}`);
 
     // Update the summary text
-    if (parts.length > 0) {
+    if (parts.length > 1) { // More than just the count
         summaryElement.textContent = parts.join(', ');
     } else {
-        summaryElement.textContent = 'No filters applied';
+        summaryElement.textContent = `showing all ${totalRequests} requests`;
     }
 
     if (statusFilterConfig.debug) {

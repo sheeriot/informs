@@ -411,6 +411,19 @@ function initializeMap(config) {
                     map.layers.add(layer);
                     console.log(`Added layer for ${slug} with ID: ${layer.getId()}`);
 
+                    // Set the layer display name in the Layer Control
+                    const layerControl = map.controls.getControls().find(control =>
+                        control instanceof atlas.control.LayerControl
+                    );
+                    if (layerControl) {
+                        layerControl.setOptions({
+                            layers: [{
+                                id: slug,
+                                title: config.name
+                            }]
+                        });
+                    }
+
                     // Add mouse events for this layer
                     const popup = new atlas.Popup({
                         pixelOffset: [0, -20]
@@ -590,6 +603,56 @@ function initializeMap(config) {
                     // Log summary tables
                     console.log('=== Filtering Summary ===');
                     console.table(filteringSummary);
+
+                    // Now update the map title filter summary with complete information
+                    const mapFilterSummary = document.getElementById('map-filter-summary');
+                    if (mapFilterSummary) {
+                        const summaryParts = [];
+                        console.log('Building map filter summary...');
+
+                        // Add aid type filter summary - only if not 'all'
+                        if (!filterState.aidTypes.includes('all') && filterState.aidTypes.length > 0) {
+                            const typesSummary = `type=[${filterState.aidTypes.join('|')}]`;
+                            console.log('Aid types summary:', typesSummary);
+                            summaryParts.push(typesSummary);
+                        }
+
+                        // Add status filter summary - only if not empty
+                        if (filterState.statuses.length > 0 && !filterState.statuses.includes('all')) {
+                            const statusSummary = `status=[${filterState.statuses.join('|')}]`;
+                            console.log('Status summary:', statusSummary);
+                            summaryParts.push(statusSummary);
+                        }
+
+                        // Add priority filter summary - only if not 'all'
+                        if (!filterState.priorities.includes('all') && filterState.priorities.length > 0) {
+                            const prioritySummary = `priority=[${filterState.priorities.join('|')}]`;
+                            console.log('Priority summary:', prioritySummary);
+                            summaryParts.push(prioritySummary);
+                        }
+
+                        // Calculate visible markers from filtering summary
+                        const totalVisible = filteringSummary.reduce((sum, summary) =>
+                            sum + (summary.layerVisible ? summary.visibleMarkers : 0), 0
+                        );
+
+                        // Calculate total markers across all sources
+                        const totalMarkers = Object.values(aidTypeSources).reduce((sum, source) => {
+                            const features = source.getShapes();
+                            return sum + (features ? features.length : 0);
+                        }, 0);
+
+                        console.log('Counts:', { totalVisible, totalMarkers });
+
+                        // Add count to summary parts
+                        const countSummary = `showing ${totalVisible} of ${totalMarkers}`;
+                        summaryParts.push(countSummary);
+
+                        // Update the summary text
+                        const finalSummary = summaryParts.join(', ');
+                        console.log('Setting map filter summary to:', finalSummary);
+                        mapFilterSummary.textContent = finalSummary;
+                    }
 
                     // Log active filters
                     console.log('=== Active Filters ===');
