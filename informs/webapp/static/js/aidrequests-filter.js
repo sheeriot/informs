@@ -12,6 +12,17 @@ window.statusFilterConfig = {
     statusGroups: {
         active: ['new', 'assigned', 'resolved'],
         inactive: ['closed', 'rejected', 'other']
+    },
+    // Store counts
+    counts: {
+        total: 0,
+        matched: 0,
+        groups: {
+            active: { total: 0, filtered: 0 },
+            inactive: { total: 0, filtered: 0 }
+        },
+        aidTypes: {},
+        priorities: {}
     }
 };
 
@@ -97,6 +108,10 @@ document.addEventListener('DOMContentLoaded', function() {
             triggerFilterChange();
         });
     }
+
+    // Calculate initial counts
+    calculateTotals();
+    updateCountsDisplay();
 });
 
 // Listen for filter change events
@@ -148,6 +163,10 @@ function triggerFilterChange() {
         console.log('Checked aid types:', checkedAidTypes);
         console.log('Checked priorities:', checkedPriorities);
     }
+
+    // Calculate and update counts
+    calculateTotals();
+    updateCountsDisplay();
 
     // Update row visibility based on current filter state
     updateRowVisibility({
@@ -251,4 +270,231 @@ function getSelectedPriorities() {
         console.log('Selected priorities:', priorities);
     }
     return priorities;
+}
+
+// Functions to handle counts
+function calculateTotals() {
+    if (statusFilterConfig.debug) {
+        console.log('Calculating totals...');
+    }
+
+    const filterCard = document.getElementById('aid-request-filter-card');
+    if (!filterCard) {
+        console.error('Filter card element not found');
+        return;
+    }
+
+    const tableBody = document.querySelector('#aid-request-list-body');
+    if (!tableBody) {
+        console.error('Table body not found');
+        return;
+    }
+
+    const rows = tableBody.getElementsByTagName('tr');
+
+    // Reset counts
+    statusFilterConfig.counts = {
+        total: 0,
+        matched: 0,
+        groups: {
+            active: { total: 0, filtered: 0 },
+            inactive: { total: 0, filtered: 0 }
+        },
+        aidTypes: {},
+        priorities: {}
+    };
+
+    // Get current filter state
+    const checkedStatuses = getSelectedStatuses();
+    const checkedAidTypes = getSelectedAidTypes();
+    const checkedPriorities = getSelectedPriorities();
+
+    // Count rows
+    Array.from(rows).forEach(row => {
+        const status = row.getAttribute('data-status');
+        const aidType = row.getAttribute('data-aid-type');
+        const priority = row.getAttribute('data-priority');
+
+        statusFilterConfig.counts.total++;
+
+        // Initialize counters if needed
+        if (aidType && !statusFilterConfig.counts.aidTypes[aidType]) {
+            statusFilterConfig.counts.aidTypes[aidType] = { total: 0, filtered: 0 };
+        }
+        if (priority && !statusFilterConfig.counts.priorities[priority]) {
+            statusFilterConfig.counts.priorities[priority] = { total: 0, filtered: 0 };
+        }
+
+        // Check if row matches current filters
+        const matchesStatus = !checkedStatuses.length || checkedStatuses.includes(status);
+        const matchesAidType = checkedAidTypes.includes('all') || !checkedAidTypes.length || checkedAidTypes.includes(aidType);
+        const matchesPriority = checkedPriorities.includes('all') || !checkedPriorities.length || checkedPriorities.includes(priority);
+
+        // Count by status group
+        if (status) {
+            const group = Object.entries(statusFilterConfig.statusGroups)
+                .find(([_, statuses]) => statuses.includes(status))?.[0];
+
+            if (group) {
+                statusFilterConfig.counts.groups[group].total++;
+
+                // Update filtered count if it matches other filters
+                if (matchesAidType && matchesPriority) {
+                    statusFilterConfig.counts.groups[group].filtered++;
+                }
+            }
+        }
+
+        // Count by aid type
+        if (aidType) {
+            statusFilterConfig.counts.aidTypes[aidType].total++;
+            // Update filtered count if it matches other filters
+            if (matchesStatus && matchesPriority) {
+                statusFilterConfig.counts.aidTypes[aidType].filtered++;
+            }
+        }
+
+        // Count by priority
+        if (priority) {
+            statusFilterConfig.counts.priorities[priority].total++;
+            // Update filtered count if it matches other filters
+            if (matchesStatus && matchesAidType) {
+                statusFilterConfig.counts.priorities[priority].filtered++;
+            }
+        }
+
+        // Update total matched count if row matches all filters
+        if (matchesStatus && matchesAidType && matchesPriority) {
+            statusFilterConfig.counts.matched++;
+        }
+    });
+
+    if (statusFilterConfig.debug) {
+        console.log('=== Count Summary ===');
+        console.table({
+            'Total Requests': statusFilterConfig.counts.total,
+            'Matched Requests': statusFilterConfig.counts.matched,
+            'Active Group Total': statusFilterConfig.counts.groups.active.total,
+            'Active Group Filtered': statusFilterConfig.counts.groups.active.filtered,
+            'Inactive Group Total': statusFilterConfig.counts.groups.inactive.total,
+            'Inactive Group Filtered': statusFilterConfig.counts.groups.inactive.filtered
+        });
+        console.log('Aid Types Counts:', statusFilterConfig.counts.aidTypes);
+        console.log('Priorities Counts:', statusFilterConfig.counts.priorities);
+    }
+}
+
+function updateCountsDisplay() {
+    const filterCard = document.getElementById('aid-request-filter-card');
+    if (!filterCard) return;
+
+    // Update card title counter with total matched vs total
+    const resultsCounter = document.getElementById('results-counter');
+    if (resultsCounter) {
+        resultsCounter.textContent = `${statusFilterConfig.counts.matched} of ${statusFilterConfig.counts.total} requests`;
+
+        // Update counter badge classes
+        resultsCounter.classList.remove('bg-success', 'bg-warning', 'bg-danger');
+        if (statusFilterConfig.counts.matched === statusFilterConfig.counts.total) {
+            resultsCounter.classList.add('bg-success');
+        } else if (statusFilterConfig.counts.matched === 0) {
+            resultsCounter.classList.add('bg-danger');
+        } else {
+            resultsCounter.classList.add('bg-warning');
+        }
+    }
+
+    // Update map filter summary
+    updateMapFilterSummary();
+
+    // Update status group counts
+    ['active', 'inactive'].forEach(group => {
+        const groupTotal = filterCard.querySelector(`#status-group-filter-${group}-total`);
+        if (groupTotal) {
+            const counts = statusFilterConfig.counts.groups[group];
+            groupTotal.textContent = `(${counts.filtered})`;
+        }
+    });
+
+    // Update individual status counts
+    Object.entries(statusFilterConfig.statusGroups).forEach(([group, statuses]) => {
+        statuses.forEach(status => {
+            const countElement = filterCard.querySelector(`#status-filter-${status}-count`);
+            if (countElement) {
+                const count = Array.from(document.querySelectorAll(`[data-status="${status}"]`)).length;
+                countElement.textContent = `(${count})`;
+            }
+        });
+    });
+
+    // Update aid type counts with filtered totals
+    Object.entries(statusFilterConfig.counts.aidTypes).forEach(([aidType, counts]) => {
+        const countElement = filterCard.querySelector(`#aid-type-${aidType}-count`);
+        if (countElement) {
+            countElement.textContent = `(${counts.filtered})`;
+        }
+    });
+
+    // Update priority counts with filtered totals
+    Object.entries(statusFilterConfig.counts.priorities).forEach(([priority, counts]) => {
+        const countElement = filterCard.querySelector(`#priority-${priority}-count`);
+        if (countElement) {
+            countElement.textContent = `(${counts.filtered})`;
+        }
+    });
+
+    // Update "All" checkboxes counts
+    const aidTypeAll = filterCard.querySelector('label[for="aid-type-filter-all"]');
+    if (aidTypeAll) {
+        const totalAidTypeFiltered = Object.values(statusFilterConfig.counts.aidTypes)
+            .reduce((sum, counts) => sum + counts.filtered, 0);
+        aidTypeAll.textContent = `All (${totalAidTypeFiltered})`;
+    }
+
+    const priorityAll = filterCard.querySelector('label[for="priority-filter-all"]');
+    if (priorityAll) {
+        const totalPriorityFiltered = Object.values(statusFilterConfig.counts.priorities)
+            .reduce((sum, counts) => sum + counts.filtered, 0);
+        priorityAll.textContent = `All (${totalPriorityFiltered})`;
+    }
+}
+
+function updateMapFilterSummary() {
+    const summaryElement = document.getElementById('map-filter-summary');
+    if (!summaryElement) return;
+
+    const checkedStatuses = getSelectedStatuses();
+    const checkedAidTypes = getSelectedAidTypes();
+    const checkedPriorities = getSelectedPriorities();
+
+    const parts = [];
+
+    // Add status filter summary
+    if (checkedStatuses.length > 0) {
+        parts.push(`status=[${checkedStatuses.join('|')}]`);
+    }
+
+    // Add aid type filter summary
+    if (!checkedAidTypes.includes('all') && checkedAidTypes.length > 0) {
+        parts.push(`aid_type=[${checkedAidTypes.join('|')}]`);
+    }
+
+    // Add priority filter summary
+    if (!checkedPriorities.includes('all') && checkedPriorities.length > 0) {
+        parts.push(`priority=[${checkedPriorities.join('|')}]`);
+    }
+
+    // Add matched count
+    parts.push(`matched=${statusFilterConfig.counts.matched}`);
+
+    // Update the summary text
+    if (parts.length > 0) {
+        summaryElement.textContent = parts.join(', ');
+    } else {
+        summaryElement.textContent = 'No filters applied';
+    }
+
+    if (statusFilterConfig.debug) {
+        console.log('Map filter summary:', parts.join(', '));
+    }
 }

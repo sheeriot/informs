@@ -59,7 +59,7 @@
                                                    data-filter-value="{{ data.value }}"
                                                    checked>
                                             <label class="form-check-label" for="aid-type-filter-{{ data.value }}">
-                                                {{ aid_type }} ({{ data.count }})
+                                                {{ aid_type }} <span id="aid-type-{{ data.value }}-count">({{ data.count }})</span>
                                             </label>
                                         </div>
                                     </div>
@@ -88,8 +88,7 @@
                                                                data-filter-type="status_group"
                                                                data-filter-value="active" checked>
                                                         <label class="form-check-label fw-bold" for="status-group-filter-active">
-                                                            Active
-                                                            ({% with active_count=0 %}
+                                                            Active <span id="status-group-filter-active-total">({% with active_count=0 %}
                                                                 {% for status_code, status_name in status_choices_list %}
                                                                     {% if status_code in status_groups.active %}
                                                                         {% if status_counts and status_name in status_counts %}
@@ -115,12 +114,7 @@
                                                                    data-group="active"
                                                                    checked>
                                                             <label class="form-check-label" for="status-filter-{{ status_code }}">
-                                                                {{ status_name }}
-                                                                ({% if status_counts and status_name in status_counts %}
-                                                                    {{ status_counts|get_item:status_name|get_item:"count"|default:0 }}
-                                                                {% else %}
-                                                                    0
-                                                                {% endif %})
+                                                                {{ status_name }} <span id="status-filter-{{ status_code }}-count">({% if status_counts and status_name in status_counts %}{{ status_counts|get_item:status_name|get_item:"count"|default:0 }}{% else %}0{% endif %})</span>
                                                             </label>
                                                         </div>
                                                     </div>
@@ -141,8 +135,7 @@
                                                                data-filter-type="status_group"
                                                                data-filter-value="inactive">
                                                         <label class="form-check-label fw-bold" for="status-group-filter-inactive">
-                                                            Inactive
-                                                            ({% with inactive_count=0 %}
+                                                            Inactive <span id="status-group-filter-inactive-total">({% with inactive_count=0 %}
                                                                 {% for status_code, status_name in status_choices_list %}
                                                                     {% if status_code in status_groups.inactive %}
                                                                         {% if status_counts and status_name in status_counts %}
@@ -167,12 +160,7 @@
                                                                    data-filter-value="{{ status_code }}"
                                                                    data-group="inactive">
                                                             <label class="form-check-label" for="status-filter-{{ status_code }}">
-                                                                {{ status_name }}
-                                                                ({% if status_counts and status_name in status_counts %}
-                                                                    {{ status_counts|get_item:status_name|get_item:"count"|default:0 }}
-                                                                {% else %}
-                                                                    0
-                                                                {% endif %})
+                                                                {{ status_name }} <span id="status-filter-{{ status_code }}-count">({% if status_counts and status_name in status_counts %}{{ status_counts|get_item:status_name|get_item:"count"|default:0 }}{% else %}0{% endif %})</span>
                                                             </label>
                                                         </div>
                                                     </div>
@@ -213,12 +201,7 @@
                                                    data-filter-value="{{ priority_code }}"
                                                    checked>
                                             <label class="form-check-label" for="priority-filter-{{ priority_code }}">
-                                                {{ priority_name }}
-                                                ({% if priority_counts|get_item:priority_name %}
-                                                    {{ priority_counts|get_item:priority_name|get_item:"count" }}
-                                                {% else %}
-                                                    0
-                                                {% endif %})
+                                                {{ priority_name }} <span id="priority-{{ priority_code }}-count">({% if priority_counts|get_item:priority_name %}{{ priority_counts|get_item:priority_name|get_item:"count" }}{% else %}0{% endif %})</span>
                                             </label>
                                         </div>
                                     </div>
@@ -236,13 +219,6 @@
     <div class="card mb-2">
         <div class="card-header d-flex justify-content-between align-items-center py-1">
             <div class="h5 mb-0">Aid Requests</div>
-            <div class="d-flex">
-                <div class="input-group input-group-sm" style="max-width: 300px;">
-                    <span class="input-group-text"><i class="bi bi-search"></i></span>
-                    <input type="text" id="aid-request-search" class="search form-control" placeholder="Search...">
-                    <button class="btn btn-outline-secondary" type="button" id="clear-search-button">Clear</button>
-                </div>
-            </div>
         </div>
         <div class="table-responsive" id="aid-request-list-table-container">
             <table class="table table-sm table-hover table-striped" id="aid-request-table">
@@ -333,7 +309,10 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Map View</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Map View</h5>
+                        <span id="map-filter-summary" class="text-muted small"></span>
+                    </div>
                 </div>
                 <div class="card-body p-2">
                     <!-- Map container with data attributes -->
