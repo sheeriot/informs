@@ -6,7 +6,7 @@
  */
 
 // Configuration object
-statusFilterConfig = {
+window.statusFilterConfig = {
     debug: true,  // Set to true to enable debugging output
     // Status group lookup table - maps status codes to their group (active/inactive)
     statusGroups: {
@@ -31,22 +31,46 @@ document.addEventListener('DOMContentLoaded', function() {
     filterCard.querySelectorAll('.filter-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             const group = this.dataset.group;
+            const filterType = this.dataset.filterType;
             const isGroupCheckbox = this.id.includes('group-filter');
 
-            if (isGroupCheckbox) {
+            if (isGroupCheckbox && group) {
                 // Handle group checkbox
-                const groupCheckboxes = filterCard.querySelectorAll(`[data-group="${group}"]`);
+                const groupCheckboxes = filterCard.querySelectorAll(`[data-group="${group}"]:not([id*="group-filter"])`);
                 groupCheckboxes.forEach(cb => {
-                    if (cb !== this) { // Don't update the group checkbox itself
+                    if (cb) {
                         cb.checked = this.checked;
                     }
                 });
-            } else {
-                // Handle individual checkbox
-                const groupCheckbox = filterCard.querySelector(`#${group}`);
-                const groupCheckboxes = filterCard.querySelectorAll(`[data-group="${group}"]:not(#${group})`);
-                const allChecked = Array.from(groupCheckboxes).every(cb => cb.checked);
-                groupCheckbox.checked = allChecked;
+            } else if (group) {
+                // Handle individual checkbox within a group
+                const groupId = `status-group-filter-${group}`;
+                const groupCheckbox = filterCard.querySelector(`#${groupId}`);
+                if (groupCheckbox) {
+                    const groupCheckboxes = filterCard.querySelectorAll(`[data-group="${group}"]:not([id*="group-filter"])`);
+                    const allChecked = Array.from(groupCheckboxes).every(cb => cb && cb.checked);
+                    groupCheckbox.checked = allChecked;
+                }
+            } else if (filterType === 'aid_type' || filterType === 'priority') {
+                // Handle "All" checkbox for aid types and priorities
+                const allCheckboxId = `${filterType}-filter-all`;
+                const allCheckbox = filterCard.querySelector(`#${allCheckboxId}`);
+                const typeCheckboxes = filterCard.querySelectorAll(`[data-filter-type="${filterType}"]:not([id="${allCheckboxId}"])`);
+
+                if (this.id === allCheckboxId) {
+                    // If "All" checkbox was clicked
+                    typeCheckboxes.forEach(cb => {
+                        if (cb) {
+                            cb.checked = this.checked;
+                        }
+                    });
+                } else {
+                    // If individual checkbox was clicked
+                    if (allCheckbox) {
+                        const allChecked = Array.from(typeCheckboxes).every(cb => cb && cb.checked);
+                        allCheckbox.checked = allChecked;
+                    }
+                }
             }
 
             triggerFilterChange();
@@ -54,40 +78,45 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Add event listener for reset button within the filter card
-    filterCard.querySelector('#reset-all-filters').addEventListener('click', function() {
-        filterCard.querySelectorAll('.filter-checkbox').forEach(checkbox => {
-            // Reset to original state: all checked except inactive status group
-            if (checkbox.id.includes('status-group-filter-inactive') ||
-                checkbox.dataset.group === 'inactive' ||
-                checkbox.id.includes('status-filter-cancelled') ||
-                checkbox.id.includes('status-filter-rejected')) {
-                checkbox.checked = false;
-            } else {
-                checkbox.checked = true;
-            }
+    const resetButton = filterCard.querySelector('#reset-all-filters');
+    if (resetButton) {
+        resetButton.addEventListener('click', function() {
+            filterCard.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+                if (checkbox) {
+                    // Reset to original state: all checked except inactive status group
+                    if (checkbox.id.includes('status-group-filter-inactive') ||
+                        checkbox.dataset.group === 'inactive' ||
+                        checkbox.id.includes('status-filter-cancelled') ||
+                        checkbox.id.includes('status-filter-rejected')) {
+                        checkbox.checked = false;
+                    } else {
+                        checkbox.checked = true;
+                    }
+                }
+            });
+            triggerFilterChange();
         });
-        triggerFilterChange();
-    });
+    }
 });
 
 // Listen for filter change events
-document.addEventListener('filterChange', function(event) {
+document.addEventListener('aidRequestsFiltered', function(event) {
     if (statusFilterConfig.debug) {
         console.log('Filter change event received:', event.detail);
         console.log('%cFilter State', 'font-weight: bold; color: #2196F3;');
         console.table({
-            'Statuses': getSelectedStatuses().join(', ') || 'None',
-            'Aid Types': getSelectedAidTypes().join(', ') || 'None',
-            'Priorities': getSelectedPriorities().join(', ') || 'None'
+            'Statuses': event.detail.filterState.statuses.join(', ') || 'None',
+            'Aid Types': event.detail.filterState.aidTypes.join(', ') || 'None',
+            'Priorities': event.detail.filterState.priorities.join(', ') || 'None'
         });
     }
 
     // Update row visibility
     if (typeof updateRowVisibility === 'function') {
         updateRowVisibility({
-            statuses: getSelectedStatuses(),
-            aidTypes: getSelectedAidTypes(),
-            priorities: getSelectedPriorities()
+            statuses: event.detail.filterState.statuses,
+            aidTypes: event.detail.filterState.aidTypes,
+            priorities: event.detail.filterState.priorities
         });
     } else {
         console.error('updateRowVisibility function not found');
@@ -128,13 +157,20 @@ function triggerFilterChange() {
     });
 
     // Create and dispatch a synthetic change event
-    const event = new CustomEvent('filterChange', {
+    const event = new CustomEvent('aidRequestsFiltered', {
         detail: {
-            statuses: checkedStatuses,
-            aidTypes: checkedAidTypes,
-            priorities: checkedPriorities
+            filterState: {
+                statuses: checkedStatuses,
+                aidTypes: checkedAidTypes,
+                priorities: checkedPriorities
+            }
         }
     });
+
+    if (statusFilterConfig.debug) {
+        console.log('Dispatching filter event:', event.detail);
+    }
+
     document.dispatchEvent(event);
 }
 

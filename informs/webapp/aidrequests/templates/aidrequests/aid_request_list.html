@@ -232,29 +232,6 @@
         </div>
     </div>
 
-    <!-- Aid Request Map Section -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Map View</h5>
-                </div>
-                <div class="card-body p-2">
-                    <!-- Map container with data attributes -->
-                    <div id="aid-request-map" class="position-relative mb-3" style="width: 100%; min-width: 290px; height: 600px;"
-                        data-azure-maps-key="{{ azure_maps_key }}"
-                        data-center-lat="{{ field_op.latitude|stringformat:".6f"|default:"0" }}"
-                        data-center-lon="{{ field_op.longitude|stringformat:".6f"|default:"0" }}"
-                        data-map-zoom="{{ field_op.map_zoom|default:"8" }}"
-                        data-ring-size="{{ field_op.ring_km|default:"5" }}"
-                        data-field-op-name="{{ field_op.name }}"
-                        data-field-op-slug="{{ field_op.slug }}">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Aid Requests List Table -->
     <div class="card mb-2">
         <div class="card-header d-flex justify-content-between align-items-center py-1">
@@ -287,7 +264,7 @@
                     <tr class="aid-request-row"
                         id="aid-request-row-{{ aid_request.id }}"
                         data-id="{{ aid_request.id }}"
-                        data-aid-type="{{ aid_request.aid_type.code|default:'unknown' }}"
+                        data-aid-type="{{ aid_request.aid_type.slug|default:'unknown' }}"
                         data-status="{{ aid_request.status }}"
                         data-priority="{{ aid_request.priority }}">
                         <td class="py-1">{{ aid_request.id }}</td>
@@ -303,12 +280,14 @@
                             {% endif %}
                         </td>
                         <td class="py-1">
-                            {% if aid_request.priority == 3 %}
+                            {% if aid_request.priority == 'high' %}
                                 <span class="badge bg-danger priority-badge priority-high">High</span>
-                            {% elif aid_request.priority == 2 %}
+                            {% elif aid_request.priority == 'medium' %}
                                 <span class="badge bg-warning text-dark priority-badge priority-medium">Medium</span>
-                            {% else %}
+                            {% elif aid_request.priority == 'low' %}
                                 <span class="badge bg-primary priority-badge priority-low">Low</span>
+                            {% else %}
+                                <span class="badge bg-secondary priority-badge priority-none">None</span>
                             {% endif %}
                         </td>
                         <td class="py-1">
@@ -346,6 +325,29 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Aid Request Map Section -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Map View</h5>
+                </div>
+                <div class="card-body p-2">
+                    <!-- Map container with data attributes -->
+                    <div id="aid-request-map" class="position-relative mb-3" style="width: 100%; min-width: 290px; height: 600px;"
+                        data-azure-maps-key="{{ azure_maps_key }}"
+                        data-center-lat="{{ field_op.latitude|stringformat:".6f"|default:"0" }}"
+                        data-center-lon="{{ field_op.longitude|stringformat:".6f"|default:"0" }}"
+                        data-map-zoom="{{ field_op.map_zoom|default:"8" }}"
+                        data-ring-size="{{ field_op.ring_km|default:"5" }}"
+                        data-field-op-name="{{ field_op.name }}"
+                        data-field-op-slug="{{ field_op.slug }}">
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

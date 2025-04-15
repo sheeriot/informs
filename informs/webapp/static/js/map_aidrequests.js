@@ -244,6 +244,9 @@ function initializeMap(config) {
             });
             map.controls.add(layerControl, { position: 'bottom-left' });
 
+            // Store layer control reference for later use
+            const storedLayerControl = layerControl;
+
             // Add scale control
             map.controls.add(new atlas.control.ScaleControl(), {
                 position: 'bottom-right'
@@ -286,7 +289,6 @@ function initializeMap(config) {
                     radius: config.ringSize * 1000
                 }
             ))
-            // console.log("Ring in KM", ring_size)
             const ringLayer = new atlas.layer.PolygonLayer(dataSourceC, config.ringSize + 'km Aid Ring', {
                 fillColor: 'rgba(255, 0, 0, 0.1)',
                 strokeColor: 'red',
@@ -379,16 +381,22 @@ function initializeMap(config) {
                 // Create a layer for each aid type
                 Object.entries(aidTypesConfig).forEach(([slug, config]) => {
                     console.log(`Creating layer for aid type: ${slug}`);
-                    const layer = new atlas.layer.SymbolLayer(aidTypeSources[slug], config.name, {
+                    const layer = new atlas.layer.SymbolLayer(aidTypeSources[slug], slug, {
                         iconOptions: {
                             ignorePlacement: false,
                             allowOverlap: true,
                             anchor: "bottom",
                             image: slug,
-                            size: config.icon_scale
+                            size: config.icon_scale,
+                            visible: true
                         },
                         textOptions: {
-                            textField: ['get', 'pk'],
+                            // Only show text if priority exists
+                            textField: ['case',
+                                ['has', 'priority'],
+                                ['get', 'pk'],
+                                ''  // Don't show text for null priority
+                            ],
                             offset: [0, 0.5],
                             allowOverlap: true,
                             ignorePlacement: false,
@@ -401,7 +409,7 @@ function initializeMap(config) {
                     });
 
                     map.layers.add(layer);
-                    console.log(`Added layer for ${slug}`);
+                    console.log(`Added layer for ${slug} with ID: ${layer.getId()}`);
 
                     // Add mouse events for this layer
                     const popup = new atlas.Popup({
@@ -409,12 +417,12 @@ function initializeMap(config) {
                     });
 
                     map.events.add('mouseover', layer, (e) => {
-                        if (e.shapes && e.shapes[0].properties) {
-                            const prop = e.shapes[0].properties;
+                        if (e.shapes && e.shapes[0].data && e.shapes[0].data.properties) {
+                            const prop = e.shapes[0].data.properties;
                             const content = `
                                 <div style="padding: 10px;">
-                                    <strong>Status:</strong> ${prop.status}<br>
-                                    <strong>Priority:</strong> ${prop.priority}<br>
+                                    <strong>Status:</strong> ${prop.status || 'None'}<br>
+                                    <strong>Priority:</strong> ${prop.priority || 'None'}<br>
                                     <strong>Type:</strong> ${config.name}
                                 </div>`;
                             popup.setOptions({
@@ -428,6 +436,183 @@ function initializeMap(config) {
                     map.events.add('mouseout', layer, () => {
                         popup.close();
                     });
+                });
+
+                // Listen for aid requests filtered event
+                document.addEventListener('aidRequestsFiltered', function(event) {
+                    console.log('Aid requests filtered event received with filter state:', event.detail.filterState);
+
+                    const filterState = event.detail.filterState;
+                    const filteringSummary = [];
+
+                    // Update visibility of points in each layer
+                    Object.entries(aidTypeSources).forEach(([aidType, source]) => {
+                        console.log(`Processing aid type: ${aidType}`);
+
+                        // Get the layer for this aid type
+                        const layer = map.layers.getLayerById(aidType);
+                        if (!layer) {
+                            console.warn(`Layer not found for aid type: ${aidType}`);
+                            return;
+                        }
+
+                        // Determine if this aid type should be visible based on filter
+                        const shouldBeVisible = !(filterState && filterState.aidTypes &&
+                            filterState.aidTypes.length > 0 &&
+                            !filterState.aidTypes.includes('all') &&
+                            !filterState.aidTypes.includes(aidType));
+
+                        // Update both layer visibility and Layer Control checkbox
+                        layer.setOptions({
+                            visible: shouldBeVisible
+                        });
+
+                        // Update Layer Control checkbox
+                        const layerControl = map.controls.getControls().find(control =>
+                            control instanceof atlas.control.LayerControl
+                        );
+
+                        if (layerControl) {
+                            // Scope the query to the map container
+                            const mapContainer = document.getElementById('aid-request-map');
+                            if (!mapContainer) {
+                                console.warn('Map container not found');
+                                return;
+                            }
+
+                            // Find the checkbox within the map container
+                            const labels = mapContainer.querySelectorAll('.atlas-layer-checkbox');
+                            const layerLabel = Array.from(labels).find(label =>
+                                label.querySelector('span')?.textContent === aidType
+                            );
+
+                            if (layerLabel) {
+                                const checkbox = layerLabel.querySelector('input[type="checkbox"]');
+                                if (checkbox) {
+                                    checkbox.checked = shouldBeVisible;
+                                    // Trigger change event to ensure Layer Control state is updated
+                                    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                                    console.log(`Updated checkbox for ${aidType} to ${shouldBeVisible}`);
+                                } else {
+                                    console.warn(`Checkbox input not found for aid type: ${aidType}`);
+                                }
+                            } else {
+                                console.warn(`Layer control label not found for aid type: ${aidType}`);
+                            }
+                        }
+
+                        if (!shouldBeVisible) {
+                            console.log(`Hiding layer and unchecking checkbox for aid type: ${aidType} (filtered out)`);
+                            filteringSummary.push({
+                                aidType,
+                                layerVisible: false,
+                                totalMarkers: 0,
+                                visibleMarkers: 0,
+                                hiddenMarkers: 0
+                            });
+                            return;
+                        }
+
+                        // Show the layer and apply filters
+                        console.log(`Showing layer and checking checkbox for aid type: ${aidType}`);
+
+                        // Create filter conditions
+                        const statusFilter = !filterState.statuses.length ?
+                            true :
+                            ['in', ['get', 'status'], ['literal', filterState.statuses]];
+
+                        const priorityFilter = filterState.priorities.includes('all') || !filterState.priorities.length ?
+                            true :
+                            ['any',
+                                ['in', ['get', 'priority'], ['literal', filterState.priorities]],
+                                ['all',
+                                    ['in', 'None', ['literal', filterState.priorities]],
+                                    ['==', ['get', 'priority'], null]
+                                ]
+                            ];
+
+                        // Combine filters
+                        const combinedFilter = ['all',
+                            statusFilter === true ? true : statusFilter,
+                            priorityFilter === true ? true : priorityFilter
+                        ];
+
+                        // Apply filter to layer
+                        layer.setOptions({
+                            visible: true,
+                            filter: combinedFilter
+                        });
+
+                        // Count markers for summary
+                        const features = source.getShapes();
+                        if (!features) {
+                            console.warn(`No aid request markers found for type: ${aidType}`);
+                            filteringSummary.push({
+                                aidType,
+                                layerVisible: true,
+                                totalMarkers: 0,
+                                visibleMarkers: 0,
+                                hiddenMarkers: 0
+                            });
+                            return;
+                        }
+
+                        // Calculate visibility for summary
+                        let visibleCount = 0;
+                        features.forEach(marker => {
+                            if (!marker || !marker.data || !marker.data.properties) {
+                                console.warn('Invalid aid request marker:', marker);
+                                return;
+                            }
+
+                            const props = marker.data.properties;
+                            const status = props.status || 'new';
+                            const priority = props.priority || 'None';
+
+                            const matchesStatus = !filterState.statuses.length || filterState.statuses.includes(status);
+                            const matchesPriority = filterState.priorities.includes('all') ||
+                                                  !filterState.priorities.length ||
+                                                  filterState.priorities.includes(priority) ||
+                                                  (priority === 'None' && filterState.priorities.includes(null));
+
+                            if (matchesStatus && matchesPriority) visibleCount++;
+                        });
+
+                        filteringSummary.push({
+                            aidType,
+                            layerVisible: true,
+                            totalMarkers: features.length,
+                            visibleMarkers: visibleCount,
+                            hiddenMarkers: features.length - visibleCount
+                        });
+                    });
+
+                    // Log summary tables
+                    console.log('=== Filtering Summary ===');
+                    console.table(filteringSummary);
+
+                    // Log active filters
+                    console.log('=== Active Filters ===');
+                    console.table({
+                        'Aid Types': filterState.aidTypes.join(', ') || 'All',
+                        'Statuses': filterState.statuses.join(', ') || 'All',
+                        'Priorities': filterState.priorities.join(', ') || 'All'
+                    });
+
+                    // Log final layer state
+                    console.log('=== Layer Visibility State ===');
+                    const layerStates = [];
+                    map.layers.getLayers().forEach(layer => {
+                        const layerId = layer.getId();
+                        if (layerId) {  // Only include layers with IDs (our aid type layers)
+                            const options = layer.getOptions() || {};
+                            layerStates.push({
+                                layerId,
+                                visible: options.visible !== false  // Default to true if not explicitly false
+                            });
+                        }
+                    });
+                    console.table(layerStates);
                 });
 
                 // Log layer information

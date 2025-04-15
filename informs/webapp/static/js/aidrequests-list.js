@@ -1,8 +1,8 @@
 /**
  * list-aid-requests.js
  *
- * Implements List.js for the aid requests table with Bootstrap 5 integration
- * Provides dynamic filtering, sorting, and searching functionality
+ * Implements filtering for the aid requests table with Bootstrap 5 integration
+ * Provides dynamic filtering and searching functionality
  */
 
 // Configuration object
@@ -59,7 +59,7 @@ function updateRowVisibility(filterState) {
     }
 
     const rows = tableBody.getElementsByTagName('tr');
-    const visibleIds = [];
+    const debugRows = [];
 
     Array.from(rows).forEach(row => {
         const status = row.getAttribute('data-status');
@@ -67,37 +67,36 @@ function updateRowVisibility(filterState) {
         const priority = row.getAttribute('data-priority');
         const id = row.getAttribute('data-id');
 
-        if (window.listjsConfig.debug) {
-            console.log(`Row ${id} - Status: ${status}, Aid Type: ${aidType}, Priority: ${priority}`);
-        }
-
         // Check if row matches current filters
         const matchesStatus = !filterState.statuses.length || filterState.statuses.includes(status);
-        const matchesAidType = !filterState.aidTypes.length || filterState.aidTypes.includes(aidType);
-        const matchesPriority = !filterState.priorities.length || filterState.priorities.includes(priority);
+        const matchesAidType = filterState.aidTypes.includes('all') || !filterState.aidTypes.length || filterState.aidTypes.includes(aidType);
+        const matchesPriority = filterState.priorities.includes('all') || !filterState.priorities.length || filterState.priorities.includes(priority);
 
         const isVisible = matchesStatus && matchesAidType && matchesPriority;
 
-        // Update visibility
+        // Collect debug info
+        if (window.listjsConfig.debug) {
+            debugRows.push({
+                ID: id,
+                Status: status,
+                'Aid Type': aidType,
+                Priority: priority,
+                'Filter Match': isVisible
+            });
+        }
+
+        // Update visibility using Bootstrap's d-none class
         if (isVisible) {
             row.classList.remove('d-none');
-            visibleIds.push(parseInt(id));
         } else {
             row.classList.add('d-none');
         }
     });
 
     if (window.listjsConfig.debug) {
-        console.log('Visible IDs for Map:', visibleIds);
+        console.log('Filter Results:');
+        console.table(debugRows);
     }
-
-    // Dispatch event with only the visible IDs
-    const event = new CustomEvent('aidRequestsFiltered', {
-        detail: {
-            visibleIds: visibleIds
-        }
-    });
-    document.dispatchEvent(event);
 
     // Update results counter
     updateResultsCounter();
@@ -129,8 +128,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update results counter on initial load
     updateResultsCounter();
 
-    // Trigger initial filter to show all rows
-    if (window.statusFilterConfig && window.statusFilterConfig.triggerFilterChange) {
-        window.statusFilterConfig.triggerFilterChange();
-    }
+    // Listen for filter change events
+    document.addEventListener('aidRequestsFiltered', function(event) {
+        if (window.listjsConfig.debug) {
+            console.log('Filter change event received:', event.detail);
+            console.log('%cFilter State', 'font-weight: bold; color: #2196F3;');
+            console.table({
+                'Statuses': event.detail.filterState.statuses.join(', ') || 'None',
+                'Aid Types': event.detail.filterState.aidTypes.join(', ') || 'None',
+                'Priorities': event.detail.filterState.priorities.join(', ') || 'None'
+            });
+        }
+
+        // Update row visibility
+        updateRowVisibility(event.detail.filterState);
+    });
 });
