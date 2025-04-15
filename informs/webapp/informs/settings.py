@@ -252,6 +252,11 @@ LOGGING = {
             'format': '{levelname} {message}',
             'style': '{',
         },
+        'cot_format': {
+            'format': '[{asctime}] {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S'
+        }
     },
     'handlers': {
         'console': {
@@ -265,6 +270,12 @@ LOGGING = {
             'filename': os.path.join(BASE_DIR, 'app.log'),
             'formatter': 'verbose',
         },
+        'cot_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'cot_messages.log'),
+            'formatter': 'cot_format',
+        },
         "null": {
             "class": "logging.NullHandler",
         },
@@ -274,6 +285,11 @@ LOGGING = {
             'handlers': ['console', 'file'],
             'level': 'INFO',
             'propagate': True,
+        },
+        'cot': {
+            'handlers': ['cot_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
         },
         "django.security.DisallowedHost": {
             "handlers": ["null"],
@@ -302,7 +318,17 @@ Q_CLUSTER = {
     'orm': 'default',
     'retry': 120,
     'timeout': 60,
-    'recycle': 500
+    'recycle': 500,
+    'scheduler': True,  # Enable scheduler
+    'scheduled_tasks': [
+
+        {
+            'func': 'aidrequests.scheduled_tasks.hourly_field_op_cot',
+            'schedule_type': 'I',  # Interval schedule
+            'minutes': 60,  # Run every hour
+            'repeats': -1  # Repeat indefinitely
+        }
+    ]
 }
 
 # DEBUG_TOOLBAR_CONFIG = {

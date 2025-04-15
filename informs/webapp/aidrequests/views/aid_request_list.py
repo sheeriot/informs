@@ -39,8 +39,6 @@ class AidRequestFilter(django_filters.FilterSet):
         method='filter_by_fieldop'
     )
 
-    ic("Initializing AidRequestFilter")
-
     class Meta:
         model = AidRequest
         fields = ['aid_type', 'status', 'priority', 'ordering']
