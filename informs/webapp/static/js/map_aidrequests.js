@@ -9,17 +9,18 @@
 let map;
 
 // Configuration
-const mapConfig = {
-    debug: true,
+const mapRequestsConfig = {
+    debug: true,  // Set to false in production
     initializationAttempted: false,
     config: null,
-    aidLocations: []
+    aidLocations: [],
+    aidTypesConfig: {}
 };
 
 // Main program
 document.addEventListener('DOMContentLoaded', function() {
-    if (mapConfig.debug) {
-        console.log('Starting map initialization...');
+    if (mapRequestsConfig.debug) {
+        console.log('Map View: Starting map initialization...');
     }
 
     const mapContainer = document.getElementById('aid-request-map');
@@ -47,145 +48,54 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Store configuration
-    mapConfig.config = config;
+    mapRequestsConfig.config = config;
+
+    // Load aid types configuration
+    const aidTypesElement = document.getElementById('aid-types-json');
+    if (aidTypesElement) {
+        try {
+            const aidTypesArray = JSON.parse(aidTypesElement.textContent);
+            mapRequestsConfig.aidTypesConfig = aidTypesArray.reduce((acc, type) => {
+                acc[type.slug] = type;
+                return acc;
+            }, {});
+            if (mapRequestsConfig.debug) {
+                console.log('Aid Types Configuration loaded:', mapRequestsConfig.aidTypesConfig);
+            }
+        } catch (error) {
+            console.error('Error parsing aid types configuration:', error);
+        }
+    }
 
     // Get aid locations data
     const aidLocationsElement = document.getElementById('aid-locations-data');
     if (aidLocationsElement && aidLocationsElement.textContent.trim()) {
         try {
-            const rawData = aidLocationsElement.textContent.trim();
-            mapConfig.aidLocations = JSON.parse(rawData);
-            if (mapConfig.debug) {
-                console.log('Aid Locations Data:', mapConfig.aidLocations.length, 'locations found');
-                if (mapConfig.aidLocations.length > 0) {
-                    console.log('Sample location format:', mapConfig.aidLocations[0]);
-                    const simplifiedData = mapConfig.aidLocations.map(loc => ({
-                        id: loc.pk || loc.id,
-                        status: loc.status,
-                        priority: loc.priority,
-                        aidType: loc.aid_type,
-                        lat: loc.latitude,
-                        lon: loc.longitude
-                    }));
-                    console.table(simplifiedData);
-                }
+            mapRequestsConfig.aidLocations = JSON.parse(aidLocationsElement.textContent);
+            if (mapRequestsConfig.debug) {
+                console.log('Aid Locations Data:', mapRequestsConfig.aidLocations.length, 'locations found');
             }
         } catch (error) {
             console.error('Error parsing aid locations data:', error);
-            console.log('Raw data:', aidLocationsElement.textContent);
-            mapConfig.aidLocations = [];
+            mapRequestsConfig.aidLocations = [];
         }
-    } else {
-        console.log('No aid locations data found or empty data');
-        mapConfig.aidLocations = [];
     }
 
     // Initialize map immediately
     initializeMap(config);
 });
 
-// Functions in order of execution
-
-// Initialize configuration and data
-function initializeConfig() {
-    if (mapConfig.debug) {
-        console.log('Initializing configuration...');
-    }
-
-    try {
-        // Get map container and its data attributes
-        const mapData = document.getElementById('aid-request-map-data');
-        if (!mapData) {
-            console.error('Map Data not found');
-            return false;
-        }
-
-        // Transform and store the dataset
-        const config = transformDataset(mapData.dataset);
-        if (mapConfig.debug) {
-            console.log('Map Configuration', 'font-weight: bold; color: #2196F3;');
-            console.table({
-                'Field Op Name': config.fieldOpName,
-                'Field Op Slug': config.fieldOpSlug,
-                'Center Latitude': config.centerLat,
-                'Center Longitude': config.centerLon,
-                'Map Zoom': config.mapZoom,
-                'Ring Size (km)': config.ringSize
-            });
-        }
-
-        // Validate required configuration
-        if (!config.azureMapsKey) {
-            console.error('Azure Maps key not found');
-            return false;
-        }
-
-        // Get aid locations data
-        const aidLocationsElement = document.getElementById('aid-locations-data');
-        if (!aidLocationsElement) {
-            console.error('Aid locations data element not found');
-            return false;
-        }
-
-        try {
-            mapConfig.aidLocations = JSON.parse(aidLocationsElement.textContent);
-            if (mapConfig.debug) {
-                console.log('Aid Locations Data', 'font-weight: bold; color: #2196F3;');
-                const simplifiedData = mapConfig.aidLocations.map(loc => ({
-                    id: loc.pk,
-                    status: loc.status,
-                    priority: loc.priority,
-                    aidType: loc.aid_type,
-                    lat: loc.latitude,
-                    lon: loc.longitude
-                }));
-                console.table(simplifiedData);
-            }
-        } catch (error) {
-            console.error('Error parsing aid locations data:', error);
-            return false;
-        }
-
-        // Store configuration
-        mapConfig.config = config;
-        return true;
-    } catch (error) {
-        console.error('Error initializing configuration:', error);
-        return false;
-    }
-}
-
 // Initialize the map with minimum configuration
 function initializeMap(config) {
+    if (mapRequestsConfig.debug) {
+        console.log('Map View: Initializing map with config:', config);
+    }
+
     try {
-        // Validate and parse configuration values
-        const centerLon = parseFloat(config.center[0]);
-        const centerLat = parseFloat(config.center[1]);
-        const zoomLevel = parseInt(config.zoom);
-
-        if (isNaN(centerLon) || isNaN(centerLat) || isNaN(zoomLevel)) {
-            console.error('Invalid map configuration:', {
-                centerLon,
-                centerLat,
-                zoomLevel,
-                rawConfig: config
-            });
-            return;
-        }
-
-        if (mapConfig.debug) {
-            console.log('Map Initialization with parsed values:', {
-                centerLon,
-                centerLat,
-                zoomLevel,
-                locations: mapConfig.aidLocations.length
-            });
-        }
-
         // Initialize map with validated values
         map = new atlas.Map('aid-request-map', {
-            center: [centerLon, centerLat],
-            zoom: zoomLevel,
+            center: config.center,
+            zoom: config.zoom,
             style: 'road',
             view: 'Auto',
             showFeedbackLink: false,
@@ -196,492 +106,49 @@ function initializeMap(config) {
             }
         });
 
-        // Add a ready event to confirm map loaded
-        map.events.add('ready', function() {
-            console.log('Map is ready');
+        // Add zoom control (top-left)
+        map.controls.add(new atlas.control.ZoomControl(), {
+            position: 'top-left'
+        });
 
-            // Disable scroll zoom
-            map.setUserInteraction({ scrollZoomInteraction: false });
+        // Add compass control (top-left)
+        map.controls.add(new atlas.control.CompassControl(), {
+            position: 'top-left'
+        });
 
-            // Add life preserver icon
-            map.imageSprite.add('life-preserver', '/static/images/icons/t_life-preserver.svg');
+        // Add style control (top-right)
+        map.controls.add(new atlas.control.StyleControl({
+            mapStyles: ['road', 'satellite', 'hybrid']
+        }), {
+            position: 'top-right'
+        });
 
-            // Create and add legend control
-            const legend = new atlas.control.LegendControl({
-                title: 'Field Op Legend',
-                style: 'light'
-            });
-            map.controls.add(legend, { position: 'top-left' });
+        // Add pitch control (top-right)
+        map.controls.add(new atlas.control.PitchControl(), {
+            position: 'top-right'
+        });
 
-            // Add style control
-            map.controls.add(new atlas.control.StyleControl({
-                mapStyles: ['road', 'satellite', 'hybrid'],
-                style: 'light',
-                layout: 'list'
-            }), {
-                position: 'top-left'
-            });
-
-            // Add navigation controls group
-            map.controls.add([
-                new atlas.control.ZoomControl(),
-                new atlas.control.PitchControl(),
-                new atlas.control.CompassControl(),
-                new atlas.control.FullscreenControl()
-            ], {
-                position: 'top-right'
-            });
-
-            // Add layer control
-            const layerControl = new atlas.control.LayerControl({
-                legendControl: legend,
-                style: 'light',
-                showToggle: true,
-                dynamicLayerGroup: {
-                    groupTitle: 'Show:',
-                    layout: 'checkbox'
-                }
-            });
-            map.controls.add(layerControl, { position: 'bottom-left' });
-
-            // Store layer control reference for later use
-            const storedLayerControl = layerControl;
-
-            // Add scale control
-            map.controls.add(new atlas.control.ScaleControl(), {
-                position: 'bottom-right'
-            });
-
-            // Add field op location marker
-            var fopoint_data = []
-            var fopos = new atlas.data.Position(parseFloat(config.centerLon), parseFloat(config.centerLat))
-            var fopoint = new atlas.data.Feature(new atlas.data.Point(fopos), {
-                name: config.fieldOpName,
-                slug: config.fieldOpSlug,
-                lat: config.centerLat,
-                lon: config.centerLon
-            });
-
-            fopoint_data.push(fopoint);
-            var fodataSource = new atlas.source.DataSource();
-            map.sources.add(fodataSource);
-            fodataSource.add(fopoint_data);
-
-            var foLayer = new atlas.layer.SymbolLayer(fodataSource, config.fieldOpName, {
-                iconOptions: {
-                    image: "pin-blue",
-                    anchor: "bottom",
-                    size: 1.5,
-                    allowOverlap: true
-                }
-            });
-
-            map.layers.add(foLayer);
-
-            // Mark an Aid Ring
-            const dataSourceC = new atlas.source.DataSource()
-            map.sources.add(dataSourceC)
-            //Create a circle
-            dataSourceC.add(new atlas.data.Feature(
-                new atlas.data.Point([parseFloat(config.centerLon), parseFloat(config.centerLat)]),
-                {
-                    subType: "Circle",
-                    radius: config.ringSize * 1000
-                }
-            ))
-            const ringLayer = new atlas.layer.PolygonLayer(dataSourceC, config.ringSize + 'km Aid Ring', {
-                fillColor: 'rgba(255, 0, 0, 0.1)',
-                strokeColor: 'red',
-                strokeWidth: 2
-            })
-            map.layers.add(ringLayer)
-
-            // Add aid request locations
-            const dataSource2 = new atlas.source.DataSource(undefined, {
-                cluster: false
-            });
-            map.sources.add(dataSource2);
-
-            // Create points from pre-parsed aid locations
-            const points = mapConfig.aidLocations
-                .filter(location => location.latitude && location.longitude)
-                .map(location => {
-                    const position = new atlas.data.Position(
-                        parseFloat(location.longitude),
-                        parseFloat(location.latitude)
-                    );
-                    return new atlas.data.Feature(new atlas.data.Point(position), location);
-                });
-
-            dataSource2.add(points);
-
-            // Get aid type configuration
-            const aidTypesElement = document.getElementById('aid-types-json');
-            let aidTypesConfig = {};
-            if (aidTypesElement) {
-                try {
-                    const aidTypesArray = JSON.parse(aidTypesElement.textContent);
-                    // Convert array to object with slug as key
-                    aidTypesConfig = aidTypesArray.reduce((acc, type) => {
-                        acc[type.slug] = type;
-                        return acc;
-                    }, {});
-
-                    if (mapConfig.debug) {
-                        console.log('Aid Types Configuration loaded:', aidTypesConfig);
-                        console.log('Number of aid types:', Object.keys(aidTypesConfig).length);
-                    }
-                } catch (error) {
-                    console.error('Error parsing aid types configuration:', error);
-                    console.log('Raw content:', aidTypesElement.textContent);
-                }
-            } else {
-                console.warn('Aid types element not found in DOM');
+        // Wait for the map to be ready before adding layers
+        map.events.add('ready', async function() {
+            if (mapRequestsConfig.debug) {
+                console.log('Map ready event fired');
             }
 
-            // Create custom icon templates for each aid type
-            console.log('Creating icon templates...');
-            const iconPromises = Object.entries(aidTypesConfig).map(([slug, config]) => {
-                console.log(`Creating template for ${slug}:`, config);
-                return map.imageSprite.createFromTemplate(
-                    slug,  // Use the slug as the icon ID
-                    config.icon_name,
-                    config.icon_color,
-                    '#fff'  // White outline
-                ).catch(error => {
-                    console.error(`Error creating template for ${slug}:`, error);
-                    return null;
-                });
-            });
+            // Initialize field op layer first
+            initializeFieldOpLayer();
 
-            // Wait for all icons to be created before adding the layers
-            console.log('Waiting for icon templates to be created...');
-            Promise.all(iconPromises).then(function(results) {
-                console.log('Icon templates created:', results);
+            // Then initialize aid request layer
+            await initializeAidRequestLayer();
 
-                // Create a data source for each aid type
-                const aidTypeSources = {};
-                Object.keys(aidTypesConfig).forEach(slug => {
-                    aidTypeSources[slug] = new atlas.source.DataSource(undefined, {
-                        cluster: false
-                    });
-                    map.sources.add(aidTypeSources[slug]);
-                });
+            // Get initial filter state from the store
+            const filterState = window.aidRequestsStore ? window.aidRequestsStore.filterState : {
+                statuses: 'all',
+                aidTypes: 'all',
+                priorities: 'all'
+            };
 
-                // Distribute points to their respective data sources
-                points.forEach(point => {
-                    const aidType = point.properties.aid_type;
-                    if (aidTypeSources[aidType]) {
-                        aidTypeSources[aidType].add(point);
-                    } else {
-                        console.warn(`Unknown aid type: ${aidType}`);
-                    }
-                });
-
-                // Create a layer for each aid type
-                Object.entries(aidTypesConfig).forEach(([slug, config]) => {
-                    console.log(`Creating layer for aid type: ${slug}`);
-                    const layer = new atlas.layer.SymbolLayer(aidTypeSources[slug], slug, {
-                        iconOptions: {
-                            ignorePlacement: false,
-                            allowOverlap: true,
-                            anchor: "bottom",
-                            image: slug,
-                            size: config.icon_scale,
-                            visible: true
-                        },
-                        textOptions: {
-                            // Only show text if priority exists
-                            textField: ['case',
-                                ['has', 'priority'],
-                                ['get', 'pk'],
-                                ''  // Don't show text for null priority
-                            ],
-                            offset: [0, 0.5],
-                            allowOverlap: true,
-                            ignorePlacement: false,
-                            font: ['StandardFont-Bold'],
-                            size: 12,
-                            color: 'black',
-                            haloColor: 'white',
-                            haloWidth: 2
-                        }
-                    });
-
-                    map.layers.add(layer);
-                    console.log(`Added layer for ${slug} with ID: ${layer.getId()}`);
-
-                    // Set the layer display name in the Layer Control
-                    const layerControl = map.controls.getControls().find(control =>
-                        control instanceof atlas.control.LayerControl
-                    );
-                    if (layerControl) {
-                        layerControl.setOptions({
-                            layers: [{
-                                id: slug,
-                                title: config.name
-                            }]
-                        });
-                    }
-
-                    // Add mouse events for this layer
-                    const popup = new atlas.Popup({
-                        pixelOffset: [0, -20]
-                    });
-
-                    map.events.add('mouseover', layer, (e) => {
-                        if (e.shapes && e.shapes[0].data && e.shapes[0].data.properties) {
-                            const prop = e.shapes[0].data.properties;
-                            const content = `
-                                <div style="padding: 10px;">
-                                    <strong>Status:</strong> ${prop.status || 'None'}<br>
-                                    <strong>Priority:</strong> ${prop.priority || 'None'}<br>
-                                    <strong>Type:</strong> ${config.name}
-                                </div>`;
-                            popup.setOptions({
-                                content: content,
-                                position: e.position
-                            });
-                            popup.open(map);
-                        }
-                    });
-
-                    map.events.add('mouseout', layer, () => {
-                        popup.close();
-                    });
-                });
-
-                // Listen for aid requests filtered event
-                document.addEventListener('aidRequestsFiltered', function(event) {
-                    console.log('Aid requests filtered event received with filter state:', event.detail.filterState);
-
-                    const filterState = event.detail.filterState;
-                    const filteringSummary = [];
-
-                    // Update visibility of points in each layer
-                    Object.entries(aidTypeSources).forEach(([aidType, source]) => {
-                        console.log(`Processing aid type: ${aidType}`);
-
-                        // Get the layer for this aid type
-                        const layer = map.layers.getLayerById(aidType);
-                        if (!layer) {
-                            console.warn(`Layer not found for aid type: ${aidType}`);
-                            return;
-                        }
-
-                        // Determine if this aid type should be visible based on filter
-                        const shouldBeVisible = !(filterState && filterState.aidTypes &&
-                            filterState.aidTypes.length > 0 &&
-                            !filterState.aidTypes.includes('all') &&
-                            !filterState.aidTypes.includes(aidType));
-
-                        // Update both layer visibility and Layer Control checkbox
-                        layer.setOptions({
-                            visible: shouldBeVisible
-                        });
-
-                        // Update Layer Control checkbox
-                        const layerControl = map.controls.getControls().find(control =>
-                            control instanceof atlas.control.LayerControl
-                        );
-
-                        if (layerControl) {
-                            // Scope the query to the map container
-                            const mapContainer = document.getElementById('aid-request-map');
-                            if (!mapContainer) {
-                                console.warn('Map container not found');
-                                return;
-                            }
-
-                            // Find the checkbox within the map container
-                            const labels = mapContainer.querySelectorAll('.atlas-layer-checkbox');
-                            const layerLabel = Array.from(labels).find(label =>
-                                label.querySelector('span')?.textContent === aidType
-                            );
-
-                            if (layerLabel) {
-                                const checkbox = layerLabel.querySelector('input[type="checkbox"]');
-                                if (checkbox) {
-                                    checkbox.checked = shouldBeVisible;
-                                    // Trigger change event to ensure Layer Control state is updated
-                                    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-                                    console.log(`Updated checkbox for ${aidType} to ${shouldBeVisible}`);
-                                } else {
-                                    console.warn(`Checkbox input not found for aid type: ${aidType}`);
-                                }
-                            } else {
-                                console.warn(`Layer control label not found for aid type: ${aidType}`);
-                            }
-                        }
-
-                        if (!shouldBeVisible) {
-                            console.log(`Hiding layer and unchecking checkbox for aid type: ${aidType} (filtered out)`);
-                            filteringSummary.push({
-                                aidType,
-                                layerVisible: false,
-                                totalMarkers: 0,
-                                visibleMarkers: 0,
-                                hiddenMarkers: 0
-                            });
-                            return;
-                        }
-
-                        // Show the layer and apply filters
-                        console.log(`Showing layer and checking checkbox for aid type: ${aidType}`);
-
-                        // Create filter conditions
-                        const statusFilter = !filterState.statuses.length ?
-                            true :
-                            ['in', ['get', 'status'], ['literal', filterState.statuses]];
-
-                        const priorityFilter = filterState.priorities.includes('all') || !filterState.priorities.length ?
-                            true :
-                            ['any',
-                                ['in', ['get', 'priority'], ['literal', filterState.priorities]],
-                                ['all',
-                                    ['in', 'None', ['literal', filterState.priorities]],
-                                    ['==', ['get', 'priority'], null]
-                                ]
-                            ];
-
-                        // Combine filters
-                        const combinedFilter = ['all',
-                            statusFilter === true ? true : statusFilter,
-                            priorityFilter === true ? true : priorityFilter
-                        ];
-
-                        // Apply filter to layer
-                        layer.setOptions({
-                            visible: true,
-                            filter: combinedFilter
-                        });
-
-                        // Count markers for summary
-                        const features = source.getShapes();
-                        if (!features) {
-                            console.warn(`No aid request markers found for type: ${aidType}`);
-                            filteringSummary.push({
-                                aidType,
-                                layerVisible: true,
-                                totalMarkers: 0,
-                                visibleMarkers: 0,
-                                hiddenMarkers: 0
-                            });
-                            return;
-                        }
-
-                        // Calculate visibility for summary
-                        let visibleCount = 0;
-                        features.forEach(marker => {
-                            if (!marker || !marker.data || !marker.data.properties) {
-                                console.warn('Invalid aid request marker:', marker);
-                                return;
-                            }
-
-                            const props = marker.data.properties;
-                            const status = props.status || 'new';
-                            const priority = props.priority || 'None';
-
-                            const matchesStatus = !filterState.statuses.length || filterState.statuses.includes(status);
-                            const matchesPriority = filterState.priorities.includes('all') ||
-                                                  !filterState.priorities.length ||
-                                                  filterState.priorities.includes(priority) ||
-                                                  (priority === 'None' && filterState.priorities.includes(null));
-
-                            if (matchesStatus && matchesPriority) visibleCount++;
-                        });
-
-                        filteringSummary.push({
-                            aidType,
-                            layerVisible: true,
-                            totalMarkers: features.length,
-                            visibleMarkers: visibleCount,
-                            hiddenMarkers: features.length - visibleCount
-                        });
-                    });
-
-                    // Log summary tables
-                    console.log('=== Filtering Summary ===');
-                    console.table(filteringSummary);
-
-                    // Now update the map title filter summary with complete information
-                    const mapFilterSummary = document.getElementById('map-filter-summary');
-                    if (mapFilterSummary) {
-                        const summaryParts = [];
-                        console.log('Building map filter summary...');
-
-                        // Add aid type filter summary - only if not 'all'
-                        if (!filterState.aidTypes.includes('all') && filterState.aidTypes.length > 0) {
-                            const typesSummary = `type=[${filterState.aidTypes.join('|')}]`;
-                            console.log('Aid types summary:', typesSummary);
-                            summaryParts.push(typesSummary);
-                        }
-
-                        // Add status filter summary - only if not empty
-                        if (filterState.statuses.length > 0 && !filterState.statuses.includes('all')) {
-                            const statusSummary = `status=[${filterState.statuses.join('|')}]`;
-                            console.log('Status summary:', statusSummary);
-                            summaryParts.push(statusSummary);
-                        }
-
-                        // Add priority filter summary - only if not 'all'
-                        if (!filterState.priorities.includes('all') && filterState.priorities.length > 0) {
-                            const prioritySummary = `priority=[${filterState.priorities.join('|')}]`;
-                            console.log('Priority summary:', prioritySummary);
-                            summaryParts.push(prioritySummary);
-                        }
-
-                        // Calculate visible markers from filtering summary
-                        const totalVisible = filteringSummary.reduce((sum, summary) =>
-                            sum + (summary.layerVisible ? summary.visibleMarkers : 0), 0
-                        );
-
-                        // Calculate total markers across all sources
-                        const totalMarkers = Object.values(aidTypeSources).reduce((sum, source) => {
-                            const features = source.getShapes();
-                            return sum + (features ? features.length : 0);
-                        }, 0);
-
-                        console.log('Counts:', { totalVisible, totalMarkers });
-
-                        // Add count to summary parts
-                        const countSummary = `showing ${totalVisible} of ${totalMarkers}`;
-                        summaryParts.push(countSummary);
-
-                        // Update the summary text
-                        const finalSummary = summaryParts.join(', ');
-                        console.log('Setting map filter summary to:', finalSummary);
-                        mapFilterSummary.textContent = finalSummary;
-                    }
-
-                    // Log active filters
-                    console.log('=== Active Filters ===');
-                    console.table({
-                        'Aid Types': filterState.aidTypes.join(', ') || 'All',
-                        'Statuses': filterState.statuses.join(', ') || 'All',
-                        'Priorities': filterState.priorities.join(', ') || 'All'
-                    });
-
-                    // Log final layer state
-                    console.log('=== Layer Visibility State ===');
-                    const layerStates = [];
-                    map.layers.getLayers().forEach(layer => {
-                        const layerId = layer.getId();
-                        if (layerId) {  // Only include layers with IDs (our aid type layers)
-                            const options = layer.getOptions() || {};
-                            layerStates.push({
-                                layerId,
-                                visible: options.visible !== false  // Default to true if not explicitly false
-                            });
-                        }
-                    });
-                    console.table(layerStates);
-                });
-
-                // Log layer information
-                const layers = map.layers.getLayers();
-                console.log('Current map layers:', layers);
-            });
+            // Update visibility based on initial filter state
+            updateLayerVisibility(filterState);
         });
 
     } catch (error) {
@@ -689,11 +156,433 @@ function initializeMap(config) {
     }
 }
 
-// Helper function to transform dataset keys
-function transformDataset(dataset) {
-    return Object.entries(dataset).reduce((acc, [key, value]) => {
-        const displayKey = key.replace(/-([a-z])/g, g => g[1].toUpperCase());
-        acc[displayKey] = value;
-        return acc;
-    }, {});
+// Listen for filter change events
+document.addEventListener('aidRequestsFiltered', function(event) {
+    if (mapRequestsConfig.debug) {
+        console.log('Map View: Filter event received:', event.detail);
+    }
+
+    updateLayerVisibility(event.detail.filterState);
+});
+
+// Update layer visibility based on filter state
+function updateLayerVisibility(filterState) {
+    if (mapRequestsConfig.debug) {
+        console.log('Map View: Updating layer visibility with filter state:', filterState);
+    }
+
+    const aidRequestsLayer = map.layers.getLayerById('aid-requests');
+    if (!aidRequestsLayer) return;
+
+    // If filterState is null or undefined, show all markers
+    if (!filterState) {
+        aidRequestsLayer.setOptions({ filter: ['boolean', true] });
+        return;
+    }
+
+    // If all filter arrays are empty, show no markers
+    const allFiltersEmpty = (
+        (!Array.isArray(filterState.aidTypes) || filterState.aidTypes.length === 0) &&
+        (!Array.isArray(filterState.statuses) || filterState.statuses.length === 0) &&
+        (!Array.isArray(filterState.priorities) || filterState.priorities.length === 0)
+    );
+
+    if (allFiltersEmpty) {
+        aidRequestsLayer.setOptions({ filter: ['boolean', false] });
+        return;
+    }
+
+    // Build filter expression
+    let filterExpr = ['all'];
+    const filters = [];
+
+    // Add aid type filter if specified
+    if (Array.isArray(filterState.aidTypes) && filterState.aidTypes.length > 0) {
+        filters.push(['in', ['get', 'aid_type'], ['literal', filterState.aidTypes]]);
+    }
+
+    // Add status filter if specified
+    if (Array.isArray(filterState.statuses) && filterState.statuses.length > 0) {
+        filters.push(['in', ['get', 'status'], ['literal', filterState.statuses]]);
+    }
+
+    // Add priority filter if specified
+    if (Array.isArray(filterState.priorities) && filterState.priorities.length > 0) {
+        filters.push(['in', ['get', 'priority'], ['literal', filterState.priorities]]);
+    }
+
+    // If we have any filters, apply them
+    if (filters.length > 0) {
+        filterExpr = ['all', ...filters];
+    } else {
+        // If no filters are specified, show all markers
+        filterExpr = ['boolean', true];
+    }
+
+    if (mapRequestsConfig.debug) {
+        console.log('Map View: Applying filter:', filterExpr);
+    }
+
+    // Apply the filter
+    aidRequestsLayer.setOptions({
+        filter: filterExpr
+    });
+}
+
+// Helper Functions
+
+// Initialize the field operation layer and ring
+function initializeFieldOpLayer() {
+    if (mapRequestsConfig.debug) {
+        console.log('=== Starting Field Op Layer Initialization ===');
+    }
+    // will use 2 layers, one for symbol and one for polygon
+
+    // Create the center position for both field op marker and ring
+    const centerPosition = new atlas.data.Position(
+        parseFloat(mapRequestsConfig.config.center[0]),
+        parseFloat(mapRequestsConfig.config.center[1])
+    );
+
+    // First Data Source for the Field Op Center Marker
+    const fieldOpCenterSource = new atlas.source.DataSource();
+    map.sources.add(fieldOpCenterSource);
+    // Create the field op center feature with marker properties
+    const foCenter = new atlas.data.Feature(
+        new atlas.data.Point(centerPosition),
+        {
+            name: mapRequestsConfig.config.fieldOpName,
+            slug: mapRequestsConfig.config.fieldOpSlug
+        }
+    );
+
+    if (mapRequestsConfig.debug) {
+        console.log('Created field op center:', {
+            position: centerPosition,
+            properties: foCenter.properties
+        });
+    }
+
+    fieldOpCenterSource.add(foCenter);
+
+    // Add Symbol Layer for the Field Op Center Marker
+    map.layers.add(new atlas.layer.SymbolLayer(
+        fieldOpCenterSource,
+        'fieldop_center',
+        {
+            // filter: ['==', ['get', 'subType'], undefined],  // Only show the point, not the circle
+            iconOptions: {
+                image: 'pin-blue',
+                anchor: 'center',
+                size: 1.5,
+                allowOverlap: true
+            },
+            textOptions: {
+                textField: ['get', 'slug'],
+                offset: [0, -2],
+                anchor: 'top',
+                font: ['StandardFont-Bold'],
+                size: 12,
+                color: 'black',
+                haloColor: 'white',
+                haloWidth: 2
+            }
+        }
+    ));
+    if (mapRequestsConfig.debug) console.log('Added field op center layer to map');
+
+    const fieldOpRingSource = new atlas.source.DataSource();
+    map.sources.add(fieldOpRingSource);
+
+    // Create a Ring feature around the field op
+    const fieldOpRing = new atlas.data.Feature(
+        new atlas.data.Point(centerPosition),
+        {
+            subType: 'Circle',
+            radius: mapRequestsConfig.config.ringSize * 1000
+        }
+    );
+    if (mapRequestsConfig.debug) console.log('Created field op ring:', fieldOpRing);
+
+
+    fieldOpRingSource.add(fieldOpRing);
+    if (mapRequestsConfig.debug) console.log('Added field op ring to source');
+    // Add ring PolygonLayer
+    ringLayer = new atlas.layer.PolygonLayer(
+        fieldOpRingSource,
+        'fieldop_ring',
+        {
+            // filter: ['==', ['get', 'subType'], 'Circle'],  // Only show the circle
+            fillColor: 'rgba(255, 0, 0, 0.2)',
+            strokeColor: 'red',
+            strokeWidth: 2
+        }
+    );
+    map.layers.add(ringLayer);
+    if (mapRequestsConfig.debug) console.log('Added field op ring layer to map');
+}
+
+// Initialize aid request layer with icons and points
+async function initializeAidRequestLayer() {
+    if (mapRequestsConfig.debug) {
+        console.log('=== Starting Aid Request Layer Initialization ===');
+    }
+
+    // Create icons first
+    await createAidTypeIcons();
+
+    // Create a data source for each aid type
+    const aidTypeSources = {};
+
+    if (mapRequestsConfig.debug) {
+        console.log('Creating data sources for each aid type...');
+    }
+
+    // Initialize sources for each aid type
+    Object.keys(mapRequestsConfig.aidTypesConfig).forEach(slug => {
+        aidTypeSources[slug] = new atlas.source.DataSource(undefined, {
+            cluster: false
+        });
+        map.sources.add(aidTypeSources[slug]);
+    });
+
+    // Sort aid requests into their respective sources
+    mapRequestsConfig.aidLocations
+        .filter(location => location.latitude && location.longitude)
+        .forEach(location => {
+            const aidType = location.aid_type;
+            if (aidType && aidTypeSources[aidType]) {
+                const position = new atlas.data.Position(
+                    parseFloat(location.longitude),
+                    parseFloat(location.latitude)
+                );
+                const point = new atlas.data.Feature(new atlas.data.Point(position), location);
+                aidTypeSources[aidType].add(point);
+            } else if (mapRequestsConfig.debug) {
+                console.warn('Invalid aid type or missing source:', aidType);
+            }
+        });
+
+    if (mapRequestsConfig.debug) {
+        console.log('Created aid request sources:', Object.keys(aidTypeSources));
+    }
+
+    // Create a layer for each aid type
+    Object.entries(mapRequestsConfig.aidTypesConfig).forEach(([slug, aidTypeConfig]) => {
+        if (mapRequestsConfig.debug) {
+            console.log(`Creating layer for aid type: ${slug}`);
+        }
+
+        const layer = new atlas.layer.SymbolLayer(aidTypeSources[slug], slug, {
+            iconOptions: {
+                ignorePlacement: false,
+                allowOverlap: true,
+                anchor: "bottom",
+                image: slug,
+                size: aidTypeConfig.icon_scale || 1.0,
+                visible: true
+            },
+            textOptions: {
+                // Only show text if priority exists
+                textField: ['case',
+                    ['has', 'priority'],
+                    ['get', 'pk'],
+                    ''  // Don't show text for null priority
+                ],
+                offset: [0, 0.5],
+                allowOverlap: true,
+                ignorePlacement: false,
+                font: ['StandardFont-Bold'],
+                size: 12,
+                color: 'black',
+                haloColor: 'white',
+                haloWidth: 2
+            }
+        });
+        if (mapRequestsConfig.debug) console.log('Added layer for aid type:', slug);
+        if (mapRequestsConfig.debug) console.log('Layer options:', layer.getOptions());
+        if (mapRequestsConfig.debug) console.log('Source contains:', aidTypeSources[slug].getShapes().length, 'points');
+        if (mapRequestsConfig.debug) console.log('Layer:', layer);
+        map.layers.add(layer);
+
+        // Add popup functionality for this layer
+        addAidRequestPopup(layer);
+
+        if (mapRequestsConfig.debug) {
+            console.log(`Added layer for ${slug} with options:`, layer.getOptions());
+            console.log(`Source contains ${aidTypeSources[slug].getShapes().length} points`);
+        }
+    });
+
+    if (mapRequestsConfig.debug) {
+        console.log('=== Aid Request Layer Initialization Complete ===');
+        const totalPoints = Object.values(aidTypeSources)
+            .reduce((sum, source) => sum + source.getShapes().length, 0);
+        console.log('Total points across all sources:', totalPoints);
+        console.log('Created layers:', Object.keys(mapRequestsConfig.aidTypesConfig));
+    }
+}
+
+// Create icon templates for each aid type
+async function createAidTypeIcons() {
+    if (mapRequestsConfig.debug) {
+        console.log('=== Starting Icon Creation ===');
+        console.log('Aid types config:', mapRequestsConfig.aidTypesConfig);
+        const aidTypeCount = mapRequestsConfig.aidTypesConfig ? Object.keys(mapRequestsConfig.aidTypesConfig).length : 0;
+        console.log(`Found ${aidTypeCount} aid types to process`);
+    }
+
+    try {
+        if (mapRequestsConfig.aidTypesConfig) {
+            console.log('Creating icon templates...');
+            const iconPromises = Object.entries(mapRequestsConfig.aidTypesConfig).map(([slug, aidTypeConfig]) => {
+                console.log(`Creating template for ${slug}:`, aidTypeConfig);
+                return map.imageSprite.createFromTemplate(
+                    slug,  // Use the slug as the icon ID
+                    aidTypeConfig.icon_name || 'pin-round',
+                    aidTypeConfig.icon_color || '#1B87EC',
+                    '#fff'  // White outline
+                ).catch(error => {
+                    console.error(`Error creating template for ${slug}:`, error);
+                    return null;
+                });
+            });
+
+            // Wait for all icon templates to be created
+            await Promise.all(iconPromises);
+
+            if (mapRequestsConfig.debug) {
+                console.log(`=== Icon Creation Complete ===`);
+                console.log(`Created ${iconPromises.length} icons`);
+                console.log('Aid types with icons:', Object.keys(mapRequestsConfig.aidTypesConfig));
+                console.log('Icon templates:', map.imageSprite.getImageIds());
+                // console.log('Icon templates:', map.imageSprite.getImage('evac'));
+            }
+        } else {
+            console.warn('No aid types configuration found');
+        }
+    } catch (error) {
+        console.error('Error in icon creation:', error);
+        if (mapRequestsConfig.debug) {
+            console.log('Icon creation failed, will use default pin-round markers');
+        }
+    }
+}
+
+// Add aid request points to the source
+function addAidRequestPoints(aidRequestsSource) {
+    const validLocations = mapRequestsConfig.aidLocations.filter(location => {
+        const isValid = location &&
+                       location.latitude &&
+                       location.longitude &&
+                       !isNaN(parseFloat(location.latitude)) &&
+                       !isNaN(parseFloat(location.longitude));
+        if (!isValid && mapRequestsConfig.debug) {
+            console.log('Invalid location:', location);
+        }
+        return isValid;
+    });
+
+    if (mapRequestsConfig.debug) {
+        console.log('Filtered valid locations:', validLocations.length);
+    }
+
+    const aidPoints = validLocations.map(location => {
+        const point = new atlas.data.Feature(
+            new atlas.data.Point([
+                parseFloat(location.longitude),
+                parseFloat(location.latitude)
+            ]),
+            {
+                id: location.id || null,
+                aid_type: location.aid_type || 'unknown',
+                status: location.status || 'unknown',
+                priority: location.priority || 'none',
+                latitude: parseFloat(location.latitude),
+                longitude: parseFloat(location.longitude)
+            }
+        );
+        return point;
+    });
+
+    if (mapRequestsConfig.debug) {
+        console.log('Created aid points:', aidPoints.length);
+    }
+
+    aidRequestsSource.add(aidPoints);
+
+    if (mapRequestsConfig.debug) {
+        console.log('Added points to source');
+        const shapes = aidRequestsSource.getShapes();
+        console.log('Source shapes:', shapes ? shapes.length : 0);
+        if (shapes && shapes.length > 0) {
+            console.log('Sample shape:', {
+                coordinates: shapes[0].getCoordinates(),
+                properties: shapes[0].getProperties()
+            });
+        }
+    }
+}
+
+// Create and add the aid request layer
+function createAidRequestLayer(aidRequestsSource) {
+    const aidRequestsLayer = new atlas.layer.SymbolLayer(
+        aidRequestsSource,
+        'aid-requests',
+        {
+            iconOptions: {
+                image: 'pin-blue',  // Use Azure Maps built-in pin-blue icon as default
+                allowOverlap: true,
+                size: 1.0,
+                anchor: 'center'
+            },
+            minZoom: 0,
+            maxZoom: 24,
+            visible: true
+        }
+    );
+
+    if (mapRequestsConfig.debug) {
+        console.log('=== Layer Creation Details ===');
+        console.log('Layer ID:', aidRequestsLayer.getId());
+        console.log('Layer options:', aidRequestsLayer.getOptions());
+    }
+
+    map.layers.add(aidRequestsLayer);
+
+    // Add mouse events for the aid requests layer
+    addAidRequestPopup(aidRequestsLayer);
+
+    if (mapRequestsConfig.debug) {
+        console.log('Aid request layer added to map');
+    }
+}
+
+// Add popup functionality to the aid request layer
+function addAidRequestPopup(aidRequestsLayer) {
+    const popup = new atlas.Popup({
+        pixelOffset: [0, -20]
+    });
+
+    map.events.add('mouseover', aidRequestsLayer, (e) => {
+        if (e.shapes && e.shapes[0] && e.shapes[0].properties) {
+            const prop = e.shapes[0].properties;
+            const aidTypeConfig = mapRequestsConfig.aidTypesConfig[prop.aid_type];
+            const content = `
+                <div style="padding: 10px;">
+                    <strong>Status:</strong> ${prop.status || 'None'}<br>
+                    <strong>Priority:</strong> ${prop.priority || 'None'}<br>
+                    <strong>Type:</strong> ${aidTypeConfig ? aidTypeConfig.name : prop.aid_type || 'None'}
+                </div>`;
+            popup.setOptions({
+                content: content,
+                position: e.position
+            });
+            popup.open(map);
+        }
+    });
+
+    map.events.add('mouseout', aidRequestsLayer, () => {
+        popup.close();
+    });
 }

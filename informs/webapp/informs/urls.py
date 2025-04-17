@@ -12,7 +12,7 @@ from aidrequests.views.aid_request import (
      AidRequestUpdateView,
      AidRequestLogCreateView
      )
-from aidrequests.views.aid_request_list import AidRequestListView
+from aidrequests.views.aid_request_list import AidRequestListView, update_aid_request
 from aidrequests.views.aid_request_detail import AidRequestDetailView
 from aidrequests.views.aid_request_notify import AidRequestNotifyView
 
@@ -99,6 +99,7 @@ urlpatterns = [
           AidRequestLogCreateView.as_view(),
           name='aid_request_addlog'
           ),
+     path('api/<slug:field_op>/request/<int:pk>/update/', update_aid_request, name='aid_request_ajax_update'),
      path('sendcot-aidrequest', sendcot_aidrequest, name='sendcot_aidrequest'),
      path('sendcot-checkstatus', sendcot_checkstatus, name='sendcot_checkstatus'),
 ]

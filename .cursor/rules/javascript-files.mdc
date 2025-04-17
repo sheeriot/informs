@@ -1,0 +1,19 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- for Aid Requests List page [aid_request_list.html](mdc:informs/webapp/aidrequests/templates/aidrequests/aid_request_list.html)
+- the [aidrequests-filter.js](mdc:informs/webapp/static/js/aidrequests-filter.js) should manage filters and filter groups
+-- should maintain counts by aid_type, priority, status intersectionally with other filters
+- all or none or some priorities matches the all checkbox (checked, indeterminate '-', or unchecked)
+- all or none or some aid_types matches the all checkbox (checked, indeterminate '-', or unchecked)
+- status is broken into two groups, defined in the model
+-- active_statuses
+-- inactive_statues
+
+- [aidrequests-list.js](mdc:informs/webapp/static/js/aidrequests-list.js) uses the data source read and managed by [aidrequests-filter.js](mdc:informs/webapp/static/js/aidrequests-filter.js) and the filterEvent and hides and shows in the aid request list (table)
+- [map_aidrequests.js](mdc:informs/webapp/static/js/map_aidrequests.js) uses the same datasource, and the filterEvent and hides and shows data points in the aid request layer.

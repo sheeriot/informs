@@ -5,9 +5,9 @@
  * Provides dynamic filtering and searching functionality
  */
 
-// Configuration object
-window.listjsConfig = {
-    debug: true  // Set to true to enable debugging output
+// Configuration
+const listConfig = {
+    debug: false  // Set to false in production
 };
 
 // Define status groups if not already defined
@@ -48,8 +48,8 @@ function getPriorityBadgeClass(priority) {
 
 // Function to update row visibility based on filter state
 function updateRowVisibility(filterState) {
-    if (window.listjsConfig.debug) {
-        console.log('Updating row visibility with filter state:', filterState);
+    if (window.aidRequestsStore.debug) {
+        console.log('List View: Updating row visibility with filter state:', filterState);
     }
 
     const tableBody = document.querySelector('#aid-request-list-body');
@@ -68,20 +68,23 @@ function updateRowVisibility(filterState) {
         const id = row.getAttribute('data-id');
 
         // Check if row matches current filters
-        const matchesStatus = !filterState.statuses.length || filterState.statuses.includes(status);
-        const matchesAidType = filterState.aidTypes.includes('all') || !filterState.aidTypes.length || filterState.aidTypes.includes(aidType);
-        const matchesPriority = filterState.priorities.includes('all') || !filterState.priorities.length || filterState.priorities.includes(priority);
+        const matchesStatus = filterState.statuses === 'all' || filterState.statuses.includes(status);
+        const matchesAidType = filterState.aidTypes === 'all' || filterState.aidTypes.includes(aidType);
+        const matchesPriority = filterState.priorities === 'all' || filterState.priorities.includes(priority);
 
         const isVisible = matchesStatus && matchesAidType && matchesPriority;
 
         // Collect debug info
-        if (window.listjsConfig.debug) {
+        if (window.aidRequestsStore.debug) {
             debugRows.push({
                 ID: id,
                 Status: status,
                 'Aid Type': aidType,
                 Priority: priority,
-                'Filter Match': isVisible
+                'Filter Match': isVisible,
+                'Status Match': matchesStatus,
+                'Aid Type Match': matchesAidType,
+                'Priority Match': matchesPriority
             });
         }
 
@@ -93,13 +96,9 @@ function updateRowVisibility(filterState) {
         }
     });
 
-    if (window.listjsConfig.debug) {
-        console.log('Filter Results:');
-        console.table(debugRows);
+    if (window.aidRequestsStore.debug) {
+        console.log('List View: Filter Results:', debugRows);
     }
-
-    // Update results counter
-    updateResultsCounter();
 }
 
 // Function to update the results counter
@@ -130,17 +129,50 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Listen for filter change events
     document.addEventListener('aidRequestsFiltered', function(event) {
-        if (window.listjsConfig.debug) {
-            console.log('Filter change event received:', event.detail);
-            console.log('%cFilter State', 'font-weight: bold; color: #2196F3;');
-            console.table({
-                'Statuses': event.detail.filterState.statuses.join(', ') || 'None',
-                'Aid Types': event.detail.filterState.aidTypes.join(', ') || 'None',
-                'Priorities': event.detail.filterState.priorities.join(', ') || 'None'
-            });
+        if (window.aidRequestsStore.debug) {
+            console.group('List View: Filter Event Received');
+            console.log('Filter State:', event.detail.filterState);
+            console.log('Counts:', event.detail.counts);
+            console.groupEnd();
         }
 
-        // Update row visibility
+        // Update row visibility based on received filter state
         updateRowVisibility(event.detail.filterState);
+    });
+
+    // Listen for aid request updates
+    document.addEventListener('aidRequestUpdated', function(event) {
+        if (window.aidRequestsStore.debug) {
+            console.group('List View: Update Event Received');
+            console.log('Update:', event.detail);
+            console.groupEnd();
+        }
+
+        const { id, updates, filterState } = event.detail;
+
+        // Find and update the row
+        const row = document.querySelector(`#aid-request-list-body tr[data-id="${id}"]`);
+        if (row) {
+            // Update data attributes
+            if (updates.status) {
+                row.setAttribute('data-status', updates.status);
+            }
+            if (updates.priority) {
+                row.setAttribute('data-priority', updates.priority);
+            }
+
+            // Update displayed values
+            if (updates.status_display) {
+                const statusCell = row.querySelector('.status-display');
+                if (statusCell) statusCell.textContent = updates.status_display;
+            }
+            if (updates.priority_display) {
+                const priorityCell = row.querySelector('.priority-display');
+                if (priorityCell) priorityCell.textContent = updates.priority_display;
+            }
+
+            // Update row visibility based on current filters
+            updateRowVisibility(filterState);
+        }
     });
 });

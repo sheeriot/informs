@@ -1,6 +1,9 @@
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required, permission_required
 import django_filters
 from django_filters.views import FilterView
 import json
@@ -210,6 +213,13 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
         priority_counts = {}
         aid_type_counts = {}
 
+        # Initialize aid_type_counts with all possible aid types for this field op (with zero counts)
+        for aid_type in self.field_op.aid_types.all():
+            aid_type_counts[aid_type.name] = {
+                'count': 0,
+                'value': aid_type.slug
+            }
+
         # Use the already filtered and de-duplicated aid_requests_data
         for aid_request_data in aid_requests_data:
             status = aid_request_data['status_display']
@@ -226,12 +236,10 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
                 'value': priority_value
             }
 
+            # Update count for existing aid types
             aid_type = aid_request_data['aid_type_name']
-            aid_type_value = aid_request_data['aid_type']  # Add the raw value for filtering
-            aid_type_counts[aid_type] = {
-                'count': aid_type_counts.get(aid_type, {}).get('count', 0) + 1,
-                'value': aid_type_value
-            }
+            if aid_type in aid_type_counts:
+                aid_type_counts[aid_type]['count'] += 1
 
         context['status_counts'] = status_counts
         context['priority_counts'] = priority_counts
@@ -239,7 +247,7 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
 
         ic(f"Status counts (from unique records): {status_counts}")
         ic(f"Priority counts (from unique records): {priority_counts}")
-        ic(f"Aid type counts (from unique records): {aid_type_counts}")
+        ic(f"Aid type counts (including zero counts): {aid_type_counts}")
 
         # Define status groups for filter buttons
         status_groups = {
@@ -289,3 +297,43 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
             context['map_zoom'] = calculate_zoom(max_distance/1.5)
 
         return context
+
+# Add new view for AJAX updates
+@login_required
+@permission_required('aidrequests.change_aidrequest')
+@require_http_methods(["POST"])
+def update_aid_request(request, field_op, pk):
+    try:
+        # Get the aid request
+        aid_request = get_object_or_404(AidRequest, pk=pk, field_op__slug=field_op)
+
+        # Parse the JSON data
+        data = json.loads(request.body)
+
+        # Update status if provided
+        if 'status' in data:
+            aid_request.status = data['status']
+
+        # Update priority if provided
+        if 'priority' in data:
+            aid_request.priority = data['priority']
+
+        # Save the changes
+        aid_request.save()
+
+        # Return updated data
+        response_data = {
+            'success': True,
+            'status': aid_request.status,
+            'status_display': aid_request.get_status_display(),
+            'priority': aid_request.priority,
+            'priority_display': aid_request.get_priority_display()
+        }
+
+        return JsonResponse(response_data)
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
