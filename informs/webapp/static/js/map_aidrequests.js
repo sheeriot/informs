@@ -334,10 +334,6 @@ async function initializeAidRequestLayer() {
     // Create a data source for each aid type
     const aidTypeSources = {};
 
-    if (mapRequestsConfig.debug) {
-        console.log('Creating data sources for each aid type...');
-    }
-
     // Initialize sources for each aid type
     Object.keys(mapRequestsConfig.aidTypesConfig).forEach(slug => {
         aidTypeSources[slug] = new atlas.source.DataSource(undefined, {
@@ -363,16 +359,8 @@ async function initializeAidRequestLayer() {
             }
         });
 
-    if (mapRequestsConfig.debug) {
-        console.log('Created aid request sources:', Object.keys(aidTypeSources));
-    }
-
     // Create a layer for each aid type
     Object.entries(mapRequestsConfig.aidTypesConfig).forEach(([slug, aidTypeConfig]) => {
-        if (mapRequestsConfig.debug) {
-            console.log(`Creating layer for aid type: ${slug}`);
-        }
-
         const layer = new atlas.layer.SymbolLayer(aidTypeSources[slug], slug, {
             iconOptions: {
                 ignorePlacement: false,
@@ -383,11 +371,10 @@ async function initializeAidRequestLayer() {
                 visible: true
             },
             textOptions: {
-                // Only show text if priority exists
                 textField: ['case',
                     ['has', 'priority'],
                     ['get', 'pk'],
-                    ''  // Don't show text for null priority
+                    ''
                 ],
                 offset: [0, 0.5],
                 allowOverlap: true,
@@ -399,44 +386,36 @@ async function initializeAidRequestLayer() {
                 haloWidth: 2
             }
         });
-        if (mapRequestsConfig.debug) console.log('Added layer for aid type:', slug);
-        if (mapRequestsConfig.debug) console.log('Layer options:', layer.getOptions());
-        if (mapRequestsConfig.debug) console.log('Source contains:', aidTypeSources[slug].getShapes().length, 'points');
-        if (mapRequestsConfig.debug) console.log('Layer:', layer);
-        map.layers.add(layer);
-
-        // Add popup functionality for this layer
-        addAidRequestPopup(layer);
 
         if (mapRequestsConfig.debug) {
-            console.log(`Added layer for ${slug} with options:`, layer.getOptions());
-            console.log(`Source contains ${aidTypeSources[slug].getShapes().length} points`);
+            console.log(`Added layer: ${slug} (${aidTypeSources[slug].getShapes().length} points)`);
         }
+
+        map.layers.add(layer);
+        addAidRequestPopup(layer);
     });
 
     if (mapRequestsConfig.debug) {
-        console.log('=== Aid Request Layer Initialization Complete ===');
         const totalPoints = Object.values(aidTypeSources)
             .reduce((sum, source) => sum + source.getShapes().length, 0);
-        console.log('Total points across all sources:', totalPoints);
-        console.log('Created layers:', Object.keys(mapRequestsConfig.aidTypesConfig));
+        console.log('=== Layer Initialization Complete ===');
+        console.log(`Total points: ${totalPoints}`);
     }
 }
 
 // Create icon templates for each aid type
 async function createAidTypeIcons() {
+    const startTime = Date.now();
+
     if (mapRequestsConfig.debug) {
         console.log('=== Starting Icon Creation ===');
-        console.log('Aid types config:', mapRequestsConfig.aidTypesConfig);
         const aidTypeCount = mapRequestsConfig.aidTypesConfig ? Object.keys(mapRequestsConfig.aidTypesConfig).length : 0;
-        console.log(`Found ${aidTypeCount} aid types to process`);
+        console.log(`Processing ${aidTypeCount} aid types`);
     }
 
     try {
         if (mapRequestsConfig.aidTypesConfig) {
-            console.log('Creating icon templates...');
             const iconPromises = Object.entries(mapRequestsConfig.aidTypesConfig).map(([slug, aidTypeConfig]) => {
-                console.log(`Creating template for ${slug}:`, aidTypeConfig);
                 return map.imageSprite.createFromTemplate(
                     slug,  // Use the slug as the icon ID
                     aidTypeConfig.icon_name || 'pin-round',
@@ -452,20 +431,15 @@ async function createAidTypeIcons() {
             await Promise.all(iconPromises);
 
             if (mapRequestsConfig.debug) {
-                console.log(`=== Icon Creation Complete ===`);
-                console.log(`Created ${iconPromises.length} icons`);
-                console.log('Aid types with icons:', Object.keys(mapRequestsConfig.aidTypesConfig));
-                console.log('Icon templates:', map.imageSprite.getImageIds());
-                // console.log('Icon templates:', map.imageSprite.getImage('evac'));
+                const duration = Date.now() - startTime;
+                console.log(`Icon creation complete - ${iconPromises.length} templates created in ${duration}ms`);
+                console.log('Available icons:', map.imageSprite.getImageIds());
             }
         } else {
             console.warn('No aid types configuration found');
         }
     } catch (error) {
         console.error('Error in icon creation:', error);
-        if (mapRequestsConfig.debug) {
-            console.log('Icon creation failed, will use default pin-round markers');
-        }
     }
 }
 
