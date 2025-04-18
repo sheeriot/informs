@@ -6,6 +6,7 @@ alwaysApply: true
 
 # Your rule content
 
+- use javascript provided data from the template to work with data
 - for Aid Requests List page [aid_request_list.html](mdc:informs/webapp/aidrequests/templates/aidrequests/aid_request_list.html)
 - the [aidrequests-filter.js](mdc:informs/webapp/static/js/aidrequests-filter.js) should manage filters and filter groups
 -- should maintain counts by aid_type, priority, status intersectionally with other filters

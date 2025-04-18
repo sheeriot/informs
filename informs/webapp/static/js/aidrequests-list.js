@@ -7,7 +7,7 @@
 
 // Configuration
 const listConfig = {
-    debug: false  // Set to false in production
+    debug: false  // Enable debugging to track initialization issues
 };
 
 // Define status groups if not already defined
@@ -48,24 +48,28 @@ function getPriorityBadgeClass(priority) {
 
 // Function to update row visibility based on filter state
 function updateRowVisibility(filterState) {
-    if (window.aidRequestsStore.debug) {
-        console.log('List View: Updating row visibility with filter state:', filterState);
+    if (!filterState) {
+        console.warn('[List View] No filter state provided');
+        return;
     }
 
     const tableBody = document.querySelector('#aid-request-list-body');
     if (!tableBody) {
-        console.error('Table body not found');
+        console.error('[List View] Table body not found');
         return;
     }
 
     const rows = tableBody.getElementsByTagName('tr');
-    const debugRows = [];
+    let visibleCount = 0;
+    const totalRows = rows.length;
 
     Array.from(rows).forEach(row => {
+        // Skip the empty message row
+        if (row.id === 'aid-request-empty-row') return;
+
         const status = row.getAttribute('data-status');
         const aidType = row.getAttribute('data-aid-type');
         const priority = row.getAttribute('data-priority');
-        const id = row.getAttribute('data-id');
 
         // Check if row matches current filters
         const matchesStatus = filterState.statuses === 'all' || filterState.statuses.includes(status);
@@ -74,66 +78,89 @@ function updateRowVisibility(filterState) {
 
         const isVisible = matchesStatus && matchesAidType && matchesPriority;
 
-        // Collect debug info
-        if (window.aidRequestsStore.debug) {
-            debugRows.push({
-                ID: id,
-                Status: status,
-                'Aid Type': aidType,
-                Priority: priority,
-                'Filter Match': isVisible,
-                'Status Match': matchesStatus,
-                'Aid Type Match': matchesAidType,
-                'Priority Match': matchesPriority
-            });
-        }
-
-        // Update visibility using Bootstrap's d-none class
         if (isVisible) {
             row.classList.remove('d-none');
+            visibleCount++;
         } else {
             row.classList.add('d-none');
         }
     });
 
-    if (window.aidRequestsStore.debug) {
-        console.log('List View: Filter Results:', debugRows);
+    // Handle empty state
+    const emptyRow = document.getElementById('aid-request-empty-row');
+    if (emptyRow) {
+        if (visibleCount === 0) {
+            emptyRow.classList.remove('d-none');
+        } else {
+            emptyRow.classList.add('d-none');
+        }
+    }
+
+    if (listConfig.debug) {
+        console.log('[List View] Visibility updated:', {
+            totalRows: totalRows,
+            visibleRows: visibleCount,
+            filters: filterState
+        });
     }
 }
 
 // Function to update the results counter
-function updateResultsCounter() {
-    const counter = document.getElementById('results-counter');
-    if (!counter) return;
+// function updateResultsCounter() {
+//     const counter = document.getElementById('results-counter');
+//     if (!counter) return;
 
-    const visibleRows = document.querySelectorAll('#aid-request-list-body tr:not(.d-none)');
-    const totalRows = document.querySelectorAll('#aid-request-list-body tr').length;
+//     const visibleRows = document.querySelectorAll('#aid-request-list-body tr:not(.d-none)');
+//     const totalRows = document.querySelectorAll('#aid-request-list-body tr').length;
 
-    counter.textContent = `${visibleRows.length} of ${totalRows} requests`;
+//     counter.textContent = `${visibleRows.length} of ${totalRows} requests`;
 
-    // Update counter badge classes based on results
-    counter.classList.remove('bg-success', 'bg-warning', 'bg-danger');
-    if (visibleRows.length === totalRows) {
-        counter.classList.add('bg-success');
-    } else if (visibleRows.length === 0) {
-        counter.classList.add('bg-danger');
-    } else {
-        counter.classList.add('bg-warning');
-    }
-}
+//     // Update counter badge classes based on results
+//     counter.classList.remove('bg-success', 'bg-warning', 'bg-danger');
+//     if (visibleRows.length === totalRows) {
+//         counter.classList.add('bg-success');
+//     } else if (visibleRows.length === 0) {
+//         counter.classList.add('bg-danger');
+//     } else {
+//         counter.classList.add('bg-warning');
+//     }
+// }
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    // Update results counter on initial load
-    updateResultsCounter();
+    if (listConfig.debug) console.warn('[List View] Initializing aid requests list view...');
+
+    // Verify data store availability
+    if (!window.aidRequestsStore) {
+        console.error('[List View] aidRequestsStore not found - table functionality will be limited');
+        return;
+    }
+
+    // Add validation of initial state
+    validateInitialState();
+
+    // Verify table elements
+    const tableBody = document.querySelector('#aid-request-list-body');
+    if (!tableBody) {
+        console.error('[List View] Table body not found');
+        return;
+    }
+
+    // Log initial state
+    const initialRows = tableBody.getElementsByTagName('tr');
+    if (listConfig.debug) console.warn('[List View] Initial table state:', {
+        totalRows: initialRows.length,
+        visibleRows: Array.from(initialRows).filter(row => !row.classList.contains('d-none')).length,
+        hasEmptyRow: !!document.getElementById('aid-request-empty-row')
+    });
 
     // Listen for filter change events
     document.addEventListener('aidRequestsFiltered', function(event) {
-        if (window.aidRequestsStore.debug) {
-            console.group('List View: Filter Event Received');
-            console.log('Filter State:', event.detail.filterState);
-            console.log('Counts:', event.detail.counts);
-            console.groupEnd();
+        if (listConfig.debug) {
+            console.log('[List View] Filter event received:', {
+                filterState: event.detail.filterState,
+                counts: event.detail.counts
+            });
         }
 
         // Update row visibility based on received filter state
@@ -142,13 +169,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Listen for aid request updates
     document.addEventListener('aidRequestUpdated', function(event) {
-        if (window.aidRequestsStore.debug) {
-            console.group('List View: Update Event Received');
-            console.log('Update:', event.detail);
-            console.groupEnd();
+        if (listConfig.debug) {
+            console.log('[List View] Update event received:', event.detail);
         }
 
-        const { id, updates, filterState } = event.detail;
+        const { id, updates, request, filterState } = event.detail;
 
         // Find and update the row
         const row = document.querySelector(`#aid-request-list-body tr[data-id="${id}"]`);
@@ -176,3 +201,38 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// Function to validate initial state
+function validateInitialState() {
+    if (!listConfig.debug) return;
+
+    const tableBody = document.querySelector('#aid-request-list-body');
+    if (!tableBody) return;
+
+    const rows = Array.from(tableBody.getElementsByTagName('tr'));
+    const issues = [];
+
+    rows.forEach(row => {
+        if (row.id === 'aid-request-empty-row') return;
+
+        const status = row.getAttribute('data-status');
+        const isInactive = window.STATUS_GROUPS.inactive.includes(status);
+        const isHidden = row.classList.contains('d-none');
+
+        // Check if visibility matches status
+        if (isInactive && !isHidden) {
+            issues.push(`Row ${row.getAttribute('data-id')} with inactive status ${status} should be hidden`);
+        }
+        if (!isInactive && isHidden) {
+            issues.push(`Row ${row.getAttribute('data-id')} with active status ${status} should be visible`);
+        }
+    });
+
+    // Log any issues found
+    if (issues.length > 0) {
+        console.warn('[List View] Initial state validation issues:', issues);
+        console.table(issues);
+    } else {
+        console.log('[List View] Initial state validation passed');
+    }
+}
