@@ -184,12 +184,55 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
             }
             context['group_counts'] = group_counts
 
-            # Priority counts (active only initially)
-            priority_counts = active_df.groupby(['priority_display', 'priority']).size().reset_index()
-            priority_counts.columns = ['display', 'value', 'count']
-            priority_counts = priority_counts.to_dict('records')
-            priority_counts = {item['display']: {'count': item['count'], 'value': item['value']}
-                             for item in priority_counts}
+            # Priority counts - calculate both filtered and total
+            priority_counts = {}
+
+            # First get total counts for all priorities
+            total_priority_counts = df.groupby(['priority_display', 'priority'], dropna=False).size().reset_index()
+            total_priority_counts.columns = ['display', 'value', 'count']
+
+            # Then get filtered counts (active only)
+            filtered_priority_counts = active_df.groupby(['priority_display', 'priority'], dropna=False).size().reset_index()
+            filtered_priority_counts.columns = ['display', 'value', 'count']
+
+            # Debug the raw counts
+            ic("Raw priority counts:", {
+                'total': total_priority_counts.to_dict('records'),
+                'filtered': filtered_priority_counts.to_dict('records')
+            })
+
+            # Combine into final priority_counts structure
+            for _, row in total_priority_counts.iterrows():
+                # Use the actual display name from the row, or 'None' if it's None/NaN
+                display_name = row['display'] if pd.notna(row['display']) else 'None'
+                priority_value = row['value'] if pd.notna(row['value']) else None
+
+                # Find the filtered count for this priority
+                filtered_count = 0
+                filtered_match = filtered_priority_counts[
+                    (filtered_priority_counts['value'].isna() if pd.isna(priority_value)
+                     else filtered_priority_counts['value'] == priority_value)
+                ]
+                if not filtered_match.empty:
+                    filtered_count = int(filtered_match['count'].iloc[0])
+
+                priority_counts[display_name] = {
+                    'value': 'none' if priority_value is None else priority_value,
+                    'total': int(row['count']),
+                    'count': filtered_count
+                }
+
+            # Make sure we have an entry for each priority choice
+            for priority_code, priority_name in AidRequest.PRIORITY_CHOICES:
+                if priority_name not in priority_counts:
+                    priority_counts[priority_name] = {
+                        'value': priority_code if priority_code is not None else 'none',
+                        'total': 0,
+                        'count': 0
+                    }
+
+            # Debug the final priority counts
+            ic("Final priority counts:", priority_counts)
 
             # Aid type counts (active only initially)
             aid_type_counts = active_df.groupby(['aid_type_name', 'aid_type_slug']).size().reset_index()

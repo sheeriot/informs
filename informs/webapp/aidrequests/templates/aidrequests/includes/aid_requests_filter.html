@@ -153,12 +153,12 @@
                             <div class="col">
                                 <div class="form-check">
                                     <input class="form-check-input filter-checkbox" type="checkbox"
-                                           id="priority-filter-{{ priority_code }}"
+                                           id="priority-filter-{% if priority_code %}{{ priority_code }}{% else %}none{% endif %}"
                                            data-filter-type="priority"
-                                           data-filter-value="{{ priority_code }}"
+                                           data-filter-value="{% if priority_code %}{{ priority_code }}{% else %}none{% endif %}"
                                            checked>
-                                    <label class="form-check-label" for="priority-filter-{{ priority_code }}">
-                                        {{ priority_name }} <span class="text-muted" id="priority-{{ priority_code }}-count">({% if priority_counts|get_item:priority_name %}{{ priority_counts|get_item:priority_name|get_item:"count" }}{% else %}0{% endif %})</span>
+                                    <label class="form-check-label" for="priority-filter-{% if priority_code %}{{ priority_code }}{% else %}none{% endif %}">
+                                        {{ priority_name }} <span class="text-muted" id="priority-{% if priority_code %}{{ priority_code }}{% else %}none{% endif %}-count">({% if priority_counts %}{{ priority_counts|get_item:priority_name|get_item:"count"|default:0 }}{% else %}0{% endif %})</span>
                                     </label>
                                 </div>
                             </div>
