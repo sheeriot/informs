@@ -189,9 +189,20 @@ function initializeUI() {
 
     if (aidRequestsStore.debug) console.log('[Filter] Initializing UI event handlers');
 
-    // Add event listeners to checkboxes
-    filterCard.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+    // Add event listeners to all checkboxes (including group checkboxes)
+    const allCheckboxes = filterCard.querySelectorAll('.filter-checkbox, [id^="status-group-filter-"]');
+    if (aidRequestsStore.debug) {
+        console.log('[Filter] Found checkboxes:', {
+            total: allCheckboxes.length,
+            ids: Array.from(allCheckboxes).map(cb => cb.id)
+        });
+    }
+
+    allCheckboxes.forEach(checkbox => {
         checkbox.addEventListener('change', handleCheckboxChange);
+        if (aidRequestsStore.debug) {
+            console.log('[Filter] Added change handler to:', checkbox.id);
+        }
     });
 
     // Add event listener to reset button
@@ -294,33 +305,68 @@ function validateCountsWithTemplate() {
 function handleCheckboxChange(checkboxEvent) {
     const checkbox = checkboxEvent.target;
     const filterType = checkbox.dataset.filterType;
-    const group = checkbox.dataset.group;
 
     if (aidRequestsStore.debug) console.log('[Filter] Checkbox changed:', {
         id: checkbox.id,
         checked: checkbox.checked,
         filterType,
-        group
+        dataset: checkbox.dataset
     });
 
-    if (filterType === 'status') {
-        // For status checkboxes, handle group logic
-        handleStatusCheckbox(checkbox);
+    // Handle different types of checkboxes
+    if (filterType === 'status_group') {
+        // Handle group checkbox (active/inactive)
+        const group = checkbox.dataset.filterValue; // 'active' or 'inactive'
+        const statusCheckboxes = aidRequestsStore.elements.filterCard
+            .querySelectorAll(`input[data-filter-type="status"][data-group="${group}"]`);
+
+        if (aidRequestsStore.debug) {
+            console.log('[Filter] Updating status group:', {
+                group,
+                newState: checkbox.checked,
+                foundCheckboxes: statusCheckboxes.length
+            });
+        }
+
+        // Update all status checkboxes in this group
+        statusCheckboxes.forEach(statusCheckbox => {
+            statusCheckbox.checked = checkbox.checked;
+        });
+    } else if (filterType === 'status') {
+        // Handle individual status checkbox
+        const group = checkbox.dataset.group; // 'active' or 'inactive'
+        const groupCheckbox = aidRequestsStore.elements.filterCard
+            .querySelector(`#status-group-filter-${group}`);
+        const groupStatusCheckboxes = aidRequestsStore.elements.filterCard
+            .querySelectorAll(`input[data-filter-type="status"][data-group="${group}"]`);
+
+        // Update group checkbox state
+        const checkedCount = Array.from(groupStatusCheckboxes).filter(cb => cb.checked).length;
+        groupCheckbox.checked = checkedCount === groupStatusCheckboxes.length;
+        groupCheckbox.indeterminate = checkedCount > 0 && checkedCount < groupStatusCheckboxes.length;
+
+        if (aidRequestsStore.debug) {
+            console.log('[Filter] Updated group state:', {
+                group,
+                checkedCount,
+                total: groupStatusCheckboxes.length,
+                groupState: {
+                    checked: groupCheckbox.checked,
+                    indeterminate: groupCheckbox.indeterminate
+                }
+            });
+        }
     } else if (checkbox.id.endsWith('-all')) {
-        // For aid type and priority "All" checkboxes
+        // Handle "All" checkbox for aid types and priorities
         handleAllCheckbox(checkbox);
     } else {
-        // For individual aid type and priority checkboxes
+        // Handle individual aid type and priority checkboxes
         handleIndividualCheckbox(checkbox);
     }
 
-    // Get current filter state
+    // Get current filter state and update counts
     const filterState = getFilterState();
-
-    // Calculate new counts based on current filter state
     const counts = getFilteredCounts(aidRequestsStore.data.aidRequests, filterState);
-
-    // Update display with new counts
     updateCountsDisplay(counts);
 
     // Dispatch event for other components
@@ -330,51 +376,6 @@ function handleCheckboxChange(checkboxEvent) {
     document.dispatchEvent(filterChangeEvent);
 
     if (aidRequestsStore.debug) console.log('[Filter] Filter change complete');
-}
-
-function handleStatusCheckbox(checkbox) {
-    const group = checkbox.dataset.group;
-    if (!group) {
-        console.warn('[Filter] Status checkbox missing group data:', checkbox.id);
-        return;
-    }
-
-    // Get all checkboxes in this group
-    const groupCheckboxes = aidRequestsStore.elements.filterCard
-        .querySelectorAll(`[data-filter-type="status"][data-group="${group}"]`);
-
-    // Get the group checkbox
-    const groupCheckbox = aidRequestsStore.elements.filterCard
-        .querySelector(`#status-group-filter-${group}`);
-
-    if (!groupCheckbox) {
-        console.warn(`[Filter] Group checkbox not found for ${group}`);
-        return;
-    }
-
-    // Count checked boxes in the group
-    const checkedCount = Array.from(groupCheckboxes).filter(cb => cb.checked).length;
-
-    // Update group checkbox state
-    if (checkedCount === groupCheckboxes.length) {
-        groupCheckbox.checked = true;
-        groupCheckbox.indeterminate = false;
-    } else if (checkedCount === 0) {
-        groupCheckbox.checked = false;
-        groupCheckbox.indeterminate = false;
-    } else {
-        groupCheckbox.checked = false;
-        groupCheckbox.indeterminate = true;
-    }
-
-    if (aidRequestsStore.debug) console.log(`[Filter] Updated ${group} group state:`, {
-        total: groupCheckboxes.length,
-        checked: checkedCount,
-        groupState: {
-            checked: groupCheckbox.checked,
-            indeterminate: groupCheckbox.indeterminate
-        }
-    });
 }
 
 function handleAllCheckbox(allCheckbox) {
@@ -395,6 +396,15 @@ function handleAllCheckbox(allCheckbox) {
 
 function handleIndividualCheckbox(checkbox) {
     const filterType = checkbox.dataset.filterType;
+
+    // Skip "All" checkbox handling for status groups
+    if (filterType === 'status_group') {
+        if (aidRequestsStore.debug) {
+            console.log('[Filter] Status group checkbox clicked, skipping "All" checkbox handling');
+        }
+        return;
+    }
+
     // Convert aid_type to aid-type for ID matching
     const allCheckboxId = filterType === 'aid_type' ? 'aid-type-filter-all' : `${filterType}-filter-all`;
     const allCheckbox = aidRequestsStore.elements.filterCard.querySelector(`#${allCheckboxId}`);
