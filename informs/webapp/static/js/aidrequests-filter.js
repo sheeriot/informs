@@ -291,8 +291,8 @@ function validateCountsWithTemplate() {
     console.timeEnd('counts-validation');
 }
 
-function handleCheckboxChange(event) {
-    const checkbox = event.target;
+function handleCheckboxChange(checkboxEvent) {
+    const checkbox = checkboxEvent.target;
     const filterType = checkbox.dataset.filterType;
     const group = checkbox.dataset.group;
 
@@ -314,8 +314,22 @@ function handleCheckboxChange(event) {
         handleIndividualCheckbox(checkbox);
     }
 
-    // Trigger filter update
-    triggerFilterChange();
+    // Get current filter state
+    const filterState = getFilterState();
+
+    // Calculate new counts based on current filter state
+    const counts = getFilteredCounts(aidRequestsStore.data.aidRequests, filterState);
+
+    // Update display with new counts
+    updateCountsDisplay(counts);
+
+    // Dispatch event for other components
+    const filterChangeEvent = new CustomEvent('aidRequestsFiltered', {
+        detail: { filterState, counts }
+    });
+    document.dispatchEvent(filterChangeEvent);
+
+    if (aidRequestsStore.debug) console.log('[Filter] Filter change complete');
 }
 
 function handleStatusCheckbox(checkbox) {
@@ -381,7 +395,9 @@ function handleAllCheckbox(allCheckbox) {
 
 function handleIndividualCheckbox(checkbox) {
     const filterType = checkbox.dataset.filterType;
-    const allCheckbox = aidRequestsStore.elements.filterCard.querySelector(`#${filterType}-filter-all`);
+    // Convert aid_type to aid-type for ID matching
+    const allCheckboxId = filterType === 'aid_type' ? 'aid-type-filter-all' : `${filterType}-filter-all`;
+    const allCheckbox = aidRequestsStore.elements.filterCard.querySelector(`#${allCheckboxId}`);
 
     if (!allCheckbox) {
         console.warn(`[Filter] All checkbox not found for ${filterType}`);
@@ -416,7 +432,7 @@ function handleIndividualCheckbox(checkbox) {
     });
 }
 
-function handleResetClick() {
+function handleResetClick(resetEvent) {
     if (aidRequestsStore.debug) console.log('[Filter] Reset button clicked');
     console.time('reset-filters');
 
@@ -439,8 +455,20 @@ function handleResetClick() {
     if (aidRequestsStore.debug) console.log('[Filter] Filters reset to initial state');
     console.timeEnd('reset-filters');
 
-    // Trigger filter update
-    triggerFilterChange();
+    // Get current filter state
+    const filterState = getFilterState();
+
+    // Calculate new counts based on current filter state
+    const counts = getFilteredCounts(aidRequestsStore.data.aidRequests, filterState);
+
+    // Update display with new counts
+    updateCountsDisplay(counts);
+
+    // Dispatch event for other components
+    const filterChangeEvent = new CustomEvent('aidRequestsFiltered', {
+        detail: { filterState, counts }
+    });
+    document.dispatchEvent(filterChangeEvent);
 }
 
 function calculateTotals() {
@@ -609,13 +637,13 @@ function applyFilters() {
 }
 
 function getFilterState() {
+    if (aidRequestsStore.debug) console.log('[Filter] Getting current filter state');
+
     const filterState = {
         statuses: [],
         aidTypes: [],
         priorities: []
     };
-
-    if (aidRequestsStore.debug) console.log('[Filter] Getting current filter state');
 
     // Get status filters - collect all checked statuses
     const checkedStatuses = Array.from(
@@ -649,34 +677,6 @@ function getFilterState() {
 
     if (aidRequestsStore.debug) console.log('[Filter] Current filter state:', filterState);
     return filterState;
-}
-
-function triggerFilterChange() {
-    if (aidRequestsStore.debug) console.log('[Filter] Triggering filter change');
-
-    try {
-        console.time('filter-update');
-
-        const filterState = getFilterState();
-        const counts = getFilteredCounts(aidRequestsStore.data.aidRequests, filterState);
-
-        if (aidRequestsStore.debug) console.log('[Filter] Filtered counts:', counts);
-
-        // Update UI with new counts
-        updateCountsDisplay(counts);
-
-        // Dispatch event for map update
-        const event = new CustomEvent('aidRequestsFiltered', {
-            detail: { filterState, counts }
-        });
-        document.dispatchEvent(event);
-
-        if (aidRequestsStore.debug) console.log('[Filter] Filter change event dispatched');
-    } catch (error) {
-        console.error('[Filter] Error during filter change:', error);
-    } finally {
-        console.timeEnd('filter-update');
-    }
 }
 
 function getSelectedStatuses() {
@@ -1037,7 +1037,7 @@ function getFilteredCounts(aidRequests, filterState) {
                 statuses: aidRequestsStore.statusGroups.active.map(status => ({
                     slug: status,
                     filtered: 0,
-                    checked: filterState.statuses === 'all' || filterState.statuses.includes(status)
+                    checked: filterState.statuses.includes(status)
                 }))
             },
             inactive: {
@@ -1045,7 +1045,7 @@ function getFilteredCounts(aidRequests, filterState) {
                 statuses: aidRequestsStore.statusGroups.inactive.map(status => ({
                     slug: status,
                     filtered: 0,
-                    checked: filterState.statuses === 'all' || filterState.statuses.includes(status)
+                    checked: filterState.statuses.includes(status)
                 }))
             }
         },
@@ -1059,12 +1059,6 @@ function getFilteredCounts(aidRequests, filterState) {
         }, {})
     };
 
-    // If no statuses are selected, return zero counts
-    if (filterState.statuses.length === 0) {
-        if (aidRequestsStore.debug) console.log('[Filter] No statuses selected, returning zero counts');
-        return counts;
-    }
-
     // Calculate all counts in a single pass
     aidRequests.forEach(request => {
         // Find which group this status belongs to
@@ -1076,23 +1070,25 @@ function getFilteredCounts(aidRequests, filterState) {
             return;
         }
 
-        const matchesStatus = filterState.statuses === 'all' || filterState.statuses.includes(request.status);
+        const matchesStatus = filterState.statuses.includes(request.status);
         const matchesAidType = filterState.aidTypes === 'all' || filterState.aidTypes.includes(request.aid_type.slug);
         const matchesPriority = filterState.priorities === 'all' || filterState.priorities.includes(request.priority);
 
-        // Update status counts
+        // Always update status filtered counts for display
         const status = counts.groups[group].statuses.find(s => s.slug === request.status);
         if (status && matchesAidType && matchesPriority) {
             status.filtered++;
+            // Only add to group total if the status is checked
             if (status.checked) {
                 counts.groups[group].filtered++;
             }
         }
 
-        // Update aid type counts - using aid_type.slug
+        // Update aid type counts
         const aidTypeKey = request.aid_type.slug;
         if (counts.byAidType[aidTypeKey]) {
             counts.byAidType[aidTypeKey].total++;
+            // For aid types, we want to show potential matches with selected statuses
             if (matchesStatus && matchesPriority) {
                 counts.byAidType[aidTypeKey].filtered++;
             }
@@ -1102,19 +1098,29 @@ function getFilteredCounts(aidRequests, filterState) {
         const priorityKey = request.priority === null ? 'null' : request.priority;
         if (counts.byPriority[priorityKey]) {
             counts.byPriority[priorityKey].total++;
+            // For priorities, we want to show potential matches with selected statuses
             if (matchesStatus && matchesAidType) {
                 counts.byPriority[priorityKey].filtered++;
             }
         }
 
-        // Update total matches
+        // Update total matches - only count items that match all selected filters
         if (matchesStatus && matchesAidType && matchesPriority) {
             counts.matched++;
         }
     });
 
     if (aidRequestsStore.debug) {
-        console.log('[Filter] Counts:', counts);
+        console.log('[Filter] Status counts:', {
+            active: counts.groups.active.statuses.map(s => `${s.slug}: ${s.filtered} (${s.checked ? 'checked' : 'unchecked'})`),
+            inactive: counts.groups.inactive.statuses.map(s => `${s.slug}: ${s.filtered} (${s.checked ? 'checked' : 'unchecked'})`)
+        });
+        console.log('[Filter] Group totals:', {
+            active: counts.groups.active.filtered,
+            inactive: counts.groups.inactive.filtered
+        });
+        console.log('[Filter] Aid type counts:', counts.byAidType);
+        console.log('[Filter] Priority counts:', counts.byPriority);
     }
     console.timeEnd('count-calculation');
 
