@@ -16,6 +16,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const newStatus = this.dataset.status;
             const button = document.querySelector(`.status-button[data-request-id="${requestId}"]`);
 
+            // Close the dropdown
+            const dropdown = this.closest('.dropdown-menu');
+            if (dropdown) {
+                const dropdownInstance = bootstrap.Dropdown.getInstance(button);
+                if (dropdownInstance) {
+                    dropdownInstance.hide();
+                }
+            }
+
             updateAidRequest(requestId, { status: newStatus }, button);
         });
     });
@@ -28,6 +37,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const newPriority = this.dataset.priority;
             const button = document.querySelector(`.priority-button[data-request-id="${requestId}"]`);
 
+            // Close the dropdown
+            const dropdown = this.closest('.dropdown-menu');
+            if (dropdown) {
+                const dropdownInstance = bootstrap.Dropdown.getInstance(button);
+                if (dropdownInstance) {
+                    dropdownInstance.hide();
+                }
+            }
+
             updateAidRequest(requestId, { priority: newPriority }, button);
         });
     });
@@ -36,6 +54,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateAidRequest(requestId, data, buttonElement) {
         const fieldOpSlug = document.getElementById('field-op-slug').textContent;
         const url = `/api/${fieldOpSlug}/request/${requestId}/update/`;
+
+        // Store the type of update we're doing
+        const isStatusUpdate = 'status' in data;
+        const isPriorityUpdate = 'priority' in data;
 
         // Show loading state
         const originalContent = buttonElement.innerHTML;
@@ -53,16 +75,26 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Update button appearance based on new state
-                if (data.status) {
+                // Only update the button that matches our update type
+                if (isStatusUpdate && buttonElement.classList.contains('status-button')) {
                     updateStatusButton(buttonElement, data.status, data.status_display);
-                }
-                if (data.priority) {
+                } else if (isPriorityUpdate && buttonElement.classList.contains('priority-button')) {
                     updatePriorityButton(buttonElement, data.priority, data.priority_display);
+                } else {
+                    console.error('Button type mismatch:', {
+                        isStatusUpdate,
+                        isPriorityUpdate,
+                        buttonClasses: buttonElement.classList
+                    });
+                    buttonElement.innerHTML = originalContent;
                 }
 
-                // Trigger filter update to refresh counts
-                triggerFilterChange();
+                // Update the store with new data
+                if (window.aidRequestsStore?.initialized) {
+                    window.aidRequestsStore.updateAidRequest(requestId, data);
+                } else {
+                    console.warn('Store not initialized, skipping store update');
+                }
             } else {
                 console.error('Update failed:', data.error);
                 // Restore original content
@@ -109,6 +141,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Update data attribute
         button.dataset.currentStatus = status;
+
+        // Update row visibility based on status group
+        const row = button.closest('.aid-request-row');
+        if (row) {
+            const isInactive = window.aidRequestsStore?.statusGroups.inactive.includes(status);
+            row.classList.toggle('d-none', isInactive);
+            row.dataset.status = status;
+        }
     }
 
     // Update priority button appearance
@@ -131,11 +171,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 button.classList.add('btn-secondary');
         }
 
-        // Update text
-        button.textContent = displayText;
+        // Update text and keep button structure consistent
+        button.innerHTML = displayText;
 
         // Update data attribute
         button.dataset.currentPriority = priority;
+
+        // Update row data attribute
+        const row = button.closest('.aid-request-row');
+        if (row) {
+            row.dataset.priority = priority || 'none';
+        }
     }
 
     // Get status icon class

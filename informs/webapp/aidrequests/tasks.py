@@ -128,9 +128,15 @@ def aidrequest_takcot(aidrequest_id=None, aidrequest_list=None, message_type='up
         aidrequest_list = [aidrequest_id]
     if aidrequest_list:
         aidrequest_first = AidRequest.objects.get(pk=aidrequest_list[0])
-        fieldop_id = aidrequest_first.field_op.pk
+        field_op = aidrequest_first.field_op
+
+        # Skip if COT is disabled for this field operation
+        if field_op.disable_cot:
+            ic(f"COT disabled for field op: {field_op.slug}")
+            return 'COT disabled for field operation'
+
         try:
-            results = send_cots(fieldop_id=fieldop_id, aidrequest_list=aidrequest_list, message_type=message_type)
+            results = send_cots(fieldop_id=field_op.pk, aidrequest_list=aidrequest_list, message_type=message_type)
         except Exception as e:
             ic(e)
             return e
@@ -165,18 +171,18 @@ def send_email(message):
 
 
 def send_all_field_op_cot():
-    """Send COT messages for all active field ops."""
+    """Send COT messages for all active field ops that have COT enabled."""
     try:
-        # Get all field ops - we'll filter active ones based on having a tak_server
-        field_ops = FieldOp.objects.filter(tak_server__isnull=False)
-        ic(f"Found {field_ops.count()} field ops with TAK servers")
+        # Get all field ops with TAK servers and COT enabled
+        field_ops = FieldOp.objects.filter(tak_server__isnull=False, disable_cot=False)
+        ic(f"Found {field_ops.count()} field ops with TAK servers and COT enabled")
 
         if field_ops.count() == 0:
-            # If no field ops found with tak_server filter, try getting all field ops to see what we have
+            # If no field ops found, check what we have in the system
             all_field_ops = FieldOp.objects.all()
             ic(f"Total field ops in system: {all_field_ops.count()}")
             for fo in all_field_ops:
-                ic(f"Field op {fo.slug} - TAK server: {fo.tak_server}")
+                ic(f"Field op {fo.slug} - TAK server: {fo.tak_server}, COT enabled: {not fo.disable_cot}")
 
         results = []
         for field_op in field_ops:

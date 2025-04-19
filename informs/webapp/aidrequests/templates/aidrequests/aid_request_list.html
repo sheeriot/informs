@@ -9,6 +9,11 @@
         <a href="{% url 'field_op_detail' pk=field_op.pk %}" class="btn btn-outline-info btn-sm">
             <i class="bi bi-truck"></i>
         </a>
+        {% if field_op.disable_cot %}
+            <span class="badge bg-danger ms-2">
+                <i class="bi bi-x-circle"></i> COT Disabled
+            </span>
+        {% endif %}
     </h2>
 
     <!-- Aid Requests Filter section -->

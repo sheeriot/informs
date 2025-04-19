@@ -121,6 +121,11 @@ class FieldOp(TimeStampedModel):
 
     notify = models.ManyToManyField(FieldOpNotify)
 
+    disable_cot = models.BooleanField(
+        default=False,
+        help_text='When enabled, COT (Common Operating Template) will be disabled for this field operation'
+    )
+
     class Meta:
         verbose_name = 'Field Operation'
         verbose_name_plural = 'Field Operations'

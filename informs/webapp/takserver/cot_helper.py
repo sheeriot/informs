@@ -32,7 +32,7 @@ def make_cot(message_type=None,
              remarks=None,
              parent_name=None,
              parent_uuid=None,
-             poll_interval="3600"):
+             poll_interval="86400"):
 
     if settings.ENV_NAME == 'prod':
         event_uuid = uuid

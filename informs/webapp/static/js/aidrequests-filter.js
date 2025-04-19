@@ -59,13 +59,62 @@ window.aidRequestsStore = {
     // DOM elements
     elements: {
         filterCard: null
+    },
+
+    // Update aid request in store
+    updateAidRequest: function(requestId, updates) {
+        if (this.debug) {
+            console.log('[Store] Updating aid request:', {
+                requestId,
+                updates,
+                currentState: this.currentState
+            });
+        }
+
+        // Find the aid request in the store using id only
+        const request = this.data.aidRequests.find(r => String(r.id) === String(requestId));
+        if (!request) {
+            console.error('[Store] Aid request not found:', requestId);
+            return;
+        }
+
+        // Update the request data
+        if (updates.status) {
+            request.status = updates.status;
+            request.status_display = updates.status_display;
+        }
+        if (updates.priority) {
+            request.priority = updates.priority;
+            request.priority_display = updates.priority_display;
+        }
+
+        if (this.debug) {
+            console.log('[Store] Updated request:', request);
+        }
+
+        // Recalculate counts and update display
+        const filterState = getFilterState();
+        const counts = getFilteredCounts(this.data.aidRequests, filterState);
+        updateCountsDisplay(counts);
+
+        // Update row visibility if needed
+        const filterChangeEvent = new CustomEvent('aidRequestsFiltered', {
+            detail: { filterState, counts }
+        });
+        document.dispatchEvent(filterChangeEvent);
+
+        if (this.debug) {
+            console.log('[Store] Aid request update complete');
+        }
     }
 };
 
 // Main Initialization
 document.addEventListener('DOMContentLoaded', async function() {
     if (aidRequestsStore.debug) console.log('[Filter] Initializing aid requests filter...');
-    console.time('initialization');
+    if (aidRequestsStore.debug) {
+        console.time('initialization');
+    }
 
     try {
         // Initialize filterCard reference
@@ -93,8 +142,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
         document.dispatchEvent(initEvent);
 
-        if (aidRequestsStore.debug) console.log('[Filter] Initialization complete');
-        console.timeEnd('initialization');
+        if (aidRequestsStore.debug) {
+            console.log('[Filter] Initialization complete');
+            console.timeEnd('initialization');
+        }
     } catch (error) {
         console.error('[Filter] Initialization failed:', error);
         // Store error state
@@ -109,7 +160,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 // Data Initialization
 async function initializeData() {
-    console.time('data-initialization');
+    if (aidRequestsStore.debug) {
+        console.time('data-initialization');
+    }
 
     try {
         // Load metadata first
@@ -121,7 +174,9 @@ async function initializeData() {
         // Then load aid requests and calculate counts
         await initializeAidRequests();
 
-        console.timeEnd('data-initialization');
+        if (aidRequestsStore.debug) {
+            console.timeEnd('data-initialization');
+        }
     } catch (error) {
         console.error('[Filter] Data initialization failed:', error);
         throw error;
@@ -129,7 +184,9 @@ async function initializeData() {
 }
 
 async function initializeAidTypes() {
-    console.time('aid-types-load');
+    if (aidRequestsStore.debug) {
+        console.time('aid-types-load');
+    }
 
     const element = document.getElementById('aid-types-json');
     if (!element) {
@@ -143,8 +200,10 @@ async function initializeAidTypes() {
             return acc;
         }, {});
 
-        if (aidRequestsStore.debug) console.log('[Filter] Loaded aid types:', aidRequestsStore.data.aidTypes);
-        console.timeEnd('aid-types-load');
+        if (aidRequestsStore.debug) {
+            console.log('[Filter] Loaded aid types:', aidRequestsStore.data.aidTypes);
+            console.timeEnd('aid-types-load');
+        }
     } catch (error) {
         console.error('[Filter] Error parsing aid types:', error);
         throw error;
@@ -152,7 +211,9 @@ async function initializeAidTypes() {
 }
 
 async function initializePriorityChoices() {
-    console.time('priority-choices-load');
+    if (aidRequestsStore.debug) {
+        console.time('priority-choices-load');
+    }
 
     const element = document.getElementById('priority-choices-data');
     if (!element) {
@@ -166,8 +227,10 @@ async function initializePriorityChoices() {
             return acc;
         }, {});
 
-        if (aidRequestsStore.debug) console.log('[Filter] Loaded priority choices:', aidRequestsStore.data.priorityChoices);
-        console.timeEnd('priority-choices-load');
+        if (aidRequestsStore.debug) {
+            console.log('[Filter] Loaded priority choices:', aidRequestsStore.data.priorityChoices);
+            console.timeEnd('priority-choices-load');
+        }
     } catch (error) {
         console.error('[Filter] Error parsing priority choices:', error);
         throw error;
@@ -175,7 +238,9 @@ async function initializePriorityChoices() {
 }
 
 async function initializeAidRequests() {
-    console.time('aid-requests-load');
+    if (aidRequestsStore.debug) {
+        console.time('aid-requests-load');
+    }
 
     const element = document.getElementById('aid-locations-data');
     if (!element?.textContent.trim()) {
@@ -193,18 +258,22 @@ async function initializeAidRequests() {
             priorities: 'all'                               // All priorities
         };
 
-        if (aidRequestsStore.debug) console.log('[Filter] Using initial filter state:', initialFilterState);
+        if (aidRequestsStore.debug) {
+            console.log('[Filter] Using initial filter state:', initialFilterState);
+        }
 
         aidRequestsStore.data.serverCounts = getFilteredCounts(
             aidRequestsStore.data.aidRequests,
             initialFilterState
         );
 
-        if (aidRequestsStore.debug) console.log('[Filter] Loaded aid requests:', {
-            count: aidRequestsStore.data.aidRequests.length,
-            initialCounts: aidRequestsStore.data.serverCounts
-        });
-        console.timeEnd('aid-requests-load');
+        if (aidRequestsStore.debug) {
+            console.log('[Filter] Loaded aid requests:', {
+                count: aidRequestsStore.data.aidRequests.length,
+                initialCounts: aidRequestsStore.data.serverCounts
+            });
+            console.timeEnd('aid-requests-load');
+        }
     } catch (error) {
         console.error('[Filter] Error loading aid requests:', error);
         throw error;
@@ -213,7 +282,9 @@ async function initializeAidRequests() {
 
 // UI Initialization and Event Handlers
 function initializeUI() {
-    console.time('ui-initialization');
+    if (aidRequestsStore.debug) {
+        console.time('ui-initialization');
+    }
 
     const filterCard = aidRequestsStore.elements.filterCard;
     if (!filterCard) {
@@ -245,8 +316,10 @@ function initializeUI() {
         resetButton.addEventListener('click', handleResetClick);
     }
 
-    if (aidRequestsStore.debug) console.log('[Filter] UI initialization complete');
-    console.timeEnd('ui-initialization');
+    if (aidRequestsStore.debug) {
+        console.log('[Filter] UI initialization complete');
+        console.timeEnd('ui-initialization');
+    }
 }
 
 // Validation
@@ -800,7 +873,9 @@ function getSelectedPriorities() {
 }
 
 function updateCountsDisplay(counts) {
-    console.time('display-update');
+    if (aidRequestsStore.debug) {
+        console.time('display-update');
+    }
 
     const filterCard = aidRequestsStore.elements.filterCard;
     if (!filterCard) {
@@ -868,8 +943,12 @@ function updateCountsDisplay(counts) {
             if (checkbox?.checked) {
                 aidTypeTotal += data.filtered;
             }
-        } else {
-            console.warn(`[Filter] Aid type count element not found for selector: ${selector}`);
+        } else if (aidRequestsStore.debug) {
+            // Only log if debug is enabled and we're actually looking for this element
+            const checkbox = filterCard.querySelector(`#aid-type-filter-${slug}`);
+            if (checkbox) {
+                console.warn(`[Filter] Aid type count element not found for selector: ${selector}`);
+            }
         }
     });
 
@@ -896,8 +975,12 @@ function updateCountsDisplay(counts) {
             if (checkbox?.checked) {
                 priorityTotal += data.filtered;
             }
-        } else {
-            console.warn(`[Filter] Priority count element not found for selector: ${selector}`);
+        } else if (aidRequestsStore.debug) {
+            // Only log if debug is enabled and we're actually looking for this element
+            const checkbox = filterCard.querySelector(`#priority-filter-${slug}`);
+            if (checkbox) {
+                console.warn(`[Filter] Priority count element not found for selector: ${selector}`);
+            }
         }
     });
 
@@ -909,8 +992,10 @@ function updateCountsDisplay(counts) {
     }
     if (aidRequestsStore.debug) console.log('[Filter] Priority counts:', counts.byPriority);
 
-    if (aidRequestsStore.debug) console.log('[Filter] Display update complete');
-    console.timeEnd('display-update');
+    if (aidRequestsStore.debug) {
+        console.log('[Filter] Display update complete');
+        console.timeEnd('display-update');
+    }
 }
 
 function formatFilteredCount(filtered, total) {
@@ -1067,7 +1152,9 @@ function calculateServerCounts() {
 }
 
 function getFilteredCounts(aidRequests, filterState) {
-    console.time('count-calculation');
+    if (aidRequestsStore.debug) {
+        console.time('count-calculation');
+    }
 
     if (aidRequestsStore.debug) console.log('[Filter] Calculating filtered counts with state:', filterState);
 
@@ -1166,7 +1253,9 @@ function getFilteredCounts(aidRequests, filterState) {
         console.log('[Filter] Aid type counts:', counts.byAidType);
         console.log('[Filter] Priority counts:', counts.byPriority);
     }
-    console.timeEnd('count-calculation');
+    if (aidRequestsStore.debug) {
+        console.timeEnd('count-calculation');
+    }
 
     return counts;
 }
