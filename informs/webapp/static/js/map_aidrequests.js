@@ -21,6 +21,7 @@ const mapRequestsConfig = {
 
 // Main program
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('mapRequestsConfig.debug', mapRequestsConfig.debug);
     if (mapRequestsConfig.debug) console.log('Map View: Starting map initialization...')
 
     const mapContainer = document.getElementById('aid-request-map');
@@ -263,26 +264,25 @@ function updateMapSummary(filterState) {
 
     // Add status filter summary - only if not 'all'
     if (filterState.statuses !== 'all' && Array.isArray(filterState.statuses) && filterState.statuses.length > 0) {
-        parts.push(`status=[${filterState.statuses.join('|')}]`);
+        parts.push(`status[${filterState.statuses.join(',')}]`);
     }
 
     // Add aid type filter summary - only if not 'all'
     if (filterState.aidTypes !== 'all' && Array.isArray(filterState.aidTypes) && filterState.aidTypes.length > 0) {
-        const aidTypeNames = filterState.aidTypes.map(type =>
-            mapRequestsConfig.aidTypesConfig[type]?.name || type
-        );
-        parts.push(`type=[${aidTypeNames.join('|')}]`);
+        // Use slugs directly
+        parts.push(`type[${filterState.aidTypes.join(',')}]`);
     }
 
     // Add priority filter summary - only if not 'all'
     if (filterState.priorities !== 'all' && Array.isArray(filterState.priorities) && filterState.priorities.length > 0) {
-        parts.push(`priority=[${filterState.priorities.join('|')}]`);
+        const priorityLabels = filterState.priorities.map(p => p === null ? 'none' : p);
+        parts.push(`priority[${priorityLabels.join(',')}]`);
     }
 
     // Format the summary text
     const countText = `${visiblePoints} of ${totalPoints} locations`;
     const summaryText = parts.length > 0 ?
-        `${parts.join(', ')}, ${countText}` :
+        `${parts.join('; ')}; ${countText}` :
         countText;
 
     summaryElement.textContent = summaryText;

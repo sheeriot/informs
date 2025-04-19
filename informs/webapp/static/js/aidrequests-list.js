@@ -5,11 +5,9 @@
  * Provides dynamic filtering and searching functionality
  */
 
-// Configuration
-const listConfig = {
-    debug: false  // Enable debugging to track initialization issues
-};
-
+// Configuration - enable debug logging as needed
+const listConfig = { debug: false }
+console.log('listConfig', listConfig);
 // Define status groups if not already defined
 if (typeof window.STATUS_GROUPS === 'undefined') {
     window.STATUS_GROUPS = {

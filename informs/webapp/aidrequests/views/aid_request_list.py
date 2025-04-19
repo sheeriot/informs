@@ -179,7 +179,7 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
                 },
                 'inactive': {
                     'total': len(df[df['status'].isin(inactive_statuses)]),
-                    'filtered': 0  # Initially 0 as inactive are not in filter
+                    'filtered': 0  # Always 0 initially since inactive statuses are unselected
                 }
             }
             context['group_counts'] = group_counts
