@@ -1,0 +1,15 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Javascript and Debugs
+
+- keep the HTML variable names kebab-names and the javaScript using matching camelCase
+- all javascript files should run logically from top to bottm with main a the top then functions in the order they are used
+
+- In any included javascript file, always put console.logs on a conditional for xxConfig.debug
+- do not use a function for logging. We want the line number retention
+
+

@@ -12,6 +12,8 @@ django-filter
 django-cors-headers
 django-widget-tweaks
 
+pandas
+
 blessed
 
 aiohttp
@@ -29,4 +31,4 @@ pytak
 icecream
 
 # if dev ?
-django-debug-toolbar
+# django-debug-toolbar

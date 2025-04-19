@@ -73,3 +73,23 @@ def priority_bootstrap_color(priority):
         'none': 'secondary'
     }
     return priority_colors.get(priority.lower(), 'secondary')
+
+
+@register.filter
+def active_status_count(status_counts, active_statuses):
+    """Count total number of requests with active statuses."""
+    total = 0
+    for status_name, data in status_counts.items():
+        if data.get('value') in active_statuses:
+            total += data.get('count', 0)
+    return total
+
+
+@register.filter
+def inactive_status_count(status_counts, inactive_statuses):
+    """Count total number of requests with inactive statuses."""
+    total = 0
+    for status_name, data in status_counts.items():
+        if data.get('value') in inactive_statuses:
+            total += data.get('count', 0)
+    return total

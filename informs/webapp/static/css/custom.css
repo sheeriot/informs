@@ -211,18 +211,6 @@ div.aid-coords label {
 }
 
 /* Status colors */
-.status-new {
-    color: #ffc107; /* Bootstrap warning yellow */
-}
-
-.status-assigned {
-    color: #fd7e14; /* Bootstrap orange */
-}
-
-.status-resolved {
-    color: #198754; /* Bootstrap success green */
-}
-
 .status-closed {
     color: #0d6efd; /* Bootstrap primary blue */
 }

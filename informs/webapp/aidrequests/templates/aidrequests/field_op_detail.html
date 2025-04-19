@@ -61,6 +61,22 @@
                 </div>
             </td>
         </tr>
+        <tr>
+            <td colspan="2">
+                <div class="m-2 w-auto">
+                    <strong>COT Status:</strong>
+                    {% if object.disable_cot %}
+                        <div class="fs-4 text-danger w-auto">
+                            <i class="bi bi-x-circle"></i> Disabled
+                        </div>
+                    {% else %}
+                        <div class="fs-4 text-success w-auto">
+                            <i class="bi bi-check-circle"></i> Enabled
+                        </div>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
     </table>
     <hr>
     <div class="mt-3">

@@ -13,6 +13,7 @@
                 <th scope="col">Slug</th>
                 <th scope="col">Aid Requests</th>
                 <th scope="col">Lat,Long</th>
+                <th scope="col">COT Status</th>
                 <th scope="col"><div class="d-flex justify-content-end">Actions</div></th>
             </tr>
         </thead>
@@ -33,6 +34,17 @@
                     </a>
                 </td>
                 <td>{{ field_op.latitude }},{{ field_op.longitude }}</td>
+                <td>
+                    {% if field_op.disable_cot %}
+                        <span class="text-danger">
+                            <i class="bi bi-x-circle"></i> Disabled
+                        </span>
+                    {% else %}
+                        <span class="text-success">
+                            <i class="bi bi-check-circle"></i> Enabled
+                        </span>
+                    {% endif %}
+                </td>
                 <td>
                     <div class="d-flex justify-content-end">
                         <a href="{% url 'field_op_update' field_op.pk %}" class="btn btn-warning btn-sm me-2">

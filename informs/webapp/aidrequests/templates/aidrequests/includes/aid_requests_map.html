@@ -1,0 +1,23 @@
+
+<div class="col-6">
+    <div class="card shadow-sm">
+        <div class="card-header py-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Map View</h5>
+                <span id="map-filter-summary" class="text-muted small"></span>
+            </div>
+        </div>
+        <div class="card-body p-2">
+            <!-- Map container with data attributes -->
+            <div id="aid-request-map" class="position-relative w-100" style="min-width: 290px; height: 600px;"
+                data-azure-maps-key="{{ azure_maps_key }}"
+                data-center-lat="{{ field_op.latitude|stringformat:".6f"|default:"0" }}"
+                data-center-lon="{{ field_op.longitude|stringformat:".6f"|default:"0" }}"
+                data-map-zoom="{{ field_op.map_zoom|default:"8" }}"
+                data-ring-size="{{ field_op.ring_km|default:"5" }}"
+                data-field-op-name="{{ field_op.name }}"
+                data-field-op-slug="{{ field_op.slug }}">
+            </div>
+        </div>
+    </div>
+</div>

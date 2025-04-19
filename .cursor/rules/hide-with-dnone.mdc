@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- We prefer to use bootstrap5 class "d-none" to hide and unhide rows (div)
+- for things like Azure Maps (atlas) there is probably a specific way to manage visibility

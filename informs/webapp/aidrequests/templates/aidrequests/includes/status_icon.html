@@ -1,0 +1,13 @@
+{% if status == 'new' %}
+<i class="bi bi-download text-warning"></i>
+{% elif status == 'assigned' %}
+<i class="bi bi-clock text-warning"></i>
+{% elif status == 'resolved' %}
+<i class="bi bi-hand-thumbs-up text-success"></i>
+{% elif status == 'closed' %}
+<i class="bi bi-door-closed text-primary"></i>
+{% elif status == 'rejected' %}
+<i class="bi bi-hand-thumbs-down text-danger"></i>
+{% else %}
+<i class="bi bi-question-lg text-secondary"></i>
+{% endif %}

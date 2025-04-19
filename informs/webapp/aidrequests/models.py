@@ -121,6 +121,11 @@ class FieldOp(TimeStampedModel):
 
     notify = models.ManyToManyField(FieldOpNotify)
 
+    disable_cot = models.BooleanField(
+        default=False,
+        help_text='When enabled, COT (Common Operating Template) will be disabled for this field operation'
+    )
+
     class Meta:
         verbose_name = 'Field Operation'
         verbose_name_plural = 'Field Operations'
@@ -223,11 +228,20 @@ class AidRequest(TimeStampedModel):
         ('other', 'Other'),
     ]
 
+    # Status group definitions
+    ACTIVE_STATUSES = ['new', 'assigned', 'resolved']
+    INACTIVE_STATUSES = ['closed', 'rejected', 'other']
+
     status = models.CharField(
         max_length=10,
         choices=STATUS_CHOICES,
         default='new',
     )
+
+    @property
+    def is_active(self):
+        """Return whether the aid request is in an active state"""
+        return self.status in self.ACTIVE_STATUSES
 
     @property
     def location_status(self):
@@ -256,6 +270,33 @@ class AidRequest(TimeStampedModel):
     def __str__(self):
         return f"""AidRequest-{self.pk}: {self.requestor_first_name} {self.requestor_last_name}
                - {self.aid_type}"""
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+
+        # Call the "real" save() method
+        super().save(*args, **kwargs)
+
+        # Always send COT on save
+        from django_q.tasks import async_task
+        from .tasks import aidrequest_takcot
+        updated_at_stamp = self.updated_at.strftime('%Y%m%d%H%M%S')
+        task_name = f"AidRequest{self.pk}-{'New' if is_new else 'Update'}-SendCot-{updated_at_stamp}"
+
+        # Separate task arguments from Django-Q options
+        task_args = {
+            'aidrequest_id': self.pk,
+            'message_type': 'update'
+        }
+        q_options = {
+            'task_name': task_name
+        }
+
+        async_task(
+            aidrequest_takcot,
+            **task_args,
+            q_options=q_options
+        )
 
 
 class AidLocation(TimeStampedModel):
@@ -303,6 +344,33 @@ class AidLocation(TimeStampedModel):
 
     def __str__(self):
         return f"Location ({round(self.latitude, 5)}, {round(self.longitude, 5)}) - {self.status} - {self.source}"
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+
+        # Call the "real" save() method
+        super().save(*args, **kwargs)
+
+        # Always send COT on save
+        from django_q.tasks import async_task
+        from .tasks import aidrequest_takcot
+        updated_at_stamp = self.updated_at.strftime('%Y%m%d%H%M%S')
+        task_name = f"AidLocation{self.pk}-{'New' if is_new else 'Update'}-SendCot-{updated_at_stamp}"
+
+        # Separate task arguments from Django-Q options
+        task_args = {
+            'aidrequest_id': self.aid_request.pk,
+            'message_type': 'update'
+        }
+        q_options = {
+            'task_name': task_name
+        }
+
+        async_task(
+            aidrequest_takcot,
+            **task_args,
+            q_options=q_options
+        )
 
 
 class AidRequestLog(TimeStampedModel):

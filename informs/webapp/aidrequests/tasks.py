@@ -15,6 +15,9 @@ from takserver.cot import send_cots
 
 from icecream import ic
 
+from django.core.management import call_command
+from aidrequests.models import FieldOp
+
 
 def aid_request_postsave(aid_request, **kwargs):
     # ic(kwargs)
@@ -125,9 +128,15 @@ def aidrequest_takcot(aidrequest_id=None, aidrequest_list=None, message_type='up
         aidrequest_list = [aidrequest_id]
     if aidrequest_list:
         aidrequest_first = AidRequest.objects.get(pk=aidrequest_list[0])
-        fieldop_id = aidrequest_first.field_op.pk
+        field_op = aidrequest_first.field_op
+
+        # Skip if COT is disabled for this field operation
+        if field_op.disable_cot:
+            ic(f"COT disabled for field op: {field_op.slug}")
+            return 'COT disabled for field operation'
+
         try:
-            results = send_cots(fieldop_id=fieldop_id, aidrequest_list=aidrequest_list, message_type=message_type)
+            results = send_cots(fieldop_id=field_op.pk, aidrequest_list=aidrequest_list, message_type=message_type)
         except Exception as e:
             ic(e)
             return e
@@ -159,3 +168,35 @@ def send_email(message):
         return e
 
     return result
+
+
+def send_all_field_op_cot():
+    """Send COT messages for all active field ops that have COT enabled."""
+    try:
+        # Get all field ops with TAK servers and COT enabled
+        field_ops = FieldOp.objects.filter(tak_server__isnull=False, disable_cot=False)
+        ic(f"Found {field_ops.count()} field ops with TAK servers and COT enabled")
+
+        if field_ops.count() == 0:
+            # If no field ops found, check what we have in the system
+            all_field_ops = FieldOp.objects.all()
+            ic(f"Total field ops in system: {all_field_ops.count()}")
+            for fo in all_field_ops:
+                ic(f"Field op {fo.slug} - TAK server: {fo.tak_server}, COT enabled: {not fo.disable_cot}")
+
+        results = []
+        for field_op in field_ops:
+            try:
+                ic(f"Sending COT for field op: {field_op.slug}")
+                call_command('send_cot', field_op=field_op.slug)
+                results.append(f"Successfully sent COT for {field_op.slug}")
+            except Exception as e:
+                ic(f"Error for {field_op.slug}: {str(e)}")
+                results.append(f"Error sending COT for {field_op.slug}: {str(e)}")
+
+        if not results:
+            return "No COT messages were sent - no eligible field ops found"
+        return "\n".join(results)
+    except Exception as e:
+        ic(f"Main error: {str(e)}")
+        return f"Error in send_all_field_op_cot: {str(e)}"

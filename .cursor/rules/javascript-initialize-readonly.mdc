@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- whenver possible, leave the HTML as it is when a javascript file initializes
+- Avoid the desire to change a value on page (Document) load. do report to the console if you find inaccurate values
+
