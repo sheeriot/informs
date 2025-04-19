@@ -15,6 +15,9 @@ from takserver.cot import send_cots
 
 from icecream import ic
 
+from django.core.management import call_command
+from aidrequests.models import FieldOp
+
 
 def aid_request_postsave(aid_request, **kwargs):
     # ic(kwargs)
@@ -159,3 +162,20 @@ def send_email(message):
         return e
 
     return result
+
+
+def send_all_field_op_cot():
+    """Send COT messages for all active field ops."""
+    try:
+        # Get all field ops - we'll filter active ones based on having a tak_server
+        field_ops = FieldOp.objects.filter(tak_server__isnull=False)
+        results = []
+        for field_op in field_ops:
+            try:
+                call_command('send_cot', field_op=field_op.slug)
+                results.append(f"Successfully sent COT for {field_op.slug}")
+            except Exception as e:
+                results.append(f"Error sending COT for {field_op.slug}: {str(e)}")
+        return "\n".join(results)
+    except Exception as e:
+        return f"Error in send_all_field_op_cot: {str(e)}"

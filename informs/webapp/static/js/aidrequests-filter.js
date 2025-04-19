@@ -7,13 +7,26 @@
 
 // Configuration and Data Store
 window.aidRequestsStore = {
-    debug: true,  // Set to false in production
+    debug: false,  // Set to false in production
 
-    // Status group lookup table
+    // Status group lookup table - matches Django model's ACTIVE_STATUSES and INACTIVE_STATUSES
     statusGroups: {
         active: ['new', 'assigned', 'resolved'],
         inactive: ['closed', 'rejected', 'other']
     },
+
+    // Priority choices - matches Django model's PRIORITY_CHOICES
+    priorityChoices: {
+        high: 'High',
+        medium: 'Medium',
+        low: 'Low',
+        null: 'None'  // null is used for "None" priority
+    },
+
+    // Initialization state
+    initialized: false,
+    initError: null,
+    currentState: null,
 
     // Core data store
     data: {
@@ -66,10 +79,31 @@ document.addEventListener('DOMContentLoaded', async function() {
         initializeUI();
         validateInitialState();
 
+        // Calculate initial filter state and counts
+        const filterState = getFilterState();
+        const counts = getFilteredCounts(aidRequestsStore.data.aidRequests, filterState);
+
+        // Store current state
+        aidRequestsStore.currentState = { filterState, counts };
+        aidRequestsStore.initialized = true;
+
+        // Dispatch initialization complete event
+        const initEvent = new CustomEvent('aidRequestsFilterReady', {
+            detail: aidRequestsStore.currentState
+        });
+        document.dispatchEvent(initEvent);
+
         if (aidRequestsStore.debug) console.log('[Filter] Initialization complete');
         console.timeEnd('initialization');
     } catch (error) {
         console.error('[Filter] Initialization failed:', error);
+        // Store error state
+        aidRequestsStore.initError = error;
+        // Dispatch error event
+        const errorEvent = new CustomEvent('aidRequestsFilterError', {
+            detail: { error }
+        });
+        document.dispatchEvent(errorEvent);
     }
 });
 

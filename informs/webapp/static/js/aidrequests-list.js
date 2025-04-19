@@ -5,57 +5,141 @@
  * Provides dynamic filtering and searching functionality
  */
 
-// Configuration - enable debug logging as needed
-const listConfig = { debug: false }
-console.log('listConfig', listConfig);
-// Define status groups if not already defined
-if (typeof window.STATUS_GROUPS === 'undefined') {
-    window.STATUS_GROUPS = {
-        active: ['PENDING', 'IN_PROGRESS', 'SCHEDULED', 'ON_HOLD'],
-        inactive: ['COMPLETED', 'CANCELLED', 'REJECTED']
-    };
-}
+// Configuration
+const listConfig = { debug: false };
 
-// Helper function to determine if a status is active
-function isActiveStatus(status) {
-    return window.STATUS_GROUPS.active.includes(status);
-}
-
-// Helper function to determine if a status is inactive
-function isInactiveStatus(status) {
-    return window.STATUS_GROUPS.inactive.includes(status);
-}
-
-// Helper function to get priority badge class
-function getPriorityBadgeClass(priority) {
-    if (!priority) return 'bg-secondary'; // Handle undefined/null priority
-    const priorityLower = priority.toLowerCase();
-    switch (priorityLower) {
-        case 'high':
-            return 'bg-danger';
-        case 'medium':
-            return 'bg-warning';
-        case 'low':
-            return 'bg-primary';
-        case 'none':
-            return 'bg-secondary';
-        default:
-            return 'bg-secondary';
+// Main initialization check
+if (window.aidRequestsStore?.initialized) {
+    if (listConfig.debug) {
+        console.log('[List] Filter already initialized, using current state:', {
+            filterState: window.aidRequestsStore.currentState,
+            statusGroups: window.aidRequestsStore.statusGroups
+        });
     }
+    try {
+        initializeWithFilter(window.aidRequestsStore.currentState);
+    } catch (error) {
+        console.error('[List] Failed to initialize with existing filter state:', error);
+    }
+} else if (window.aidRequestsStore?.initError) {
+    console.error('[List] Filter initialization previously failed:', window.aidRequestsStore.initError);
+} else {
+    if (listConfig.debug) console.log('[List] Waiting for filter initialization...');
+
+    // Wait for filter initialization
+    document.addEventListener('aidRequestsFilterReady', function(event) {
+        if (listConfig.debug) {
+            console.log('[List] Filter ready event received:', {
+                filterState: event.detail,
+                store: {
+                    statusGroups: window.aidRequestsStore.statusGroups,
+                    initialized: window.aidRequestsStore.initialized
+                }
+            });
+        }
+        try {
+            initializeWithFilter(event.detail);
+        } catch (error) {
+            console.error('[List] Failed to initialize with filter event:', error);
+        }
+    });
+
+    // Handle filter initialization errors
+    document.addEventListener('aidRequestsFilterError', function(event) {
+        console.error('[List] Filter initialization failed:', event.detail.error);
+    });
 }
 
-// Function to update row visibility based on filter state
+// Core initialization function
+function initializeWithFilter(filterState) {
+    if (listConfig.debug) {
+        console.log('[List] Initializing with filter state:', filterState);
+    }
+
+    // Ensure we have access to the store and status groups
+    if (!window.aidRequestsStore) {
+        throw new Error('aidRequestsStore not available');
+    }
+
+    // Get status groups from store
+    window.STATUS_GROUPS = window.aidRequestsStore.statusGroups;
+    if (!window.STATUS_GROUPS || !window.STATUS_GROUPS.active || !window.STATUS_GROUPS.inactive) {
+        throw new Error('Status groups not properly initialized in store');
+    }
+
+    if (listConfig.debug) {
+        console.log('[List] Using status groups from store:', {
+            active: window.STATUS_GROUPS.active,
+            inactive: window.STATUS_GROUPS.inactive
+        });
+    }
+
+    // Initialize the list view
+    initialize();
+
+    // Update initial visibility based on filter state
+    updateRowVisibility(filterState);
+}
+
+// Initialize the list view
+function initialize() {
+    if (listConfig.debug) console.log('[List] Starting initialization...');
+
+    // Add validation of initial state
+    validateInitialState();
+
+    // Verify table elements
+    const tableBody = document.querySelector('#aid-request-list-body');
+    if (!tableBody) {
+        console.error('[List] Table body not found');
+        return;
+    }
+
+    // Log initial state
+    if (listConfig.debug) {
+        console.log('[List] Initial table state:', {
+            totalRows: tableBody.getElementsByTagName('tr').length,
+            visibleRows: Array.from(tableBody.getElementsByTagName('tr'))
+                .filter(row => !row.classList.contains('d-none')).length,
+            hasEmptyRow: !!document.getElementById('aid-request-empty-row')
+        });
+    }
+
+    // Listen for filter change events
+    document.addEventListener('aidRequestsFiltered', function(event) {
+        if (listConfig.debug) {
+            console.log('[List] Filter event received:', {
+                filterState: event.detail.filterState,
+                counts: event.detail.counts
+            });
+        }
+
+        // Update row visibility based on received filter state
+        updateRowVisibility(event.detail.filterState);
+    });
+
+    if (listConfig.debug) console.log('[List] Initialization complete');
+}
+
+// Update row visibility based on filter state
 function updateRowVisibility(filterState) {
     if (!filterState) {
-        console.warn('[List View] No filter state provided');
+        console.warn('[List] No filter state provided');
         return;
     }
 
     const tableBody = document.querySelector('#aid-request-list-body');
     if (!tableBody) {
-        console.error('[List View] Table body not found');
+        console.error('[List] Table body not found');
         return;
     }
+
+    if (listConfig.debug) {
+        console.log('[List] Updating visibility with filter state:', filterState);
+    }
+
+    // Handle both initial state and filter change events
+    const actualFilterState = filterState.filterState || filterState;
 
     const rows = tableBody.getElementsByTagName('tr');
     let visibleCount = 0;
@@ -67,16 +151,37 @@ function updateRowVisibility(filterState) {
 
         const status = row.getAttribute('data-status');
         const aidType = row.getAttribute('data-aid-type');
-        const priority = row.getAttribute('data-priority');
+        const priority = row.getAttribute('data-priority'); // Will be "none" or a priority value
 
         // Check if row matches current filters
-        const matchesStatus = filterState.statuses === 'all' || filterState.statuses.includes(status);
-        const matchesAidType = filterState.aidTypes === 'all' || filterState.aidTypes.includes(aidType);
-        const matchesPriority = filterState.priorities === 'all' || filterState.priorities.includes(priority);
+        const matchesStatus = actualFilterState.statuses === 'all' ||
+                            (Array.isArray(actualFilterState.statuses) &&
+                             actualFilterState.statuses.includes(status));
 
-        const isVisible = matchesStatus && matchesAidType && matchesPriority;
+        const matchesAidType = actualFilterState.aidTypes === 'all' ||
+                              (Array.isArray(actualFilterState.aidTypes) &&
+                               actualFilterState.aidTypes.includes(aidType));
 
-        if (isVisible) {
+        const matchesPriority = actualFilterState.priorities === 'all' ||
+                               (Array.isArray(actualFilterState.priorities) &&
+                                actualFilterState.priorities.includes(priority === 'none' ? null : priority));
+
+        if (listConfig.debug) {
+            console.log('[List] Row filter check:', {
+                id: row.getAttribute('data-id'),
+                status,
+                aidType,
+                priority,
+                matches: {
+                    status: matchesStatus,
+                    aidType: matchesAidType,
+                    priority: matchesPriority
+                }
+            });
+        }
+
+        // Use d-none class for visibility control
+        if (matchesStatus && matchesAidType && matchesPriority) {
             row.classList.remove('d-none');
             visibleCount++;
         } else {
@@ -87,125 +192,33 @@ function updateRowVisibility(filterState) {
     // Handle empty state
     const emptyRow = document.getElementById('aid-request-empty-row');
     if (emptyRow) {
-        if (visibleCount === 0) {
-            emptyRow.classList.remove('d-none');
-        } else {
-            emptyRow.classList.add('d-none');
-        }
+        emptyRow.classList.toggle('d-none', visibleCount > 0);
     }
 
     if (listConfig.debug) {
-        console.log('[List View] Visibility updated:', {
-            totalRows: totalRows,
+        console.log('[List] Visibility updated:', {
+            totalRows,
             visibleRows: visibleCount,
-            filters: filterState
+            filters: actualFilterState
         });
     }
 }
 
-// Function to update the results counter
-// function updateResultsCounter() {
-//     const counter = document.getElementById('results-counter');
-//     if (!counter) return;
-
-//     const visibleRows = document.querySelectorAll('#aid-request-list-body tr:not(.d-none)');
-//     const totalRows = document.querySelectorAll('#aid-request-list-body tr').length;
-
-//     counter.textContent = `${visibleRows.length} of ${totalRows} requests`;
-
-//     // Update counter badge classes based on results
-//     counter.classList.remove('bg-success', 'bg-warning', 'bg-danger');
-//     if (visibleRows.length === totalRows) {
-//         counter.classList.add('bg-success');
-//     } else if (visibleRows.length === 0) {
-//         counter.classList.add('bg-danger');
-//     } else {
-//         counter.classList.add('bg-warning');
-//     }
-// }
-
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    if (listConfig.debug) console.warn('[List View] Initializing aid requests list view...');
-
-    // Verify data store availability
-    if (!window.aidRequestsStore) {
-        console.error('[List View] aidRequestsStore not found - table functionality will be limited');
-        return;
-    }
-
-    // Add validation of initial state
-    validateInitialState();
-
-    // Verify table elements
-    const tableBody = document.querySelector('#aid-request-list-body');
-    if (!tableBody) {
-        console.error('[List View] Table body not found');
-        return;
-    }
-
-    // Log initial state
-    const initialRows = tableBody.getElementsByTagName('tr');
-    if (listConfig.debug) console.warn('[List View] Initial table state:', {
-        totalRows: initialRows.length,
-        visibleRows: Array.from(initialRows).filter(row => !row.classList.contains('d-none')).length,
-        hasEmptyRow: !!document.getElementById('aid-request-empty-row')
-    });
-
-    // Listen for filter change events
-    document.addEventListener('aidRequestsFiltered', function(event) {
-        if (listConfig.debug) {
-            console.log('[List View] Filter event received:', {
-                filterState: event.detail.filterState,
-                counts: event.detail.counts
-            });
-        }
-
-        // Update row visibility based on received filter state
-        updateRowVisibility(event.detail.filterState);
-    });
-
-    // Listen for aid request updates
-    document.addEventListener('aidRequestUpdated', function(event) {
-        if (listConfig.debug) {
-            console.log('[List View] Update event received:', event.detail);
-        }
-
-        const { id, updates, request, filterState } = event.detail;
-
-        // Find and update the row
-        const row = document.querySelector(`#aid-request-list-body tr[data-id="${id}"]`);
-        if (row) {
-            // Update data attributes
-            if (updates.status) {
-                row.setAttribute('data-status', updates.status);
-            }
-            if (updates.priority) {
-                row.setAttribute('data-priority', updates.priority);
-            }
-
-            // Update displayed values
-            if (updates.status_display) {
-                const statusCell = row.querySelector('.status-display');
-                if (statusCell) statusCell.textContent = updates.status_display;
-            }
-            if (updates.priority_display) {
-                const priorityCell = row.querySelector('.priority-display');
-                if (priorityCell) priorityCell.textContent = updates.priority_display;
-            }
-
-            // Update row visibility based on current filters
-            updateRowVisibility(filterState);
-        }
-    });
-});
-
-// Function to validate initial state
+// Validate initial state
 function validateInitialState() {
     if (!listConfig.debug) return;
 
+    // Only validate if we have STATUS_GROUPS
+    if (!window.STATUS_GROUPS || !window.STATUS_GROUPS.inactive) {
+        if (listConfig.debug) console.log('[List] Skipping validation - waiting for STATUS_GROUPS');
+        return;
+    }
+
     const tableBody = document.querySelector('#aid-request-list-body');
-    if (!tableBody) return;
+    if (!tableBody) {
+        console.warn('[List] Cannot validate initial state - table body not found');
+        return;
+    }
 
     const rows = Array.from(tableBody.getElementsByTagName('tr'));
     const issues = [];
@@ -214,6 +227,12 @@ function validateInitialState() {
         if (row.id === 'aid-request-empty-row') return;
 
         const status = row.getAttribute('data-status');
+        // Safety check for status groups
+        if (!status) {
+            issues.push(`Row ${row.getAttribute('data-id')} has invalid status`);
+            return;
+        }
+
         const isInactive = window.STATUS_GROUPS.inactive.includes(status);
         const isHidden = row.classList.contains('d-none');
 
@@ -228,9 +247,9 @@ function validateInitialState() {
 
     // Log any issues found
     if (issues.length > 0) {
-        console.warn('[List View] Initial state validation issues:', issues);
+        console.warn('[List] Initial state validation issues:', issues);
         console.table(issues);
     } else {
-        console.log('[List View] Initial state validation passed');
+        console.log('[List] Initial state validation passed');
     }
 }

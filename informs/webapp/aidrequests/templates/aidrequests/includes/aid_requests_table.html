@@ -24,7 +24,7 @@
                     data-id="{{ aid_request.id }}"
                     data-aid-type="{{ aid_request.aid_type.slug }}"
                     data-status="{{ aid_request.status }}"
-                    data-priority="{{ aid_request.priority }}">
+                    data-priority="{% if aid_request.priority %}{{ aid_request.priority }}{% else %}none{% endif %}">
                     <td class="py-1">{{ aid_request.id }}</td>
                     <td class="py-1">{{ aid_request.requester_name|default:"Unknown" }}</td>
                     <td class="py-1">{{ aid_request.aid_type.name|default:"Unknown" }}</td>

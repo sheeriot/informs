@@ -320,15 +320,6 @@ Q_CLUSTER = {
     'timeout': 60,
     'recycle': 500,
     'scheduler': True,  # Enable scheduler
-    'scheduled_tasks': [
-
-        {
-            'func': 'aidrequests.scheduled_tasks.hourly_field_op_cot',
-            'schedule_type': 'I',  # Interval schedule
-            'minutes': 60,  # Run every hour
-            'repeats': -1  # Repeat indefinitely
-        }
-    ]
 }
 
 # DEBUG_TOOLBAR_CONFIG = {

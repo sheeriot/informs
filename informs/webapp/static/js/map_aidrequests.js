@@ -12,22 +12,30 @@ let layersByType = {};  // Store layers by aid type
 // Configuration
 const mapRequestsConfig = {
     debug: false,  // Set to false in production
-    initializationAttempted: false,
+    initialized: false,
     config: null,
     aidLocations: [],
     aidTypesConfig: {},
-    mapReady: false  // Track map ready state
+    mapReady: false,  // Track map ready state
+    performance: {    // Track timing metrics
+        loadStart: null,
+        configLoaded: null,
+        mapInitialized: null,
+        fullyReady: null
+    }
 };
 
-// Main program
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('mapRequestsConfig.debug', mapRequestsConfig.debug);
-    if (mapRequestsConfig.debug) console.log('Map View: Starting map initialization...')
+// Load configuration and data
+function loadMapConfiguration() {
+    if (mapRequestsConfig.debug) {
+        console.time('map-config-load');
+        console.log('[Map] Loading configuration...');
+    }
+    mapRequestsConfig.performance.loadStart = performance.now();
 
     const mapContainer = document.getElementById('aid-request-map');
     if (!mapContainer) {
-        console.error('Map container not found');
-        return;
+        throw new Error('Map container not found');
     }
 
     // Get configuration from data attributes
@@ -44,8 +52,18 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     if (!config.key) {
-        console.error('Azure Maps key not found in data attributes');
-        return;
+        throw new Error('Azure Maps key not found in data attributes');
+    }
+
+    // Validate numeric values
+    if (isNaN(config.center[0]) || isNaN(config.center[1])) {
+        throw new Error('Invalid map center coordinates');
+    }
+    if (isNaN(config.zoom)) {
+        throw new Error('Invalid zoom level');
+    }
+    if (isNaN(config.ringSize)) {
+        throw new Error('Invalid ring size');
     }
 
     // Store configuration
@@ -61,10 +79,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 return acc;
             }, {});
             if (mapRequestsConfig.debug) {
-                console.log('Aid Types Configuration loaded:', mapRequestsConfig.aidTypesConfig);
+                console.log('[Map] Aid Types loaded:', {
+                    count: Object.keys(mapRequestsConfig.aidTypesConfig).length,
+                    types: Object.keys(mapRequestsConfig.aidTypesConfig)
+                });
             }
         } catch (error) {
-            console.error('Error parsing aid types configuration:', error);
+            throw new Error('Error parsing aid types configuration: ' + error.message);
         }
     }
 
@@ -74,16 +95,122 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             mapRequestsConfig.aidLocations = JSON.parse(aidLocationsElement.textContent);
             if (mapRequestsConfig.debug) {
-                console.log('Aid Locations Data:', mapRequestsConfig.aidLocations.length, 'locations found');
+                console.log('[Map] Aid Locations loaded:', {
+                    count: mapRequestsConfig.aidLocations.length,
+                    byType: mapRequestsConfig.aidLocations.reduce((acc, loc) => {
+                        acc[loc.aid_type.slug] = (acc[loc.aid_type.slug] || 0) + 1;
+                        return acc;
+                    }, {})
+                });
             }
         } catch (error) {
-            console.error('Error parsing aid locations data:', error);
-            mapRequestsConfig.aidLocations = [];
+            throw new Error('Error parsing aid locations data: ' + error.message);
         }
     }
 
-    // Initialize map immediately
-    initializeMap(config);
+    mapRequestsConfig.performance.configLoaded = performance.now();
+    if (mapRequestsConfig.debug) {
+        console.timeEnd('map-config-load');
+        console.log('[Map] Configuration load time:',
+            (mapRequestsConfig.performance.configLoaded - mapRequestsConfig.performance.loadStart).toFixed(2), 'ms');
+    }
+}
+
+// Main initialization function
+async function initializeMapWithFilter(filterState) {
+    if (mapRequestsConfig.initialized) {
+        if (mapRequestsConfig.debug) console.log('[Map] Already initialized, skipping');
+        return;
+    }
+
+    try {
+        if (mapRequestsConfig.debug) {
+            console.time('map-full-init');
+            console.log('[Map] Starting initialization with filter state:', filterState);
+        }
+
+        // Load configuration first
+        loadMapConfiguration();
+
+        // Initialize the map
+        await initializeMap(mapRequestsConfig.config);
+        mapRequestsConfig.performance.mapInitialized = performance.now();
+
+        // Mark as initialized
+        mapRequestsConfig.initialized = true;
+        mapRequestsConfig.performance.fullyReady = performance.now();
+
+        if (mapRequestsConfig.debug) {
+            console.timeEnd('map-full-init');
+            console.log('[Map] Performance metrics:', {
+                configLoad: (mapRequestsConfig.performance.configLoaded - mapRequestsConfig.performance.loadStart).toFixed(2) + 'ms',
+                mapInit: (mapRequestsConfig.performance.mapInitialized - mapRequestsConfig.performance.configLoaded).toFixed(2) + 'ms',
+                total: (mapRequestsConfig.performance.fullyReady - mapRequestsConfig.performance.loadStart).toFixed(2) + 'ms'
+            });
+        }
+
+        // Apply initial filter state
+        updateLayerVisibility(filterState);
+    } catch (error) {
+        console.error('[Map] Initialization failed:', error);
+        // Log additional context if available
+        if (mapRequestsConfig.debug) {
+            console.error('[Map] Initialization state:', {
+                configLoaded: !!mapRequestsConfig.config,
+                aidTypesLoaded: Object.keys(mapRequestsConfig.aidTypesConfig).length,
+                locationsLoaded: mapRequestsConfig.aidLocations.length,
+                filterState: filterState
+            });
+        }
+        throw error;
+    }
+}
+
+// Wait for DOM and check filter state
+document.addEventListener('DOMContentLoaded', function() {
+    if (mapRequestsConfig.debug) {
+        console.time('map-init-sequence');
+        console.log('[Map] DOM ready, checking filter state');
+    }
+
+    // Check if filter is already initialized
+    if (window.aidRequestsStore?.initialized) {
+        if (mapRequestsConfig.debug) {
+            console.log('[Map] Filter ready, initializing with state:', {
+                filterState: window.aidRequestsStore.currentState,
+                storeData: {
+                    aidTypes: Object.keys(window.aidRequestsStore.data.aidTypes).length,
+                    aidRequests: window.aidRequestsStore.data.aidRequests.length
+                }
+            });
+        }
+        initializeMapWithFilter(window.aidRequestsStore.currentState).catch(error => {
+            console.error('[Map] Failed to initialize with existing filter state:', error);
+        });
+    } else if (window.aidRequestsStore?.initError) {
+        console.error('[Map] Filter initialization previously failed:', window.aidRequestsStore.initError);
+    } else {
+        if (mapRequestsConfig.debug) console.log('[Map] Waiting for filter initialization...');
+
+        // Wait for filter initialization
+        document.addEventListener('aidRequestsFilterReady', function(event) {
+            if (mapRequestsConfig.debug) {
+                console.timeEnd('map-init-sequence');
+                console.log('[Map] Filter ready event received:', {
+                    filterState: event.detail,
+                    initTime: (performance.now() - mapRequestsConfig.performance.loadStart).toFixed(2) + 'ms'
+                });
+            }
+            initializeMapWithFilter(event.detail).catch(error => {
+                console.error('[Map] Failed to initialize with filter event:', error);
+            });
+        });
+
+        // Handle filter initialization errors
+        document.addEventListener('aidRequestsFilterError', function(event) {
+            console.error('[Map] Filter initialization failed:', event.detail.error);
+        });
+    }
 });
 
 // Initialize the map with minimum configuration
