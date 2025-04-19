@@ -169,13 +169,28 @@ def send_all_field_op_cot():
     try:
         # Get all field ops - we'll filter active ones based on having a tak_server
         field_ops = FieldOp.objects.filter(tak_server__isnull=False)
+        ic(f"Found {field_ops.count()} field ops with TAK servers")
+
+        if field_ops.count() == 0:
+            # If no field ops found with tak_server filter, try getting all field ops to see what we have
+            all_field_ops = FieldOp.objects.all()
+            ic(f"Total field ops in system: {all_field_ops.count()}")
+            for fo in all_field_ops:
+                ic(f"Field op {fo.slug} - TAK server: {fo.tak_server}")
+
         results = []
         for field_op in field_ops:
             try:
+                ic(f"Sending COT for field op: {field_op.slug}")
                 call_command('send_cot', field_op=field_op.slug)
                 results.append(f"Successfully sent COT for {field_op.slug}")
             except Exception as e:
+                ic(f"Error for {field_op.slug}: {str(e)}")
                 results.append(f"Error sending COT for {field_op.slug}: {str(e)}")
+
+        if not results:
+            return "No COT messages were sent - no eligible field ops found"
         return "\n".join(results)
     except Exception as e:
+        ic(f"Main error: {str(e)}")
         return f"Error in send_all_field_op_cot: {str(e)}"
