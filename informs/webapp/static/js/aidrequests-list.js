@@ -6,7 +6,7 @@
  */
 
 // Configuration
-const listConfig = { debug: false };
+const listConfig = { debug: true };
 
 // Main initialization check
 if (window.aidRequestsStore?.initialized) {
@@ -50,6 +50,89 @@ if (window.aidRequestsStore?.initialized) {
     });
 }
 
+// Update list summary with filter state and counts
+function updateListSummary(filterState, counts) {
+    const summaryElement = document.getElementById('list-filter-summary');
+    if (!summaryElement) {
+        console.warn('[List] Summary element not found');
+        return;
+    }
+
+    if (listConfig.debug) {
+        console.log('[List] Updating summary with:', {
+            filterState,
+            counts
+        });
+    }
+
+    // Build summary text
+    const parts = [];
+    let visibleCount = counts ? counts.matched : 0;
+    let totalCount = counts ? counts.total : 0;
+
+    // Create count element
+    const countText = `${visibleCount} of ${totalCount} requests`;
+
+    // Build filter parts - in order: Aid Type, Status, Priority
+    if (filterState.aidTypes === null) {
+        parts.push('Type: None selected');
+    } else if (filterState.statuses === null) {
+        parts.push('Status: None selected');
+    } else if (filterState.priorities === null) {
+        parts.push('Priority: None selected');
+    } else {
+        // Only add other filters if no filter is null
+
+        // 1. Aid Type
+        if (filterState.aidTypes !== 'all' && Array.isArray(filterState.aidTypes) && filterState.aidTypes.length > 0) {
+            const typeLabels = filterState.aidTypes.map(type => {
+                if (type === null) {
+                    return 'None';
+                }
+                const config = window.aidRequestsStore.data.aidTypes[type];
+                return config ? config.name : type;
+            });
+            parts.push(`Type: ${typeLabels.join(', ')}`);
+        }
+
+        // 2. Status
+        if (filterState.statuses !== 'all' && Array.isArray(filterState.statuses) && filterState.statuses.length > 0) {
+            const statusLabels = filterState.statuses.map(status => {
+                return status.charAt(0).toUpperCase() + status.slice(1);
+            });
+            parts.push(`Status: ${statusLabels.join(', ')}`);
+        }
+
+        // 3. Priority
+        if (filterState.priorities !== 'all' && Array.isArray(filterState.priorities) && filterState.priorities.length > 0) {
+            const priorityLabels = filterState.priorities.map(p => {
+                if (p === null) {
+                    return 'None';
+                }
+                return p.charAt(0).toUpperCase() + p.slice(1);
+            });
+            parts.push(`Priority: ${priorityLabels.join(', ')}`);
+        }
+    }
+
+    // Create the summary HTML
+    summaryElement.innerHTML = `
+        <div class="small text-muted lh-1">
+            <div class="mb-1">${countText}</div>
+            ${parts.map(part => `<div class="mb-1">${part}</div>`).join('')}
+        </div>
+    `;
+
+    if (listConfig.debug) {
+        console.log('[List] Summary updated:', {
+            visibleCount,
+            totalCount,
+            filters: parts,
+            filterState
+        });
+    }
+}
+
 // Core initialization function
 function initializeWithFilter(filterState) {
     if (listConfig.debug) {
@@ -77,8 +160,11 @@ function initializeWithFilter(filterState) {
     // Initialize the list view
     initialize();
 
-    // Update initial visibility based on filter state
-    updateRowVisibility(filterState);
+    // Update initial visibility and summary based on filter state
+    if (filterState.filterState) {
+        updateRowVisibility(filterState.filterState);
+        updateListSummary(filterState.filterState, filterState.counts);
+    }
 }
 
 // Initialize the list view
@@ -114,8 +200,9 @@ function initialize() {
             });
         }
 
-        // Update row visibility based on received filter state
+        // Update row visibility and summary based on received filter state
         updateRowVisibility(event.detail.filterState);
+        updateListSummary(event.detail.filterState, event.detail.counts);
     });
 
     if (listConfig.debug) console.log('[List] Initialization complete');
@@ -153,18 +240,34 @@ function updateRowVisibility(filterState) {
         const aidType = row.getAttribute('data-aid-type');
         const priority = row.getAttribute('data-priority'); // Will be "none" or a priority value
 
-        // Check if row matches current filters
-        const matchesStatus = actualFilterState.statuses === 'all' ||
-                            (Array.isArray(actualFilterState.statuses) &&
-                             actualFilterState.statuses.includes(status));
+        // Handle null filter states - if any filter is null, only show rows that match that null state
+        let isVisible;
 
-        const matchesAidType = actualFilterState.aidTypes === 'all' ||
-                              (Array.isArray(actualFilterState.aidTypes) &&
-                               actualFilterState.aidTypes.includes(aidType));
+        if (actualFilterState.aidTypes === null) {
+            // If aid types is null, hide all rows
+            isVisible = false;
+        } else if (actualFilterState.statuses === null) {
+            // If statuses is null, hide all rows (as no status can be null)
+            isVisible = false;
+        } else if (actualFilterState.priorities === null) {
+            // If priorities is null, only show rows with null priority
+            isVisible = priority === 'none';
+        } else {
+            // Normal filtering when no null states
+            const matchesStatus = actualFilterState.statuses === 'all' ||
+                                (Array.isArray(actualFilterState.statuses) &&
+                                 actualFilterState.statuses.includes(status));
 
-        const matchesPriority = actualFilterState.priorities === 'all' ||
-                               (Array.isArray(actualFilterState.priorities) &&
-                                actualFilterState.priorities.includes(priority === 'none' ? null : priority));
+            const matchesAidType = actualFilterState.aidTypes === 'all' ||
+                                  (Array.isArray(actualFilterState.aidTypes) &&
+                                   actualFilterState.aidTypes.includes(aidType));
+
+            const matchesPriority = actualFilterState.priorities === 'all' ||
+                                   (Array.isArray(actualFilterState.priorities) &&
+                                    actualFilterState.priorities.includes(priority === 'none' ? null : priority));
+
+            isVisible = matchesStatus && matchesAidType && matchesPriority;
+        }
 
         if (listConfig.debug) {
             console.log('[List] Row filter check:', {
@@ -172,16 +275,13 @@ function updateRowVisibility(filterState) {
                 status,
                 aidType,
                 priority,
-                matches: {
-                    status: matchesStatus,
-                    aidType: matchesAidType,
-                    priority: matchesPriority
-                }
+                isVisible,
+                filterState: actualFilterState
             });
         }
 
         // Use d-none class for visibility control
-        if (matchesStatus && matchesAidType && matchesPriority) {
+        if (isVisible) {
             row.classList.remove('d-none');
             visibleCount++;
         } else {
