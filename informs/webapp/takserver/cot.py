@@ -191,6 +191,31 @@ async def asend_cot(fieldop_id=None, aidrequest_list=None, message_type=None):
     except Exception as e:
         ic(e)
         return f'Exception in cot_queues.run(): {e}'
+    finally:
+        # Ensure we clean up the connections
+        if hasattr(cot_queues, 'tx_queue'):
+            while not cot_queues.tx_queue.empty():
+                await asyncio.sleep(0.1)
+
+        # Cancel all tasks
+        if hasattr(cot_queues, '_tasks'):
+            for task in cot_queues._tasks:
+                if not task.done():
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+
+        # Close the workers if they exist
+        if hasattr(cot_queues, 'tx_worker') and cot_queues.tx_worker:
+            if hasattr(cot_queues.tx_worker, 'writer') and cot_queues.tx_worker.writer:
+                cot_queues.tx_worker.writer.close()
+                await cot_queues.tx_worker.writer.wait_closed()
+
+        if hasattr(cot_queues, 'rx_worker') and cot_queues.rx_worker:
+            if hasattr(cot_queues.rx_worker, 'reader') and cot_queues.rx_worker.reader:
+                cot_queues.rx_worker.reader.feed_eof()
 
     return result
 

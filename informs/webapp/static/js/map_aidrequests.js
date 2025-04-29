@@ -11,7 +11,7 @@ let layersByType = {};  // Store layers by aid type
 
 // Configuration
 const mapRequestsConfig = {
-    debug: false,  // Set to false in production
+    debug: true,  // Set to false in production
     initialized: false,
     config: null,
     aidLocations: [],
@@ -140,6 +140,17 @@ async function initializeMapWithFilter(filterState) {
         mapRequestsConfig.initialized = true;
         mapRequestsConfig.performance.fullyReady = performance.now();
 
+        // Apply initial filter state and update visibility
+        if (filterState) {
+            updateLayerVisibility(filterState.filterState, filterState.counts);
+        } else if (window.aidRequestsStore?.currentState) {
+            // Fallback to store state if available
+            updateLayerVisibility(
+                window.aidRequestsStore.currentState.filterState,
+                window.aidRequestsStore.currentState.counts
+            );
+        }
+
         if (mapRequestsConfig.debug) {
             console.timeEnd('map-full-init');
             console.log('[Map] Performance metrics:', {
@@ -148,12 +159,8 @@ async function initializeMapWithFilter(filterState) {
                 total: (mapRequestsConfig.performance.fullyReady - mapRequestsConfig.performance.loadStart).toFixed(2) + 'ms'
             });
         }
-
-        // Apply initial filter state
-        updateLayerVisibility(filterState);
     } catch (error) {
         console.error('[Map] Initialization failed:', error);
-        // Log additional context if available
         if (mapRequestsConfig.debug) {
             console.error('[Map] Initialization state:', {
                 configLoaded: !!mapRequestsConfig.config,
@@ -187,8 +194,6 @@ document.addEventListener('DOMContentLoaded', function() {
         initializeMapWithFilter(window.aidRequestsStore.currentState).catch(error => {
             console.error('[Map] Failed to initialize with existing filter state:', error);
         });
-    } else if (window.aidRequestsStore?.initError) {
-        console.error('[Map] Filter initialization previously failed:', window.aidRequestsStore.initError);
     } else {
         if (mapRequestsConfig.debug) console.log('[Map] Waiting for filter initialization...');
 
@@ -205,11 +210,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('[Map] Failed to initialize with filter event:', error);
             });
         });
-
-        // Handle filter initialization errors
-        document.addEventListener('aidRequestsFilterError', function(event) {
-            console.error('[Map] Filter initialization failed:', event.detail.error);
-        });
     }
 });
 
@@ -219,91 +219,98 @@ function initializeMap(config) {
         console.log('Map View: Initializing map with config:', config);
     }
 
-    try {
-        // Initialize map with validated values
-        map = new atlas.Map('aid-request-map', {
-            center: config.center,
-            zoom: config.zoom,
-            style: 'road',
-            view: 'Auto',
-            showFeedbackLink: false,
-            showLogo: false,
-            authOptions: {
-                authType: 'subscriptionKey',
-                subscriptionKey: config.key
-            }
-        });
-
-        // Add zoom control (top-left)
-        map.controls.add(new atlas.control.ZoomControl(), {
-            position: 'top-left'
-        });
-
-        // Add compass control (top-left)
-        map.controls.add(new atlas.control.CompassControl(), {
-            position: 'top-left'
-        });
-
-        // Add style control (top-right)
-        map.controls.add(new atlas.control.StyleControl({
-            mapStyles: ['road', 'satellite', 'hybrid']
-        }), {
-            position: 'top-right'
-        });
-
-        // Add pitch control (top-right)
-        map.controls.add(new atlas.control.PitchControl(), {
-            position: 'top-right'
-        });
-
-        // Wait for the map to be ready before adding layers
-        map.events.add('ready', async function() {
-            if (mapRequestsConfig.debug) {
-                console.log('Map ready event fired');
-            }
-
-            // Initialize field op layer first - synchronous operation
-            // (just creates position, source, and layers)
-            initializeFieldOpLayer();
-
-            // Then initialize aid request layer - async operation
-            // (needs to wait for icon templates to be created)
-            await initializeAidRequestLayer();
-
-            if (mapRequestsConfig.debug) {
-                console.log('Map layers initialized, waiting for initial filter state...');
-            }
-
-            // Listen for filter changes, including the initial state
-            document.addEventListener('aidRequestsFiltered', function(event) {
-                if (mapRequestsConfig.debug) {
-                    console.log('Map View: Filter event received:', event.detail);
-                }
-
-                if (event.detail && event.detail.filterState) {
-                    updateLayerVisibility(event.detail.filterState);
+    return new Promise((resolve, reject) => {
+        try {
+            // Initialize map with validated values
+            map = new atlas.Map('aid-request-map', {
+                center: config.center,
+                zoom: config.zoom,
+                style: 'road',
+                view: 'Auto',
+                showFeedbackLink: false,
+                showLogo: false,
+                authOptions: {
+                    authType: 'subscriptionKey',
+                    subscriptionKey: config.key
                 }
             });
 
-            if (mapRequestsConfig.debug) {
-                console.log('Map initialization complete, listening for filter changes');
-            }
-        });
+            // Add zoom control (top-left)
+            map.controls.add(new atlas.control.ZoomControl(), {
+                position: 'top-left'
+            });
 
-    } catch (error) {
-        console.error('Error initializing map:', error);
-    }
+            // Add compass control (top-left)
+            map.controls.add(new atlas.control.CompassControl(), {
+                position: 'top-left'
+            });
+
+            // Add style control (top-right)
+            map.controls.add(new atlas.control.StyleControl({
+                mapStyles: ['road', 'satellite', 'hybrid']
+            }), {
+                position: 'top-right'
+            });
+
+            // Add pitch control (top-right)
+            map.controls.add(new atlas.control.PitchControl(), {
+                position: 'top-right'
+            });
+
+            // Wait for the map to be ready before adding layers
+            map.events.add('ready', async function() {
+                if (mapRequestsConfig.debug) {
+                    console.log('Map ready event fired');
+                }
+
+                try {
+                    // Initialize field op layer first
+                    initializeFieldOpLayer();
+
+                    // Then initialize aid request layer
+                    await initializeAidRequestLayer();
+
+                    if (mapRequestsConfig.debug) {
+                        console.log('Map layers initialized');
+                    }
+
+                    // Listen for filter changes
+                    document.addEventListener('aidRequestsFiltered', function(event) {
+                        if (mapRequestsConfig.debug) {
+                            console.log('Map View: Filter event received:', event.detail);
+                        }
+
+                        if (event.detail && event.detail.filterState) {
+                            updateLayerVisibility(event.detail.filterState, event.detail.counts);
+                        }
+                    });
+
+                    resolve();
+                } catch (error) {
+                    console.error('Error in map ready handler:', error);
+                    reject(error);
+                }
+            });
+
+        } catch (error) {
+            console.error('Error initializing map:', error);
+            reject(error);
+        }
+    });
 }
 
 // Update layer and point visibility based on filter state
-function updateLayerVisibility(filterState) {
+function updateLayerVisibility(filterState, counts) {
     if (!map) {
         console.warn('Map View: Map not initialized yet, skipping visibility update');
         return;
     }
 
     if (mapRequestsConfig.debug) {
-        console.log('Map View: Updating visibility with filter state:', filterState);
+        console.log('Map View: Updating visibility with:', {
+            filterState,
+            counts
+        });
     }
 
     // First, handle aid type layer visibility
@@ -313,8 +320,10 @@ function updateLayerVisibility(filterState) {
             return;
         }
 
-        // Check if this aid type is visible
-        const layerVisible = filterState.aidTypes === 'all' ||
+        // If aidTypes is null, only show points that match the aid type filter (none in this case)
+        // If any other filter is null, ignore aid type filter
+        const layerVisible = filterState.aidTypes === null ? false :
+                           filterState.aidTypes === 'all' ||
                            (Array.isArray(filterState.aidTypes) && filterState.aidTypes.includes(aidType));
 
         try {
@@ -325,19 +334,33 @@ function updateLayerVisibility(filterState) {
                 return;
             }
 
-            // Update point visibility within the layer using a filter expression
-            const filterExpr = ['all',
-                // Base visibility on layer's aid type being selected
-                ['boolean', layerVisible],
-                // Status filter
-                filterState.statuses === 'all' ?
-                    ['boolean', true] :
-                    ['in', ['get', 'status'], ['literal', filterState.statuses]],
-                // Priority filter
-                filterState.priorities === 'all' ?
-                    ['boolean', true] :
-                    ['in', ['get', 'priority'], ['literal', filterState.priorities]]
-            ];
+            // Build filter expression based on null states
+            let filterExpr;
+
+            if (filterState.aidTypes === null) {
+                // If aid types is null, hide all points
+                filterExpr = ['boolean', false];
+            } else if (filterState.statuses === null) {
+                // If statuses is null, show no points (as no status matches null)
+                filterExpr = ['boolean', false];
+            } else if (filterState.priorities === null) {
+                // If priorities is null, show only points with null priority
+                filterExpr = ['all',
+                    ['boolean', layerVisible],
+                    ['==', ['get', 'priority'], null]
+                ];
+            } else {
+                // Normal filtering when no null states
+                filterExpr = ['all',
+                    ['boolean', layerVisible],
+                    filterState.statuses === 'all' ?
+                        ['boolean', true] :
+                        ['in', ['get', 'status'], ['literal', filterState.statuses]],
+                    filterState.priorities === 'all' ?
+                        ['boolean', true] :
+                        ['in', ['get', 'priority'], ['literal', filterState.priorities]]
+                ];
+            }
 
             layer.setOptions({
                 filter: filterExpr
@@ -346,6 +369,10 @@ function updateLayerVisibility(filterState) {
             if (mapRequestsConfig.debug) {
                 const visiblePoints = source.getShapes().filter(shape => {
                     const props = shape.getProperties();
+                    if (filterState.aidTypes === null) return false;
+                    if (filterState.statuses === null) return false;
+                    if (filterState.priorities === null) return props.priority === null;
+
                     return (filterState.statuses === 'all' || filterState.statuses.includes(props.status)) &&
                            (filterState.priorities === 'all' || filterState.priorities.includes(props.priority));
                 }).length;
@@ -357,69 +384,89 @@ function updateLayerVisibility(filterState) {
         }
     });
 
-    // Update map summary card
-    updateMapSummary(filterState);
+    // Update map summary card with both filter state and counts
+    updateMapSummary(filterState, counts);
 }
 
 // Update the map card header with filter summary and counts
-function updateMapSummary(filterState) {
+function updateMapSummary(filterState, counts) {
     const summaryElement = document.getElementById('map-filter-summary');
     if (!summaryElement) {
         console.warn('Map View: Summary element not found');
         return;
     }
 
-    // Count visible points across all layers
-    let visiblePoints = 0;
-    let totalPoints = 0;
-
-    Object.values(layersByType).forEach(layer => {
-        const source = layer.getSource();
-        if (source) {
-            const shapes = source.getShapes();
-            totalPoints += shapes.length;
-            visiblePoints += shapes.filter(shape => {
-                const props = shape.getProperties();
-                return (filterState.statuses === 'all' || filterState.statuses.includes(props.status)) &&
-                       (filterState.priorities === 'all' || filterState.priorities.includes(props.priority));
-            }).length;
-        }
-    });
+    if (mapRequestsConfig.debug) {
+        console.log('Map View: Updating summary with:', {
+            filterState,
+            counts
+        });
+    }
 
     // Build summary text
     const parts = [];
+    let visibleCount = counts ? counts.matched : 0;
+    let totalCount = counts ? counts.total : 0;
 
-    // Add status filter summary - only if not 'all'
-    if (filterState.statuses !== 'all' && Array.isArray(filterState.statuses) && filterState.statuses.length > 0) {
-        parts.push(`status[${filterState.statuses.join(',')}]`);
+    // Create count element
+    const countText = `${visibleCount} of ${totalCount} locations`;
+
+    // Build filter parts - in order: Aid Type, Status, Priority
+    if (filterState.aidTypes === null) {
+        parts.push('Type: None selected');
+    } else if (filterState.statuses === null) {
+        parts.push('Status: None selected');
+    } else if (filterState.priorities === null) {
+        parts.push('Priority: None selected');
+    } else {
+        // Only add other filters if no filter is null
+
+        // 1. Aid Type
+        if (filterState.aidTypes !== 'all' && Array.isArray(filterState.aidTypes) && filterState.aidTypes.length > 0) {
+            const typeLabels = filterState.aidTypes.map(type => {
+                if (type === null) {
+                    return 'None';
+                }
+                const config = mapRequestsConfig.aidTypesConfig[type];
+                return config ? config.name : type;
+            });
+            parts.push(`Type: ${typeLabels.join(', ')}`);
+        }
+
+        // 2. Status
+        if (filterState.statuses !== 'all' && Array.isArray(filterState.statuses) && filterState.statuses.length > 0) {
+            const statusLabels = filterState.statuses.map(status => {
+                return status.charAt(0).toUpperCase() + status.slice(1);
+            });
+            parts.push(`Status: ${statusLabels.join(', ')}`);
+        }
+
+        // 3. Priority
+        if (filterState.priorities !== 'all' && Array.isArray(filterState.priorities) && filterState.priorities.length > 0) {
+            const priorityLabels = filterState.priorities.map(p => {
+                if (p === null) {
+                    return 'None';
+                }
+                return p.charAt(0).toUpperCase() + p.slice(1);
+            });
+            parts.push(`Priority: ${priorityLabels.join(', ')}`);
+        }
     }
 
-    // Add aid type filter summary - only if not 'all'
-    if (filterState.aidTypes !== 'all' && Array.isArray(filterState.aidTypes) && filterState.aidTypes.length > 0) {
-        // Use slugs directly
-        parts.push(`type[${filterState.aidTypes.join(',')}]`);
-    }
-
-    // Add priority filter summary - only if not 'all'
-    if (filterState.priorities !== 'all' && Array.isArray(filterState.priorities) && filterState.priorities.length > 0) {
-        const priorityLabels = filterState.priorities.map(p => p === null ? 'none' : p);
-        parts.push(`priority[${priorityLabels.join(',')}]`);
-    }
-
-    // Format the summary text
-    const countText = `${visiblePoints} of ${totalPoints} locations`;
-    const summaryText = parts.length > 0 ?
-        `${parts.join('; ')}; ${countText}` :
-        countText;
-
-    summaryElement.textContent = summaryText;
+    // Create the summary HTML
+    summaryElement.innerHTML = `
+        <div class="small text-muted lh-1">
+            <div class="mb-1">${countText}</div>
+            ${parts.map(part => `<div class="mb-1">${part}</div>`).join('')}
+        </div>
+    `;
 
     if (mapRequestsConfig.debug) {
-        console.log('Map View: Updated summary:', {
-            visiblePoints,
-            totalPoints,
+        console.log('Map View: Summary updated:', {
+            visibleCount,
+            totalCount,
             filters: parts,
-            summaryText
+            filterState
         });
     }
 }

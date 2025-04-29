@@ -7,7 +7,7 @@
 
 // Configuration and Data Store
 window.aidRequestsStore = {
-    debug: false,  // Set to false in production
+    debug: true,  // Set to false in production
 
     // Status group lookup table - matches Django model's ACTIVE_STATUSES and INACTIVE_STATUSES
     statusGroups: {
@@ -59,6 +59,17 @@ window.aidRequestsStore = {
     // DOM elements
     elements: {
         filterCard: null
+    },
+
+    // Utility functions
+    utils: {
+        isNullOrNone: function(value) {
+            return value === null || value === 'null' || value === 'none' || value === undefined;
+        },
+
+        formatNullValue: function(value) {
+            return this.isNullOrNone(value) ? 'None' : value;
+        }
     },
 
     // Update aid request in store
@@ -113,7 +124,7 @@ window.aidRequestsStore = {
 document.addEventListener('DOMContentLoaded', async function() {
     if (aidRequestsStore.debug) console.log('[Filter] Initializing aid requests filter...');
     if (aidRequestsStore.debug) {
-        console.time('initialization');
+    console.time('initialization');
     }
 
     try {
@@ -144,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         if (aidRequestsStore.debug) {
             console.log('[Filter] Initialization complete');
-            console.timeEnd('initialization');
+        console.timeEnd('initialization');
         }
     } catch (error) {
         console.error('[Filter] Initialization failed:', error);
@@ -161,7 +172,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 // Data Initialization
 async function initializeData() {
     if (aidRequestsStore.debug) {
-        console.time('data-initialization');
+    console.time('data-initialization');
     }
 
     try {
@@ -175,7 +186,7 @@ async function initializeData() {
         await initializeAidRequests();
 
         if (aidRequestsStore.debug) {
-            console.timeEnd('data-initialization');
+        console.timeEnd('data-initialization');
         }
     } catch (error) {
         console.error('[Filter] Data initialization failed:', error);
@@ -185,7 +196,7 @@ async function initializeData() {
 
 async function initializeAidTypes() {
     if (aidRequestsStore.debug) {
-        console.time('aid-types-load');
+    console.time('aid-types-load');
     }
 
     const element = document.getElementById('aid-types-json');
@@ -202,7 +213,7 @@ async function initializeAidTypes() {
 
         if (aidRequestsStore.debug) {
             console.log('[Filter] Loaded aid types:', aidRequestsStore.data.aidTypes);
-            console.timeEnd('aid-types-load');
+        console.timeEnd('aid-types-load');
         }
     } catch (error) {
         console.error('[Filter] Error parsing aid types:', error);
@@ -212,7 +223,7 @@ async function initializeAidTypes() {
 
 async function initializePriorityChoices() {
     if (aidRequestsStore.debug) {
-        console.time('priority-choices-load');
+    console.time('priority-choices-load');
     }
 
     const element = document.getElementById('priority-choices-data');
@@ -229,7 +240,7 @@ async function initializePriorityChoices() {
 
         if (aidRequestsStore.debug) {
             console.log('[Filter] Loaded priority choices:', aidRequestsStore.data.priorityChoices);
-            console.timeEnd('priority-choices-load');
+        console.timeEnd('priority-choices-load');
         }
     } catch (error) {
         console.error('[Filter] Error parsing priority choices:', error);
@@ -239,7 +250,7 @@ async function initializePriorityChoices() {
 
 async function initializeAidRequests() {
     if (aidRequestsStore.debug) {
-        console.time('aid-requests-load');
+    console.time('aid-requests-load');
     }
 
     const element = document.getElementById('aid-locations-data');
@@ -269,10 +280,10 @@ async function initializeAidRequests() {
 
         if (aidRequestsStore.debug) {
             console.log('[Filter] Loaded aid requests:', {
-                count: aidRequestsStore.data.aidRequests.length,
-                initialCounts: aidRequestsStore.data.serverCounts
-            });
-            console.timeEnd('aid-requests-load');
+            count: aidRequestsStore.data.aidRequests.length,
+            initialCounts: aidRequestsStore.data.serverCounts
+        });
+        console.timeEnd('aid-requests-load');
         }
     } catch (error) {
         console.error('[Filter] Error loading aid requests:', error);
@@ -283,7 +294,7 @@ async function initializeAidRequests() {
 // UI Initialization and Event Handlers
 function initializeUI() {
     if (aidRequestsStore.debug) {
-        console.time('ui-initialization');
+    console.time('ui-initialization');
     }
 
     const filterCard = aidRequestsStore.elements.filterCard;
@@ -311,14 +322,19 @@ function initializeUI() {
     });
 
     // Add event listener to reset button
-    const resetButton = filterCard.querySelector('#reset-filters');
+    const resetButton = filterCard.querySelector('#reset-all-filters');
     if (resetButton) {
         resetButton.addEventListener('click', handleResetClick);
+        if (aidRequestsStore.debug) {
+            console.log('[Filter] Added reset handler to button');
+        }
+    } else {
+        console.error('[Filter] Reset button not found with ID: reset-all-filters');
     }
 
     if (aidRequestsStore.debug) {
         console.log('[Filter] UI initialization complete');
-        console.timeEnd('ui-initialization');
+    console.timeEnd('ui-initialization');
     }
 }
 
@@ -553,20 +569,66 @@ function handleResetClick(resetEvent) {
     if (aidRequestsStore.debug) console.log('[Filter] Reset button clicked');
     console.time('reset-filters');
 
-    // Reset status checkboxes
-    aidRequestsStore.elements.filterCard.querySelectorAll('[data-group="active"]')
-        .forEach(checkbox => checkbox.checked = true);
-    aidRequestsStore.elements.filterCard.querySelectorAll('[data-group="inactive"]')
-        .forEach(checkbox => checkbox.checked = false);
+    const filterCard = aidRequestsStore.elements.filterCard;
+    if (!filterCard) {
+        console.error('[Filter] Filter card not found for reset');
+        return;
+    }
 
-    // Reset aid type and priority checkboxes
-    ['aid_type', 'priority'].forEach(type => {
-        const allCheckbox = aidRequestsStore.elements.filterCard.querySelector(`#${type}-filter-all`);
-        const typeCheckboxes = aidRequestsStore.elements.filterCard
-            .querySelectorAll(`[data-filter-type="${type}"]`);
+    // Reset status checkboxes to default state
+    // Active statuses should be checked, inactive unchecked
+    const activeStatusCheckboxes = filterCard.querySelectorAll('[data-filter-type="status"][data-group="active"]');
+    const inactiveStatusCheckboxes = filterCard.querySelectorAll('[data-filter-type="status"][data-group="inactive"]');
 
-        allCheckbox.checked = true;
-        typeCheckboxes.forEach(checkbox => checkbox.checked = true);
+    // Set active statuses to checked
+    activeStatusCheckboxes.forEach(checkbox => {
+        checkbox.checked = true;
+        if (aidRequestsStore.debug) console.log(`[Filter] Reset active status: ${checkbox.dataset.filterValue} to checked`);
+    });
+
+    // Set inactive statuses to unchecked
+    inactiveStatusCheckboxes.forEach(checkbox => {
+        checkbox.checked = false;
+        if (aidRequestsStore.debug) console.log(`[Filter] Reset inactive status: ${checkbox.dataset.filterValue} to unchecked`);
+    });
+
+    // Update status group checkboxes
+    const activeGroupCheckbox = filterCard.querySelector('#status-group-filter-active');
+    const inactiveGroupCheckbox = filterCard.querySelector('#status-group-filter-inactive');
+
+    if (activeGroupCheckbox) {
+        activeGroupCheckbox.checked = true;
+        activeGroupCheckbox.indeterminate = false;
+    }
+    if (inactiveGroupCheckbox) {
+        inactiveGroupCheckbox.checked = false;
+        inactiveGroupCheckbox.indeterminate = false;
+    }
+
+    // Reset aid type checkboxes - all should be checked
+    const aidTypeAll = filterCard.querySelector('#aid-type-filter-all');
+    const aidTypeCheckboxes = filterCard.querySelectorAll('[data-filter-type="aid_type"]:not([id$="-all"])');
+
+    if (aidTypeAll) {
+        aidTypeAll.checked = true;
+        aidTypeAll.indeterminate = false;
+    }
+    aidTypeCheckboxes.forEach(checkbox => {
+        checkbox.checked = true;
+        if (aidRequestsStore.debug) console.log(`[Filter] Reset aid type: ${checkbox.dataset.filterValue} to checked`);
+    });
+
+    // Reset priority checkboxes - all should be checked
+    const priorityAll = filterCard.querySelector('#priority-filter-all');
+    const priorityCheckboxes = filterCard.querySelectorAll('[data-filter-type="priority"]:not([id$="-all"])');
+
+    if (priorityAll) {
+        priorityAll.checked = true;
+        priorityAll.indeterminate = false;
+    }
+    priorityCheckboxes.forEach(checkbox => {
+        checkbox.checked = true;
+        if (aidRequestsStore.debug) console.log(`[Filter] Reset priority: ${checkbox.dataset.filterValue} to checked`);
     });
 
     if (aidRequestsStore.debug) console.log('[Filter] Filters reset to initial state');
@@ -586,6 +648,13 @@ function handleResetClick(resetEvent) {
         detail: { filterState, counts }
     });
     document.dispatchEvent(filterChangeEvent);
+
+    if (aidRequestsStore.debug) {
+        console.log('[Filter] Reset complete:', {
+            filterState,
+            counts
+        });
+    }
 }
 
 function calculateTotals() {
@@ -757,9 +826,9 @@ function getFilterState() {
     if (aidRequestsStore.debug) console.log('[Filter] Getting current filter state');
 
     const filterState = {
-        statuses: [],
-        aidTypes: [],
-        priorities: []
+        statuses: null,
+        aidTypes: null,
+        priorities: null
     };
 
     // Get status filters - collect all checked statuses
@@ -767,16 +836,23 @@ function getFilterState() {
         aidRequestsStore.elements.filterCard.querySelectorAll('[data-filter-type="status"]:checked')
     ).map(cb => cb.dataset.filterValue);
 
-    filterState.statuses = checkedStatuses;
+    // Set statuses to null if none selected, otherwise use the array
+    filterState.statuses = checkedStatuses.length > 0 ? checkedStatuses : null;
 
     // Get aid type filters
     const aidTypeAll = aidRequestsStore.elements.filterCard.querySelector('#aid-type-filter-all');
     if (aidTypeAll?.checked) {
         filterState.aidTypes = 'all';
     } else {
-        filterState.aidTypes = Array.from(
+        const checkedAidTypes = Array.from(
             aidRequestsStore.elements.filterCard.querySelectorAll('[data-filter-type="aid_type"]:checked:not([id$="-all"])')
-        ).map(cb => cb.dataset.filterValue);
+        ).map(cb => {
+            const value = cb.dataset.filterValue;
+            // Normalize: any form of none/null becomes null in the filter state
+            return value === 'none' || value === 'null' ? null : value;
+        });
+        // Set aidTypes to null if none selected, otherwise use the array
+        filterState.aidTypes = checkedAidTypes.length > 0 ? checkedAidTypes : null;
     }
 
     // Get priority filters
@@ -784,12 +860,15 @@ function getFilterState() {
     if (priorityAll?.checked) {
         filterState.priorities = 'all';
     } else {
-        filterState.priorities = Array.from(
+        const checkedPriorities = Array.from(
             aidRequestsStore.elements.filterCard.querySelectorAll('[data-filter-type="priority"]:checked:not([id$="-all"])')
         ).map(cb => {
             const value = cb.dataset.filterValue;
-            return value === 'none' ? null : value;
+            // Normalize: any form of none/null becomes null in the filter state
+            return value === 'none' || value === 'null' ? null : value;
         });
+        // Set priorities to null if none selected, otherwise use the array
+        filterState.priorities = checkedPriorities.length > 0 ? checkedPriorities : null;
     }
 
     if (aidRequestsStore.debug) console.log('[Filter] Current filter state:', filterState);
@@ -874,7 +953,7 @@ function getSelectedPriorities() {
 
 function updateCountsDisplay(counts) {
     if (aidRequestsStore.debug) {
-        console.time('display-update');
+    console.time('display-update');
     }
 
     const filterCard = aidRequestsStore.elements.filterCard;
@@ -947,7 +1026,7 @@ function updateCountsDisplay(counts) {
             // Only log if debug is enabled and we're actually looking for this element
             const checkbox = filterCard.querySelector(`#aid-type-filter-${slug}`);
             if (checkbox) {
-                console.warn(`[Filter] Aid type count element not found for selector: ${selector}`);
+            console.warn(`[Filter] Aid type count element not found for selector: ${selector}`);
             }
         }
     });
@@ -979,7 +1058,7 @@ function updateCountsDisplay(counts) {
             // Only log if debug is enabled and we're actually looking for this element
             const checkbox = filterCard.querySelector(`#priority-filter-${slug}`);
             if (checkbox) {
-                console.warn(`[Filter] Priority count element not found for selector: ${selector}`);
+            console.warn(`[Filter] Priority count element not found for selector: ${selector}`);
             }
         }
     });
@@ -994,7 +1073,7 @@ function updateCountsDisplay(counts) {
 
     if (aidRequestsStore.debug) {
         console.log('[Filter] Display update complete');
-        console.timeEnd('display-update');
+    console.timeEnd('display-update');
     }
 }
 
@@ -1153,7 +1232,7 @@ function calculateServerCounts() {
 
 function getFilteredCounts(aidRequests, filterState) {
     if (aidRequestsStore.debug) {
-        console.time('count-calculation');
+    console.time('count-calculation');
     }
 
     if (aidRequestsStore.debug) console.log('[Filter] Calculating filtered counts with state:', filterState);
@@ -1168,7 +1247,7 @@ function getFilteredCounts(aidRequests, filterState) {
                 statuses: aidRequestsStore.statusGroups.active.map(status => ({
                     slug: status,
                     filtered: 0,
-                    checked: filterState.statuses.includes(status)
+                    checked: filterState.statuses ? filterState.statuses.includes(status) : false
                 }))
             },
             inactive: {
@@ -1176,7 +1255,7 @@ function getFilteredCounts(aidRequests, filterState) {
                 statuses: aidRequestsStore.statusGroups.inactive.map(status => ({
                     slug: status,
                     filtered: 0,
-                    checked: filterState.statuses.includes(status)
+                    checked: filterState.statuses ? filterState.statuses.includes(status) : false
                 }))
             }
         },
@@ -1201,9 +1280,10 @@ function getFilteredCounts(aidRequests, filterState) {
             return;
         }
 
-        const matchesStatus = filterState.statuses.includes(request.status);
-        const matchesAidType = filterState.aidTypes === 'all' || filterState.aidTypes.includes(request.aid_type.slug);
-        const matchesPriority = filterState.priorities === 'all' || filterState.priorities.includes(request.priority);
+        // Handle null filter states - if a filter is null, nothing matches it
+        const matchesStatus = filterState.statuses === 'all' || (filterState.statuses && filterState.statuses.includes(request.status));
+        const matchesAidType = filterState.aidTypes === 'all' || (filterState.aidTypes && filterState.aidTypes.includes(request.aid_type.slug));
+        const matchesPriority = filterState.priorities === 'all' || (filterState.priorities && filterState.priorities.includes(request.priority));
 
         // Always update status filtered counts for display
         const status = counts.groups[group].statuses.find(s => s.slug === request.status);
@@ -1236,7 +1316,9 @@ function getFilteredCounts(aidRequests, filterState) {
         }
 
         // Update total matches - only count items that match all selected filters
-        if (matchesStatus && matchesAidType && matchesPriority) {
+        // If any filter is null, no items will match
+        if (filterState.statuses !== null && filterState.aidTypes !== null && filterState.priorities !== null &&
+            matchesStatus && matchesAidType && matchesPriority) {
             counts.matched++;
         }
     });
@@ -1254,7 +1336,7 @@ function getFilteredCounts(aidRequests, filterState) {
         console.log('[Filter] Priority counts:', counts.byPriority);
     }
     if (aidRequestsStore.debug) {
-        console.timeEnd('count-calculation');
+    console.timeEnd('count-calculation');
     }
 
     return counts;
