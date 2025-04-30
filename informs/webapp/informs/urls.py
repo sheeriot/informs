@@ -101,6 +101,7 @@ urlpatterns = [
           ),
      path('api/<slug:field_op>/request/<int:pk>/update/', update_aid_request, name='aid_request_ajax_update'),
      path('sendcot-aidrequest', sendcot_aidrequest, name='sendcot_aidrequest'),
+     path('<slug:field_op>/sendcot-aidrequest', sendcot_aidrequest, name='sendcot_aidrequest'),
      path('sendcot-checkstatus', sendcot_checkstatus, name='sendcot_checkstatus'),
 ]
 

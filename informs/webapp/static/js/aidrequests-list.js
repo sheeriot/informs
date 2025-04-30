@@ -6,12 +6,12 @@
  */
 
 // Configuration
-const listConfig = { debug: true };
+const listConfig = { debug: false };
 
 // Main initialization check
 if (window.aidRequestsStore?.initialized) {
     if (listConfig.debug) {
-        console.log('[List] Filter already initialized, using current state:', {
+        console.table({
             filterState: window.aidRequestsStore.currentState,
             statusGroups: window.aidRequestsStore.statusGroups
         });
@@ -22,21 +22,12 @@ if (window.aidRequestsStore?.initialized) {
         console.error('[List] Failed to initialize with existing filter state:', error);
     }
 } else if (window.aidRequestsStore?.initError) {
-    console.error('[List] Filter initialization previously failed:', window.aidRequestsStore.initError);
+    console.error('[List] Filter initialization failed:', window.aidRequestsStore.initError);
 } else {
     if (listConfig.debug) console.log('[List] Waiting for filter initialization...');
 
     // Wait for filter initialization
     document.addEventListener('aidRequestsFilterReady', function(event) {
-        if (listConfig.debug) {
-            console.log('[List] Filter ready event received:', {
-                filterState: event.detail,
-                store: {
-                    statusGroups: window.aidRequestsStore.statusGroups,
-                    initialized: window.aidRequestsStore.initialized
-                }
-            });
-        }
         try {
             initializeWithFilter(event.detail);
         } catch (error) {
@@ -44,26 +35,126 @@ if (window.aidRequestsStore?.initialized) {
         }
     });
 
-    // Handle filter initialization errors
     document.addEventListener('aidRequestsFilterError', function(event) {
         console.error('[List] Filter initialization failed:', event.detail.error);
+    });
+}
+
+// Handle TAK Alert Button
+function initializeTakAlertButton() {
+    const takAlertButton = document.getElementById('tak-alert-button');
+    const statusElement = document.getElementById('send-cot-status');
+
+    if (!takAlertButton) {
+        console.warn('[List] TAK Alert button not found');
+        return;
+    }
+
+    takAlertButton.addEventListener('click', async function() {
+        // Get visible aid request IDs
+        const tableBody = document.querySelector('#aid-request-list-body');
+        if (!tableBody) {
+            console.error('[List] Table body not found');
+            return;
+        }
+
+        const visibleRows = Array.from(tableBody.getElementsByTagName('tr'))
+            .filter(row => !row.classList.contains('d-none') && row.id !== 'aid-request-empty-row')
+            .map(row => row.getAttribute('data-id'))
+            .filter(id => id);
+
+        if (listConfig.debug) {
+            console.table({
+                action: 'TAK Alert Triggered',
+                visibleRequests: visibleRows.length,
+                requestIds: visibleRows
+            });
+        }
+
+        if (visibleRows.length === 0) {
+            if (statusElement) statusElement.innerHTML = '<span class="text-warning">No visible requests to send</span>';
+            return;
+        }
+
+        // Show loading state
+        takAlertButton.disabled = true;
+        const originalContent = takAlertButton.innerHTML;
+        takAlertButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...';
+        if (statusElement) statusElement.innerHTML = '<span class="text-info">Sending to TAK...</span>';
+
+        try {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const fieldOpSlug = document.getElementById('field-op-slug').textContent;
+
+            // Use existing sendcot-aidrequest endpoint with field_op slug
+            const response = await fetch(`/${fieldOpSlug}/sendcot-aidrequest`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    // If no visible rows, don't send aidrequests array - backend will handle all IDs
+                    ...(visibleRows.length > 0 ? { aidrequests: visibleRows } : {}),
+                    message_type: 'update'     // Default to update type
+                })
+            });
+
+            // Check if response is ok before trying to parse JSON
+            if (!response.ok) {
+                // Try to get error details if available
+                let errorDetail;
+                try {
+                    const errorData = await response.json();
+                    errorDetail = errorData.detail || errorData.message || errorData.error;
+                } catch (e) {
+                    // If can't parse JSON, use status text
+                    errorDetail = response.statusText;
+                }
+                throw new Error(`Server Error (${response.status}): ${errorDetail}`);
+            }
+
+            const data = await response.json();
+
+            if (data.sendcot_id) {
+                if (statusElement) {
+                    statusElement.innerHTML = `<span class="text-success">
+                        <i class="bi bi-check-circle"></i> Sent ${visibleRows.length || 'all'} alerts
+                    </span>`;
+                }
+                if (listConfig.debug) {
+                    console.table({
+                        action: 'TAK Alert Success',
+                        sentRequests: visibleRows.length || 'all',
+                        taskId: data.sendcot_id,
+                        fieldOp: fieldOpSlug
+                    });
+                }
+            } else {
+                throw new Error(data.message || 'Failed to send TAK alerts');
+            }
+        } catch (error) {
+            console.error('[List] TAK Alert Error:', {
+                error: error.message,
+                requestIds: visibleRows
+            });
+            if (statusElement) {
+                statusElement.innerHTML = `<span class="text-danger">
+                    <i class="bi bi-exclamation-circle"></i> ${error.message || 'Error sending alerts'}
+                </span>`;
+            }
+        } finally {
+            takAlertButton.disabled = false;
+            takAlertButton.innerHTML = originalContent;
+        }
     });
 }
 
 // Update list summary with filter state and counts
 function updateListSummary(filterState, counts) {
     const summaryElement = document.getElementById('list-filter-summary');
-    if (!summaryElement) {
-        console.warn('[List] Summary element not found');
-        return;
-    }
-
-    if (listConfig.debug) {
-        console.log('[List] Updating summary with:', {
-            filterState,
-            counts
-        });
-    }
+    if (!summaryElement) return;
 
     // Build summary text
     const parts = [];
@@ -124,43 +215,35 @@ function updateListSummary(filterState, counts) {
     `;
 
     if (listConfig.debug) {
-        console.log('[List] Summary updated:', {
+        console.table({
             visibleCount,
             totalCount,
-            filters: parts,
-            filterState
+            filters: parts
         });
     }
 }
 
 // Core initialization function
 function initializeWithFilter(filterState) {
-    if (listConfig.debug) {
-        console.log('[List] Initializing with filter state:', filterState);
-    }
-
-    // Ensure we have access to the store and status groups
     if (!window.aidRequestsStore) {
         throw new Error('aidRequestsStore not available');
     }
 
-    // Get status groups from store
     window.STATUS_GROUPS = window.aidRequestsStore.statusGroups;
     if (!window.STATUS_GROUPS || !window.STATUS_GROUPS.active || !window.STATUS_GROUPS.inactive) {
         throw new Error('Status groups not properly initialized in store');
     }
 
     if (listConfig.debug) {
-        console.log('[List] Using status groups from store:', {
+        console.table({
             active: window.STATUS_GROUPS.active,
             inactive: window.STATUS_GROUPS.inactive
         });
     }
 
-    // Initialize the list view
     initialize();
+    initializeTakAlertButton();
 
-    // Update initial visibility and summary based on filter state
     if (filterState.filterState) {
         updateRowVisibility(filterState.filterState);
         updateListSummary(filterState.filterState, filterState.counts);
@@ -210,77 +293,51 @@ function initialize() {
 
 // Update row visibility based on filter state
 function updateRowVisibility(filterState) {
-    if (!filterState) {
-        console.warn('[List] No filter state provided');
-        return;
-    }
+    if (!filterState) return;
 
     const tableBody = document.querySelector('#aid-request-list-body');
-    if (!tableBody) {
-        console.error('[List] Table body not found');
-        return;
-    }
-
-    if (listConfig.debug) {
-        console.log('[List] Updating visibility with filter state:', filterState);
-    }
-
-    // Handle both initial state and filter change events
-    const actualFilterState = filterState.filterState || filterState;
+    if (!tableBody) return;
 
     const rows = tableBody.getElementsByTagName('tr');
     let visibleCount = 0;
     const totalRows = rows.length;
 
     Array.from(rows).forEach(row => {
-        // Skip the empty message row
         if (row.id === 'aid-request-empty-row') return;
 
         const status = row.getAttribute('data-status');
         const aidType = row.getAttribute('data-aid-type');
-        const priority = row.getAttribute('data-priority'); // Will be "none" or a priority value
+        const priority = row.getAttribute('data-priority');
 
         // Handle null filter states - if any filter is null, only show rows that match that null state
         let isVisible;
 
-        if (actualFilterState.aidTypes === null) {
+        if (filterState.aidTypes === null) {
             // If aid types is null, hide all rows
             isVisible = false;
-        } else if (actualFilterState.statuses === null) {
+        } else if (filterState.statuses === null) {
             // If statuses is null, hide all rows (as no status can be null)
             isVisible = false;
-        } else if (actualFilterState.priorities === null) {
+        } else if (filterState.priorities === null) {
             // If priorities is null, only show rows with null priority
             isVisible = priority === 'none';
         } else {
             // Normal filtering when no null states
-            const matchesStatus = actualFilterState.statuses === 'all' ||
-                                (Array.isArray(actualFilterState.statuses) &&
-                                 actualFilterState.statuses.includes(status));
+            const matchesStatus = filterState.statuses === 'all' ||
+                                (Array.isArray(filterState.statuses) &&
+                                 filterState.statuses.includes(status));
 
-            const matchesAidType = actualFilterState.aidTypes === 'all' ||
-                                  (Array.isArray(actualFilterState.aidTypes) &&
-                                   actualFilterState.aidTypes.includes(aidType));
+            const matchesAidType = filterState.aidTypes === 'all' ||
+                                  (Array.isArray(filterState.aidTypes) &&
+                                   filterState.aidTypes.includes(aidType));
 
-            const matchesPriority = actualFilterState.priorities === 'all' ||
-                                   (Array.isArray(actualFilterState.priorities) &&
-                                    actualFilterState.priorities.includes(priority === 'none' ? null : priority));
+            const matchesPriority = filterState.priorities === 'all' ||
+                                   (Array.isArray(filterState.priorities) &&
+                                    filterState.priorities.includes(priority === 'none' ? null : priority));
 
             isVisible = matchesStatus && matchesAidType && matchesPriority;
         }
 
-        if (listConfig.debug) {
-            console.log('[List] Row filter check:', {
-                id: row.getAttribute('data-id'),
-                status,
-                aidType,
-                priority,
-                isVisible,
-                filterState: actualFilterState
-            });
-        }
-
-        // Use d-none class for visibility control
         if (isVisible) {
             row.classList.remove('d-none');
             visibleCount++;
@@ -289,17 +346,16 @@ function updateRowVisibility(filterState) {
         }
     });
 
-    // Handle empty state
     const emptyRow = document.getElementById('aid-request-empty-row');
     if (emptyRow) {
         emptyRow.classList.toggle('d-none', visibleCount > 0);
     }
 
     if (listConfig.debug) {
-        console.log('[List] Visibility updated:', {
+        console.table({
             totalRows,
             visibleRows: visibleCount,
-            filters: actualFilterState
+            filters: filterState
         });
     }
 }
