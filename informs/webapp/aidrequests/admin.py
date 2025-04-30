@@ -49,7 +49,7 @@ class AidRequestAdmin(admin.ModelAdmin):
 class FieldOpAdmin(admin.ModelAdmin):
     """fieldops admin"""
 
-    list_display = ('slug', 'name', 'tak_server', 'notify_count', 'latitude', 'longitude')
+    list_display = ('slug', 'name', 'tak_server', 'notify_count', 'latitude', 'longitude', 'tak_server', 'disable_cot')
 
     readonly_fields = (
         'latitude',
