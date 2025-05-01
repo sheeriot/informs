@@ -40,117 +40,6 @@ if (window.aidRequestsStore?.initialized) {
     });
 }
 
-// Handle TAK Alert Button
-function initializeTakAlertButton() {
-    const takAlertButton = document.getElementById('tak-alert-button');
-    const statusElement = document.getElementById('send-cot-status');
-
-    if (!takAlertButton) {
-        console.warn('[List] TAK Alert button not found');
-        return;
-    }
-
-    takAlertButton.addEventListener('click', async function() {
-        // Get visible aid request IDs
-        const tableBody = document.querySelector('#aid-request-list-body');
-        if (!tableBody) {
-            console.error('[List] Table body not found');
-            return;
-        }
-
-        const visibleRows = Array.from(tableBody.getElementsByTagName('tr'))
-            .filter(row => !row.classList.contains('d-none') && row.id !== 'aid-request-empty-row')
-            .map(row => row.getAttribute('data-id'))
-            .filter(id => id);
-
-        if (listConfig.debug) {
-            console.table({
-                action: 'TAK Alert Triggered',
-                visibleRequests: visibleRows.length,
-                requestIds: visibleRows
-            });
-        }
-
-        if (visibleRows.length === 0) {
-            if (statusElement) statusElement.innerHTML = '<span class="text-warning">No visible requests to send</span>';
-            return;
-        }
-
-        // Show loading state
-        takAlertButton.disabled = true;
-        const originalContent = takAlertButton.innerHTML;
-        takAlertButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...';
-        if (statusElement) statusElement.innerHTML = '<span class="text-info">Sending to TAK...</span>';
-
-        try {
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-            const fieldOpSlug = document.getElementById('field-op-slug').textContent;
-
-            // Use existing sendcot-aidrequest endpoint with field_op slug
-            const response = await fetch(`/${fieldOpSlug}/sendcot-aidrequest`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    // If no visible rows, don't send aidrequests array - backend will handle all IDs
-                    ...(visibleRows.length > 0 ? { aidrequests: visibleRows } : {}),
-                    message_type: 'update'     // Default to update type
-                })
-            });
-
-            // Check if response is ok before trying to parse JSON
-            if (!response.ok) {
-                // Try to get error details if available
-                let errorDetail;
-                try {
-                    const errorData = await response.json();
-                    errorDetail = errorData.detail || errorData.message || errorData.error;
-                } catch (e) {
-                    // If can't parse JSON, use status text
-                    errorDetail = response.statusText;
-                }
-                throw new Error(`Server Error (${response.status}): ${errorDetail}`);
-            }
-
-            const data = await response.json();
-
-            if (data.sendcot_id) {
-                if (statusElement) {
-                    statusElement.innerHTML = `<span class="text-success">
-                        <i class="bi bi-check-circle"></i> Sent ${visibleRows.length || 'all'} alerts
-                    </span>`;
-                }
-                if (listConfig.debug) {
-                    console.table({
-                        action: 'TAK Alert Success',
-                        sentRequests: visibleRows.length || 'all',
-                        taskId: data.sendcot_id,
-                        fieldOp: fieldOpSlug
-                    });
-                }
-            } else {
-                throw new Error(data.message || 'Failed to send TAK alerts');
-            }
-        } catch (error) {
-            console.error('[List] TAK Alert Error:', {
-                error: error.message,
-                requestIds: visibleRows
-            });
-            if (statusElement) {
-                statusElement.innerHTML = `<span class="text-danger">
-                    <i class="bi bi-exclamation-circle"></i> ${error.message || 'Error sending alerts'}
-                </span>`;
-            }
-        } finally {
-            takAlertButton.disabled = false;
-            takAlertButton.innerHTML = originalContent;
-        }
-    });
-}
-
 // Update list summary with filter state and counts
 function updateListSummary(filterState, counts) {
     const summaryElement = document.getElementById('list-filter-summary');
@@ -242,7 +131,6 @@ function initializeWithFilter(filterState) {
     }
 
     initialize();
-    initializeTakAlertButton();
 
     if (filterState.filterState) {
         updateRowVisibility(filterState.filterState);

@@ -1,28 +1,16 @@
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.db.models import Count
 from django.views.generic import ListView
 from django.conf import settings
+from django.contrib.auth.mixins import LoginRequiredMixin
 from ..models import FieldOp
 
-
-import base64
-# from icecream import ic
-
-
-# Map View for FieldOp
-class FieldOpListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+class FieldOpListView(LoginRequiredMixin, ListView):
     model = FieldOp
     template_name = 'aidrequests/field_op_list.html'
-    permission_required = 'aidrequests.view_fieldop'
-
-    def get_queryset(self):
-        queryset = FieldOp.objects.annotate(aid_request_count=Count('aid_requests'))
-        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Add Azure Maps key for JavaScript map
+        # Add Azure Maps key
         context['azure_maps_key'] = settings.AZURE_MAPS_KEY
 
         # Prepare field ops data for the map

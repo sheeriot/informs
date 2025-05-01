@@ -4,7 +4,8 @@ Forms
 
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Fieldset, Submit, Row, Column
+from crispy_forms.layout import Layout, Submit, Row, Column, Div, HTML, Fieldset
+from crispy_forms.bootstrap import FormActions
 
 from ..models import FieldOp
 
@@ -17,7 +18,7 @@ class FieldOpForm(forms.ModelForm):
     class Meta:
         """ meta """
         model = FieldOp
-        fields = ('name', 'slug', 'latitude', 'longitude', 'disable_cot')
+        fields = ('name', 'slug', 'latitude', 'longitude', 'ring_size', 'tak_server', 'disable_cot')
 
         widgets = {
             'latitude': forms.NumberInput(attrs={
@@ -42,6 +43,9 @@ class FieldOpForm(forms.ModelForm):
                     }
                 """
             }),
+            'ring_size': forms.NumberInput(attrs={
+                'min': '1'    # Minimum ring size
+            }),
             'disable_cot': forms.CheckboxInput(attrs={
                 'class': 'form-check-input'
             })
@@ -61,34 +65,92 @@ class FieldOpForm(forms.ModelForm):
             raise forms.ValidationError('Longitude must be between -180 and 180 degrees')
         return longitude
 
+    def clean_ring_size(self):
+        """Validate ring_size is positive if provided"""
+        ring_size = self.cleaned_data.get('ring_size')
+        if ring_size is not None and ring_size < 1:
+            raise forms.ValidationError('Ring size must be 1 or greater')
+        return ring_size
+
     def __init__(self, *args, action='create', **kwargs):
         super(FieldOpForm, self).__init__(*args, **kwargs)
         self.action = action
         self.helper = FormHelper()
         self.helper.form_method = 'post'
+        self.helper.form_class = 'p-2'
+        self.helper.attrs = {'style': 'max-width: 800px;'}
+
+        # Field help texts
         self.fields['latitude'].help_text = "max 5 decimal points"
         self.fields['longitude'].help_text = "max 5 decimal points"
-        self.fields['disable_cot'].help_text = "When enabled, COT (Common Operating Template) will be disabled for this field operation"
+        self.fields['ring_size'].help_text = "kilometers"
+        self.fields['tak_server'].help_text = "Select TAK server for COT updates"
+        self.fields['disable_cot'].help_text = "check to disable TAK Server Updates"
+        self.fields['disable_cot'].label = "Disable COT"
+
+        # Set readonly fields for update
         if self.action == 'update':
             self.fields['name'].widget.attrs['readonly'] = True
             self.fields['slug'].widget.attrs['readonly'] = True
             button_text = 'Update'
-        elif self.action == 'create':
+        else:
             button_text = 'Create'
+
+        # Modern layout with clear row organization
         self.helper.layout = Layout(
-            Fieldset(
-                'Field Op Details',
-                Row(
-                    Column('name', css_class='col-auto'),
-                    Column('slug', css_class='col-auto'),
+            Div(
+                # Fieldset 1: Basic Information
+                Fieldset(
+                    'Basic Information',
+                    Row(
+                        Column('name', css_class='form-group col-md-6 p-1'),
+                        Column('slug', css_class='form-group col-md-6 p-1'),
+                        css_class='row g-0 mb-2'
+                    ),
+                    css_class='fieldset-box p-3 border rounded mb-3'
                 ),
-                Row(
-                    Column('latitude', css_class='col-auto'),
-                    Column('longitude', css_class='col-auto'),
+                # Fieldset 2: Location Details
+                Fieldset(
+                    'Location Details',
+                    Row(
+                        Column('latitude', css_class='form-group col-md-5 p-1'),
+                        Column('longitude', css_class='form-group col-md-5 p-1'),
+                        Column('ring_size', css_class='form-group col-md-2 p-1'),
+                        css_class='row g-0 mb-2'
+                    ),
+                    css_class='fieldset-box p-3 border rounded mb-3'
                 ),
-                Row(
-                    Column('disable_cot', css_class='col-auto'),
+                # Fieldset 3: Settings
+                Fieldset(
+                    'Settings',
+                    Row(
+                        Column('tak_server', css_class='form-group col-md-8 p-1'),
+                        Column('disable_cot', css_class='form-group col-md-4 p-1'),
+                        css_class='row g-0 mb-2'
+                    ),
+                    css_class='fieldset-box p-3 border rounded mb-3'
                 ),
-            ),
-            Submit('submit', button_text, css_class='btn-warning')
+                # Form Actions
+                FormActions(
+                    Row(
+                        Column(
+                            Submit('submit', button_text, css_class='btn btn-warning me-2'),
+                            HTML("""
+                                {% if object %}
+                                    <a href="{% url 'field_op_detail' slug=object.slug %}" class="btn btn-secondary">
+                                        <i class="bi bi-x-circle"></i> Cancel
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'field_op_list' %}" class="btn btn-secondary">
+                                        <i class="bi bi-x-circle"></i> Cancel
+                                    </a>
+                                {% endif %}
+                            """),
+                            css_class='d-flex p-1'
+                        ),
+                        css_class='row g-0'
+                    )
+                ),
+                css_class='mx-auto'
+            )
         )

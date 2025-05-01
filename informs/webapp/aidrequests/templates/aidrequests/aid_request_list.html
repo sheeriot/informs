@@ -5,48 +5,54 @@
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
-    <h2 class="mb-3">Aid Requests: {{ field_op.name }}
-        <a href="{% url 'field_op_detail' pk=field_op.pk %}" class="btn btn-outline-info btn-sm">
-            <i class="bi bi-truck"></i>
-        </a>
-    </h2>
-    {% if field_op.disable_cot %}
-        <div class="mb-3">
-            <span class="badge bg-danger">
-                <i class="bi bi-x-circle"></i> COT Disabled
-            </span>
+    <div class="d-flex align-items-center mb-3">
+        <div class="d-flex align-items-center">
+            <h2 class="mb-0 me-2">Aid Requests List</h2>
+            <a class="btn btn-info" href="{% url 'field_op_detail' slug=field_op.slug %}">
+                <i class="bi bi-truck"></i>
+                {{ field_op.name }}
+            </a>
         </div>
-    {% else %}
-        <div class="mb-3">
-            {% include "aidrequests/includes/tak_buttons.html" %}
+        <div class="ms-2">
+            {% if not field_op.tak_server %}
+                <span class="badge bg-secondary">
+                    <i class="bi bi-x-circle"></i> No TAK Server
+                </span>
+            {% elif field_op.disable_cot %}
+                <span class="badge bg-warning text-dark">
+                    <i class="bi bi-exclamation-triangle"></i> TAK Messaging Disabled
+                </span>
+            {% else %}
+                <div class="d-flex align-items-center gap-2">
+                    <button id="tak-alert-button" class="btn btn-danger">
+                        <i class="bi bi-bullseye me-1"></i>Alert TAK
+                    </button>
+                    <div class="input-group" style="width: auto;">
+                        <input type="text" id="tak-status-message" class="form-control form-control-sm"
+                               placeholder="Status message..." aria-label="Status message">
+                        <span id="tak-status-feedback" class="d-none ms-2">
+                            <i class="bi bi-check-circle text-success"></i>
+                        </span>
+                    </div>
+                    <div id="tak-alert-status" class="d-none">
+                        <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                        <span class="ms-1">Sending...</span>
+                    </div>
+                </div>
+            {% endif %}
         </div>
-    {% endif %}
+    </div>
 
     <!-- Aid Requests Filter section -->
     {% include "aidrequests/includes/aid_requests_filter.html" %}
 
-    <!-- Aid Requests Buttons section -->
-    <div class="d-flex justify-content-between align-items-center mt-4">
-        <div>
-            <a href="{% url 'aid_request_create' field_op=field_op.slug %}" class="btn btn-success">
-                <i class="bi bi-plus-circle me-2"></i>Add
-            </a>
-        </div>
-        <div>
-            <a href="{% url 'aid_requests_csv' field_op=field_op.slug %}" class="btn btn-info">
-                <i class="bi bi-download me-2"></i>Export
-            </a>
-        </div>
-    </div>
-
+    <!-- Aid Requests Map and List sections -->
     <div class="row">
         <!-- Aid Requests Map Section -->
         {% include "aidrequests/includes/aid_requests_map.html" %}
 
         <!-- Aid Requests List/Table -->
         {% include "aidrequests/includes/aid_requests_table.html" %}
-
-
     </div>
 
 </div>
@@ -64,8 +70,6 @@
     {% endif %}
     {{ status_choices_json|default:'[]'|json_script:'status-choices-data' }}
     {{ priority_choices_json|default:'[]'|json_script:'priority-choices-data' }}
-    <span id="field-op-name" class="d-none">{{ field_op.name }}</span>
-    <span id="field-op-slug" class="d-none">{{ field_op.slug }}</span>
 </div>
 
 <!-- CSRF Token for AJAX requests -->
@@ -88,4 +92,5 @@
 <script src="{% static 'js/aidrequests-list.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/map_aidrequests.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/aidrequests-ajax.js' %}?v={{static_version}}"></script>
+<script src="{% static 'js/tak-alert.js' %}?v={{static_version}}"></script>
 {% endblock %}
