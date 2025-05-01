@@ -16,6 +16,7 @@ ENV PYTHONUNBUFFERED=1 \
 RUN mkdir -p /opt/app/db
 RUN mkdir -p /opt/app/certs
 RUN mkdir -p /opt/app/static_files
+RUN mkdir -p /opt/app/reports
 
 # App Code directory
 RUN mkdir -p /opt/app/informs/
@@ -35,8 +36,10 @@ RUN groupadd -g "${GID}" -r web \
   && useradd -d '/opt/app' -g web -l -r -u "${UID}" web \
   && chown web:web -R '/opt/app'
 
-# Install requirements
-RUN pip install -r /opt/app/requirements.txt
+# Install setuptools first, then requirements and test dependencies
+RUN pip install --upgrade pip setuptools && \
+    pip install -r /opt/app/requirements.txt && \
+    pip install coverage pytest pytest-django pytest-cov factory-boy freezegun
 
 # switch to non-root user
 USER web

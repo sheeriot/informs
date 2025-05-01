@@ -49,6 +49,7 @@ def field_op_context(request):
         return {
             'field_op': field_op,
             'fieldop_slug': field_op_slug,
+            'body_data_attributes': f'data-field-op-slug="{field_op_slug}"'
         }
     except FieldOp.DoesNotExist:
         return {}

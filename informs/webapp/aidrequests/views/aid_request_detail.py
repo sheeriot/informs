@@ -56,9 +56,9 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
             # ic(self.aid_location)
             self.aid_location_new = self.aid_location
             zoom = calculate_zoom(self.geocode_results['distance'])
-            # ic(zoom)
+            ic(zoom)
             staticmap_data = staticmap_aid(
-                width=600, height=600, zoom=zoom,
+                width=600, height=600,
                 fieldop_lat=self.aid_request.field_op.latitude,
                 fieldop_lon=self.aid_request.field_op.longitude,
                 aid1_lat=self.aid_location.latitude,

@@ -160,8 +160,8 @@ function initFieldOpsMap(fieldOpsData) {
             map.events.add('click', symbolLayer, function(e) {
                 if (e.shapes && e.shapes[0]) {
                     const properties = e.shapes[0].getProperties();
-                    if (properties.id) {
-                        window.location.href = `/fieldop/${properties.id}/`;
+                    if (properties.slug) {
+                        window.location.href = `/fieldop/${properties.slug}/`;
                     }
                 }
             });

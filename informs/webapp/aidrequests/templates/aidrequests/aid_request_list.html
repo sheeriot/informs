@@ -14,14 +14,31 @@
             </a>
         </div>
         <div class="ms-2">
-            {% if field_op.disable_cot %}
-            <span class="badge bg-danger">
-                <i class="bi bi-x-circle"></i> COT Disabled
-            </span>
+            {% if not field_op.tak_server %}
+                <span class="badge bg-secondary">
+                    <i class="bi bi-x-circle"></i> No TAK Server
+                </span>
+            {% elif field_op.disable_cot %}
+                <span class="badge bg-warning text-dark">
+                    <i class="bi bi-exclamation-triangle"></i> TAK Messaging Disabled
+                </span>
             {% else %}
-            <button id="tak-alert-button" class="btn btn-danger">
-                <i class="bi bi-bullseye me-1"></i>Alert TAK
-            </button>
+                <div class="d-flex align-items-center gap-2">
+                    <button id="tak-alert-button" class="btn btn-danger">
+                        <i class="bi bi-bullseye me-1"></i>Alert TAK
+                    </button>
+                    <div class="input-group" style="width: auto;">
+                        <input type="text" id="tak-status-message" class="form-control form-control-sm"
+                               placeholder="Status message..." aria-label="Status message">
+                        <span id="tak-status-feedback" class="d-none ms-2">
+                            <i class="bi bi-check-circle text-success"></i>
+                        </span>
+                    </div>
+                    <div id="tak-alert-status" class="d-none">
+                        <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                        <span class="ms-1">Sending...</span>
+                    </div>
+                </div>
             {% endif %}
         </div>
     </div>
@@ -75,4 +92,5 @@
 <script src="{% static 'js/aidrequests-list.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/map_aidrequests.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/aidrequests-ajax.js' %}?v={{static_version}}"></script>
+<script src="{% static 'js/tak-alert.js' %}?v={{static_version}}"></script>
 {% endblock %}

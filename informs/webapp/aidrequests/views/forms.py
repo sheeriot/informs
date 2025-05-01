@@ -18,7 +18,7 @@ class FieldOpForm(forms.ModelForm):
     class Meta:
         """ meta """
         model = FieldOp
-        fields = ('name', 'slug', 'latitude', 'longitude', 'ring_size', 'disable_cot')
+        fields = ('name', 'slug', 'latitude', 'longitude', 'ring_size', 'tak_server', 'disable_cot')
 
         widgets = {
             'latitude': forms.NumberInput(attrs={
@@ -84,6 +84,7 @@ class FieldOpForm(forms.ModelForm):
         self.fields['latitude'].help_text = "max 5 decimal points"
         self.fields['longitude'].help_text = "max 5 decimal points"
         self.fields['ring_size'].help_text = "kilometers"
+        self.fields['tak_server'].help_text = "Select TAK server for COT updates"
         self.fields['disable_cot'].help_text = "check to disable TAK Server Updates"
         self.fields['disable_cot'].label = "Disable COT"
 
@@ -123,7 +124,8 @@ class FieldOpForm(forms.ModelForm):
                 Fieldset(
                     'Settings',
                     Row(
-                        Column('disable_cot', css_class='form-group col-12 p-1'),
+                        Column('tak_server', css_class='form-group col-md-8 p-1'),
+                        Column('disable_cot', css_class='form-group col-md-4 p-1'),
                         css_class='row g-0 mb-2'
                     ),
                     css_class='fieldset-box p-3 border rounded mb-3'

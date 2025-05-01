@@ -4,28 +4,29 @@
 # Exit on error
 set -e
 
-echo "=== Running INFORMS Django Tests ==="
+# Colors for output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+YELLOW='\033[1;33m'
 
-# Change to the webapp directory
-cd "$(dirname "$0")/webapp"
+echo -e "${YELLOW}Running Django tests with coverage...${NC}"
 
-echo "=== Running informs app tests ==="
-python manage.py test informs --settings=informs.settings
+# Build the test image first to ensure we have the latest changes
+docker compose -f docker-compose.test.yml build test-informs
 
-echo "=== Running takserver app tests ==="
-python manage.py test takserver --settings=informs.settings
+# Run tests with coverage
+docker compose -f docker-compose.test.yml run --rm test-informs
 
-echo "=== Running aidrequests app tests ==="
-python manage.py test aidrequests --settings=informs.settings
+# Generate coverage report
+echo -e "\n${YELLOW}Generating coverage report...${NC}"
+docker compose -f docker-compose.test.yml run --rm test-coverage
 
-echo "=== Running all tests with coverage ==="
-# If coverage is installed, run tests with coverage
-if command -v coverage >/dev/null 2>&1; then
-    coverage run --source='.' manage.py test --settings=informs.settings
-    coverage report
+# Check the exit status
+if [ $? -eq 0 ]; then
+    echo -e "\n${GREEN}All tests passed successfully!${NC}"
+    echo -e "Coverage report has been generated in reports/htmlcov/index.html"
 else
-    echo "Coverage not installed. Running tests without coverage..."
-    python manage.py test --settings=informs.settings
+    echo -e "\n${RED}Some tests failed.${NC}"
+    exit 1
 fi
-
-echo "=== All tests completed ==="

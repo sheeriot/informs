@@ -1,0 +1,29 @@
+[run]
+source = webapp
+omit =
+    */migrations/*
+    */tests/*
+    */env/*
+    */venv/*
+    manage.py
+    */wsgi.py
+    */asgi.py
+    */apps.py
+    */urls.py
+    */admin.py
+    */settings*.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    def __str__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise ImportError
+    except ImportError:
+    def main\(\):
+
+[html]
+directory = htmlcov

@@ -3,26 +3,27 @@ version: '3'
 services:
   test-informs:
     build:
-      context: ./informs
+      context: .
     image: informs-app
     env_file:
-      - informs/env/django.env
+      - env/django.env
     entrypoint: /opt/app/docker-entrypoint.sh
-    command: bash -c "cd /opt/app && chmod +x /opt/app/run_tests.sh && /opt/app/run_tests.sh"
+    command: bash -c "cd /opt/app/informs && coverage run --source='.' manage.py test webapp.aidrequests.tests --verbosity=2"
     volumes:
       - ./run_tests.sh:/opt/app/run_tests.sh
       - informs_test_staticfiles:/opt/app/static_files
       - informs_test_db:/opt/app/db
       - test_certs:/opt/app/certs:z
+      - ./reports:/opt/app/reports
 
   test-coverage:
     build:
-      context: ./informs
+      context: .
     image: informs-app
     env_file:
-      - informs/env/django.env
+      - env/django.env
     entrypoint: /opt/app/docker-entrypoint.sh
-    command: bash -c "cd /opt/app/webapp && pip install coverage && coverage run --source='.' manage.py test --settings=informs.settings && coverage report -m"
+    command: bash -c "cd /opt/app/informs && coverage run --source='.' manage.py test --settings=informs.settings && coverage report -m && coverage html"
     volumes:
       - informs_test_staticfiles:/opt/app/static_files
       - informs_test_db:/opt/app/db

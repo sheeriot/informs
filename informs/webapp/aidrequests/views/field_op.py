@@ -3,10 +3,11 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.urls import reverse_lazy
 # from django.db.models import Count
 from django.views.generic import DetailView, CreateView, UpdateView
+import base64
 
 from ..models import FieldOp
 from .forms import FieldOpForm
-from .maps import calculate_zoom
+from .maps import calculate_zoom, staticmap_fieldop
 
 from geopy.distance import geodesic
 # from icecream import ic
@@ -25,6 +26,19 @@ class FieldOpDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
 
         context['aid_request_count'] = self.object.aid_requests.count()
         context['azure_maps_key'] = settings.AZURE_MAPS_KEY
+
+        # Generate static map for field op location
+        static_map = staticmap_fieldop(
+            width=600,
+            height=400,
+            latitude=float(self.object.latitude),
+            longitude=float(self.object.longitude),
+            zoom=13  # City-level zoom
+        )
+        if static_map:
+            context['static_map_url'] = base64.b64encode(static_map).decode('utf-8')
+
+        # Existing aid locations logic
         aid_locations = []
         for aid_request in self.object.aid_requests.all():
             if aid_request.location:
@@ -102,7 +116,7 @@ class FieldOpUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
         return reverse_lazy(
             'field_op_detail',
             kwargs={
-                'pk': self.kwargs['pk'],
+                'slug': self.object.slug,
             }
         )
 

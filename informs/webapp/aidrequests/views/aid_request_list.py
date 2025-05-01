@@ -9,12 +9,8 @@ from django_filters.views import FilterView
 import json
 from decimal import Decimal
 import pandas as pd
-import numpy as np
 
-from ..models import FieldOp, AidRequest, AidType, AidLocation
-from .maps import calculate_zoom
-
-from geopy.distance import geodesic
+from ..models import FieldOp, AidRequest, AidType
 
 from icecream import ic
 
@@ -55,14 +51,6 @@ class AidRequestFilter(django_filters.FilterSet):
         # Dynamically adjust the queryset for the aid_types field
         if field_op is not None:
             self.filters['aid_type'].queryset = field_op.aid_types.all()
-            # ic(f"Aid types for field_op {field_op}: {list(field_op.aid_types.values_list('name', flat=True))}")
-
-    # def filter_by_fieldop(self, queryset, name, value):
-    #     # Filter products based on the selected category
-    #     if value:
-    #         # ic(f"Filtering by aid_type: {value}")
-    #         return queryset.filter(aid_type=value)
-    #     return queryset
 
 
 # Filter View for AidRequests
@@ -79,21 +67,27 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
     def setup(self, request, *args, **kwargs):
         super().setup(request, *args, **kwargs)
         field_op_slug = self.kwargs['field_op']
-        self.field_op = get_object_or_404(FieldOp, slug=field_op_slug)
-        # ic(f"Setup AidRequestListView for field_op: {field_op_slug}")
+        self.field_op = get_object_or_404(FieldOp.objects.select_related('tak_server'), slug=field_op_slug)
+        ic("FieldOp TAK Server Info:", {
+            'field_op': self.field_op.name,
+            'tak_server': self.field_op.tak_server,
+            'disable_cot': self.field_op.disable_cot
+        })
 
     def get_queryset(self):
         super().get_queryset()
         aid_requests = AidRequest.objects.filter(field_op_id=self.field_op.id).distinct()
-
-        # Use icecream for debug logging if needed
-        ic(f"Found {aid_requests.count()} total aid requests for field_op: {self.field_op.name}")
-
         return aid_requests
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['field_op'] = self.field_op
+        ic(context['field_op'])
+        # ic("Context FieldOp TAK Server:", {
+        #     'has_tak_server': hasattr(context['field_op'], 'tak_server'),
+        #     'tak_server': getattr(context['field_op'], 'tak_server', None),
+        #     'disable_cot': context['field_op'].disable_cot
+        # })
         context['azure_maps_key'] = settings.AZURE_MAPS_KEY
 
         # Get all aid types for client-side filtering
@@ -195,12 +189,6 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
             filtered_priority_counts = active_df.groupby(['priority_display', 'priority'], dropna=False).size().reset_index()
             filtered_priority_counts.columns = ['display', 'value', 'count']
 
-            # Debug the raw counts
-            ic("Raw priority counts:", {
-                'total': total_priority_counts.to_dict('records'),
-                'filtered': filtered_priority_counts.to_dict('records')
-            })
-
             # Combine into final priority_counts structure
             for _, row in total_priority_counts.iterrows():
                 # Use the actual display name from the row, or 'None' if it's None/NaN
@@ -231,9 +219,6 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
                         'count': 0
                     }
 
-            # Debug the final priority counts
-            ic("Final priority counts:", priority_counts)
-
             # Aid type counts (active only initially)
             aid_type_counts = active_df.groupby(['aid_type_name', 'aid_type_slug']).size().reset_index()
             aid_type_counts.columns = ['name', 'value', 'count']
@@ -243,49 +228,16 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
 
             # Calculate map bounds using the best location from each aid request
             aid_requests = self.get_queryset()
-            ic("Calculating bounds for field_op:", {
-                'field_op': self.field_op.name,
-                'field_op_location': {
-                    'lat': float(self.field_op.latitude),
-                    'lon': float(self.field_op.longitude)
-                },
-                'total_aid_requests': aid_requests.count()
-            })
-
             valid_locations = [ar.location for ar in aid_requests if ar.location is not None]
 
             if valid_locations:
-                ic(f"Found {len(valid_locations)} valid locations for field_op: {self.field_op.name}")
-
                 min_lat = min(float(loc.latitude) for loc in valid_locations)
                 max_lat = max(float(loc.latitude) for loc in valid_locations)
                 min_lon = min(float(loc.longitude) for loc in valid_locations)
                 max_lon = max(float(loc.longitude) for loc in valid_locations)
-
-                ic("Initial bounds from aid request locations:", {
-                    'min_lat': min_lat, 'max_lat': max_lat,
-                    'min_lon': min_lon, 'max_lon': max_lon,
-                    'lat_span': max_lat - min_lat,
-                    'lon_span': max_lon - min_lon,
-                    'location_count': len(valid_locations)
-                })
-
-                # Log individual locations for verification
-                ic("All valid locations:", [
-                    {
-                        'id': loc.aid_request.id,
-                        'lat': float(loc.latitude),
-                        'lon': float(loc.longitude),
-                        'status': loc.status
-                    } for loc in valid_locations
-                ])
             else:
                 min_lat = max_lat = float(self.field_op.latitude)
                 min_lon = max_lon = float(self.field_op.longitude)
-                ic("No valid locations found, using field_op location for bounds:", {
-                    'lat': float(self.field_op.latitude),
-                    'lon': float(self.field_op.longitude)
-                })
 
             # Add field op location to bounds
             if min_lat is not None:
@@ -305,27 +257,19 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
                 min_lon -= lon_padding
                 max_lon += lon_padding
 
-                ic("Final map bounds with padding:", {
-                    'min_lat': min_lat, 'max_lat': max_lat,
-                    'min_lon': min_lon, 'max_lon': max_lon,
-                    'field_op_lat': float(self.field_op.latitude),
-                    'field_op_lon': float(self.field_op.longitude),
-                    'field_op_ring_size': getattr(self.field_op, 'ring_size', 10)
-                })
-
                 # Add bounds and field op data to context
                 context.update({
                     'min_lat': min_lat,
                     'max_lat': max_lat,
                     'min_lon': min_lon,
                     'max_lon': max_lon,
-                    'field_op': {
-                        'name': self.field_op.name,
-                        'slug': self.field_op.slug,
-                        'latitude': float(self.field_op.latitude),
-                        'longitude': float(self.field_op.longitude),
-                        'ring_size': getattr(self.field_op, 'ring_size', 10)  # Default to 10km if not set
-                    }
+                    # 'field_op': {
+                    #     'name': self.field_op.name,
+                    #     'slug': self.field_op.slug,
+                    #     'latitude': float(self.field_op.latitude),
+                    #     'longitude': float(self.field_op.longitude),
+                    #     'ring_size': getattr(self.field_op, 'ring_size', 10)  # Default to 10km if not set
+                    # }
                 })
         else:
             # Handle empty DataFrame case
@@ -335,11 +279,6 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
                              for aid_type in aid_types_data}
             min_lat = max_lat = float(self.field_op.latitude)
             min_lon = max_lon = float(self.field_op.longitude)
-
-        # Debug logging using icecream
-        ic("Status counts:", status_counts)
-        ic("Priority counts:", priority_counts)
-        ic("Aid type counts:", aid_type_counts)
 
         # Add ALL aid requests to JSON data for JavaScript
         aid_requests_data = [{
@@ -386,6 +325,7 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
                 'inactive': inactive_statuses
             }
         })
+        ic(context['field_op'])
 
         return context
 
