@@ -4,67 +4,27 @@
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
-    <h2>Field Operations</h2>
-    <table class="table table-hover">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Location</th>
-                <th>Ring Size</th>
-                <th>Aid Requests</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for field_op in object_list %}
-            <tr>
-                <td>
-                    <a href="{% url 'field_op_detail' field_op.pk %}" class="text-decoration-none">
-                        {{ field_op.name }}
-                    </a>
-                </td>
-                <td>{{ field_op.latitude }}, {{ field_op.longitude }}</td>
-                <td>{{ field_op.ring_size }}</td>
-                <td>
-                    <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="text-decoration-none">
-                        {{ field_op.aid_request_count }}
-                    </a>
-                </td>
-                <td>
-                    <div class="d-flex justify-content-end">
-                        <a href="{% url 'field_op_update' field_op.pk %}" class="btn btn-warning btn-sm me-2">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <hr>
-    <a href="{% url 'field_op_create' %}" class="btn btn-primary btn-sm mb-3">
-        <i class="bi bi-plus-circle"></i> New Field Op <i class="bi bi-truck"></i>
-    </a>
-
-    <hr class="m-1">
-
-    <!-- Map Section -->
-    <div class="card shadow-sm mt-3">
-        <div class="card-header py-2">
-            <h5 class="card-title mb-0">Field Operations Map</h5>
-        </div>
-        <div class="card-body p-2">
-            <div id="field-ops-map" class="position-relative w-100" style="min-width: 290px; height: 600px;"
-                data-azure-maps-key="{{ azure_maps_key }}">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="bi bi-truck me-2"></i>Field Operations
+                </h2>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Data Section -->
-<div class="d-none">
-    <!-- Field ops data for the map -->
-    {{ field_ops_data|json_script:'field-ops-data' }}
+    <div class="row">
+        <!-- Field Ops Table -->
+        <div class="col-12">
+            {% include "aidrequests/includes/field_ops_table.html" %}
+        </div>
+
+        <!-- Map -->
+        <div class="col-12">
+            {% include "aidrequests/includes/field_ops_map.html" %}
+        </div>
+    </div>
 </div>
 {% endblock %}
 
