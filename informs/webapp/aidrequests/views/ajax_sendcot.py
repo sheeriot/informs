@@ -107,12 +107,43 @@ def sendcot_aidrequest(request, field_op=None):
         })
 
 
-def sendcot_checkstatus(request):
+def sendcot_checkstatus(request, field_op=None, task_id=None):
     """ Checks the status of the task """
-    sendcot_id = request.GET.get("sendcot_id", None)
-    if not sendcot_id:
-        return JsonResponse({"status": "error", "message": "No sendcot_id provided."})
-    task_result = fetch(sendcot_id)
-    if task_result:
-        return JsonResponse({"status": "done", "result": task_result.result})
-    return JsonResponse({"status": "pending"})
+    if request.method != "GET":
+        return JsonResponse({"status": "error", "message": "Only GET method is allowed."})
+
+    # Get task ID either from query params or URL
+    task_id = task_id or request.GET.get("sendcot_id")
+    if not task_id:
+        return JsonResponse({"status": "error", "message": "No task ID provided."})
+
+    try:
+        task_result = fetch(task_id)
+        if task_result is None:
+            return JsonResponse({
+                "status": "PENDING",
+                "message": "Task is still processing"
+            })
+
+        if isinstance(task_result.result, Exception):
+            return JsonResponse({
+                "status": "FAILURE",
+                "result": str(task_result.result)
+            })
+
+        if task_result.success:
+            return JsonResponse({
+                "status": "SUCCESS",
+                "result": str(task_result.result)
+            })
+        else:
+            return JsonResponse({
+                "status": "FAILURE",
+                "result": "Task failed without an error message"
+            })
+
+    except Exception as e:
+        return JsonResponse({
+            "status": "error",
+            "message": f"Error checking task status: {str(e)}"
+        })
