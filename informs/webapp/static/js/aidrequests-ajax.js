@@ -50,9 +50,32 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Function to get field operation slug from URL or element
+    function getFieldOpSlug() {
+        // First try to get from element
+        const fieldOpElement = document.getElementById('field-op-slug');
+        if (fieldOpElement && fieldOpElement.textContent) {
+            return fieldOpElement.textContent;
+        }
+
+        // If element not found, try to get from URL path
+        const pathParts = window.location.pathname.split('/');
+        const fieldOpIndex = pathParts.findIndex(part => part === 'field-ops') + 1;
+        if (fieldOpIndex > 0 && fieldOpIndex < pathParts.length) {
+            return pathParts[fieldOpIndex];
+        }
+
+        console.error('Could not determine field operation slug');
+        return null;
+    }
+
     // Function to update aid request via AJAX
     function updateAidRequest(requestId, data, buttonElement) {
-        const fieldOpSlug = document.getElementById('field-op-slug').textContent;
+        const fieldOpSlug = document.body.dataset.fieldOpSlug;
+        if (!fieldOpSlug) {
+            throw new Error('Field operation slug not found in body data attribute');
+        }
+
         const url = `/api/${fieldOpSlug}/request/${requestId}/update/`;
 
         // Store the type of update we're doing

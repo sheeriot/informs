@@ -10,8 +10,6 @@ const takConfig = { debug: false };
 function initializeTakAlert() {
     const takAlertButton = document.getElementById('tak-alert-button');
     const statusElement = document.getElementById('tak-alert-status');
-    const statusFeedback = document.getElementById('tak-status-feedback');
-    const statusMessage = document.getElementById('tak-status-message');
 
     if (!takAlertButton) {
         if (takConfig.debug) console.warn('[TAK] Alert button not found');
@@ -46,14 +44,11 @@ function initializeTakAlert() {
 
         // Show loading state
         takAlertButton.disabled = true;
-        const originalContent = takAlertButton.innerHTML;
-        takAlertButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...';
         showStatus('sending');
 
         try {
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
             const fieldOpSlug = document.body.dataset.fieldOpSlug;
-            const message = statusMessage ? statusMessage.value : '';
 
             // Use existing sendcot-aidrequest endpoint with field_op slug
             const response = await fetch(`/${fieldOpSlug}/sendcot-aidrequest`, {
@@ -65,8 +60,7 @@ function initializeTakAlert() {
                 },
                 body: JSON.stringify({
                     ...(visibleRows.length > 0 ? { aidrequests: visibleRows } : {}),
-                    message_type: 'update',
-                    status_message: message
+                    message_type: 'update'
                 })
             });
 
@@ -85,15 +79,15 @@ function initializeTakAlert() {
             const data = await response.json();
 
             if (data.sendcot_id) {
-                showStatus('success', `${visibleRows.length} alerts sent successfully`);
                 if (takConfig.debug) {
                     console.table({
-                        action: 'TAK Alert Success',
-                        sentRequests: visibleRows.length || 'all',
+                        action: 'TAK Alert Task Started',
                         taskId: data.sendcot_id,
                         fieldOp: fieldOpSlug
                     });
                 }
+                // Start polling for task status
+                pollTaskStatus(data.sendcot_id, fieldOpSlug);
             } else {
                 throw new Error(data.message || 'Failed to send TAK alerts');
             }
@@ -103,17 +97,92 @@ function initializeTakAlert() {
                 requestIds: visibleRows
             });
             showStatus('error', error.message || 'Error sending alerts');
-        } finally {
             takAlertButton.disabled = false;
-            takAlertButton.innerHTML = originalContent;
+            takAlertButton.innerHTML = '<i class="bi bi-bullseye me-1"></i>Alert TAK';
         }
     });
+}
+
+// Poll for task status
+async function pollTaskStatus(taskId, fieldOpSlug) {
+    const maxAttempts = 30; // Maximum number of polling attempts
+    const pollInterval = 2000; // Poll every 2 seconds
+    let attempts = 0;
+
+    const poll = async () => {
+        try {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const response = await fetch(`/${fieldOpSlug}/task-status/${taskId}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRFToken': csrfToken
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server Error (${response.status})`);
+            }
+
+            const data = await response.json();
+
+            if (takConfig.debug) {
+                console.table({
+                    action: 'TAK Alert Task Status',
+                    taskId: taskId,
+                    status: data.status,
+                    attempt: attempts + 1
+                });
+            }
+
+            switch (data.status) {
+                case 'SUCCESS':
+                    showStatus('success', `${data.result || 'Alerts sent successfully'}`);
+                    resetButton();
+                    return;
+                case 'FAILURE':
+                    showStatus('error', data.result || 'Task failed');
+                    resetButton();
+                    return;
+                case 'PENDING':
+                case 'STARTED':
+                    if (attempts >= maxAttempts) {
+                        showStatus('warning', 'Task taking longer than expected. Please check status later.');
+                        resetButton();
+                        return;
+                    }
+                    attempts++;
+                    setTimeout(poll, pollInterval);
+                    break;
+                default:
+                    showStatus('warning', `Unknown task status: ${data.status}`);
+                    resetButton();
+                    return;
+            }
+        } catch (error) {
+            console.error('[TAK] Task Status Error:', error);
+            showStatus('error', 'Error checking task status');
+            resetButton();
+        }
+    };
+
+    // Start polling
+    poll();
+}
+
+// Reset button state
+function resetButton() {
+    const takAlertButton = document.getElementById('tak-alert-button');
+    if (takAlertButton) {
+        takAlertButton.disabled = false;
+        takAlertButton.innerHTML = '<i class="bi bi-bullseye me-1"></i>Alert TAK';
+    }
 }
 
 // Helper function to show status messages
 function showStatus(type, message) {
     const statusElement = document.getElementById('tak-alert-status');
-    const statusFeedback = document.getElementById('tak-status-feedback');
+    const takAlertButton = document.getElementById('tak-alert-button');
 
     if (!statusElement) return;
 
@@ -122,57 +191,45 @@ function showStatus(type, message) {
         clearTimeout(window.takStatusTimeout);
     }
 
+    statusElement.classList.remove('d-none');
+
     switch (type) {
         case 'sending':
-            statusElement.classList.remove('d-none');
-            statusElement.innerHTML = `
-                <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
-                <span class="ms-1">Sending alerts...</span>
-            `;
-            if (statusFeedback) statusFeedback.classList.add('d-none');
+            takAlertButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Sending...';
+            statusElement.innerHTML = '';
             break;
 
         case 'success':
-            statusElement.classList.remove('d-none');
             statusElement.innerHTML = `
                 <span class="text-success">
                     <i class="bi bi-check-circle"></i>
                     ${message}
                 </span>
             `;
-            if (statusFeedback) statusFeedback.classList.remove('d-none');
-            // Keep success message visible for 10 seconds
             window.takStatusTimeout = setTimeout(() => {
                 statusElement.classList.add('d-none');
-                if (statusFeedback) statusFeedback.classList.add('d-none');
             }, 10000);
             break;
 
         case 'error':
-            statusElement.classList.remove('d-none');
             statusElement.innerHTML = `
                 <span class="text-danger">
                     <i class="bi bi-exclamation-circle"></i>
                     ${message}
                 </span>
             `;
-            if (statusFeedback) statusFeedback.classList.add('d-none');
-            // Keep error message visible for 15 seconds
             window.takStatusTimeout = setTimeout(() => {
                 statusElement.classList.add('d-none');
             }, 15000);
             break;
 
         case 'warning':
-            statusElement.classList.remove('d-none');
             statusElement.innerHTML = `
                 <span class="text-warning">
                     <i class="bi bi-exclamation-triangle"></i>
                     ${message}
                 </span>
             `;
-            if (statusFeedback) statusFeedback.classList.add('d-none');
-            // Keep warning message visible for 5 seconds
             window.takStatusTimeout = setTimeout(() => {
                 statusElement.classList.add('d-none');
             }, 5000);

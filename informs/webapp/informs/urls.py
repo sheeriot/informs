@@ -103,6 +103,7 @@ urlpatterns = [
      path('sendcot-aidrequest', sendcot_aidrequest, name='sendcot_aidrequest'),
      path('<slug:field_op>/sendcot-aidrequest', sendcot_aidrequest, name='sendcot_aidrequest'),
      path('sendcot-checkstatus', sendcot_checkstatus, name='sendcot_checkstatus'),
+     path('<slug:field_op>/task-status/<str:task_id>/', sendcot_checkstatus, name='task_status'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
