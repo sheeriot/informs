@@ -14,8 +14,11 @@
                 data-azure-maps-key="{{ azure_maps_key }}"
                 data-center-lat="{{ field_op.latitude|stringformat:".6f"|default:"0" }}"
                 data-center-lon="{{ field_op.longitude|stringformat:".6f"|default:"0" }}"
-                data-map-zoom="{{ field_op.map_zoom|default:"8" }}"
-                data-ring-size="{{ field_op.ring_km|default:"5" }}"
+                data-bounds-north="{{ max_lat|stringformat:".6f"|default:"0" }}"
+                data-bounds-south="{{ min_lat|stringformat:".6f"|default:"0" }}"
+                data-bounds-east="{{ max_lon|stringformat:".6f"|default:"0" }}"
+                data-bounds-west="{{ min_lon|stringformat:".6f"|default:"0" }}"
+                data-ring-size="{{ field_op.ring_size|default:"10" }}"
                 data-field-op-name="{{ field_op.name }}"
                 data-field-op-slug="{{ field_op.slug }}">
             </div>

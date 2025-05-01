@@ -106,6 +106,12 @@ class FieldOp(TimeStampedModel):
     name = models.CharField(max_length=50)
     latitude = models.DecimalField(max_digits=7, decimal_places=5)
     longitude = models.DecimalField(max_digits=8, decimal_places=5)
+    ring_size = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text='kilometers'
+    )
 
     aid_types = models.ManyToManyField(AidType, related_name='field_ops', default=1, blank=True)
 
@@ -122,8 +128,7 @@ class FieldOp(TimeStampedModel):
     notify = models.ManyToManyField(FieldOpNotify)
 
     disable_cot = models.BooleanField(
-        default=False,
-        help_text='When enabled, COT (Common Operating Template) will be disabled for this field operation'
+        default=False
     )
 
     class Meta:

@@ -1,10 +1,20 @@
 <div class="card col-6 shadow-sm mb-3">
     <div class="card-header py-2">
-        <div class="d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">Aid Requests</h5>
-            <div class="d-flex align-items-center">
-                <small id="list-filter-summary" class="text-muted"></small>
+        <div class="d-flex align-items-center">
+            <div class="btn-group me-3">
+                <a href="{% url 'aid_request_create' field_op=field_op.slug %}"
+                   class="btn btn-sm btn-outline-success"
+                   title="Add new aid request">
+                    <i class="bi bi-plus-circle"></i>
+                </a>
+                <a href="{% url 'aid_requests_csv' field_op=field_op.slug %}"
+                   class="btn btn-sm btn-outline-info"
+                   title="Export to CSV">
+                    <i class="bi bi-download"></i>
+                </a>
             </div>
+            <h5 class="card-title mb-0 me-auto">Aid Requests</h5>
+            <small id="list-filter-summary" class="text-muted"></small>
         </div>
     </div>
     <div class="table-responsive" id="aid-request-list-table-container">

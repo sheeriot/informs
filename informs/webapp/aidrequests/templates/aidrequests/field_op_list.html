@@ -3,47 +3,32 @@
 {% load bootstrap_icons %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2 class="mb-3">All Field Ops</h2>
-
-    <table class="table table-sm table-striped align-middle">
+<div class="container-fluid px-4 py-3">
+    <h2>Field Operations</h2>
+    <table class="table table-hover">
         <thead>
             <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Slug</th>
-                <th scope="col">Aid Requests</th>
-                <th scope="col">Lat,Long</th>
-                <th scope="col">COT Status</th>
-                <th scope="col"><div class="d-flex justify-content-end">Actions</div></th>
+                <th>Name</th>
+                <th>Location</th>
+                <th>Ring Size</th>
+                <th>Aid Requests</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for field_op in object_list %}
             <tr>
                 <td>
-                    <a href="{% url 'field_op_detail' pk=field_op.pk %}" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-truck"></i>
-                        {{ field_op }}
+                    <a href="{% url 'field_op_detail' field_op.pk %}" class="text-decoration-none">
+                        {{ field_op.name }}
                     </a>
                 </td>
-                <td>{{ field_op.slug }}</td>
+                <td>{{ field_op.latitude }}, {{ field_op.longitude }}</td>
+                <td>{{ field_op.ring_size }}</td>
                 <td>
-                    <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm text-dark">
-                        <i class="bi bi-life-preserver text-danger"></i>
+                    <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="text-decoration-none">
                         {{ field_op.aid_request_count }}
                     </a>
-                </td>
-                <td>{{ field_op.latitude }},{{ field_op.longitude }}</td>
-                <td>
-                    {% if field_op.disable_cot %}
-                        <span class="text-danger">
-                            <i class="bi bi-x-circle"></i> Disabled
-                        </span>
-                    {% else %}
-                        <span class="text-success">
-                            <i class="bi bi-check-circle"></i> Enabled
-                        </span>
-                    {% endif %}
                 </td>
                 <td>
                     <div class="d-flex justify-content-end">
@@ -62,8 +47,42 @@
     </a>
 
     <hr class="m-1">
-    {% if map %}
-        <img src="{{ map }}" alt="Field Operations Map" class="img-fluid">
-    {% endif %}
+
+    <!-- Map Section -->
+    <div class="card shadow-sm mt-3">
+        <div class="card-header py-2">
+            <h5 class="card-title mb-0">Field Operations Map</h5>
+        </div>
+        <div class="card-body p-2">
+            <div id="field-ops-map" class="position-relative w-100" style="min-width: 290px; height: 600px;"
+                data-azure-maps-key="{{ azure_maps_key }}">
+            </div>
+        </div>
+    </div>
 </div>
+
+<!-- Data Section -->
+<div class="d-none">
+    <!-- Field ops data for the map -->
+    {{ field_ops_data|json_script:'field-ops-data' }}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<!-- Azure Maps CSS -->
+<link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
+{% endblock %}
+
+{% block extra_js %}
+<!-- Azure Maps JavaScript -->
+<script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+<!-- Initialize map -->
+<script src="{% static 'js/map_init.js' %}?v={{static_version}}"></script>
+<script src="{% static 'js/map_fieldops.js' %}?v={{static_version}}"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const fieldOpsData = JSON.parse(document.getElementById('field-ops-data').textContent);
+        initFieldOpsMap(fieldOpsData);
+    });
+</script>
 {% endblock %}

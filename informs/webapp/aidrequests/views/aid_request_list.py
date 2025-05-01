@@ -11,7 +11,7 @@ from decimal import Decimal
 import pandas as pd
 import numpy as np
 
-from ..models import FieldOp, AidRequest, AidType
+from ..models import FieldOp, AidRequest, AidType, AidLocation
 from .maps import calculate_zoom
 
 from geopy.distance import geodesic
@@ -241,16 +241,92 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
             aid_type_counts = {item['name']: {'count': item['count'], 'value': item['value']}
                              for item in aid_type_counts}
 
-            # Calculate map bounds if we have locations
-            locations_df = df[df['latitude'].notna() & df['longitude'].notna()]
-            if not locations_df.empty:
-                min_lat = locations_df['latitude'].min()
-                max_lat = locations_df['latitude'].max()
-                min_lon = locations_df['longitude'].min()
-                max_lon = locations_df['longitude'].max()
+            # Calculate map bounds using the best location from each aid request
+            aid_requests = self.get_queryset()
+            ic("Calculating bounds for field_op:", {
+                'field_op': self.field_op.name,
+                'field_op_location': {
+                    'lat': float(self.field_op.latitude),
+                    'lon': float(self.field_op.longitude)
+                },
+                'total_aid_requests': aid_requests.count()
+            })
+
+            valid_locations = [ar.location for ar in aid_requests if ar.location is not None]
+
+            if valid_locations:
+                ic(f"Found {len(valid_locations)} valid locations for field_op: {self.field_op.name}")
+
+                min_lat = min(float(loc.latitude) for loc in valid_locations)
+                max_lat = max(float(loc.latitude) for loc in valid_locations)
+                min_lon = min(float(loc.longitude) for loc in valid_locations)
+                max_lon = max(float(loc.longitude) for loc in valid_locations)
+
+                ic("Initial bounds from aid request locations:", {
+                    'min_lat': min_lat, 'max_lat': max_lat,
+                    'min_lon': min_lon, 'max_lon': max_lon,
+                    'lat_span': max_lat - min_lat,
+                    'lon_span': max_lon - min_lon,
+                    'location_count': len(valid_locations)
+                })
+
+                # Log individual locations for verification
+                ic("All valid locations:", [
+                    {
+                        'id': loc.aid_request.id,
+                        'lat': float(loc.latitude),
+                        'lon': float(loc.longitude),
+                        'status': loc.status
+                    } for loc in valid_locations
+                ])
             else:
                 min_lat = max_lat = float(self.field_op.latitude)
                 min_lon = max_lon = float(self.field_op.longitude)
+                ic("No valid locations found, using field_op location for bounds:", {
+                    'lat': float(self.field_op.latitude),
+                    'lon': float(self.field_op.longitude)
+                })
+
+            # Add field op location to bounds
+            if min_lat is not None:
+                min_lat = float(min(min_lat, self.field_op.latitude))
+                max_lat = float(max(max_lat, self.field_op.latitude))
+                min_lon = float(min(min_lon, self.field_op.longitude))
+                max_lon = float(max(max_lon, self.field_op.longitude))
+
+                # Add a small padding (about 10% of the span)
+                lat_span = max_lat - min_lat
+                lon_span = max_lon - min_lon
+                lat_padding = max(lat_span * 0.1, 0.001)  # At least 0.001 degrees
+                lon_padding = max(lon_span * 0.1, 0.001)  # At least 0.001 degrees
+
+                min_lat -= lat_padding
+                max_lat += lat_padding
+                min_lon -= lon_padding
+                max_lon += lon_padding
+
+                ic("Final map bounds with padding:", {
+                    'min_lat': min_lat, 'max_lat': max_lat,
+                    'min_lon': min_lon, 'max_lon': max_lon,
+                    'field_op_lat': float(self.field_op.latitude),
+                    'field_op_lon': float(self.field_op.longitude),
+                    'field_op_ring_size': getattr(self.field_op, 'ring_size', 10)
+                })
+
+                # Add bounds and field op data to context
+                context.update({
+                    'min_lat': min_lat,
+                    'max_lat': max_lat,
+                    'min_lon': min_lon,
+                    'max_lon': max_lon,
+                    'field_op': {
+                        'name': self.field_op.name,
+                        'slug': self.field_op.slug,
+                        'latitude': float(self.field_op.latitude),
+                        'longitude': float(self.field_op.longitude),
+                        'ring_size': getattr(self.field_op, 'ring_size', 10)  # Default to 10km if not set
+                    }
+                })
         else:
             # Handle empty DataFrame case
             status_counts = {}
@@ -264,28 +340,6 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
         ic("Status counts:", status_counts)
         ic("Priority counts:", priority_counts)
         ic("Aid type counts:", aid_type_counts)
-
-        # Add field op location to bounds
-        if min_lat is not None:
-            min_lat = float(min(min_lat, self.field_op.latitude))
-            max_lat = float(max(max_lat, self.field_op.latitude))
-            min_lon = float(min(min_lon, self.field_op.longitude))
-            max_lon = float(max(max_lon, self.field_op.longitude))
-
-            # Calculate map parameters
-            center_lat = (min_lat + max_lat) / 2
-            center_lon = (min_lon + max_lon) / 2
-            max_distance = geodesic((min_lat, min_lon), (max_lat, max_lon)).kilometers
-
-            context.update({
-                'center_lat': center_lat,
-                'center_lon': center_lon,
-                'max_distance': max_distance,
-                'ring_size': max(1, int(max_distance / 10)),
-                'map_zoom': calculate_zoom(max_distance/1.5)
-            })
-
-            # ic(f"Map bounds: ({min_lat},{min_lon}) to ({max_lat},{max_lon}), max_distance: {max_distance}km")
 
         # Add ALL aid requests to JSON data for JavaScript
         aid_requests_data = [{

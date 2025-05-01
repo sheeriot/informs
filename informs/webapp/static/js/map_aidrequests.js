@@ -11,7 +11,7 @@ let layersByType = {};  // Store layers by aid type
 
 // Configuration
 const mapRequestsConfig = {
-    debug: false,  // Set to false in production
+    debug: true,  // Set to false in production
     initialized: false,
     config: null,
     aidLocations: [],
@@ -38,32 +38,124 @@ function loadMapConfiguration() {
         throw new Error('Map container not found');
     }
 
-    // Get configuration from data attributes
+    // Debug log raw dataset values
+    if (mapRequestsConfig.debug) {
+        console.log('[Map] Raw dataset values:', {
+            boundsWest: mapContainer.dataset.boundsWest,
+            boundsSouth: mapContainer.dataset.boundsSouth,
+            boundsEast: mapContainer.dataset.boundsEast,
+            boundsNorth: mapContainer.dataset.boundsNorth,
+            centerLat: mapContainer.dataset.centerLat,
+            centerLon: mapContainer.dataset.centerLon,
+            allDataset: mapContainer.dataset
+        });
+    }
+
+    // Get configuration from data attributes using bounds
     const config = {
         key: mapContainer.dataset.azureMapsKey,
+        bounds: [
+            parseFloat(mapContainer.dataset.boundsWest),   // minLon
+            parseFloat(mapContainer.dataset.boundsSouth),  // minLat
+            parseFloat(mapContainer.dataset.boundsEast),   // maxLon
+            parseFloat(mapContainer.dataset.boundsNorth)   // maxLat
+        ],
+        padding: 50,  // Default padding in pixels
         center: [
             parseFloat(mapContainer.dataset.centerLon),
             parseFloat(mapContainer.dataset.centerLat)
         ],
-        zoom: parseInt(mapContainer.dataset.mapZoom),
-        ringSize: parseInt(mapContainer.dataset.ringSize),
         fieldOpName: mapContainer.dataset.fieldOpName,
-        fieldOpSlug: mapContainer.dataset.fieldOpSlug
+        fieldOpSlug: mapContainer.dataset.fieldOpSlug,
+        ringSize: parseFloat(mapContainer.dataset.ringSize) || 10
     };
 
     if (!config.key) {
         throw new Error('Azure Maps key not found in data attributes');
     }
 
-    // Validate numeric values
+    // Enhanced bounds validation with detailed logging
+    const boundsData = {
+        raw: {
+            west: mapContainer.dataset.boundsWest,
+            south: mapContainer.dataset.boundsSouth,
+            east: mapContainer.dataset.boundsEast,
+            north: mapContainer.dataset.boundsNorth
+        },
+        parsed: config.bounds
+    };
+
+    if (mapRequestsConfig.debug) {
+        console.log('[Map] Bounds data:', boundsData);
+    }
+
+    // Validate bounds values
+    if (config.bounds.some(isNaN) || config.bounds.every(val => val === 0)) {
+        console.error('[Map] Invalid or missing bounds values:', boundsData);
+        throw new Error('Invalid or missing map bounds coordinates');
+    }
+
+    // Validate center coordinates
     if (isNaN(config.center[0]) || isNaN(config.center[1])) {
+        console.error('[Map] Invalid center coordinates:', {
+            raw: {
+                lon: mapContainer.dataset.centerLon,
+                lat: mapContainer.dataset.centerLat
+            },
+            parsed: config.center
+        });
         throw new Error('Invalid map center coordinates');
     }
-    if (isNaN(config.zoom)) {
-        throw new Error('Invalid zoom level');
+
+    // Validate bounds format and values
+    const [minLon, minLat, maxLon, maxLat] = config.bounds;
+
+    // Check longitude values are in valid range (-180 to 180)
+    if (minLon < -180 || maxLon > 180 || minLon > maxLon) {
+        console.error('[Map] Invalid longitude values:', {
+            minLon,
+            maxLon,
+            valid: 'Must be: -180 ≤ minLon ≤ maxLon ≤ 180'
+        });
     }
-    if (isNaN(config.ringSize)) {
-        throw new Error('Invalid ring size');
+
+    // Check latitude values are in valid range (-85 to 85 for Web Mercator)
+    if (minLat < -85 || maxLat > 85 || minLat > maxLat) {
+        console.error('[Map] Invalid latitude values:', {
+            minLat,
+            maxLat,
+            valid: 'Must be: -85 ≤ minLat ≤ maxLat ≤ 85'
+        });
+    }
+
+    // Calculate spans
+    const latSpan = maxLat - minLat;
+    const lonSpan = maxLon - minLon;
+
+    if (mapRequestsConfig.debug) {
+        console.log('[Map] Configuration details:', {
+            bounds: {
+                minLon, minLat, maxLon, maxLat
+            },
+            spans: {
+                lat: latSpan,
+                lon: lonSpan
+            },
+            center: {
+                lon: config.center[0],
+                lat: config.center[1]
+            },
+            padding: config.padding
+        });
+    }
+
+    // Warn if spans seem unreasonably large
+    if (latSpan > 10 || lonSpan > 10) {
+        console.warn('[Map] Bounds span seems large for a field operation:', {
+            latSpan,
+            lonSpan,
+            suggestion: 'Expected spans of less than 10 degrees for typical field operations'
+        });
     }
 
     // Store configuration
@@ -221,10 +313,8 @@ function initializeMap(config) {
 
     return new Promise((resolve, reject) => {
         try {
-            // Initialize map with validated values
+            // Initialize map with bounds-based camera
             map = new atlas.Map('aid-request-map', {
-                center: config.center,
-                zoom: config.zoom,
                 style: 'road',
                 view: 'Auto',
                 showFeedbackLink: false,
@@ -232,8 +322,21 @@ function initializeMap(config) {
                 authOptions: {
                     authType: 'subscriptionKey',
                     subscriptionKey: config.key
+                },
+                // Properly set camera bounds using CameraBoundsOptions
+                cameraBoundsOptions: {
+                    bounds: config.bounds,
+                    padding: config.padding,
+                    maxZoom: 18  // Prevent zooming too far in
                 }
             });
+
+            if (mapRequestsConfig.debug) {
+                console.log('[Map] Initialized with camera bounds:', {
+                    bounds: config.bounds,
+                    padding: config.padding,
+                });
+            }
 
             // Add zoom control (top-left)
             map.controls.add(new atlas.control.ZoomControl(), {
@@ -260,10 +363,16 @@ function initializeMap(config) {
             // Wait for the map to be ready before adding layers
             map.events.add('ready', async function() {
                 if (mapRequestsConfig.debug) {
-                    console.log('Map ready event fired');
+                    console.log('[Map] Ready event fired, camera:', map.getCamera());
                 }
 
                 try {
+                    // Set the camera bounds again after map is ready to ensure they're applied
+                    map.setCamera({
+                        bounds: config.bounds,
+                        padding: config.padding
+                    });
+
                     // Initialize field op layer first
                     initializeFieldOpLayer();
 
@@ -271,7 +380,7 @@ function initializeMap(config) {
                     await initializeAidRequestLayer();
 
                     if (mapRequestsConfig.debug) {
-                        console.log('Map layers initialized');
+                        console.log('[Map] Layers initialized, final camera:', map.getCamera());
                     }
 
                     // Listen for filter changes
@@ -476,14 +585,18 @@ function updateMapSummary(filterState, counts) {
 // Initialize the field operation layer and ring
 function initializeFieldOpLayer() {
     if (mapRequestsConfig.debug) {
-        console.log('=== Starting Field Op Layer Initialization ===');
+        console.log('=== Starting Field Op Layer Initialization ===', {
+            center: mapRequestsConfig.config.center,
+            ringSize: mapRequestsConfig.config.ringSize,
+            config: mapRequestsConfig.config
+        });
     }
     // will use 2 layers, one for symbol and one for polygon
 
     // Create the center position for both field op marker and ring
     const centerPosition = new atlas.data.Position(
-        parseFloat(mapRequestsConfig.config.center[0]),
-        parseFloat(mapRequestsConfig.config.center[1])
+        mapRequestsConfig.config.center[0],  // longitude
+        mapRequestsConfig.config.center[1]   // latitude
     );
 
     // First Data Source for the Field Op Center Marker
@@ -512,7 +625,6 @@ function initializeFieldOpLayer() {
         fieldOpCenterSource,
         'fieldop_center',
         {
-            // filter: ['==', ['get', 'subType'], undefined],  // Only show the point, not the circle
             iconOptions: {
                 image: 'pin-blue',
                 anchor: 'center',
@@ -533,6 +645,18 @@ function initializeFieldOpLayer() {
     ));
     if (mapRequestsConfig.debug) console.log('Added field op center layer to map');
 
+    // Get ring size from data attribute
+    const mapContainer = document.getElementById('aid-request-map');
+    const ringSize = parseFloat(mapContainer.dataset.ringSize) || 10; // Default to 10km if not specified
+
+    if (mapRequestsConfig.debug) {
+        console.log('Ring configuration:', {
+            ringSize: ringSize,
+            dataAttribute: mapContainer.dataset.ringSize,
+            center: centerPosition
+        });
+    }
+
     const fieldOpRingSource = new atlas.source.DataSource();
     map.sources.add(fieldOpRingSource);
 
@@ -541,25 +665,47 @@ function initializeFieldOpLayer() {
         new atlas.data.Point(centerPosition),
         {
             subType: 'Circle',
-            radius: mapRequestsConfig.config.ringSize * 1000
+            radius: ringSize * 1000  // Convert km to meters
         }
     );
-    if (mapRequestsConfig.debug) console.log('Created field op ring:', fieldOpRing);
 
+    if (mapRequestsConfig.debug) {
+        console.log('Created field op ring:', {
+            feature: fieldOpRing,
+            properties: fieldOpRing.properties,
+            geometry: fieldOpRing.geometry,
+            radius: ringSize * 1000
+        });
+    }
 
     fieldOpRingSource.add(fieldOpRing);
-    if (mapRequestsConfig.debug) console.log('Added field op ring to source');
+
+    if (mapRequestsConfig.debug) {
+        console.log('Added field op ring to source:', {
+            sourceId: fieldOpRingSource.getId(),
+            shapeCount: fieldOpRingSource.getShapes().length
+        });
+    }
+
     // Add ring PolygonLayer
-    ringLayer = new atlas.layer.PolygonLayer(
+    const ringLayer = new atlas.layer.PolygonLayer(
         fieldOpRingSource,
         'fieldop_ring',
         {
-            // filter: ['==', ['get', 'subType'], 'Circle'],  // Only show the circle
+            filter: ['==', ['get', 'subType'], 'Circle'],  // Only show the circle
             fillColor: 'rgba(255, 0, 0, 0.2)',
             strokeColor: 'red',
             strokeWidth: 2
         }
     );
+
+    if (mapRequestsConfig.debug) {
+        console.log('Ring layer configuration:', {
+            layerId: ringLayer.getId(),
+            options: ringLayer.getOptions()
+        });
+    }
+
     map.layers.add(ringLayer);
     if (mapRequestsConfig.debug) console.log('Added field op ring layer to map');
 }
