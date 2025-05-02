@@ -125,7 +125,7 @@ class FieldOp(TimeStampedModel):
         User, related_name='field_ops_updated', on_delete=models.SET_NULL, null=True, blank=True
     )
 
-    notify = models.ManyToManyField(FieldOpNotify)
+    notify = models.ManyToManyField(FieldOpNotify, blank=True)
 
     disable_cot = models.BooleanField(
         default=False

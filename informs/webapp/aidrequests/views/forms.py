@@ -6,6 +6,7 @@ from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, HTML, Fieldset, Field
 from crispy_forms.bootstrap import FormActions
+from icecream import ic
 
 from ..models import FieldOp
 
@@ -19,7 +20,7 @@ class FieldOpForm(forms.ModelForm):
     class Meta:
         """ meta """
         model = FieldOp
-        fields = ('name', 'slug', 'latitude', 'longitude', 'ring_size', 'tak_server', 'disable_cot', 'aid_types', 'notify')
+        fields = ('name', 'slug', 'latitude', 'longitude', 'ring_size', 'tak_server', 'disable_cot', 'aid_types')
 
         widgets = {
             'latitude': forms.NumberInput(attrs={
@@ -74,6 +75,7 @@ class FieldOpForm(forms.ModelForm):
         return ring_size
 
     def __init__(self, *args, action='create', **kwargs):
+        ic("FieldOpForm init - kwargs:", kwargs)
         super(FieldOpForm, self).__init__(*args, **kwargs)
         self.action = action
         self.helper = FormHelper()
@@ -96,6 +98,8 @@ class FieldOpForm(forms.ModelForm):
             button_text = 'Update'
         else:
             button_text = 'Create'
+
+        ic("Form next value:", self.initial.get('next'))
 
         # Modern layout with clear row organization
         self.helper.layout = Layout(

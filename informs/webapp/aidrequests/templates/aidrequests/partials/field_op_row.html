@@ -71,8 +71,6 @@
                 <button class="btn btn-success send-tak-alert d-flex align-items-center p-1"
                         data-field-op-slug="{{ field_op.slug }}"
                         data-mark-type="FieldOp"
-                        data-bs-toggle="tooltip"
-                        data-bs-title="Send Field Op marker to TAK"
                         {% if field_op.disable_cot %}disabled{% endif %}>
                     <i class="bi bi-bullseye me-2 fs-5"></i>
                     <div class="d-flex flex-column pe-2">
@@ -83,8 +81,6 @@
                 <button class="btn btn-danger send-tak-alert d-flex align-items-center p-1"
                         data-field-op-slug="{{ field_op.slug }}"
                         data-mark-type="AidRequest"
-                        data-bs-toggle="tooltip"
-                        data-bs-title="Send Aid Requests to TAK"
                         {% if field_op.disable_cot %}disabled{% endif %}>
                     <i class="bi bi-arrow-right-circle me-2 fs-5"></i>
                     <div class="d-flex flex-column pe-2">
