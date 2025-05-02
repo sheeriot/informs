@@ -1,9 +1,14 @@
 {% load bootstrap_icons %}
 
-<tr>
+<tr data-field-op-slug="{{ field_op.slug }}">
     <td class="ps-3">
         <a href="{% url 'field_op_detail' field_op.slug %}" class="text-decoration-none">
-            <i class="bi bi-truck me-2 text-secondary"></i>{{ field_op.name }}
+            <div class="d-flex flex-column">
+                <span>{{ field_op.name }}</span>
+                <span class="text-secondary">
+                    <i class="bi bi-truck me-1"></i>{{ field_op.slug }}
+                </span>
+            </div>
         </a>
     </td>
     <td>
@@ -14,42 +19,85 @@
             </span>
             <button class="btn btn-link btn-sm p-0 ms-1 copy-coordinates"
                     data-bs-toggle="tooltip"
-                    data-bs-placement="top"
-                    title="Copy coordinates">
-                <i class="bi bi-clipboard text-secondary"></i>
+                    data-bs-title="Copy coordinates">
+                <i class="bi bi-clipboard"></i>
             </button>
         </span>
     </td>
     <td>
-        <i class="bi bi-circle me-1 text-secondary"></i>
-        {{ field_op.ring_size }} km
+        <span class="text-nowrap">
+            <i class="bi bi-record-circle me-1 text-secondary"></i>{{ field_op.ring_size }}&nbsp;km
+        </span>
     </td>
     <td>
         <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="text-decoration-none">
-            <i class="bi bi-life-preserver text-danger me-1"></i>
-            {{ field_op.aid_request_count }}
+            <span class="text-nowrap">
+                <i class="bi bi-life-preserver text-danger me-1"></i>{{ field_op.aid_request_count }}
+            </span>
         </a>
     </td>
     <td>
         {% if field_op.tak_server %}
             <span class="text-success">
-                <i class="bi bi-hdd-rack"></i><i class="bi bi-circle-plus"></i>
+                <i class="bi bi-hdd-rack"></i><i class="bi bi-plus-circle"></i>
                 {{ field_op.tak_server }}
             </span>
         {% else %}
             <span class="text-secondary">
-                <i class="bi bi-hdd-rack"></i><i class="bi bi-circle-plus"></i>
                 Not Set
             </span>
         {% endif %}
     </td>
     <td>
-        {% if field_op.disable_cot %}
-            <i class="bi bi-toggle-off text-secondary"></i>
-            <span class="text-secondary">Disabled</span>
+        <div class="form-check form-switch">
+            <input type="checkbox"
+                   class="form-check-input cot-status-toggle"
+                   id="cotToggle-{{ field_op.slug }}"
+                   data-field-op-slug="{{ field_op.slug }}"
+                   data-current-status="{% if field_op.disable_cot %}disabled{% else %}active{% endif %}"
+                   {% if field_op.disable_cot %}{% else %}checked{% endif %}
+                   {% if not field_op.tak_server %}disabled{% endif %}>
+            <label class="form-check-label" for="cotToggle-{{ field_op.slug }}">
+                <span class="status-text {% if field_op.disable_cot %}text-danger{% else %}text-success{% endif %}">
+                    {% if field_op.disable_cot %}Disabled{% else %}Active{% endif %}
+                </span>
+            </label>
+        </div>
+    </td>
+    <td>
+        {% if field_op.tak_server %}
+            <!-- TAK Alert Buttons - Always in DOM, toggled with d-none -->
+            <div class="btn-group btn-group-sm {% if field_op.disable_cot %}d-none{% endif %}">
+                <button class="btn btn-success send-tak-alert d-flex align-items-center p-1"
+                        data-field-op-slug="{{ field_op.slug }}"
+                        data-mark-type="FieldOp"
+                        data-bs-toggle="tooltip"
+                        data-bs-title="Send Field Op marker to TAK"
+                        {% if field_op.disable_cot %}disabled{% endif %}>
+                    <i class="bi bi-bullseye me-2 fs-5"></i>
+                    <div class="d-flex flex-column pe-2">
+                        <span>Field</span>
+                        <span>Mark</span>
+                    </div>
+                </button>
+                <button class="btn btn-danger send-tak-alert d-flex align-items-center p-1"
+                        data-field-op-slug="{{ field_op.slug }}"
+                        data-mark-type="AidRequest"
+                        data-bs-toggle="tooltip"
+                        data-bs-title="Send Aid Requests to TAK"
+                        {% if field_op.disable_cot %}disabled{% endif %}>
+                    <i class="bi bi-arrow-right-circle me-2 fs-5"></i>
+                    <div class="d-flex flex-column pe-2">
+                        <span>Aid</span>
+                        <span>Marks</span>
+                    </div>
+                </button>
+            </div>
         {% else %}
-            <i class="bi bi-toggle-on text-success"></i>
-            <span class="text-success">Active</span>
+            <span class="text-secondary">
+                <i class="bi bi-dash-circle"></i>
+                Not Available
+            </span>
         {% endif %}
     </td>
     <td class="text-end pe-3">
@@ -57,15 +105,13 @@
             <a href="{% url 'field_op_detail' field_op.slug %}"
                class="btn btn-outline-secondary"
                data-bs-toggle="tooltip"
-               data-bs-placement="top"
-               title="View Details">
-                <i class="bi bi-truck"></i>
+               data-bs-title="View Details">
+                <i class="bi bi-eye"></i>
             </a>
-            <a href="{% url 'field_op_update' field_op.slug %}"
-               class="btn btn-outline-warning"
+            <a href="{% url 'field_op_update' field_op.slug %}?next={{ request.path|urlencode }}"
+               class="btn btn-outline-secondary"
                data-bs-toggle="tooltip"
-               data-bs-placement="top"
-               title="Edit Field Op">
+               data-bs-title="Edit Field Op">
                 <i class="bi bi-pencil"></i>
             </a>
         </div>

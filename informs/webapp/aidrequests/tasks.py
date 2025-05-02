@@ -8,15 +8,14 @@ from datetime import datetime
 from .email_creator import email_connectstring, email_creator_html
 from .geocoder import get_azure_geocode, geocode_save
 from .views.maps import staticmap_aid, calculate_zoom
-from .models import FieldOpNotify, AidRequest
-from takserver.cot import send_cots
+from .models import FieldOpNotify, AidRequest, FieldOp
+from takserver.cot import send_cots, send_fieldop_cot
 
 # import asyncio
 
 from icecream import ic
 
 from django.core.management import call_command
-from aidrequests.models import FieldOp
 
 
 def aid_request_postsave(aid_request, **kwargs):
@@ -200,3 +199,38 @@ def send_all_field_op_cot():
     except Exception as e:
         ic(f"Main error: {str(e)}")
         return f"Error in send_all_field_op_cot: {str(e)}"
+
+
+def send_fieldop_cot_task(field_op_slug, message_type='update'):
+    """Send COT message for a single field op marker."""
+    try:
+        field_op = FieldOp.objects.get(slug=field_op_slug)
+
+        # Skip if COT is disabled for this field operation
+        if field_op.disable_cot:
+            ic(f"COT disabled for field op: {field_op.slug}")
+            return 'COT disabled for field operation'
+
+        # Skip if no TAK server configured
+        if not field_op.tak_server:
+            ic(f"No TAK server configured for field op: {field_op.slug}")
+            return 'No TAK server configured for field operation'
+
+        try:
+            result = send_fieldop_cot(field_op.pk, message_type=message_type)
+            success_msg = f"Successfully sent {message_type} COT for field op {field_op.slug}"
+            ic(success_msg)
+            return success_msg
+        except Exception as e:
+            error_msg = f"Error sending COT for field op {field_op.slug}: {str(e)}"
+            ic(error_msg)
+            return error_msg
+
+    except FieldOp.DoesNotExist:
+        error_msg = f"Field op not found: {field_op_slug}"
+        ic(error_msg)
+        return error_msg
+    except Exception as e:
+        error_msg = f"Error in send_fieldop_cot_task: {str(e)}"
+        ic(error_msg)
+        return error_msg

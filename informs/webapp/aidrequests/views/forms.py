@@ -4,7 +4,7 @@ Forms
 
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Submit, Row, Column, Div, HTML, Fieldset
+from crispy_forms.layout import Layout, Submit, Row, Column, Div, HTML, Fieldset, Field
 from crispy_forms.bootstrap import FormActions
 
 from ..models import FieldOp
@@ -14,11 +14,12 @@ from ..models import FieldOp
 
 class FieldOpForm(forms.ModelForm):
     """ FieldOp Form """
+    next = forms.CharField(widget=forms.HiddenInput(), required=False)
 
     class Meta:
         """ meta """
         model = FieldOp
-        fields = ('name', 'slug', 'latitude', 'longitude', 'ring_size', 'tak_server', 'disable_cot')
+        fields = ('name', 'slug', 'latitude', 'longitude', 'ring_size', 'tak_server', 'disable_cot', 'aid_types', 'notify')
 
         widgets = {
             'latitude': forms.NumberInput(attrs={
@@ -99,6 +100,8 @@ class FieldOpForm(forms.ModelForm):
         # Modern layout with clear row organization
         self.helper.layout = Layout(
             Div(
+                # Hidden next field
+                Field('next', type='hidden'),
                 # Fieldset 1: Basic Information
                 Fieldset(
                     'Basic Information',
@@ -136,14 +139,20 @@ class FieldOpForm(forms.ModelForm):
                         Column(
                             Submit('submit', button_text, css_class='btn btn-warning me-2'),
                             HTML("""
-                                {% if object %}
-                                    <a href="{% url 'field_op_detail' slug=object.slug %}" class="btn btn-secondary">
+                                {% if form.next.value %}
+                                    <a href="{{ form.next.value }}" class="btn btn-secondary">
                                         <i class="bi bi-x-circle"></i> Cancel
                                     </a>
                                 {% else %}
-                                    <a href="{% url 'field_op_list' %}" class="btn btn-secondary">
-                                        <i class="bi bi-x-circle"></i> Cancel
-                                    </a>
+                                    {% if object %}
+                                        <a href="{% url 'field_op_detail' slug=object.slug %}" class="btn btn-secondary">
+                                            <i class="bi bi-x-circle"></i> Cancel
+                                        </a>
+                                    {% else %}
+                                        <a href="{% url 'field_op_list' %}" class="btn btn-secondary">
+                                            <i class="bi bi-x-circle"></i> Cancel
+                                        </a>
+                                    {% endif %}
                                 {% endif %}
                             """),
                             css_class='d-flex p-1'

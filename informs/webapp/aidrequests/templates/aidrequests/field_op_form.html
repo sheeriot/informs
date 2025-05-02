@@ -15,8 +15,8 @@
             </div>
         {% endif %}
         <div>
-            <a href="{% url 'field_op_list' %}" class="btn btn-outline-info btn-sm">
-                <i class="bi bi-truck"></i> <i class="bi bi-truck"></i> Field Ops
+            <a href="{{ request.GET.next|default:'/field-ops/' }}" class="btn btn-outline-info btn-sm">
+                <i class="bi bi-x-circle"></i> Cancel
             </a>
         </div>
     </div>
@@ -38,8 +38,10 @@
         </ul>
         </strong>
     </p>
-    <div>
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.GET.next|default:'/field-ops/' }}">
         {% crispy form %}
-    </div>
+    </form>
 </div>
 {% endblock %}
