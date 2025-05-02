@@ -32,6 +32,7 @@ from aidrequests.views.aid_location import (
      )
 
 from aidrequests.views.ajax_sendcot import sendcot_aidrequest, sendcot_checkstatus
+from aidrequests.views.ajax_fieldop import toggle_cot, send_cot
 
 from .views import home
 
@@ -44,8 +45,8 @@ urlpatterns = [
      path('admin/', admin.site.urls),
      path('accounts/', include('accounts.urls')),
      path('fieldop/', FieldOpListView.as_view(), name='field_op_list'),
-     path('fieldop/<slug:slug>/', FieldOpDetailView.as_view(), name='field_op_detail'),
      path('fieldop/create/', FieldOpCreateView.as_view(), name='field_op_create'),
+     path('fieldop/<slug:slug>/', FieldOpDetailView.as_view(), name='field_op_detail'),
      path('fieldop/<slug:slug>/update/', FieldOpUpdateView.as_view(), name='field_op_update'),
      # path('fieldop/map/', FieldOpMapView.as_view(), name='field_op_map'),
      # path('field_op/<int:pk>/delete/', FieldOpDeleteView.as_view(), name='field_op_delete'),
@@ -100,10 +101,10 @@ urlpatterns = [
           name='aid_request_addlog'
           ),
      path('api/<slug:field_op>/request/<int:pk>/update/', update_aid_request, name='aid_request_ajax_update'),
-     path('sendcot-aidrequest', sendcot_aidrequest, name='sendcot_aidrequest'),
-     path('<slug:field_op>/sendcot-aidrequest', sendcot_aidrequest, name='sendcot_aidrequest'),
-     path('sendcot-checkstatus', sendcot_checkstatus, name='sendcot_checkstatus'),
-     path('<slug:field_op>/task-status/<str:task_id>/', sendcot_checkstatus, name='task_status'),
+     path('api/<slug:field_op>/toggle-cot/', toggle_cot, name='toggle_cot'),
+     path('api/<slug:field_op>/send-cot/', send_cot, name='send_cot'),
+     path('api/<slug:field_op>/sendcot-aidrequest/', sendcot_aidrequest, name='sendcot_aidrequest'),
+     path('api/<slug:field_op>/sendcot-checkstatus/', sendcot_checkstatus, name='sendcot_checkstatus'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

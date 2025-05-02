@@ -5,22 +5,23 @@
         <h5 class="card-title mb-0">
             <i class="bi bi-truck me-2"></i>Field Operations List
         </h5>
-        <a href="{% url 'field_op_create' %}" class="btn btn-primary btn-sm">
-            <i class="bi bi-plus-circle me-1"></i>New Field Op
-        </a>
+        <div id="fieldOpsStatus" class="d-flex align-items-center me-auto ms-4">
+            <!-- Status messages will be inserted here -->
+        </div>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th class="ps-3">Name</th>
+                        <th class="ps-3">Name<br>Slug</th>
                         <th>Location <i class="bi bi-clipboard ms-1 text-secondary"></i></th>
-                        <th>Ring Size</th>
-                        <th>Aid Requests</th>
-                        <th>TAK Server</th>
+                        <th><span class="text-nowrap"><i class="bi bi-record-circle me-1"></i>Ring</span></th>
+                        <th><span class="text-nowrap"><i class="bi bi-life-preserver me-1"></i>Requests</span></th>
+                        <th>TAK</th>
                         <th>COT Status</th>
-                        <th class="text-end pe-3">Actions</th>
+                        <th>Alerts</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>

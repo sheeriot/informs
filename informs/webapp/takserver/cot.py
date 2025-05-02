@@ -107,7 +107,7 @@ class CotSender(pytak.QueueWorker):
             message_type = cot_info[0]
             fieldop_id = cot_info[1]
             aidrequest_csv = cot_info[2]
-            aidrequest_list = list(map(int, aidrequest_csv.split(',')))
+            aidrequest_list = list(map(int, aidrequest_csv.split(','))) if aidrequest_csv else []
             results = [len(aidrequest_list)]
 
             field_op = await FieldOp.objects.select_related('tak_server').aget(pk=fieldop_id)
@@ -257,44 +257,59 @@ async def asend_cot(fieldop_id=None, aidrequest_list=None, message_type=None):
         return f'Exception in cot_queues.run(): {e}'
     finally:
         if cot_queues:
-            # Ensure we clean up the connections
             try:
-                # First wait for any pending messages to be sent
+                # First wait for any pending messages to be sent (with timeout)
                 if hasattr(cot_queues, 'tx_queue'):
-                    while not cot_queues.tx_queue.empty():
-                        await asyncio.sleep(0.1)
+                    try:
+                        async with asyncio.timeout(5):  # 5 second timeout for queue drain
+                            while not cot_queues.tx_queue.empty():
+                                await asyncio.sleep(0.1)
+                    except asyncio.TimeoutError:
+                        ic("WARNING: Queue drain timed out - some messages may not have been sent")
 
-                # Cancel all tasks
+                # Cancel all tasks first
                 if hasattr(cot_queues, '_tasks'):
                     for task in cot_queues._tasks:
                         if not task.done():
                             task.cancel()
                             try:
-                                await task
-                            except asyncio.CancelledError:
+                                async with asyncio.timeout(2):  # 2 second timeout for task cancellation
+                                    await task
+                            except (asyncio.CancelledError, asyncio.TimeoutError):
                                 pass
 
-                # Close the workers if they exist
+                # Close the workers in sequence
                 if hasattr(cot_queues, 'tx_worker') and cot_queues.tx_worker:
                     if hasattr(cot_queues.tx_worker, 'writer') and cot_queues.tx_worker.writer:
-                        # Initiate graceful shutdown of the writer
-                        cot_queues.tx_worker.writer.close()
-                        # Wait for the writer to fully close and complete the TCP shutdown sequence
-                        await cot_queues.tx_worker.writer.wait_closed()
-                        # Add a small delay to allow for FIN-ACK completion
-                        await asyncio.sleep(0.5)
+                        try:
+                            async with asyncio.timeout(3):  # 3 second timeout for writer cleanup
+                                # Signal end of data
+                                cot_queues.tx_worker.writer.write_eof()
+                                await cot_queues.tx_worker.writer.drain()
+                                # Close the writer
+                                cot_queues.tx_worker.writer.close()
+                                await cot_queues.tx_worker.writer.wait_closed()
+                        except asyncio.TimeoutError:
+                            ic("WARNING: Writer cleanup timed out")
+                        except Exception as e:
+                            ic("ERROR: Writer cleanup failed:", e)
 
                 if hasattr(cot_queues, 'rx_worker') and cot_queues.rx_worker:
                     if hasattr(cot_queues.rx_worker, 'reader') and cot_queues.rx_worker.reader:
-                        cot_queues.rx_worker.reader.feed_eof()
-                        # Add a small delay to allow for cleanup
-                        await asyncio.sleep(0.1)
+                        try:
+                            cot_queues.rx_worker.reader.feed_eof()
+                        except Exception as e:
+                            ic("ERROR: Reader cleanup failed:", e)
 
-                # If the cot_queues has a close method, call it
-                if hasattr(cot_queues, 'close'):
-                    await cot_queues.close()
-                    # Add a small delay to allow for cleanup
-                    await asyncio.sleep(0.1)
+                # Final cot_queues cleanup
+                try:
+                    async with asyncio.timeout(2):  # 2 second timeout for final cleanup
+                        if hasattr(cot_queues, 'close'):
+                            await cot_queues.close()
+                except asyncio.TimeoutError:
+                    ic("WARNING: Final cleanup timed out")
+                except Exception as e:
+                    ic("ERROR: Final cleanup failed:", e)
 
             except Exception as cleanup_error:
                 ic('Error during cleanup:', cleanup_error)
@@ -366,3 +381,18 @@ async def setup_cotqueues(fieldop_id=None, aidrequest_list=[], message_type=None
             except Exception as cleanup_error:
                 ic('Error during cleanup after setup failure:', cleanup_error)
         raise RuntimeError(f"Failed to setup COT queues: {e}")
+
+
+def send_fieldop_cot(fieldop_id, message_type='update'):
+    """Send a COT message for a field op marker only."""
+    try:
+        result = asyncio.run(asend_cot(
+            fieldop_id=fieldop_id,
+            aidrequest_list=[],  # Empty list means only send field op marker
+            message_type=message_type
+        ))
+    except Exception as e:
+        ic('asyncio.run exception:', e)
+        return e
+
+    return result
