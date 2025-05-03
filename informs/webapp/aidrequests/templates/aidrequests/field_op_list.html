@@ -45,10 +45,4 @@
 <script src="{% static 'js/map_fieldops.js' %}?v={{static_version}}"></script>
 <!-- Field Ops List functionality -->
 <script src="{% static 'js/fieldops-list.js' %}"></script>
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const fieldOpsData = JSON.parse(document.getElementById('field-ops-data').textContent);
-        initFieldOpsMap(fieldOpsData);
-    });
-</script>
 {% endblock %}

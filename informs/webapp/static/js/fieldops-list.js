@@ -15,6 +15,13 @@ const fieldOpsConfig = {
 document.addEventListener('DOMContentLoaded', function() {
     if (fieldOpsConfig.debug) console.log('Initializing Field Ops List JS');
     initializeFieldOpsList();
+
+    // Initialize map if data is available
+    const fieldOpsDataElement = document.getElementById('field-ops-data');
+    if (fieldOpsDataElement) {
+        const fieldOpsData = JSON.parse(fieldOpsDataElement.textContent);
+        initFieldOpsMap(fieldOpsData);
+    }
 });
 
 function initializeFieldOpsList() {
@@ -32,6 +39,25 @@ function initializeFieldOpsList() {
     const takAlertButtons = document.querySelectorAll('.send-tak-alert');
     takAlertButtons.forEach(button => {
         button.addEventListener('click', handleTakAlert);
+    });
+
+    // Initialize copy coordinates buttons
+    const copyButtons = document.querySelectorAll('.copy-coordinates');
+    copyButtons.forEach(button => {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const coordinates = button.closest('span.position-relative').querySelector('.coordinates').dataset.coordinates;
+            navigator.clipboard.writeText(coordinates).then(() => {
+                const icon = button.querySelector('i');
+                icon.classList.remove('bi-clipboard');
+                icon.classList.add('bi-clipboard-check');
+                setTimeout(() => {
+                    icon.classList.remove('bi-clipboard-check');
+                    icon.classList.add('bi-clipboard');
+                }, 2000);
+            });
+        });
     });
 
     if (fieldOpsConfig.debug) console.log('Field Ops List initialized');
