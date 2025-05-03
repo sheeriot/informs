@@ -27,9 +27,26 @@
             </table>
         </div>
     </div>
-    <hr class="m-0" />
+    <hr class="m-0 mb-3" />
 
+    <!-- Actions Card -->
     <div class="mx-auto" style="max-width: 800px;">
+        <div class="fieldset-box p-3 border rounded mb-3">
+            <h5>Actions</h5>
+            <div class="d-flex gap-2">
+                <a href="{% url 'field_op_update' slug=object.slug %}" class="btn btn-warning">
+                    <i class="bi bi-pencil"></i> Edit Field Op
+                </a>
+                <a href="{% url 'field_op_list' %}" class="btn btn-outline-info text-dark">
+                    <i class="bi bi-truck"></i> Field Op List
+                </a>
+                <a href="{% url 'aid_request_list' field_op=object.slug %}" class="btn btn-outline-success text-dark">
+                    <i class="bi bi-life-preserver text-danger"></i> Aid Request List
+                    <span class="badge bg-success">{{ aid_request_count }}</span>
+                </a>
+            </div>
+        </div>
+
         <!-- Basic Information -->
         <div class="fieldset-box p-3 border rounded mb-3">
             <h5>Basic Information</h5>
@@ -101,19 +118,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="d-flex mb-3">
-            <a href="{% url 'field_op_update' slug=object.slug %}" class="btn btn-warning me-2">
-                <i class="bi bi-pencil"></i> Edit
-            </a>
-            <a href="{% url 'field_op_list' %}" class="btn btn-outline-info mx-2 text-dark">
-                <i class="bi bi-truck"></i> <i class="bi bi-truck"></i> Field Op List
-            </a>
-            <a href="{% url 'aid_request_list' field_op=object.slug %}" class="btn btn-outline-success mx-2 text-dark">
-                <i class="bi bi-life-preserver text-danger"></i> Aid Request List ({{ aid_request_count }})
-            </a>
         </div>
 
         <!-- Notify Destinations -->

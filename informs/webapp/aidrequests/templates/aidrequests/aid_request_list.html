@@ -5,6 +5,7 @@
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
+    <!-- Field Op Header -->
     <div class="d-flex align-items-center mb-3">
         <div class="d-flex align-items-center">
             <h2 class="mb-0 me-2">Aid Requests List</h2>
@@ -13,23 +14,59 @@
                 {{ field_op.name }}
             </a>
         </div>
-        <div class="ms-2">
-            {% if not field_op.tak_server %}
-                <span class="badge bg-secondary">
-                    <i class="bi bi-x-circle"></i> No TAK Server
-                </span>
-            {% elif field_op.disable_cot %}
-                <span class="badge bg-warning text-dark">
-                    <i class="bi bi-exclamation-triangle"></i> TAK Messaging Disabled
-                </span>
-            {% else %}
-                <div class="d-flex align-items-center gap-2">
-                    <button id="tak-alert-button" class="btn btn-danger">
-                        <i class="bi bi-bullseye me-1"></i>Alert TAK
-                    </button>
-                    <div id="tak-alert-status" class="d-none"></div>
+    </div>
+
+    <!-- Field Op Key Data -->
+    <div class="row mb-3">
+        <div class="col-auto">
+            <div class="card">
+                <div class="card-body p-2">
+                    <div class="d-flex gap-4">
+                        <div>
+                            <strong>Coordinates:</strong>
+                            <div class="input-group" style="max-width: 300px;">
+                                <input type="text" class="form-control text-dark font-monospace" id="coordinates"
+                                    value="{{ field_op.latitude }},{{ field_op.longitude }}" readonly>
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyCoordinates()">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <strong>TAK Server:</strong>
+                            <div class="text-dark">
+                                {% if field_op.tak_server %}
+                                    {{ field_op.tak_server }}
+                                {% else %}
+                                    <span class="text-muted">Not set</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div>
+                            <strong>Slug:</strong>
+                            <div class="text-dark font-monospace">{{ field_op.slug }}</div>
+                        </div>
+                        <div class="ms-auto">
+                            {% if not field_op.tak_server %}
+                                <span class="badge bg-secondary">
+                                    <i class="bi bi-x-circle"></i> No TAK Server
+                                </span>
+                            {% elif field_op.disable_cot %}
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-exclamation-triangle"></i> TAK Messaging Disabled
+                                </span>
+                            {% else %}
+                                <div class="d-flex align-items-center gap-2">
+                                    <button id="tak-alert-button" class="btn btn-danger">
+                                        <i class="bi bi-bullseye me-1"></i>Alert TAK
+                                    </button>
+                                    <div id="tak-alert-status" class="d-none"></div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-            {% endif %}
+            </div>
         </div>
     </div>
 
@@ -83,4 +120,22 @@
 <script src="{% static 'js/map_aidrequests.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/aidrequests-ajax.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/tak-alert.js' %}?v={{static_version}}"></script>
+
+<script>
+    function copyCoordinates() {
+        const coordInput = document.getElementById('coordinates');
+        coordInput.select();
+        coordInput.setSelectionRange(0, 99999); // For mobile devices
+        navigator.clipboard.writeText(coordInput.value).then(() => {
+            const btn = event.currentTarget;
+            const icon = btn.querySelector('i');
+            icon.classList.remove('bi-clipboard');
+            icon.classList.add('bi-clipboard-check');
+            setTimeout(() => {
+                icon.classList.remove('bi-clipboard-check');
+                icon.classList.add('bi-clipboard');
+            }, 2000);
+        });
+    }
+</script>
 {% endblock %}

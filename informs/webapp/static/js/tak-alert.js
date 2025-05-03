@@ -51,7 +51,7 @@ function initializeTakAlert() {
             const fieldOpSlug = document.body.dataset.fieldOpSlug;
 
             // Use existing sendcot-aidrequest endpoint with field_op slug
-            const response = await fetch(`/${fieldOpSlug}/sendcot-aidrequest`, {
+            const response = await fetch(`/api/${fieldOpSlug}/sendcot-aidrequest/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -112,7 +112,7 @@ async function pollTaskStatus(taskId, fieldOpSlug) {
     const poll = async () => {
         try {
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-            const response = await fetch(`/${fieldOpSlug}/task-status/${taskId}`, {
+            const response = await fetch(`/api/${fieldOpSlug}/sendcot-checkstatus/?sendcot_id=${taskId}`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
