@@ -230,16 +230,16 @@ div.aid-coords label {
     text-align: center;
 }
 
-/* Field operation status message - minimal custom styles */
+/* SendCOT status message container */
 .transition {
     transition: opacity 0.5s ease-in-out;
 }
 
-.field-op-status-container {
+.sendcot-statuscontainer {
     min-height: 24px;
 }
 
-.field-op-status-container.show {
+.sendcot-statuscontainer.show {
     opacity: 1 !important;
 }
 

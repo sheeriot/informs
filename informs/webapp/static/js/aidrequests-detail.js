@@ -2,7 +2,7 @@
 // Handles COT sending and status checking for aid requests
 
 const aidRequestConfig = {
-    debug: true,
+    debug: false,
     csrfToken: null,
     fieldOp: null,
     urls: {

@@ -33,10 +33,104 @@
                 </tr>
             </thead>
             <tbody id="aid-request-list-body">
-                {% for aid_request in object_list %}
-                    {% include "aidrequests/includes/aid_request_row.html" %}
+                {% for aid_request in aid_requests %}
+                    <tr class="aid-request-row {% if current_status_group and current_status_group != 'all' %}{% if current_status_group == 'active' and aid_request.status not in status_groups.active %}d-none{% elif current_status_group == 'inactive' and aid_request.status not in status_groups.inactive %}d-none{% endif %}{% endif %}"
+                        id="aid-request-row-{{ aid_request.id }}"
+                        data-id="{{ aid_request.id }}"
+                        data-aid-type="{{ aid_request.aid_type.slug }}"
+                        data-status="{{ aid_request.status }}"
+                        data-priority="{% if aid_request.priority %}{{ aid_request.priority }}{% else %}none{% endif %}">
+                        <td class="py-1">
+                            <a href="{% url 'aid_request_detail' field_op=field_op.slug pk=aid_request.pk %}">{{ aid_request.id }}</a>
+                        </td>
+                        <td class="py-1">{{ aid_request.requester_name|default:"Unknown" }}</td>
+                        <td class="py-1">{{ aid_request.aid_type.name|default:"Unknown" }}</td>
+                        <td class="py-1">
+                            <div class="btn-group">
+                                <button type="button"
+                                        class="btn btn-sm status-button {% if aid_request.status == 'new' %}btn-outline-warning{% elif aid_request.status == 'assigned' %}btn-outline-warning{% elif aid_request.status == 'resolved' %}btn-outline-success{% elif aid_request.status == 'closed' %}btn-outline-primary{% elif aid_request.status == 'rejected' %}btn-outline-danger{% else %}btn-outline-secondary{% endif %}"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false"
+                                        data-request-id="{{ aid_request.id }}"
+                                        data-current-status="{{ aid_request.status }}">
+                                    {% if aid_request.status == 'new' %}
+                                    <i class="bi bi-download"></i>
+                                    {% elif aid_request.status == 'assigned' %}
+                                    <i class="bi bi-clock"></i>
+                                    {% elif aid_request.status == 'resolved' %}
+                                    <i class="bi bi-hand-thumbs-up"></i>
+                                    {% elif aid_request.status == 'closed' %}
+                                    <i class="bi bi-door-closed"></i>
+                                    {% elif aid_request.status == 'rejected' %}
+                                    <i class="bi bi-hand-thumbs-down"></i>
+                                    {% else %}
+                                    <i class="bi bi-question-lg"></i>
+                                    {% endif %}
+                                    <span class="text-dark">{{ aid_request.get_status_display }}</span>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    {% for status_code, status_name in status_choices_list %}
+                                    <li><a class="dropdown-item status-option" href="#"
+                                          data-status="{{ status_code }}"
+                                          data-request-id="{{ aid_request.id }}">{{ status_name }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </td>
+                        <td class="py-1">
+                            <div class="btn-group">
+                                <button type="button"
+                                        class="btn btn-sm priority-button {% if aid_request.priority == 'high' %}btn-danger{% elif aid_request.priority == 'medium' %}btn-warning{% elif aid_request.priority == 'low' %}btn-primary{% else %}btn-secondary{% endif %}"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false"
+                                        data-request-id="{{ aid_request.id }}"
+                                        data-current-priority="{{ aid_request.priority }}">
+                                    {{ aid_request.get_priority_display }}
+                                </button>
+                                <ul class="dropdown-menu">
+                                    {% for priority_code, priority_name in priority_choices_list %}
+                                    <li><a class="dropdown-item priority-option" href="#"
+                                          data-priority="{{ priority_code }}"
+                                          data-request-id="{{ aid_request.id }}">{{ priority_name }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </td>
+                        <td class="py-1">
+                            {{ aid_request.street_address }},
+                            {{ aid_request.city }},
+                            {{ aid_request.state }}
+                            {% if aid_request.zip_code %}{{ aid_request.zip_code }}{% endif %}
+                        </td>
+                        <td class="py-1">
+                            {% if aid_request.updated_at %}
+                                {{ aid_request.updated_at|date:"M d, Y" }}
+                                <small class="text-muted d-block">{{ aid_request.updated_at|timesince }} ago</small>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="py-1">
+                            {{ aid_request.created_at|date:"M d, Y" }}
+                            <small class="text-muted d-block">{{ aid_request.created_at|timesince }} ago</small>
+                        </td>
+                        <td class="py-1">
+                            <div class="btn-group">
+                                <a href="{% url 'aid_request_detail' field_op=field_op.slug pk=aid_request.pk %}"
+                                   class="btn btn-sm btn-info"
+                                   aria-label="View aid request {{ aid_request.id }}">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'aid_request_update' field_op=field_op.slug pk=aid_request.pk %}"
+                                   class="btn btn-sm btn-warning"
+                                   aria-label="Edit aid request {{ aid_request.id }}">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
                 {% empty %}
-                <tr id="aid-request-empty-row" {% if object_list %}class="d-none"{% endif %}>
+                <tr id="aid-request-empty-row" {% if aid_requests %}class="d-none"{% endif %}>
                     <td colspan="9" class="text-center py-4 text-muted">No aid requests found</td>
                 </tr>
                 {% endfor %}

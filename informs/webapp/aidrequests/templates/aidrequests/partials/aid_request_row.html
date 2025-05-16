@@ -6,7 +6,9 @@
     data-aid-type="{{ aid_request.aid_type.slug }}"
     data-status="{{ aid_request.status }}"
     data-priority="{% if aid_request.priority %}{{ aid_request.priority }}{% else %}none{% endif %}">
-    <td class="py-1">{{ aid_request.id }}</td>
+    <td class="py-1">
+        <a href="{% url 'aid_request_detail' field_op=field_op.slug pk=aid_request.pk %}">{{ aid_request.id }}</a>
+    </td>
     <td class="py-1">{{ aid_request.requester_name|default:"Unknown" }}</td>
     <td class="py-1">{{ aid_request.aid_type.name|default:"Unknown" }}</td>
     <td class="py-1">
@@ -81,12 +83,12 @@
     <td class="py-1">
         <div class="btn-group">
             <a href="{% url 'aid_request_detail' field_op=field_op.slug pk=aid_request.pk %}"
-               class="btn btn-sm btn-outline-primary"
+               class="btn btn-sm btn-info"
                aria-label="View aid request {{ aid_request.id }}">
                 <i class="bi bi-eye"></i>
             </a>
             <a href="{% url 'aid_request_update' field_op=field_op.slug pk=aid_request.pk %}"
-               class="btn btn-sm btn-outline-secondary"
+               class="btn btn-sm btn-warning"
                aria-label="Edit aid request {{ aid_request.id }}">
                 <i class="bi bi-pencil"></i>
             </a>

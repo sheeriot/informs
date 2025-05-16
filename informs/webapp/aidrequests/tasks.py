@@ -12,13 +12,18 @@ from takserver.cot import send_cot_message, CotSender, pytak_send_cot
 import asyncio
 import pytak
 
-from icecream import ic
-
 from django.core.management import call_command
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
+import logging
+
+# Get the main application logger
+logger = logging.getLogger(__name__)
+
+# Get a dedicated COT logger
+cot_logger = logging.getLogger('cot')
 
 def aid_request_postsave(aid_request, **kwargs):
     # ic(kwargs)
@@ -49,7 +54,7 @@ def aid_request_postsave(aid_request, **kwargs):
                         aid_location.map_filename = map_filename
                         aid_location.save()
                     except Exception as e:
-                        ic(e)
+                        logger.error(f"Error saving map: {e}")
 
     if savetype == 'new':
         notify_emails = aid_request.field_op.notify.filter(type__startswith='email')
@@ -61,7 +66,7 @@ def aid_request_postsave(aid_request, **kwargs):
                 email_results += f"Email: {notify.name}: Status: {result['status']}"
                 email_results += f", ID: {result['id']}, Error: {result['error']}\n"
             except Exception as e:
-                ic(f"Error sending email: {e}")
+                logger.error(f"Error sending email: {e}")
                 email_results += f"Email Error: {e}\n"
         if email_results.endswith('\n'):
             email_results = email_results[:-1]
@@ -70,7 +75,7 @@ def aid_request_postsave(aid_request, **kwargs):
                 log_entry=f'{email_results}'
             )
         except Exception as e:
-            ic(f"Log Error: {e}")
+            logger.error(f"Error logging email results: {e}")
 
     return email_results
 
@@ -95,7 +100,7 @@ def aid_request_notify(aid_request, **kwargs):
                 results += f"Email: {notify.email}: Status: {result['status']}"
                 results += f", ID: {result['id']}, Error: {result['error']}\n |"
             except Exception as e:
-                ic(f"Error sending email: {e}")
+                logger.error(f"Error sending email: {e}")
                 results += f"Email Error: {e}\n"
 
     notifies = kwargs['kwargs']['notifies']
@@ -107,7 +112,7 @@ def aid_request_notify(aid_request, **kwargs):
             results += f"Email: {notify.email}: Status: {result['status']}"
             results += f", ID: {result['id']}, Error: {result['error']}\n"
         except Exception as e:
-            ic(f"Error sending email: {e}")
+            logger.error(f"Error sending email: {e}")
             results += f"Email Error: {e}\n"
 
     if results.endswith('\n'):
@@ -118,7 +123,7 @@ def aid_request_notify(aid_request, **kwargs):
             log_entry=f'{results}'
         )
     except Exception as e:
-        ic(f"Log Error: {e}")
+        logger.error(f"Error logging notification results: {e}")
 
     return results
 
@@ -179,7 +184,7 @@ def send_email(message):
             result = poller.result()
 
     except Exception as e:
-        ic(f"Error sending email: {e}")
+        logger.error(f"Error sending email: {e}")
         return e
 
     return result
@@ -263,20 +268,20 @@ def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests
             field_op = FieldOp.objects.get(slug=field_op_slug)
         except FieldOp.DoesNotExist:
             error_msg = f"Field op not found: {field_op_slug}"
-            ic(error_msg)
+            logger.error(error_msg)
             return error_msg
 
         # Validate mark_type
         if mark_type not in ['field', 'aid']:
             error_msg = f"Invalid mark_type: {mark_type}. Must be 'field' or 'aid'"
-            ic(error_msg)
+            logger.error(error_msg)
             return error_msg
 
         # Handle aid requests based on mark_type
         if mark_type == 'field':
             # For field marks, we don't need aid requests
             if aidrequest or aidrequests:
-                ic("Warning: aidrequest/aidrequests parameters ignored for field mark type")
+                logger.warning("Warning: aidrequest/aidrequests parameters ignored for field mark type")
             aid_request_ids = None
         else:  # mark_type == 'aid'
             # Convert single aidrequest to list if provided
@@ -293,14 +298,14 @@ def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests
                 ).values_list('id', flat=True)
 
                 if not active_requests:
-                    ic("No active aid requests found for field op")
+                    logger.info("No active aid requests found for field op")
                     aid_request_ids = []
                 else:
-                    ic(f"Found {len(active_requests)} active aid requests")
+                    logger.info(f"Found {len(active_requests)} active aid requests")
                     aid_request_ids = list(active_requests)
 
         # Log TAK server configuration
-        ic("TAK Server Config:", {
+        logger.info("TAK Server Config:", {
             'server': field_op.tak_server.dns_name if field_op.tak_server else None,
             'cert_private_path': field_op.tak_server.cert_private.path if field_op.tak_server else None,
             'cert_trust_path': field_op.tak_server.cert_trust.path if field_op.tak_server else None,
@@ -309,11 +314,11 @@ def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests
 
         # Common validations
         if field_op.disable_cot:
-            ic(f"COT disabled for field op: {field_op.slug}")
+            logger.info(f"COT disabled for field op: {field_op.slug}")
             return 'COT disabled for field operation'
 
         if not field_op.tak_server:
-            ic(f"No TAK server configured for field op: {field_op.slug}")
+            logger.info(f"No TAK server configured for field op: {field_op.slug}")
             return 'No TAK server configured for field operation'
 
         # Use the synchronous pytak_send_cot function from takserver.cot
@@ -321,7 +326,7 @@ def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests
 
         if isinstance(result, Exception):
             error_msg = f"Error sending COT: {str(result)}"
-            ic(error_msg)
+            logger.error(error_msg)
             return error_msg
 
         # Return appropriate success message
@@ -332,5 +337,56 @@ def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests
 
     except Exception as e:
         error_msg = f"Error in send_cot_task: {str(e)}"
-        ic(error_msg)
+        logger.error(error_msg)
         return error_msg
+
+
+def send_aid_request_email(aid_request, field_op, template_name, subject, **kwargs):
+    try:
+        # Placeholder for email sending logic
+        logger.info(f"[Email] Sending {template_name} for aid request {aid_request.pk} to field op {field_op.slug}")
+        pass
+    except Exception as e:
+        logger.error(f"[Email] Failed to send {template_name} for aid request {aid_request.pk}: {e}")
+        raise
+
+def send_aid_request_update_email(aid_request, field_op, template_name, subject, **kwargs):
+    try:
+        # Placeholder for update email sending logic
+        logger.info(f"[Email] Sending update {template_name} for aid request {aid_request.pk} to field op {field_op.slug}")
+        pass
+    except Exception as e:
+        logger.error(f"[Email] Failed to send update {template_name} for aid request {aid_request.pk}: {e}")
+        raise
+
+def send_aid_request_cot(aid_request, field_op):
+    try:
+        # Check if COT is enabled
+        if field_op.disable_cot:
+            cot_logger.info(f"[COT] Disabled for field op: {field_op.slug}")
+            return
+        if not field_op.tak_server:
+            cot_logger.info(f"[COT] No TAK server configured for field op: {field_op.slug}")
+            return
+        # Placeholder for COT sending logic
+        cot_logger.info(f"[COT] Sending aid request {aid_request.pk} to TAK server {field_op.tak_server.dns_name}")
+        pass
+    except Exception as e:
+        cot_logger.error(f"[COT] Failed to send aid request {aid_request.pk}: {e}")
+        raise
+
+def send_field_op_cot(field_op, mark_type='field_op'):
+    try:
+        # Check if COT is enabled
+        if field_op.disable_cot:
+            cot_logger.info(f"[COT] Disabled for field op: {field_op.slug}")
+            return
+        if not field_op.tak_server:
+            cot_logger.info(f"[COT] No TAK server configured for field op: {field_op.slug}")
+            return
+        # Placeholder for field op COT sending logic
+        cot_logger.info(f"[COT] Sending field op marker for {field_op.slug} to TAK server {field_op.tak_server.dns_name}")
+        pass
+    except Exception as e:
+        cot_logger.error(f"[COT] Failed to send field op marker for {field_op.slug}: {e}")
+        raise

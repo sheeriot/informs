@@ -10,11 +10,11 @@ import json
 from decimal import Decimal
 import pandas as pd
 from django.views.generic import ListView
+import logging
 
 from ..models import FieldOp, AidRequest, AidType
 
-from icecream import ic
-
+logger = logging.getLogger(__name__)
 
 # Custom JSON encoder to handle Decimal objects
 class DecimalEncoder(json.JSONEncoder):
@@ -59,51 +59,52 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = AidRequest
     template_name = 'aidrequests/aid_request_list.html'
     permission_required = 'aidrequests.view_aidrequest'
+    context_object_name = 'aid_requests'  # More semantic name than object_list
+
+    def setup(self, request, *args, **kwargs):
+        """Initialize common attributes used by all view methods"""
+        super().setup(request, *args, **kwargs)
+        self.field_op = get_object_or_404(FieldOp, slug=kwargs.get('field_op'))
+        self.aid_requests = self.field_op.aid_requests.all()
+        self.status = kwargs.get('status')
+        self.status_group = kwargs.get('status_group', 'active')
+        # Initialize counts to 0
+        self.active_count = 0
+        self.inactive_count = 0
+        self.total_count = 0
+        self.filtered_count = 0
 
     def get_queryset(self):
-        field_op_slug = self.kwargs.get('field_op')
-        status = self.kwargs.get('status')  # Individual status if provided
-        status_group = self.kwargs.get('status_group', 'active')  # Default to active if not specified
-
-        # Start with all requests for this field op
-        queryset = AidRequest.objects.filter(field_op__slug=field_op_slug)
-
-        # Apply status filtering
-        if status:
-            # If specific status provided, filter to just that status
-            queryset = queryset.filter(status=status)
-        elif status_group == 'active':
-            # If no specific status but status_group is active (or default)
-            queryset = queryset.filter(status__in=AidRequest.ACTIVE_STATUSES)
-        elif status_group == 'inactive':
-            # If status_group is inactive
-            queryset = queryset.filter(status__in=AidRequest.INACTIVE_STATUSES)
-
-        ic("AidRequestListView Query Parameters:", {
-            'field_op_slug': field_op_slug,
-            'status': status,
-            'status_group': status_group,
-            'filtered_count': queryset.count()
-        })
-
-        return queryset
+        """Return all aid requests - filtering handled by template visibility"""
+        return self.aid_requests
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        field_op = FieldOp.objects.get(slug=self.kwargs.get('field_op'))
-        status = self.kwargs.get('status')
-        status_group = self.kwargs.get('status_group', 'active')  # Default to active if not specified
 
         # Store the current filter state
         context.update({
-            'field_op': field_op,
-            'current_status': status,
-            'current_status_group': status_group,
-            'azure_maps_key': settings.AZURE_MAPS_KEY
+            'field_op': self.field_op,
+            'current_status': self.status,
+            'current_status_group': self.status_group,
+            'azure_maps_key': settings.AZURE_MAPS_KEY,
+            # Explicit filter states
+            'filter_state': {
+                'statuses': self.status if self.status else (
+                    AidRequest.INACTIVE_STATUSES if self.status_group == 'inactive'
+                    else AidRequest.ACTIVE_STATUSES
+                ),
+                'aid_types': 'all',  # Default to all if not specified
+                'priorities': 'all'   # Default to all if not specified
+            },
+            # Status group definitions from model
+            'status_groups': {
+                'active': AidRequest.ACTIVE_STATUSES,
+                'inactive': AidRequest.INACTIVE_STATUSES
+            }
         })
 
         # Get all aid types for client-side filtering
-        aid_types = field_op.aid_types.all().distinct()
+        aid_types = self.field_op.aid_types.all().distinct()
         aid_types_data = [{
             'id': aid_type.id,
             'name': aid_type.name,
@@ -126,7 +127,15 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         })
 
         # Get ALL aid requests and convert to DataFrame for counting
-        all_aid_requests = AidRequest.objects.filter(field_op__slug=field_op.slug)
+        all_aid_requests = AidRequest.objects.filter(field_op__slug=self.field_op.slug)
+
+        # Validate filter state - prevent 'none' filters that would result in empty sets
+        if context['filter_state']['aid_types'] == 'none' or context['filter_state']['priorities'] == 'none':
+            if logger:
+                logger.warning("'none' filter detected, defaulting to 'all' to prevent empty result set")
+            context['filter_state']['aid_types'] = 'all' if context['filter_state']['aid_types'] == 'none' else context['filter_state']['aid_types']
+            context['filter_state']['priorities'] = 'all' if context['filter_state']['priorities'] == 'none' else context['filter_state']['priorities']
+
         df = pd.DataFrame([{
             'id': ar.pk,
             'status': ar.status,
@@ -142,9 +151,9 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
         if not df.empty:
             # First apply status filtering to match the queryset
-            if status:
-                filtered_mask = df['status'] == status
-            elif status_group == 'inactive':
+            if self.status:
+                filtered_mask = df['status'] == self.status
+            elif self.status_group == 'inactive':
                 filtered_mask = df['status'].isin(AidRequest.INACTIVE_STATUSES)
             else:  # active or default
                 filtered_mask = df['status'].isin(AidRequest.ACTIVE_STATUSES)
@@ -162,11 +171,11 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
             # Calculate status counts
             status_counts = {}
             for status_code, status_name in AidRequest.STATUS_CHOICES:
-                matching_status = df[df['status'] == status_code]
+                matching_status = df.loc[df['status'] == status_code]
                 status_counts[status_name] = {
                     'value': status_code,
                     'total': len(matching_status),  # Total count for this status
-                    'count': len(matching_status[filtered_mask])  # Filtered count
+                    'count': len(matching_status.loc[filtered_mask])  # Filtered count
                 }
 
             # Calculate aid type counts based on filtered data
@@ -179,7 +188,7 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
             # Calculate priority counts based on filtered data
             priority_counts = {}
             for priority_code, priority_name in AidRequest.PRIORITY_CHOICES:
-                matching_priority = filtered_df[filtered_df['priority'].fillna('null') == (priority_code or 'null')]
+                matching_priority = filtered_df.loc[filtered_df['priority'].fillna('null') == (priority_code or 'null')]
                 priority_counts[priority_name] = {
                     'value': priority_code if priority_code is not None else 'none',
                     'total': len(matching_priority),
@@ -192,12 +201,12 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
             group_counts = {
                 'active': {
-                    'total': len(df[active_mask]),
-                    'filtered': len(filtered_df[filtered_df['status'].isin(AidRequest.ACTIVE_STATUSES)])
+                    'total': len(df.loc[active_mask]),
+                    'filtered': len(filtered_df.loc[filtered_df['status'].isin(AidRequest.ACTIVE_STATUSES)])
                 },
                 'inactive': {
-                    'total': len(df[inactive_mask]),
-                    'filtered': len(filtered_df[filtered_df['status'].isin(AidRequest.INACTIVE_STATUSES)])
+                    'total': len(df.loc[inactive_mask]),
+                    'filtered': len(filtered_df.loc[filtered_df['status'].isin(AidRequest.INACTIVE_STATUSES)])
                 }
             }
             context['group_counts'] = group_counts
@@ -211,10 +220,10 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                 max_lon = max(float(loc.longitude) for loc in valid_locations)
 
                 # Add field op location to bounds
-                min_lat = float(min(min_lat, field_op.latitude))
-                max_lat = float(max(max_lat, field_op.latitude))
-                min_lon = float(min(min_lon, field_op.longitude))
-                max_lon = float(max(max_lon, field_op.longitude))
+                min_lat = float(min(min_lat, self.field_op.latitude))
+                max_lat = float(max(max_lat, self.field_op.latitude))
+                min_lon = float(min(min_lon, self.field_op.longitude))
+                max_lon = float(max(max_lon, self.field_op.longitude))
 
                 # Add padding
                 lat_span = max_lat - min_lat
@@ -235,8 +244,8 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                 })
             else:
                 # Use field op location if no valid locations
-                min_lat = max_lat = float(field_op.latitude)
-                min_lon = max_lon = float(field_op.longitude)
+                min_lat = max_lat = float(self.field_op.latitude)
+                min_lon = max_lon = float(self.field_op.longitude)
         else:
             # Handle empty DataFrame case
             context.update({
@@ -249,8 +258,8 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                 'aid_type_counts': {aid_type['name']: {'count': 0, 'value': aid_type['slug']}
                                   for aid_type in aid_types_data}
             })
-            min_lat = max_lat = float(field_op.latitude)
-            min_lon = max_lon = float(field_op.longitude)
+            min_lat = max_lat = float(self.field_op.latitude)
+            min_lon = max_lon = float(self.field_op.longitude)
 
         # Add ALL aid requests to JSON data for JavaScript
         aid_requests_data = [{
@@ -287,16 +296,21 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
             }
         } for ar in all_aid_requests]
 
+        # Update the initial filter state after counts are calculated
         context.update({
-            'aid_requests_json': json.dumps(aid_requests_data, cls=DecimalEncoder),
+            'aid_requests_json': json.dumps(aid_requests_data, cls=DecimalEncoder, indent=2),
             'status_counts': status_counts if 'status_counts' in locals() else {},
             'priority_counts': priority_counts if 'priority_counts' in locals() else {},
             'aid_type_counts': aid_type_counts if 'aid_type_counts' in locals() else {},
-            'status_groups': {
-                'active': AidRequest.ACTIVE_STATUSES,
-                'inactive': AidRequest.INACTIVE_STATUSES
-            }
         })
+
+        # Now create initial filter state with the updated counts
+        context['initial_filter_state'] = json.dumps({
+            'statusGroup': self.status_group,
+            'activeCount': context.get('active_count', 0),
+            'inactiveCount': context.get('inactive_count', 0),
+            'totalCount': context.get('total_count', 0)
+        }, indent=2)
 
         return context
 
@@ -335,6 +349,7 @@ def update_aid_request(request, field_op, pk):
         return JsonResponse(response_data)
 
     except Exception as e:
+        logger.error(f"Error updating aid request: {e}")
         return JsonResponse({
             'success': False,
             'error': str(e)

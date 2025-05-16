@@ -4,10 +4,54 @@ AidRequests Admin
 
 from django.contrib import admin
 from django.db.models import Count
+from django.contrib import messages
+from django.utils.html import format_html
 
 from .models import FieldOp, FieldOpNotify, AidType, AidRequest, AidRequestLog, AidLocation
 from .views.aid_location_forms import AidLocationInline
 from .views.aid_request_forms import AidRequestInline
+
+
+def validate_aid_types(modeladmin, request, queryset):
+    """Admin action to validate aid type configurations"""
+    mismatches_found = False
+
+    # If no field ops selected, check all of them
+    field_ops = queryset if queryset.exists() else FieldOp.objects.all()
+
+    for field_op in field_ops:
+        # Get configured aid types
+        configured_aid_types = set(field_op.aid_types.values_list('name', flat=True))
+
+        # Get aid types actually used in requests
+        used_aid_types = set(
+            AidRequest.objects.filter(field_op=field_op)
+            .values_list('aid_type__name', flat=True)
+            .distinct()
+        )
+
+        # Find aid types used but not configured
+        unconfigured_types = used_aid_types - configured_aid_types
+
+        if unconfigured_types:
+            mismatches_found = True
+            message = format_html(
+                'Field Operation <strong>{}</strong> ({}) has unconfigured aid types in use:<br>'
+                'Unconfigured: {}<br>'
+                'Configured: {}<br>'
+                'Used: {}',
+                field_op.name,
+                field_op.slug,
+                ', '.join(unconfigured_types),
+                ', '.join(configured_aid_types),
+                ', '.join(used_aid_types)
+            )
+            messages.error(request, message)
+
+    if not mismatches_found:
+        messages.success(request, 'All aid type configurations are valid!')
+
+validate_aid_types.short_description = "Validate aid type configurations"
 
 
 class AidRequestAdmin(admin.ModelAdmin):
@@ -50,6 +94,7 @@ class FieldOpAdmin(admin.ModelAdmin):
     """fieldops admin"""
 
     list_display = ('slug', 'name', 'tak_server', 'notify_count', 'latitude', 'longitude', 'tak_server', 'disable_cot')
+    actions = [validate_aid_types]
 
     readonly_fields = (
         'latitude',
@@ -63,7 +108,6 @@ class FieldOpAdmin(admin.ModelAdmin):
     inlines = [AidRequestInline]
 
     filter_horizontal = ('aid_types', 'notify')
-    # filter_vertical = ('notify',)
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -140,14 +184,6 @@ class AidRequestLogAdmin(admin.ModelAdmin):
 class FieldOpNotifyAdmin(admin.ModelAdmin):
     list_display = ('name', 'type', 'email', 'sms_number')
     search_fields = ('name', 'type', 'email', 'sms_number')
-
-    # def save_model(self, request, obj, form, change):
-    #     # Set created_by only when creating a new object
-    #     if not obj.pk:
-    #         obj.created_by = request.user
-    #     # Set updated_by on every save
-    #     obj.updated_by = request.user
-    #     super().save_model(request, obj, form, change)
 
 
 class AidTypeAdmin(admin.ModelAdmin):

@@ -9,12 +9,14 @@ import pytak
 from configparser import ConfigParser
 from io import StringIO
 import logging
-from icecream import ic
+from datetime import datetime
 
 # import time
 
 # Get the COT logger
 cot_logger = logging.getLogger('cot')
+
+logger = logging.getLogger(__name__)
 
 class CotSender(pytak.QueueWorker):
     """
@@ -49,21 +51,17 @@ class CotSender(pytak.QueueWorker):
         try:
             # Build all messages
             messages = await self.cot_maker.build_messages()
-            ic(f"Built {len(messages)} COT messages")
-            cot_logger.info(f"{self._task_name}: Built {len(messages)} COT messages")
+            logger.info(f"{self._task_name}: Built {len(messages)} COT messages")
 
             # Queue each message
             for idx, message in enumerate(messages, 1):
                 await self.queue.put(message)
-                ic(f"Queued message {idx}/{len(messages)}")
-                ic(f"Queue depth: {self.queue.qsize()}")
-                cot_logger.debug(f"{self._task_name}: Queued message {idx}/{len(messages)}, depth: {self.queue.qsize()}")
+                logger.debug(f"{self._task_name}: Queued message {idx}/{len(messages)}, depth: {self.queue.qsize()}")
 
             return len(messages)
 
         except Exception as e:
-            ic(f"Error in handle_data: {e}")
-            cot_logger.error(f"{self._task_name}: Error in handle_data: {e}")
+            logger.error(f"{self._task_name}: Error in handle_data: {e}")
             raise
 
     async def cleanup(self):
@@ -71,8 +69,7 @@ class CotSender(pytak.QueueWorker):
         if self._cleanup_complete:
             return
 
-        ic(f"Starting {self._task_name} cleanup...")
-        cot_logger.info(f"Starting {self._task_name} cleanup...")
+        logger.info(f"Starting {self._task_name} cleanup...")
 
         try:
             # Wait for queue to empty with timeout
@@ -81,22 +78,18 @@ class CotSender(pytak.QueueWorker):
                 current_time = asyncio.get_event_loop().time()
                 if current_time - start_time > self._cleanup_timeout:
                     msg = f"WARNING: Queue drain timeout after {self._cleanup_timeout}s - {self.queue.qsize()} messages remaining"
-                    ic(msg)
-                    cot_logger.warning(f"{self._task_name}: {msg}")
+                    logger.warning(f"{self._task_name}: {msg}")
                     break
 
-                ic(f"Waiting for queue to empty. Current size: {self.queue.qsize()}")
-                cot_logger.debug(f"{self._task_name}: Waiting for queue to empty. Size: {self.queue.qsize()}")
+                logger.debug(f"{self._task_name}: Waiting for queue to empty. Size: {self.queue.qsize()}")
                 await asyncio.sleep(0.1)
 
             # Mark cleanup as complete
             self._cleanup_complete = True
-            ic(f"{self._task_name} cleanup complete")
-            cot_logger.info(f"{self._task_name} cleanup complete")
+            logger.info(f"{self._task_name} cleanup complete")
 
         except Exception as e:
-            ic(f"CRITICAL: Error during {self._task_name} cleanup:", e)
-            cot_logger.error(f"CRITICAL: Error during {self._task_name} cleanup: {e}")
+            logger.error(f"CRITICAL: Error during {self._task_name} cleanup: {e}")
             raise
 
     async def run(self):
@@ -104,22 +97,18 @@ class CotSender(pytak.QueueWorker):
         try:
             # Process messages
             message_count = await self.handle_data()
-            ic(f"Processed {message_count} messages")
-            cot_logger.info(f"{self._task_name}: Processed {message_count} messages")
+            logger.info(f"{self._task_name}: Processed {message_count} messages")
 
             # Wait for queue to empty
             while not self.queue.empty():
+                logger.debug(f"{self._task_name}: Waiting for queue to empty in run(). Size: {self.queue.qsize()}")
                 await asyncio.sleep(0.1)
-                ic(f"Waiting for queue to empty in run(). Current size: {self.queue.qsize()}")
-                cot_logger.debug(f"{self._task_name}: Waiting for queue to empty in run(). Size: {self.queue.qsize()}")
 
-            ic("Queue processing complete")
-            cot_logger.info(f"{self._task_name}: Queue processing complete")
+            logger.info(f"{self._task_name}: Queue processing complete")
             return message_count
 
         except Exception as e:
-            ic(f"Error in {self._task_name}.run(): {e}")
-            cot_logger.error(f"Error in {self._task_name}.run(): {e}")
+            logger.error(f"Error in {self._task_name}.run(): {e}")
             raise
         finally:
             # Ensure cleanup happens
@@ -172,7 +161,7 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None):
         }
 
         # Log TAK server configuration
-        ic("TAK Server Config:", {
+        logger.info("TAK Server Config:", {
             'server': field_op.tak_server.dns_name if field_op.tak_server else None,
             'cert_private_path': field_op.tak_server.cert_private.path if field_op.tak_server else None,
             'cert_trust_path': field_op.tak_server.cert_trust.path if field_op.tak_server else None,
@@ -197,7 +186,7 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None):
                 return "COT messages sent successfully"
 
             except Exception as e:
-                ic(f"Error in _run_cot: {e}")
+                logger.error(f"Error in _run_cot: {e}")
                 raise
 
             finally:
@@ -205,15 +194,15 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None):
                 if cot_queues and hasattr(cot_queues, 'close'):
                     try:
                         await cot_queues.close()
-                        ic("PyTAK connection closed successfully")
+                        logger.info("PyTAK connection closed successfully")
                     except Exception as e:
-                        ic(f"Warning: Error during PyTAK connection closure: {e}")
+                        logger.warning(f"Warning: Error during PyTAK connection closure: {e}")
 
         # Run the async function in a new event loop
         return asyncio.run(_run_cot())
 
     except Exception as e:
-        ic(f"Error in pytak_send_cot: {e}")
+        logger.error(f"Error in pytak_send_cot: {e}")
         return e
 
 
@@ -245,7 +234,7 @@ async def send_cot_message(data, tak_server):
                     while not cot_queues.tx_queue.empty():
                         await asyncio.sleep(0.1)
             except asyncio.TimeoutError:
-                ic("WARNING: Queue drain timed out")
+                logger.warning("WARNING: Queue drain timed out")
 
             return True
 
@@ -255,5 +244,5 @@ async def send_cot_message(data, tak_server):
                 await cot_queues.close()
 
     except Exception as e:
-        ic("Error sending COT message:", e)
+        logger.error("Error sending COT message:", e)
         raise

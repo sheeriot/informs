@@ -57,10 +57,20 @@
                                 </span>
                             {% else %}
                                 <div class="d-flex align-items-center gap-2">
-                                    <button id="tak-alert-button" class="btn btn-danger">
-                                        <i class="bi bi-bullseye me-1"></i>Alert TAK
-                                    </button>
-                                    <div id="tak-alert-status" class="d-none"></div>
+                                    <div class="position-relative">
+                                        <button id="tak-alert-button" class="btn btn-danger">
+                                            <i class="bi bi-bullseye me-1"></i>Alert TAK
+                                        </button>
+                                        <!-- Status message container -->
+                                        <div class="sendcot-statuscontainer opacity-0 transition position-absolute start-0" style="z-index: 1000;">
+                                            <div class="alert alert-info py-1 px-2 mb-0 small d-none">
+                                                <span class="status-message">&nbsp;</span>
+                                                <!-- Hidden placeholder text to help determine minimum width -->
+                                                <span class="invisible position-absolute">Status field for TAK server connection state and health updates</span>
+                                            </div>
+                                        </div>
+                                        <div id="tak-alert-status" class="d-none"></div>
+                                    </div>
                                 </div>
                             {% endif %}
                         </div>
@@ -91,14 +101,9 @@
         {{ aid_requests_json|safe }}
     </script>
 
-    <!-- Initial state -->
-    <script id="initial-state" type="application/json">
-        {
-            "statusGroup": "{{ current_status_group }}",
-            "activeCount": {{ active_count }},
-            "inactiveCount": {{ inactive_count }},
-            "totalCount": {{ total_count }}
-        }
+    <!-- Initial filter state -->
+    <script id="filter-state-initial" type="application/json">
+        {{ initial_filter_state|safe }}
     </script>
 
     <!-- Filter data -->

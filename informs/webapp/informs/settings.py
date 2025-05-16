@@ -18,6 +18,12 @@ import configparser
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Create logs directory path
+LOGS_DIR = BASE_DIR / 'logs'
+
+# Ensure logs directory exists
+LOGS_DIR.mkdir(exist_ok=True)
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 ENV_NAME = os.environ.get('ENV_NAME', '')
@@ -267,13 +273,13 @@ LOGGING = {
         'file': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'app.log'),
+            'filename': os.path.join(LOGS_DIR, 'app.log'),
             'formatter': 'verbose',
         },
         'cot_file': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'cot_messages.log'),
+            'filename': os.path.join(LOGS_DIR, 'cot_messages.log'),
             'formatter': 'cot_format',
         },
         "null": {
