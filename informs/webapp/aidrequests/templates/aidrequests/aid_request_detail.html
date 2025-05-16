@@ -121,15 +121,28 @@
                 <i class="bi bi-send-fill"></i> Email
             </a>
             |
+            <div id="aid-request-config"
+                data-csrf-token="{{ csrf_token }}"
+                data-field-op="{{ field_op.slug }}"
+                data-url-send-cot="{% url 'send_cot' field_op=field_op.slug %}"
+                data-url-check-status="{% url 'sendcot_checkstatus' field_op=field_op.slug %}">
+            </div>
             <input type="hidden" id="aidrequest_id" value="{{ aid_request.pk }}">
-            <button id="send-cot-button" class="btn btn-danger  btn-sm mx-1 p-1">
-                <i class="bi bi-bullseye"></i> Alert TAK
-            </button>
-            <button id="delete-cot-button" class="btn btn-success btn-sm mx-1 p-1">
-                <i class="bi bi-bullseye"></i> Clear TAK
-            </button>
-            <div class="d-inline-flex align-items-left mx-1 p-0 text-dark font-monospace">
-                <div id="send-cot-status"></div>
+            <div class="position-relative">
+                <button id="send-cot-button" class="btn btn-danger btn-sm mx-1 p-1">
+                    <i class="bi bi-bullseye"></i> Alert TAK
+                </button>
+                <!-- Status message container -->
+                <div class="sendcot-statuscontainer opacity-0 transition position-absolute start-0" style="z-index: 1000;">
+                    <div class="alert alert-info py-1 px-2 mb-0 small d-none">
+                        <span class="status-message">&nbsp;</span>
+                        <!-- Hidden placeholder text to help determine minimum width -->
+                        <span class="invisible position-absolute">Status field for TAK server connection state and health updates</span>
+                    </div>
+                </div>
+                <div class="d-inline-flex align-items-left mx-1 p-0 text-dark font-monospace">
+                    <div id="send-cot-status"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -321,85 +334,8 @@
         </tr>
     </table>
 </div>
-<!-- javascript to support send_cot and poll -->
-<script>
-    var csrftoken = '{{ csrf_token }}';
-    $(document).ready(function(){
-        $("#send-cot-button").click(function(){
-            let aidrequest_id = $("#aidrequest_id").val()
-            $("#send-cot-status").text("Sending COT..")
-            $.ajax({
-                url: "{% url 'sendcot_aidrequest' %}",
-                type: "POST",
-                data: JSON.stringify({ aidrequest_id: aidrequest_id }),  // Send as JSON
-                contentType: "application/json",  // Set correct content type
-                headers: { "X-CSRFToken": csrftoken },  // Set CSRF token in headers
-                success: function(data) {
-                    if (data.status === "error") {
-                        $("#send-cot-status").text("Error: " + data.message)
-                        return
-                    }
-                    let sendcot_id = data.sendcot_id
-                    console.log(data)
-                    pollSendCotStatus(sendcot_id)
-                },
-                error: function(xhr, status, error) {
-                    console.error("AJAX Error:", error)
-                }
-            })
-            //$.post("{% url 'sendcot_aidrequest' %}", { aidrequest_id: aidrequest_id, csrfmiddlewaretoken: csrftoken }, function(data){
-                //if (data.status === "error") {
-                //    $("#send-cot-status").text("Error: " + data.message)
-                //    return
-                //}
-                //let sendcot_id = data.sendcot_id
-                //pollSendCotStatus(sendcot_id)
-            //})
-        })
-        $("#delete-cot-button").click(function(){
-            let aidrequest_id = $("#aidrequest_id").val()
-            $("#send-cot-status").text("Sending COT..")
-            // $.post("{% url 'sendcot_aidrequest' %}", { aidrequest_id: aidrequest_id, csrfmiddlewaretoken: csrftoken, message_type: 'remove' }, function(data){
-            //     if (data.status === "error") {
-            //         $("#send-cot-status").text("Error: " + data.message)
-            //         return
-            //     }
-            //     let sendcot_id = data.sendcot_id
-            //     pollSendCotStatus(sendcot_id)
-            // })
-            $.ajax({
-                url: "{% url 'sendcot_aidrequest' %}",
-                type: "POST",
-                data: JSON.stringify({ message_type: 'remove', aidrequest_id: aidrequest_id }),  // Send as JSON
-                contentType: "application/json",  // Set correct content type
-                headers: { "X-CSRFToken": csrftoken },  // Set CSRF token in headers
-                success: function(data) {
-                    if (data.status === "error") {
-                        $("#send-cot-status").text("Error: " + data.message)
-                        return
-                    }
-                    let sendcot_id = data.sendcot_id
-                    console.log(data)
-                    pollSendCotStatus(sendcot_id)
-                },
-                error: function(xhr, status, error) {
-                    console.error("AJAX Error:", error)
-                }
-            })
-        })
-        function pollSendCotStatus(sendcot_id) {
-            let interval = setInterval(function(){
-                $.get("{% url 'sendcot_checkstatus' %}", {sendcot_id: sendcot_id}, function(response){
-                    console.log(response)
-                    if (response.status === "done") {
-                        $("#send-cot-status").text(response.result)
-                        clearInterval(interval)
-                    } else {
-                        $("#send-cot-status").text("Sending COT...")
-                    }
-                })
-            }, 2000)
-        }
-    })
-</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/aidrequests-detail.js' %}"></script>
 {% endblock %}

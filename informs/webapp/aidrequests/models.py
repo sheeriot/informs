@@ -284,23 +284,21 @@ class AidRequest(TimeStampedModel):
 
         # Always send COT on save
         from django_q.tasks import async_task
-        from .tasks import aidrequest_takcot
+        from .tasks import send_cot_task
         updated_at_stamp = self.updated_at.strftime('%Y%m%d%H%M%S')
         task_name = f"AidRequest{self.pk}-{'New' if is_new else 'Update'}-SendCot-{updated_at_stamp}"
 
-        # Separate task arguments from Django-Q options
-        task_args = {
-            'aidrequest_id': self.pk,
-            'message_type': 'update'
-        }
-        q_options = {
-            'task_name': task_name
+        # Start the async task with appropriate parameters
+        task_kwargs = {
+            'field_op_slug': self.field_op.slug,
+            'mark_type': 'aid',
+            'aidrequest': self.pk  # Single ID uses singular parameter name
         }
 
         async_task(
-            aidrequest_takcot,
-            **task_args,
-            q_options=q_options
+            send_cot_task,
+            task_name=task_name,
+            **task_kwargs
         )
 
 
@@ -358,23 +356,21 @@ class AidLocation(TimeStampedModel):
 
         # Always send COT on save
         from django_q.tasks import async_task
-        from .tasks import aidrequest_takcot
+        from .tasks import send_cot_task
         updated_at_stamp = self.updated_at.strftime('%Y%m%d%H%M%S')
         task_name = f"AidLocation{self.pk}-{'New' if is_new else 'Update'}-SendCot-{updated_at_stamp}"
 
-        # Separate task arguments from Django-Q options
-        task_args = {
-            'aidrequest_id': self.aid_request.pk,
-            'message_type': 'update'
-        }
-        q_options = {
-            'task_name': task_name
+        # Start the async task with appropriate parameters
+        task_kwargs = {
+            'field_op_slug': self.aid_request.field_op.slug,
+            'mark_type': 'aid',
+            'aidrequest': self.aid_request.pk  # Single ID uses singular parameter name
         }
 
         async_task(
-            aidrequest_takcot,
-            **task_args,
-            q_options=q_options
+            send_cot_task,
+            task_name=task_name,
+            **task_kwargs
         )
 
 

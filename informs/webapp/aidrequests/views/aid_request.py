@@ -9,8 +9,7 @@ from geopy.distance import geodesic
 from jinja2 import Template
 
 from ..models import AidRequest, FieldOp, AidRequestLog
-from ..tasks import aid_request_postsave
-from takserver.cot import send_cots
+from ..tasks import aid_request_postsave, send_cot_task
 from .aid_request_forms import AidRequestCreateForm, AidRequestUpdateForm, AidRequestLogForm
 from ..context_processors import get_field_op_from_kwargs
 
@@ -125,7 +124,9 @@ class AidRequestCreateView(CreateView):
             (aid_request_postsave, [self.object], {
                 'savetype': savetype,
                 'task_name': f"AR{self.object.pk}-AidRequestNew-Email-{updated_at_stamp}"}),
-            (send_cots, [self.object], {
+            (send_cot_task, [self.object.field_op.slug], {
+                'mark_type': 'aid',
+                'aidrequest': self.object.pk,
                 'task_name': f"AR{self.object.pk}-AidRequestNew-TAK-{updated_at_stamp}"})
                 ])
         ic('postsave_tasks', postsave_tasks)

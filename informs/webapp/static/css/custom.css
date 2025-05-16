@@ -229,3 +229,21 @@ div.aid-coords label {
     width: 1rem;
     text-align: center;
 }
+
+/* SendCOT status message container */
+.transition {
+    transition: opacity 0.5s ease-in-out;
+}
+
+.sendcot-statuscontainer {
+    min-height: 24px;
+}
+
+.sendcot-statuscontainer.show {
+    opacity: 1 !important;
+}
+
+/* Ensure buttons maintain consistent width */
+/* .send-tak-alert {
+    min-width: 120px;
+} */

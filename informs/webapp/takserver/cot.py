@@ -7,360 +7,212 @@ from .models import TakServer
 import asyncio
 import pytak
 from configparser import ConfigParser
-
+from io import StringIO
+import logging
+from datetime import datetime
 
 # import time
-from icecream import ic
 
+# Get the COT logger
+cot_logger = logging.getLogger('cot')
+
+logger = logging.getLogger(__name__)
 
 class CotSender(pytak.QueueWorker):
     """
     Defines how you process or generate your Cursor on Target Events.
     From there it adds the CoT Events to a queue for TX to a COT_URL.
+
+    COTINFO Structure (ConfigParser format):
+        [cot]
+        mark_type = field|aid
+        field_op_slug = <slug>
+        aid_request_ids = comma,separated,ids  # Only when mark_type=aid
     """
     def __init__(self, queue, config):
         super().__init__(queue, config)
         self._connection_active = False
         self._cleanup_complete = False
+        self._cleanup_timeout = 10  # seconds
+        self._task_name = f"CotSender-{id(self)}"
 
-    async def handle_data(self, data):
-        try:
-            self._connection_active = True
-            await self.put_queue(data)
-        except Exception as e:
-            raise RuntimeError(f"Could not put_queue: {e}")
+        # Validate COTINFO is present
+        if 'COTINFO' not in config:
+            raise ValueError("COTINFO is required in config")
 
-    async def verify_connection_state(self):
-        """Verify the connection is truly closed by attempting a test connection."""
+        # Create CotMaker instance
+        from .cot_maker import CotMaker
+        self.cot_maker = CotMaker(config['COTINFO'])
+
+        cot_logger.info(f"Initialized {self._task_name}")
+
+    async def handle_data(self, data=None):
+        """Process data through the queue. In our case, build and send messages."""
         try:
-            if hasattr(self, 'writer') and self.writer:
-                # If we can still write, connection isn't fully closed
-                try:
-                    self.writer.write(b'')
-                    ic("WARNING: Connection still writable after cleanup")
-                    return False
-                except Exception:
-                    # Expected - connection should be closed
-                    pass
-            return True
+            # Build all messages
+            messages = await self.cot_maker.build_messages()
+            logger.info(f"{self._task_name}: Built {len(messages)} COT messages")
+
+            # Queue each message
+            for idx, message in enumerate(messages, 1):
+                await self.queue.put(message)
+                logger.debug(f"{self._task_name}: Queued message {idx}/{len(messages)}, depth: {self.queue.qsize()}")
+
+            return len(messages)
+
         except Exception as e:
-            ic("Error verifying connection state:", e)
-            return False
+            logger.error(f"{self._task_name}: Error in handle_data: {e}")
+            raise
 
     async def cleanup(self):
-        """
-        Primary cleanup method following the proper TCP connection termination sequence.
-        Any deviation from the expected cleanup path is logged for investigation.
-        """
+        """Cleanup resources and ensure proper connection closure."""
         if self._cleanup_complete:
-            ic("WARNING: Cleanup called multiple times")
             return
 
+        logger.info(f"Starting {self._task_name} cleanup...")
+
         try:
-            if self._connection_active:
-                # 1. Stop accepting new data
-                self._connection_active = False
+            # Wait for queue to empty with timeout
+            start_time = asyncio.get_event_loop().time()
+            while not self.queue.empty():
+                current_time = asyncio.get_event_loop().time()
+                if current_time - start_time > self._cleanup_timeout:
+                    msg = f"WARNING: Queue drain timeout after {self._cleanup_timeout}s - {self.queue.qsize()} messages remaining"
+                    logger.warning(f"{self._task_name}: {msg}")
+                    break
 
-                # 2. Drain the queue (with timeout)
-                if hasattr(self, 'queue') and not self.queue.empty():
-                    try:
-                        async with asyncio.timeout(5):
-                            while not self.queue.empty():
-                                await asyncio.sleep(0.1)
-                    except asyncio.TimeoutError:
-                        ic("ERROR: Queue failed to drain in expected time - investigate queue handling")
+                logger.debug(f"{self._task_name}: Waiting for queue to empty. Size: {self.queue.qsize()}")
+                await asyncio.sleep(0.1)
 
-                # 3. Proper TCP connection termination sequence
-                if hasattr(self, 'writer') and self.writer:
-                    try:
-                        # Signal end of data
-                        self.writer.write_eof()
-                        await self.writer.drain()
-
-                        # Close the writer
-                        self.writer.close()
-                        await self.writer.wait_closed()
-
-                        # Brief pause for FIN-ACK sequence
-                        await asyncio.sleep(0.5)
-                    except Exception as e:
-                        ic("ERROR: Failed to properly close writer - investigate connection handling:", e)
-                        raise
-
-                # 4. Verify connection state
-                if not await self.verify_connection_state():
-                    ic("ERROR: Connection verification failed - investigate cleanup sequence")
-
-            # 5. Call parent cleanup as final step
-            if hasattr(super(), 'cleanup'):
-                await super().cleanup()
-
+            # Mark cleanup as complete
             self._cleanup_complete = True
+            logger.info(f"{self._task_name} cleanup complete")
 
         except Exception as e:
-            ic("CRITICAL: Unexpected error during cleanup - requires immediate investigation:", e)
+            logger.error(f"CRITICAL: Error during {self._task_name} cleanup: {e}")
             raise
 
     async def run(self):
+        """Process COT messages."""
         try:
-            cot_info = self.config['COTINFO']
-            message_type = cot_info[0]
-            fieldop_id = cot_info[1]
-            aidrequest_csv = cot_info[2]
-            aidrequest_list = list(map(int, aidrequest_csv.split(','))) if aidrequest_csv else []
-            results = [len(aidrequest_list)]
+            # Process messages
+            message_count = await self.handle_data()
+            logger.info(f"{self._task_name}: Processed {message_count} messages")
 
-            field_op = await FieldOp.objects.select_related('tak_server').aget(pk=fieldop_id)
-            ic(field_op)
+            # Wait for queue to empty
+            while not self.queue.empty():
+                logger.debug(f"{self._task_name}: Waiting for queue to empty in run(). Size: {self.queue.qsize()}")
+                await asyncio.sleep(0.1)
 
-            # get a field op marker in the queue
-            try:
-                data = make_cot(
-                    message_type=message_type,
-                    cot_icon='blob_dot_yellow',
-                    name=f'{field_op.slug.upper()}',
-                    uuid=f'FieldOp.{field_op.slug.upper()}',
-                    lat=field_op.latitude,
-                    lon=field_op.longitude,
-                    remarks=f'Field Op:\n{field_op.name}',
-                )
-            except Exception as e:
-                ic('failed to make_cot for FieldOp', e)
-                raise RuntimeError(f"Could not FieldOp make_cot: {e}")
-            # next, handle the Field Op COT
-            try:
-                await self.handle_data(data)
-            except Exception as e:
-                ic(e)
-                return e
+            logger.info(f"{self._task_name}: Queue processing complete")
+            return message_count
 
-            for aid_request_id in aidrequest_list:
-                # ic('Building COT for', aid_request_id)
-                try:
-                    aid_request = await AidRequest.objects.select_related('aid_type', 'field_op').aget(pk=aid_request_id)
-                    aid_locations = [
-                        location async for location in AidLocation.objects.filter(aid_request=aid_request_id).all()
-                    ]
-                except Exception as e:
-                    ic('failed to get AidRequest or AidLocations')
-                    ic(e)
-                    raise RuntimeError(f"Failed to get AidRequest or AidLocations: {e}")
-
-                aid_type = aid_request.aid_type
-
-                contact_details = (
-                    f'Requestor: {aid_request.requestor_first_name} {aid_request.requestor_last_name}\n'
-                    f'Email: {aid_request.requestor_email}\n'
-                    f'Phone: {aid_request.requestor_phone}\n'
-                )
-                if aid_request.aid_contact:
-                    contact_details += '--> Aid Contact <--\n'
-                    if aid_request.aid_first_name or aid_request.last_name:
-                        contact_details += f'Aid Name: {aid_request.aid_first_name} {aid_request.aid_last_name}\n'
-                    if aid_request.aid_phone:
-                        contact_details += f'Aid Phone: {aid_request.aid_phone}\n'
-                    if aid_request.aid_email:
-                        contact_details += f'Aid Email: {aid_request.aid_email}\n'
-                if aid_request.contact_methods:
-                    contact_details += '--> Contact Methods <--\n'
-                    contact_details += f'{aid_request.contact_methods}\n'
-                location_status, location = aidrequest_location(aid_locations)
-
-                aid_details = (
-                    f'Aid Type: {aid_type}\n'
-                    f'Priority: {aid_request.priority}\n'
-                    f'Status: {aid_request.status}\n'
-                    f'Location Status: {location_status}\n'
-                    '------\n'
-                    f'{contact_details}'
-                    '------\n'
-                    f'Group Size: {aid_request.group_size}\n'
-                    f'Description: {aid_request.aid_description}\n'
-                    '------\n'
-                    f'Street Address: {aid_request.street_address}\n'
-                    f'City: {aid_request.city}\n'
-                    f'State: {aid_request.state}\n'
-                    f'Zip Code: {aid_request.zip_code}\n'
-                    f'Country: {aid_request.country}\n'
-                    '------\n')
-                if location:
-                    aid_details += (
-                        f'Best Location ID: {location.pk} ({location.status})\n'
-                        f'Address Searched: {location.address_searched}\n'
-                        f'Address Found: {location.address_found}\n'
-                        f'Distance: {location.distance}\n'
-                        f'Location Note:\n{location.note}\n'
-                        )
-
-                additional_info = '--- Additional Info ---\n'
-                if aid_request.medical_needs:
-                    additional_info += f'Medical Needs: {aid_request.medical_needs}\n'
-                if aid_request.supplies_needed:
-                    additional_info += f'Supplies Needed: {aid_request.supplies_needed}\n'
-                if aid_request.welfare_check_info:
-                    additional_info += f'Welfare Check Info: {aid_request.welfare_check_info}\n'
-                if aid_request.additional_info:
-                    additional_info += f'Additional Info: {aid_request.additional_info}\n'
-
-                aid_details += additional_info
-
-                cot_icon = aid_type.cot_icon
-
-                # is this a bit late to be checking for Location?
-                if location:
-                    # first, make the COT
-                    try:
-                        data = make_cot(
-                            message_type=message_type,
-                            cot_icon=cot_icon,
-                            name=f'{aid_request.aid_type.slug}.{aid_request.pk}',
-                            uuid=f'AidRequest.{aid_request.pk}',
-                            lat=location.latitude,
-                            lon=location.longitude,
-                            remarks=aid_details,
-                            parent_name=f'{field_op.slug.upper()}',
-                            parent_uuid=f'FieldOp.{field_op.slug.upper()}',
-                        )
-                    except Exception as e:
-                        ic('failed to make data for cot', e)
-                        raise RuntimeError(f"Could not make_cot: {e}")
-
-                    # next, handle the COT
-                    try:
-                        result = await self.handle_data(data)
-                    except Exception as e:
-                        ic(e)
-                        return e
-
-                else:
-                    result = f'No Location for Aid Request {aid_request.pk}'
-                results.append(result)
-
-            return results
+        except Exception as e:
+            logger.error(f"Error in {self._task_name}.run(): {e}")
+            raise
         finally:
-            # Final cleanup when run() completes
+            # Ensure cleanup happens
             await self.cleanup()
 
 
-async def asend_cot(fieldop_id=None, aidrequest_list=None, message_type=None):
-    cot_queues = None
+def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None):
+    """Send COT messages synchronously using PyTAK.
+
+    This is the main entry point for sending COT messages. It handles the sync/async boundary
+    and is called by both the Django-Q task and direct API calls.
+
+    Args:
+        field_op_slug (str): The slug identifier for the field operation
+        mark_type (str): Either 'field' for field op marker only or 'aid' for aid requests
+        aid_request_ids (list, optional): List of aid request IDs when mark_type is 'aid'
+
+    Returns:
+        str: Success message or Exception if error occurred
+    """
     try:
-        cot_config, cot_queues = await setup_cotqueues(
-                                    fieldop_id=fieldop_id,
-                                    aidrequest_list=aidrequest_list,
-                                    message_type=message_type)
-        cot_queues.add_tasks(set([CotSender(cot_queues.tx_queue, cot_config)]))
-        result = await cot_queues.run()
-        return result
-    except Exception as e:
-        ic(e)
-        return f'Exception in cot_queues.run(): {e}'
-    finally:
-        if cot_queues:
+        # Get the field op
+        field_op = FieldOp.objects.get(slug=field_op_slug)
+
+        # Create ConfigParser for COTINFO
+        config = ConfigParser()
+        config['cot'] = {
+            'mark_type': mark_type,
+            'field_op_slug': field_op_slug,
+        }
+
+        # Add aid request IDs if provided and mark_type is 'aid'
+        if mark_type == 'aid' and aid_request_ids:
+            if not isinstance(aid_request_ids, list):
+                aid_request_ids = [aid_request_ids]
+            config['cot']['aid_request_ids'] = ','.join(map(str, aid_request_ids))
+
+        # Convert config to string
+        config_string = StringIO()
+        config.write(config_string)
+        cotinfo = config_string.getvalue()
+
+        # Build full config
+        cot_config = {
+            "COT_URL": f'tls://{field_op.tak_server.dns_name}:8089',
+            "PYTAK_TLS_CLIENT_CERT": field_op.tak_server.cert_private.path,
+            "PYTAK_TLS_CLIENT_CAFILE": field_op.tak_server.cert_trust.path,
+            "PYTAK_TLS_DONT_CHECK_HOSTNAME": True,
+            "COTINFO": cotinfo
+        }
+
+        # Log TAK server configuration
+        logger.info("TAK Server Config:", {
+            'server': field_op.tak_server.dns_name if field_op.tak_server else None,
+            'cert_private_path': field_op.tak_server.cert_private.path if field_op.tak_server else None,
+            'cert_trust_path': field_op.tak_server.cert_trust.path if field_op.tak_server else None,
+            'disable_cot': field_op.disable_cot
+        })
+
+        # Run everything in a new event loop
+        async def _run_cot():
+            cot_queues = None
             try:
-                # First wait for any pending messages to be sent (with timeout)
-                if hasattr(cot_queues, 'tx_queue'):
+                # Create and setup the queues
+                cot_queues = pytak.CLITool(cot_config)
+                await cot_queues.setup()
+
+                # Create and add the sender
+                sender = CotSender(cot_queues.tx_queue, cot_config)
+                cot_queues.add_tasks(set([sender]))
+
+                # Run until complete
+                await cot_queues.run()
+
+                return "COT messages sent successfully"
+
+            except Exception as e:
+                logger.error(f"Error in _run_cot: {e}")
+                raise
+
+            finally:
+                # Ensure proper cleanup
+                if cot_queues and hasattr(cot_queues, 'close'):
                     try:
-                        async with asyncio.timeout(5):  # 5 second timeout for queue drain
-                            while not cot_queues.tx_queue.empty():
-                                await asyncio.sleep(0.1)
-                    except asyncio.TimeoutError:
-                        ic("WARNING: Queue drain timed out - some messages may not have been sent")
+                        await cot_queues.close()
+                        logger.info("PyTAK connection closed successfully")
+                    except Exception as e:
+                        logger.warning(f"Warning: Error during PyTAK connection closure: {e}")
 
-                # Cancel all tasks first
-                if hasattr(cot_queues, '_tasks'):
-                    for task in cot_queues._tasks:
-                        if not task.done():
-                            task.cancel()
-                            try:
-                                async with asyncio.timeout(2):  # 2 second timeout for task cancellation
-                                    await task
-                            except (asyncio.CancelledError, asyncio.TimeoutError):
-                                pass
+        # Run the async function in a new event loop
+        return asyncio.run(_run_cot())
 
-                # Close the workers in sequence
-                if hasattr(cot_queues, 'tx_worker') and cot_queues.tx_worker:
-                    if hasattr(cot_queues.tx_worker, 'writer') and cot_queues.tx_worker.writer:
-                        try:
-                            async with asyncio.timeout(3):  # 3 second timeout for writer cleanup
-                                # Signal end of data
-                                cot_queues.tx_worker.writer.write_eof()
-                                await cot_queues.tx_worker.writer.drain()
-                                # Close the writer
-                                cot_queues.tx_worker.writer.close()
-                                await cot_queues.tx_worker.writer.wait_closed()
-                        except asyncio.TimeoutError:
-                            ic("WARNING: Writer cleanup timed out")
-                        except Exception as e:
-                            ic("ERROR: Writer cleanup failed:", e)
-
-                if hasattr(cot_queues, 'rx_worker') and cot_queues.rx_worker:
-                    if hasattr(cot_queues.rx_worker, 'reader') and cot_queues.rx_worker.reader:
-                        try:
-                            cot_queues.rx_worker.reader.feed_eof()
-                        except Exception as e:
-                            ic("ERROR: Reader cleanup failed:", e)
-
-                # Final cot_queues cleanup
-                try:
-                    async with asyncio.timeout(2):  # 2 second timeout for final cleanup
-                        if hasattr(cot_queues, 'close'):
-                            await cot_queues.close()
-                except asyncio.TimeoutError:
-                    ic("WARNING: Final cleanup timed out")
-                except Exception as e:
-                    ic("ERROR: Final cleanup failed:", e)
-
-            except Exception as cleanup_error:
-                ic('Error during cleanup:', cleanup_error)
-                if not result:
-                    result = f'Cleanup error: {cleanup_error}'
-
-
-def send_cots(fieldop_id=None, aidrequest_list=[], message_type=None):
-    try:
-        result = asyncio.run(asend_cot(
-                                fieldop_id=fieldop_id,
-                                aidrequest_list=aidrequest_list,
-                                message_type=message_type
-                                )
-                             )
     except Exception as e:
-        ic('asyncio.run exception:', e)
+        logger.error(f"Error in pytak_send_cot: {e}")
         return e
 
-    return result
 
-
-async def setup_cotqueues(fieldop_id=None, aidrequest_list=[], message_type=None):
-    cot_queues = None
+async def send_cot_message(data, tak_server):
+    """Send a single COT message to the TAK server."""
     try:
-        aidrequest_csv = ",".join(map(str, aidrequest_list))
-        COTINFO = [message_type,
-                   fieldop_id,
-                   aidrequest_csv
-                   ]
-
-        try:
-            fieldop = await FieldOp.objects.aget(pk=fieldop_id)
-        except Exception as e:
-            ic('fieldop.get exception', e)
-            raise RuntimeError(f"Failed to get FieldOp: {e}")
-
-        try:
-            tak_server = await TakServer.objects.aget(pk=fieldop.tak_server_id)
-        except Exception as e:
-            ic('takserver get exception', e)
-            raise RuntimeError(f"Failed to get TakServer: {e}")
-
-        COT_URL = f'tls://{tak_server.dns_name}:8089'
-        cert_private_path = tak_server.cert_private.path
-        cert_trust_path = tak_server.cert_trust.path
         cot_config = {
-            "COT_URL": COT_URL,
-            "PYTAK_TLS_CLIENT_CERT": cert_private_path,
-            "PYTAK_TLS_CLIENT_CAFILE": cert_trust_path,
-            "COTINFO":  COTINFO,
+            "COT_URL": f'tls://{tak_server.dns_name}:8089',
+            "PYTAK_TLS_CLIENT_CERT": tak_server.cert_private.path,
+            "PYTAK_TLS_CLIENT_CAFILE": tak_server.cert_trust.path,
             "PYTAK_TLS_DONT_CHECK_HOSTNAME": True
         }
 
@@ -368,31 +220,29 @@ async def setup_cotqueues(fieldop_id=None, aidrequest_list=[], message_type=None
         cot_queues = pytak.CLITool(cot_config)
         await cot_queues.setup()
 
-        return cot_config, cot_queues
+        try:
+            # Add the sender task
+            sender = CotSender(cot_queues.tx_queue, cot_config)
+            cot_queues.add_tasks(set([sender]))
 
-    except Exception as e:
-        # If setup fails, ensure we cleanup any partially initialized resources
-        if cot_queues is not None:
+            # Send the message
+            await sender.handle_data(data)
+
+            # Wait for the message to be sent
             try:
-                if hasattr(cot_queues, 'close'):
-                    await cot_queues.close()
-                elif hasattr(cot_queues, 'cleanup'):
-                    await cot_queues.cleanup()
-            except Exception as cleanup_error:
-                ic('Error during cleanup after setup failure:', cleanup_error)
-        raise RuntimeError(f"Failed to setup COT queues: {e}")
+                async with asyncio.timeout(5):  # 5 second timeout
+                    while not cot_queues.tx_queue.empty():
+                        await asyncio.sleep(0.1)
+            except asyncio.TimeoutError:
+                logger.warning("WARNING: Queue drain timed out")
 
+            return True
 
-def send_fieldop_cot(fieldop_id, message_type='update'):
-    """Send a COT message for a field op marker only."""
-    try:
-        result = asyncio.run(asend_cot(
-            fieldop_id=fieldop_id,
-            aidrequest_list=[],  # Empty list means only send field op marker
-            message_type=message_type
-        ))
+        finally:
+            # Ensure proper cleanup
+            if hasattr(cot_queues, 'close'):
+                await cot_queues.close()
+
     except Exception as e:
-        ic('asyncio.run exception:', e)
-        return e
-
-    return result
+        logger.error("Error sending COT message:", e)
+        raise

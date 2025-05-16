@@ -14,10 +14,34 @@
             <table class="table table-hover mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th class="ps-3">Name<br>Slug</th>
-                        <th>Location <i class="bi bi-clipboard ms-1 text-secondary"></i></th>
-                        <th><span class="text-nowrap"><i class="bi bi-record-circle me-1"></i>Ring</span></th>
-                        <th><span class="text-nowrap"><i class="bi bi-life-preserver me-1"></i>Requests</span></th>
+                        <th class="d-flex flex-column ps-3">
+                            <span>Name</span>
+                            <span>slug</span>
+                        </th>
+                        <th>
+                            <div class="d-flex flex-column">
+                                <span class="text-nowrap">
+                                    <i class="bi bi-life-preserver text-danger"></i>
+                                    <span data-bs-toggle="tooltip"
+                                          data-bs-title="Includes: {{ active_statuses|join:', ' }}">
+                                        Active
+                                    </span>
+                                </span>
+                                <span class="text-nowrap">
+                                    <i class="bi bi-life-preserver text-success"></i>
+                                    <span data-bs-toggle="tooltip"
+                                          data-bs-title="Includes: {{ inactive_statuses|join:', ' }}">
+                                        Inactive
+                                    </span>
+                                </span>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="d-flex flex-column">
+                                <span class="text-nowrap"><i class="bi bi-geo-alt"></i>Location</span>
+                                <span class="text-nowrap"><i class="bi bi-record-circle"></i>Ring</span>
+                            </div>
+                        </th>
                         <th>TAK</th>
                         <th>COT Status</th>
                         <th>Alerts</th>

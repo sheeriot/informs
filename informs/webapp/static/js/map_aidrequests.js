@@ -219,6 +219,7 @@ async function initializeMapWithFilter(filterState) {
         if (mapRequestsConfig.debug) {
             console.time('map-full-init');
             console.log('[Map] Starting initialization with filter state:', filterState);
+            console.log('[Map] Store state:', window.aidRequestsStore?.currentState);
         }
 
         // Load configuration first
@@ -418,9 +419,17 @@ function updateLayerVisibility(filterState, counts) {
     if (mapRequestsConfig.debug) {
         console.log('Map View: Updating visibility with:', {
             filterState,
-            counts
+            counts,
+            layerTypes: Object.keys(layersByType)
         });
     }
+
+    // Ensure filterState exists with default values - match aidrequests-filter.js exactly
+    filterState = filterState || {
+        aid_types: 'all',
+        statuses: 'all',
+        priorities: 'all'
+    };
 
     // First, handle aid type layer visibility
     Object.entries(layersByType).forEach(([aidType, layer]) => {
@@ -428,12 +437,6 @@ function updateLayerVisibility(filterState, counts) {
             console.warn(`Layer for aid type ${aidType} not found`);
             return;
         }
-
-        // If aidTypes is null, only show points that match the aid type filter (none in this case)
-        // If any other filter is null, ignore aid type filter
-        const layerVisible = filterState.aidTypes === null ? false :
-                           filterState.aidTypes === 'all' ||
-                           (Array.isArray(filterState.aidTypes) && filterState.aidTypes.includes(aidType));
 
         try {
             // Get the source for this layer
@@ -443,49 +446,70 @@ function updateLayerVisibility(filterState, counts) {
                 return;
             }
 
-            // Build filter expression based on null states
-            let filterExpr;
+            // Match exactly how aidrequests-filter.js checks aid types
+            const showLayer = filterState.aid_types === 'all' ||
+                            (filterState.aid_types && filterState.aid_types.includes(aidType));
 
-            if (filterState.aidTypes === null) {
-                // If aid types is null, hide all points
-                filterExpr = ['boolean', false];
-            } else if (filterState.statuses === null) {
-                // If statuses is null, show no points (as no status matches null)
-                filterExpr = ['boolean', false];
-            } else if (filterState.priorities === null) {
-                // If priorities is null, show only points with null priority
-                filterExpr = ['all',
-                    ['boolean', layerVisible],
-                    ['==', ['get', 'priority'], null]
-                ];
-            } else {
-                // Normal filtering when no null states
-                filterExpr = ['all',
-                    ['boolean', layerVisible],
-                    filterState.statuses === 'all' ?
-                        ['boolean', true] :
-                        ['in', ['get', 'status'], ['literal', filterState.statuses]],
-                    filterState.priorities === 'all' ?
-                        ['boolean', true] :
-                        ['in', ['get', 'priority'], ['literal', filterState.priorities]]
-                ];
+            if (mapRequestsConfig.debug) {
+                console.log(`Layer ${aidType} visibility check:`, {
+                    showLayer,
+                    aidType,
+                    filterAidTypes: filterState.aid_types,
+                    isAll: filterState.aid_types === 'all',
+                    included: Array.isArray(filterState.aid_types) ? filterState.aid_types.includes(aidType) : 'n/a'
+                });
             }
 
+            // Build filter expression for other filters (status, priority)
+            let filterExpr = ['all',
+                ['boolean', showLayer],  // Layer visibility based on aid type
+                // Status filter - match filter.js logic
+                filterState.statuses === 'all' ?
+                    ['boolean', true] :
+                    ['in', ['get', 'status'], ['literal', filterState.statuses || []]],
+                // Priority filter - match filter.js logic
+                filterState.priorities === 'all' ?
+                    ['boolean', true] :
+                    ['in', ['get', 'priority'], ['literal', filterState.priorities || []]]
+            ];
+
+            // Set both the filter and visibility
             layer.setOptions({
-                filter: filterExpr
+                filter: filterExpr,
+                visible: showLayer  // Explicitly set layer visibility based on aid type
             });
 
             if (mapRequestsConfig.debug) {
+                const totalPoints = source.getShapes().length;
                 const visiblePoints = source.getShapes().filter(shape => {
-                    const props = shape.getProperties();
-                    if (filterState.aidTypes === null) return false;
-                    if (filterState.statuses === null) return false;
-                    if (filterState.priorities === null) return props.priority === null;
+                    if (!showLayer) return false; // If layer is hidden, no points are visible
 
-                    return (filterState.statuses === 'all' || filterState.statuses.includes(props.status)) &&
-                           (filterState.priorities === 'all' || filterState.priorities.includes(props.priority));
+                    const props = shape.getProperties();
+                    let visible = true;
+
+                    // Match filter.js logic for status
+                    if (filterState.statuses !== 'all') {
+                        visible = visible && filterState.statuses.includes(props.status);
+                    }
+
+                    // Match filter.js logic for priority
+                    if (filterState.priorities !== 'all') {
+                        visible = visible && filterState.priorities.includes(props.priority);
+                    }
+
+                    return visible;
                 }).length;
-                console.log(`Layer ${aidType}: ${visiblePoints} points visible of ${source.getShapes().length} total`);
+
+                console.log(`Layer ${aidType} visibility result:`, {
+                    layerVisible: showLayer,
+                    totalPoints,
+                    visiblePoints,
+                    filterState: {
+                        aid_types: filterState.aid_types,
+                        statuses: filterState.statuses,
+                        priorities: filterState.priorities
+                    }
+                });
             }
 
         } catch (error) {
@@ -521,7 +545,7 @@ function updateMapSummary(filterState, counts) {
     const countText = `${visibleCount} of ${totalCount} locations`;
 
     // Build filter parts - in order: Aid Type, Status, Priority
-    if (filterState.aidTypes === null) {
+    if (filterState.aid_types === null) {
         parts.push('Type: None selected');
     } else if (filterState.statuses === null) {
         parts.push('Status: None selected');
@@ -531,8 +555,8 @@ function updateMapSummary(filterState, counts) {
         // Only add other filters if no filter is null
 
         // 1. Aid Type
-        if (filterState.aidTypes !== 'all' && Array.isArray(filterState.aidTypes) && filterState.aidTypes.length > 0) {
-            const typeLabels = filterState.aidTypes.map(type => {
+        if (filterState.aid_types !== 'all' && Array.isArray(filterState.aid_types) && filterState.aid_types.length > 0) {
+            const typeLabels = filterState.aid_types.map(type => {
                 if (type === null) {
                     return 'None';
                 }
@@ -714,6 +738,20 @@ function initializeFieldOpLayer() {
 async function initializeAidRequestLayer() {
     if (mapRequestsConfig.debug) {
         console.log('=== Starting Aid Request Layer Initialization ===');
+        console.log('Aid Types Config:', mapRequestsConfig.aidTypesConfig);
+        console.log('Aid Locations:', mapRequestsConfig.aidLocations);
+
+        // Add console.table for marker positions
+        const markerPositions = mapRequestsConfig.aidLocations.map(request => ({
+            id: request.id,
+            type: request.aid_type.slug,
+            status: request.status,
+            priority: request.priority || 'none',
+            lat: request.location?.latitude,
+            lon: request.location?.longitude,
+            address: request.address.full
+        }));
+        console.table(markerPositions, ['id', 'type', 'status', 'priority', 'lat', 'lon']);
     }
 
     // Create icons first
@@ -732,19 +770,27 @@ async function initializeAidRequestLayer() {
             .filter(request =>
                 request.aid_type.slug === slug &&
                 request.location &&
-                request.location.latitude &&
-                request.location.longitude);
+                typeof request.location.latitude === 'number' &&
+                typeof request.location.longitude === 'number');
+
+        if (mapRequestsConfig.debug) {
+            console.log(`Processing ${slug} layer:`, {
+                total: mapRequestsConfig.aidLocations.filter(r => r.aid_type.slug === slug).length,
+                valid: validRequests.length,
+                invalid: mapRequestsConfig.aidLocations.filter(r => r.aid_type.slug === slug).length - validRequests.length
+            });
+        }
 
         validRequests.forEach(request => {
             const position = new atlas.data.Position(
-                parseFloat(request.location.longitude),
-                parseFloat(request.location.latitude)
+                request.location.longitude,
+                request.location.latitude
             );
             const point = new atlas.data.Feature(new atlas.data.Point(position), {
                 id: request.id,
                 aid_type: slug,
                 status: request.status,
-                priority: request.priority,
+                priority: request.priority || null,
                 latitude: request.location.latitude,
                 longitude: request.location.longitude,
                 address: request.address.full,
@@ -760,7 +806,7 @@ async function initializeAidRequestLayer() {
                 allowOverlap: true,
                 anchor: "bottom",
                 image: slug,
-                size: aidTypeConfig.icon_scale || 1.0,
+                size: 1.0,
                 visible: true
             },
             textOptions: {
@@ -774,8 +820,7 @@ async function initializeAidRequestLayer() {
                 color: 'black',
                 haloColor: 'white',
                 haloWidth: 2
-            },
-            filter: ['in', ['get', 'status'], ['literal', ['new', 'assigned', 'resolved']]]  // Initially show only active statuses
+            }
         });
 
         // Store layer reference
@@ -810,14 +855,21 @@ async function createAidTypeIcons() {
         console.log(`Processing ${aidTypeCount} aid types`);
     }
 
+    const iconSettings = {
+        'evac': { name: 'marker-arrow', color: '#FF0000' },     // Red arrow for evacuation
+        'supply': { name: 'marker-circle', color: '#800080' },  // Purple circle for supply
+        'check': { name: 'marker-arrow', color: '#008000' }     // Green arrow for welfare check
+    };
+
     try {
         if (mapRequestsConfig.aidTypesConfig) {
             const iconPromises = Object.entries(mapRequestsConfig.aidTypesConfig).map(([slug, aidTypeConfig]) => {
+                const settings = iconSettings[slug] || { name: 'marker-circle', color: '#1B87EC' };
                 return map.imageSprite.createFromTemplate(
-                    slug,  // Use the slug as the icon ID
-                    aidTypeConfig.icon_name || 'pin-round',
-                    aidTypeConfig.icon_color || '#1B87EC',
-                    '#fff'  // White outline
+                    slug,
+                    settings.name,
+                    settings.color,
+                    '#ffffff'  // White outline
                 ).catch(error => {
                     console.error(`Error creating template for ${slug}:`, error);
                     return null;

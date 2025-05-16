@@ -1,9 +1,14 @@
-<div class="card col-6 shadow-sm mb-3">
+<!-- Initial filter state from Django view -->
+<script id="initial-filter-state" type="application/json">
+    {{ filter_state|json_script:"initial-filter-state" }}
+</script>
+
+<div class="card col-6 shadow-sm mb-3" id="aid-requests-card">
     <div class="card-header py-2">
         <div class="d-flex justify-content-between align-items-center">
             <h5 class="card-title mb-0">Aid Requests</h5>
             <div class="d-flex align-items-center gap-3">
-                <small id="list-filter-summary" class="text-muted"></small>
+                <small id="aid-requests-filter-summary" class="text-muted"></small>
                 <div class="btn-group">
                     <a href="{% url 'aid_request_create' field_op=field_op.slug %}"
                        class="btn btn-sm btn-outline-success"
@@ -19,4 +24,93 @@
             </div>
         </div>
     </div>
-    <div class="table-responsive" id="aid-request-list-table-container">
+    <div class="table-responsive" id="aid-requests-table-container">
+        <table class="table table-sm table-hover table-striped border-bottom mb-0" id="aid-requests-table">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col" class="py-1">#</th>
+                    <th scope="col" class="py-1">Requester</th>
+                    <th scope="col" class="py-1">Type</th>
+                    <th scope="col" class="py-1">Status</th>
+                    <th scope="col" class="py-1">Priority</th>
+                    <th scope="col" class="py-1">Address</th>
+                    <th scope="col" class="py-1">Last Update</th>
+                    <th scope="col" class="py-1">Age</th>
+                    <th scope="col" class="py-1">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="aid-requests-table-body">
+                {% for aid_request in aid_requests %}
+                    <tr class="aid-request-row {% if filter_state.statuses != 'all' and aid_request.status not in filter_state.statuses %}d-none{% endif %}"
+                        id="aid-request-row-{{ aid_request.pk }}"
+                        data-id="{{ aid_request.pk }}"
+                        data-aid-type="{{ aid_request.aid_type.slug }}"
+                        data-status="{{ aid_request.status }}"
+                        data-priority="{{ aid_request.priority|default:'none' }}">
+                        <td class="py-1">
+                            <a href="{% url 'aid_request_detail' field_op=field_op.slug pk=aid_request.pk %}">{{ aid_request.pk }}</a>
+                        </td>
+                        <td class="py-1">{{ aid_request.requester_name }}</td>
+                        <td class="py-1">{{ aid_request.aid_type.name }}</td>
+                        <td class="py-1">
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-sm status-button btn-outline-{{ aid_request.get_status_class }}"
+                                        data-bs-toggle="dropdown" aria-expanded="false"
+                                        data-request-id="{{ aid_request.pk }}"
+                                        data-current-status="{{ aid_request.status }}">
+                                    <i class="bi {{ aid_request.get_status_icon }}"></i>
+                                    <span class="text-dark">{{ aid_request.get_status_display }}</span>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    {% for status_code, status_name in status_choices_list %}
+                                    <li><a class="dropdown-item status-option" href="#"
+                                           data-status="{{ status_code }}"
+                                           data-request-id="{{ aid_request.pk }}">{{ status_name }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </td>
+                        <td class="py-1">
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-sm priority-button btn-{{ aid_request.get_priority_class }}"
+                                        data-bs-toggle="dropdown" aria-expanded="false"
+                                        data-request-id="{{ aid_request.pk }}"
+                                        data-current-priority="{{ aid_request.priority|default:'none' }}">
+                                    {{ aid_request.get_priority_display }}
+                                </button>
+                                <ul class="dropdown-menu">
+                                    {% for priority_code, priority_name in priority_choices_list %}
+                                    <li><a class="dropdown-item priority-option" href="#"
+                                           data-priority="{{ priority_code|default:'none' }}"
+                                           data-request-id="{{ aid_request.pk }}">{{ priority_name }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </td>
+                        <td class="py-1">{{ aid_request.street_address }}, {{ aid_request.city }}</td>
+                        <td class="py-1">{{ aid_request.updated_at|timesince }}</td>
+                        <td class="py-1">{{ aid_request.created_at|timesince }}</td>
+                        <td class="py-1">
+                            <div class="btn-group">
+                                <a href="{% url 'aid_request_detail' field_op=field_op.slug pk=aid_request.pk %}"
+                                   class="btn btn-sm btn-outline-primary"
+                                   title="View details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'aid_request_update' field_op=field_op.slug pk=aid_request.pk %}"
+                                   class="btn btn-sm btn-outline-secondary"
+                                   title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                <tr id="aid-requests-empty-row">
+                    <td colspan="9" class="text-center py-4 text-muted">No aid requests found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

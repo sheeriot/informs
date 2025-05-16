@@ -4,6 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 # from django.urls import reverse
 from django.views.generic import DetailView
 from django_q.tasks import async_task
+import logging
 
 from ..models import AidRequest, FieldOp
 from .aid_request_forms import AidRequestLogForm
@@ -11,12 +12,13 @@ from .aid_location_forms import AidLocationStatusForm, AidLocationCreateForm
 from .aid_request import has_location_status, format_aid_location_note
 from .maps import staticmap_aid, calculate_zoom
 from ..geocoder import get_azure_geocode, geocode_save
-from ..tasks import aidrequest_takcot
+from ..tasks import send_cot_task
 
 from datetime import datetime
 # from time import perf_counter as timer
 from icecream import ic
 
+logger = logging.getLogger(__name__)
 
 # Detail View for AidRequest
 class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
@@ -83,7 +85,10 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
                 ic(f"Log Error: {e}")
             # ic(timer()-time_start)
             updated_at_stamp = self.aid_location.updated_at.strftime('%Y%m%d%H%M%S')
-            async_task(aidrequest_takcot, aidrequest_id=self.aid_request.pk,
+            async_task(send_cot_task,
+                      field_op_slug=self.field_op.slug,
+                      mark_type='aid',
+                      aidrequests=[self.aid_request.pk],
                        task_name=f"AidLocation{self.aid_location.pk}-New-SendCOT-{updated_at_stamp}")
             try:
                 self.aid_request.logs.create(
@@ -92,47 +97,58 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
                 ic(f"Log Error: {e}")
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+        try:
+            context = super().get_context_data(**kwargs)
 
-        context['field_op'] = self.field_op
-        context['aid_request'] = self.aid_request
-        if hasattr(self, 'aid_location_confirmed'):
-            context['confirmed'] = True
-            context['location'] = self.aid_location_confirmed
-            context['map_filename'] = self.aid_location_confirmed.map_filename
-            context['location_note'] = format_aid_location_note(self.aid_location_confirmed)
-            found_pk = self.aid_location_confirmed.pk
-        elif hasattr(self, 'aid_location_new'):
-            context['new'] = True
-            context['location'] = self.aid_location_new
-            context['map_filename'] = self.aid_location_new.map_filename
-            context['location_note'] = format_aid_location_note(self.aid_location_new)
-            found_pk = self.aid_location_new.pk
+            context['field_op'] = self.field_op
+            context['aid_request'] = self.aid_request
+            if hasattr(self, 'aid_location_confirmed'):
+                context['confirmed'] = True
+                context['location'] = self.aid_location_confirmed
+                context['map_filename'] = self.aid_location_confirmed.map_filename
+                context['location_note'] = format_aid_location_note(self.aid_location_confirmed)
+                found_pk = self.aid_location_confirmed.pk
+            elif hasattr(self, 'aid_location_new'):
+                context['new'] = True
+                context['location'] = self.aid_location_new
+                context['map_filename'] = self.aid_location_new.map_filename
+                context['location_note'] = format_aid_location_note(self.aid_location_new)
+                found_pk = self.aid_location_new.pk
 
-        context['MAPS_PATH'] = settings.MAPS_PATH
-        context['locations'] = self.aid_request.locations.all()
-        context['logs'] = self.aid_request.logs.all().order_by('-updated_at')
-        aid_location_status_init = {
-            'field_op': self.field_op.slug,
-            'aid_request': self.aid_request.pk,
-            'pk': found_pk,
-        }
-        aid_location_status_form = AidLocationStatusForm(initial=aid_location_status_init)
-        context['aid_location_status_form'] = aid_location_status_form
-
-        # show the static map. Current, it runs in every context.
-        # should be saved locally and updated as needed
-
-        log_init = {
-            'field_op': self.field_op.slug,
-            'aid_request': self.aid_request.pk,
+            context['MAPS_PATH'] = settings.MAPS_PATH
+            context['locations'] = self.aid_request.locations.all()
+            context['logs'] = self.aid_request.logs.all().order_by('-updated_at')
+            aid_location_status_init = {
+                'field_op': self.field_op.slug,
+                'aid_request': self.aid_request.pk,
+                'pk': found_pk,
             }
-        context['log_form'] = AidRequestLogForm(initial=log_init)
-        # Manual Location Form
-        aid_location_manual_init = {
-            'field_op': self.field_op.slug,
-            'aid_request': self.aid_request.pk,
-        }
-        context['aid_location_manual_form'] = AidLocationCreateForm(initial=aid_location_manual_init)
+            aid_location_status_form = AidLocationStatusForm(initial=aid_location_status_init)
+            context['aid_location_status_form'] = aid_location_status_form
 
-        return context
+            # show the static map. Current, it runs in every context.
+            # should be saved locally and updated as needed
+
+            log_init = {
+                'field_op': self.field_op.slug,
+                'aid_request': self.aid_request.pk,
+                }
+            context['log_form'] = AidRequestLogForm(initial=log_init)
+            # Manual Location Form
+            aid_location_manual_init = {
+                'field_op': self.field_op.slug,
+                'aid_request': self.aid_request.pk,
+            }
+            context['aid_location_manual_form'] = AidLocationCreateForm(initial=aid_location_manual_init)
+
+            return context
+        except Exception as e:
+            logger.error(f"Error getting context data: {e}")
+            raise
+
+    def get_object(self, queryset=None):
+        try:
+            return super().get_object(queryset)
+        except Exception as e:
+            logger.error(f"Error getting aid request object: {e}")
+            raise
