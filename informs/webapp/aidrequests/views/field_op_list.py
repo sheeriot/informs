@@ -1,8 +1,8 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.views.generic import ListView
 from django.conf import settings
-from ..models import FieldOp
+from ..models import FieldOp, AidRequest
 
 
 import base64
@@ -16,7 +16,16 @@ class FieldOpListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     permission_required = 'aidrequests.view_fieldop'
 
     def get_queryset(self):
-        queryset = FieldOp.objects.annotate(aid_request_count=Count('aid_requests'))
+        queryset = FieldOp.objects.annotate(
+            aidrequests_active_count=Count(
+                'aid_requests',
+                filter=Q(aid_requests__status__in=AidRequest.ACTIVE_STATUSES)
+            ),
+            aidrequests_inactive_count=Count(
+                'aid_requests',
+                filter=Q(aid_requests__status__in=AidRequest.INACTIVE_STATUSES)
+            )
+        )
         return queryset
 
     def get_context_data(self, **kwargs):
@@ -24,6 +33,10 @@ class FieldOpListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
         # Add Azure Maps key for JavaScript map
         context['azure_maps_key'] = settings.AZURE_MAPS_KEY
+
+        # Add status groups for template use
+        context['active_statuses'] = AidRequest.ACTIVE_STATUSES
+        context['inactive_statuses'] = AidRequest.INACTIVE_STATUSES
 
         # Prepare field ops data for the map
         field_ops_data = []
@@ -34,7 +47,9 @@ class FieldOpListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                 'slug': field_op.slug,
                 'latitude': float(field_op.latitude),
                 'longitude': float(field_op.longitude),
-                'ring_size': float(field_op.ring_size)
+                'ring_size': float(field_op.ring_size),
+                'aidrequests_active_count': field_op.aidrequests_active_count,
+                'aidrequests_inactive_count': field_op.aidrequests_inactive_count
             })
         context['field_ops_data'] = field_ops_data
 

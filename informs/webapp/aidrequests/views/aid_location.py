@@ -9,7 +9,7 @@ from geopy.distance import geodesic
 from datetime import datetime
 
 from ..models import FieldOp, AidRequest, AidLocation
-from ..tasks import aidrequest_takcot
+from ..tasks import send_cot_task
 from .aid_location_forms import AidLocationCreateForm, AidLocationStatusForm
 from .maps import staticmap_aid, calculate_zoom
 
@@ -99,8 +99,11 @@ class AidLocationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
         ic(vars(self.aid_location))
         # ----- Send COT ------
         updated_at_stamp = self.aid_location.updated_at.strftime('%Y%m%d%H%M%S')
-        tasks.async_task(aidrequest_takcot, aidrequest_id=self.aid_request.pk,
-                         task_name=f"AidLocation{self.aid_location.pk}-ManualCreate-SendCot-{updated_at_stamp}")
+        tasks.async_task(send_cot_task,
+                        field_op_slug=self.field_op.slug,
+                        mark_type='aid',
+                        aidrequests=[self.aid_request.pk],
+                        task_name=f"AidLocation{self.aid_location.pk}-ManualCreate-SendCot-{updated_at_stamp}")
 
         return super().form_valid(form)
 
@@ -184,7 +187,10 @@ class AidLocationStatusUpdateView(LoginRequiredMixin, PermissionRequiredMixin, U
             ic(f"Log Error: {e}")
         # ----- Send COT ------
         updated_at_stamp = self.aid_request.updated_at.strftime('%Y%m%d%H%M%S')
-        tasks.async_task(aidrequest_takcot, aidrequest_id=self.aid_request.pk,
-                         task_name=f"AidLocation{self.aid_location.pk}-StatusUpdate-SendCot-{updated_at_stamp}")
+        tasks.async_task(send_cot_task,
+                        field_op_slug=self.field_op.slug,
+                        mark_type='aid',
+                        aidrequests=[self.aid_request.pk],
+                        task_name=f"AidLocation{self.aid_location.pk}-StatusUpdate-SendCot-{updated_at_stamp}")
 
         return super().form_valid(form)

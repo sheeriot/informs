@@ -2,20 +2,22 @@ from django.conf import settings
 
 from azure.communication.email import EmailClient
 from datetime import datetime
-# import json
-# from django.http import JsonResponse
 
 from .email_creator import email_connectstring, email_creator_html
 from .geocoder import get_azure_geocode, geocode_save
 from .views.maps import staticmap_aid, calculate_zoom
-from .models import FieldOpNotify, AidRequest, FieldOp
-from takserver.cot import send_cots, send_fieldop_cot
+from .models import FieldOpNotify, AidRequest, FieldOp, AidLocation
+from takserver.cot import send_cot_message, CotSender, pytak_send_cot
 
-# import asyncio
+import asyncio
+import pytak
 
 from icecream import ic
 
 from django.core.management import call_command
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 
 
 def aid_request_postsave(aid_request, **kwargs):
@@ -121,28 +123,42 @@ def aid_request_notify(aid_request, **kwargs):
     return results
 
 
-def aidrequest_takcot(aidrequest_id=None, aidrequest_list=None, message_type='update'):
-    ic(message_type)
-    if not aidrequest_list and aidrequest_id:
-        aidrequest_list = [aidrequest_id]
-    if aidrequest_list:
-        aidrequest_first = AidRequest.objects.get(pk=aidrequest_list[0])
-        field_op = aidrequest_first.field_op
+# def aidrequest_takcot(aidrequest_id=None, aidrequest_list=None, message_type='update'):
+#     """Send COT messages for aid requests.
 
-        # Skip if COT is disabled for this field operation
-        if field_op.disable_cot:
-            ic(f"COT disabled for field op: {field_op.slug}")
-            return 'COT disabled for field operation'
+#     Args:
+#         aidrequest_id (int, optional): Single aid request ID
+#         aidrequest_list (list, optional): List of aid request IDs
+#         message_type (str): Type of message ('update' by default)
 
-        try:
-            results = send_cots(fieldop_id=field_op.pk, aidrequest_list=aidrequest_list, message_type=message_type)
-        except Exception as e:
-            ic(e)
-            return e
-    else:
-        return 'No AidRequest List'
+#     Returns:
+#         str: Status message indicating success or failure
+#     """
+#     ic(message_type)
+#     if not aidrequest_list and aidrequest_id:
+#         aidrequest_list = [aidrequest_id]
+#     if aidrequest_list:
+#         aidrequest_first = AidRequest.objects.get(pk=aidrequest_list[0])
+#         field_op = aidrequest_first.field_op
 
-    return results
+#         # Skip if COT is disabled for this field operation
+#         if field_op.disable_cot:
+#             ic(f"COT disabled for field op: {field_op.slug}")
+#             return 'COT disabled for field operation'
+
+#         try:
+#             # Run the async task in a new event loop
+#             result = asyncio.run(send_cot_task(
+#                 field_op_slug=field_op.slug,
+#                 mark_type='aid',
+#                 aidrequests=aidrequest_list
+#             ))
+#             return result
+#         except Exception as e:
+#             ic(e)
+#             return str(e)
+#     else:
+#         return 'No AidRequest List'
 
 
 def send_email(message):
@@ -169,68 +185,152 @@ def send_email(message):
     return result
 
 
-def send_all_field_op_cot():
-    """Send COT messages for all active field ops that have COT enabled."""
+# def send_all_field_op_cot():
+#     """Send COT messages for all active field ops that have COT enabled."""
+#     try:
+#         # Get all field ops with TAK servers and COT enabled
+#         field_ops = FieldOp.objects.filter(tak_server__isnull=False, disable_cot=False)
+#         ic(f"Found {field_ops.count()} field ops with TAK servers and COT enabled")
+
+#         if field_ops.count() == 0:
+#             # If no field ops found, check what we have in the system
+#             all_field_ops = FieldOp.objects.all()
+#             ic(f"Total field ops in system: {all_field_ops.count()}")
+#             for fo in all_field_ops:
+#                 ic(f"Field op {fo.slug} - TAK server: {fo.tak_server}, COT enabled: {not fo.disable_cot}")
+
+#         results = []
+#         for field_op in field_ops:
+#             try:
+#                 ic(f"Sending COT for field op: {field_op.slug}")
+#                 # Run the async task in a new event loop
+#                 result = asyncio.run(send_cot_task(
+#                     field_op_slug=field_op.slug,
+#                     mark_type='field'
+#                 ))
+#                 results.append(f"Successfully sent COT for {field_op.slug}")
+#             except Exception as e:
+#                 ic(f"Error for {field_op.slug}: {str(e)}")
+#                 results.append(f"Error sending COT for {field_op.slug}: {str(e)}")
+
+#         if not results:
+#             return "No COT messages were sent - no eligible field ops found"
+#         return "\n".join(results)
+#     except Exception as e:
+#         ic(f"Main error: {str(e)}")
+#         return f"Error in send_all_field_op_cot: {str(e)}"
+
+
+# def send_fieldop_cot_task(field_op_slug, message_type='update'):
+#     """Send COT message for a single field op marker."""
+#     try:
+#         # Run the async task in a new event loop
+#         result = asyncio.run(send_cot_task(
+#             field_op_slug=field_op_slug,
+#             mark_type='field'
+#         ))
+#         success_msg = f"Successfully sent {mark_type} mark for field op {field_op_slug}"
+#         ic(success_msg)
+#         return success_msg
+#     except Exception as e:
+#         error_msg = f"Error sending COT for field op {field_op_slug}: {str(e)}"
+#         ic(error_msg)
+#         return error_msg
+
+
+def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests=None):
+    """Django-Q2 task for sending COT messages for field ops and/or aid requests.
+
+    This function is a synchronous interface for Django-Q2.
+    All messages for a single task are sent through one pytak connection.
+
+    Args:
+        field_op_slug (str): The slug identifier for the field operation
+        mark_type (str): Either 'field' for field op marker only or 'aid' for aid requests
+        aidrequest (int): Single aid request ID when mark_type is 'aid'
+        aidrequests (list): List of aid request IDs when mark_type is 'aid'
+
+    If mark_type='aid' and neither aidrequest nor aidrequests is provided,
+    all active aid requests for the field op will be sent.
+
+    Returns:
+        str: Status message indicating success or failure
+    """
     try:
-        # Get all field ops with TAK servers and COT enabled
-        field_ops = FieldOp.objects.filter(tak_server__isnull=False, disable_cot=False)
-        ic(f"Found {field_ops.count()} field ops with TAK servers and COT enabled")
+        # Get the field op
+        from .models import FieldOp, AidRequest
+        try:
+            field_op = FieldOp.objects.get(slug=field_op_slug)
+        except FieldOp.DoesNotExist:
+            error_msg = f"Field op not found: {field_op_slug}"
+            ic(error_msg)
+            return error_msg
 
-        if field_ops.count() == 0:
-            # If no field ops found, check what we have in the system
-            all_field_ops = FieldOp.objects.all()
-            ic(f"Total field ops in system: {all_field_ops.count()}")
-            for fo in all_field_ops:
-                ic(f"Field op {fo.slug} - TAK server: {fo.tak_server}, COT enabled: {not fo.disable_cot}")
+        # Validate mark_type
+        if mark_type not in ['field', 'aid']:
+            error_msg = f"Invalid mark_type: {mark_type}. Must be 'field' or 'aid'"
+            ic(error_msg)
+            return error_msg
 
-        results = []
-        for field_op in field_ops:
-            try:
-                ic(f"Sending COT for field op: {field_op.slug}")
-                call_command('send_cot', field_op=field_op.slug)
-                results.append(f"Successfully sent COT for {field_op.slug}")
-            except Exception as e:
-                ic(f"Error for {field_op.slug}: {str(e)}")
-                results.append(f"Error sending COT for {field_op.slug}: {str(e)}")
+        # Handle aid requests based on mark_type
+        if mark_type == 'field':
+            # For field marks, we don't need aid requests
+            if aidrequest or aidrequests:
+                ic("Warning: aidrequest/aidrequests parameters ignored for field mark type")
+            aid_request_ids = None
+        else:  # mark_type == 'aid'
+            # Convert single aidrequest to list if provided
+            if aidrequest is not None:
+                aid_request_ids = [aidrequest]
+            # Use aidrequests list if provided
+            elif aidrequests is not None:
+                aid_request_ids = aidrequests if isinstance(aidrequests, list) else [aidrequests]
+            # If neither provided, get all active aid requests
+            else:
+                active_requests = AidRequest.objects.filter(
+                    field_op=field_op,
+                    status__in=['new', 'assigned', 'resolved']  # Only active statuses
+                ).values_list('id', flat=True)
 
-        if not results:
-            return "No COT messages were sent - no eligible field ops found"
-        return "\n".join(results)
-    except Exception as e:
-        ic(f"Main error: {str(e)}")
-        return f"Error in send_all_field_op_cot: {str(e)}"
+                if not active_requests:
+                    ic("No active aid requests found for field op")
+                    aid_request_ids = []
+                else:
+                    ic(f"Found {len(active_requests)} active aid requests")
+                    aid_request_ids = list(active_requests)
 
+        # Log TAK server configuration
+        ic("TAK Server Config:", {
+            'server': field_op.tak_server.dns_name if field_op.tak_server else None,
+            'cert_private_path': field_op.tak_server.cert_private.path if field_op.tak_server else None,
+            'cert_trust_path': field_op.tak_server.cert_trust.path if field_op.tak_server else None,
+            'disable_cot': field_op.disable_cot
+        })
 
-def send_fieldop_cot_task(field_op_slug, message_type='update'):
-    """Send COT message for a single field op marker."""
-    try:
-        field_op = FieldOp.objects.get(slug=field_op_slug)
-
-        # Skip if COT is disabled for this field operation
+        # Common validations
         if field_op.disable_cot:
             ic(f"COT disabled for field op: {field_op.slug}")
             return 'COT disabled for field operation'
 
-        # Skip if no TAK server configured
         if not field_op.tak_server:
             ic(f"No TAK server configured for field op: {field_op.slug}")
             return 'No TAK server configured for field operation'
 
-        try:
-            result = send_fieldop_cot(field_op.pk, message_type=message_type)
-            success_msg = f"Successfully sent {message_type} COT for field op {field_op.slug}"
-            ic(success_msg)
-            return success_msg
-        except Exception as e:
-            error_msg = f"Error sending COT for field op {field_op.slug}: {str(e)}"
+        # Use the synchronous pytak_send_cot function from takserver.cot
+        result = pytak_send_cot(field_op_slug, mark_type, aid_request_ids)
+
+        if isinstance(result, Exception):
+            error_msg = f"Error sending COT: {str(result)}"
             ic(error_msg)
             return error_msg
 
-    except FieldOp.DoesNotExist:
-        error_msg = f"Field op not found: {field_op_slug}"
-        ic(error_msg)
-        return error_msg
+        # Return appropriate success message
+        if mark_type == 'field':
+            return f"Successfully sent field mark for {field_op.slug}"
+        else:
+            return f"Successfully sent aid marks for {field_op.slug}"
+
     except Exception as e:
-        error_msg = f"Error in send_fieldop_cot_task: {str(e)}"
+        error_msg = f"Error in send_cot_task: {str(e)}"
         ic(error_msg)
         return error_msg

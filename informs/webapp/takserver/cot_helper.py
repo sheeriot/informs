@@ -25,15 +25,28 @@ def aidrequest_locationstatus(locations=None):
     return None
 
 
-def make_cot(message_type=None,
-             cot_icon=None,
+def make_cot(cot_icon=None,
              lat=0.0, lon=0.0,
              uuid=None, name=None,
              remarks=None,
              parent_name=None,
              parent_uuid=None,
+             mark_type='field',
              poll_interval="86400"):
+    """Create a COT XML message.
 
+    Args:
+        cot_icon (str): Icon name from settings.COT_ICONS
+        lat (float): Latitude
+        lon (float): Longitude
+        uuid (str): Unique identifier
+        name (str): Display name
+        remarks (str): Remarks text
+        parent_name (str, optional): Parent marker name for aid requests
+        parent_uuid (str, optional): Parent marker UUID for aid requests
+        mark_type (str): Either 'field' or 'aid'
+        poll_interval (str): Stale time in seconds
+    """
     if settings.ENV_NAME == 'prod':
         event_uuid = uuid
     else:
@@ -43,11 +56,11 @@ def make_cot(message_type=None,
     # red_diamond = 'a-h-G'
     # green_square_x = 'a-n-G-U-C-I'
 
-    if message_type == 'remove':
-        cot_icon = 'square_green_x'
-        remarks = f"**** CLEARED ****\n{remarks}"
-    elif message_type == 'test':
-        remarks = "**** TEST ****"
+    # if message_type == 'remove':
+    #     cot_icon = 'square_green_x'
+    #     remarks = f"**** CLEARED ****\n{remarks}"
+    # elif message_type == 'test':
+    #     remarks = "**** TEST ****"
 
     # use icon name to lookup 'cot_type' from cot_icons.ini file, or 'a-n-G'.
     cot_type = settings.COT_ICONS.get(cot_icon, 'a-n-G')
@@ -89,8 +102,8 @@ def make_cot(message_type=None,
     status = ET.SubElement(detail, 'status')
     status.set('readiness', 'true')
 
-    if message_type == 'test':
-        if parent_name and parent_uuid:
+    # Add parent link for aid requests
+    if mark_type == 'aid' and parent_name and parent_uuid:
             # add parent suffix for different environments
             if settings.ENV_NAME != 'prod':
                 parent_uuid = f"{parent_uuid}.{settings.ENV_NAME}"

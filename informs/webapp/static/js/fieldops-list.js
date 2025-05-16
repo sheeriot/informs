@@ -8,7 +8,8 @@ const fieldOpsConfig = {
         sendCot: (fieldOpSlug) => `/api/${fieldOpSlug}/send-cot/`,
         checkStatus: (fieldOpSlug) => `/api/${fieldOpSlug}/sendcot-checkstatus/`
     },
-    statusTimeout: null
+    statusTimeout: null,
+    lastSendcotId: null
 };
 
 // Main execution
@@ -147,51 +148,30 @@ async function handleCotToggle(event) {
     }
 }
 
-function updateStatusMessage(message, type = 'info', duration = 0) {
-    const statusArea = document.getElementById('fieldOpsStatus');
-    if (!statusArea) return;
+function showStatusMessage(row, message, type = 'info', duration = 15000) {
+    const container = row.querySelector('.field-op-status-container');
+    const alert = container.querySelector('.alert');
+    const messageEl = container.querySelector('.status-message');
+
+    // Set message and type
+    messageEl.textContent = message;
+    alert.className = `alert alert-${type} py-1 px-2 mb-0`;
+    alert.classList.remove('d-none');
+    container.classList.add('show');
 
     // Clear any existing timeout
-    if (fieldOpsConfig.statusTimeout) {
-        clearTimeout(fieldOpsConfig.statusTimeout);
-        fieldOpsConfig.statusTimeout = null;
+    if (container.fadeTimeout) {
+        clearTimeout(container.fadeTimeout);
     }
 
-    // Clear existing content
-    statusArea.innerHTML = '';
-
-    if (message) {
-        // Create status message element
-        const statusElement = document.createElement('div');
-        statusElement.className = `d-flex align-items-center alert alert-${type} py-1 px-2 mb-0`;
-
-        // Add appropriate icon based on type
-        let icon = 'info-circle';
-        switch (type) {
-            case 'success':
-                icon = 'check-circle';
-                break;
-            case 'danger':
-                icon = 'exclamation-circle';
-                break;
-            case 'warning':
-                icon = 'exclamation-triangle';
-                break;
-        }
-
-        statusElement.innerHTML = `
-            <i class="bi bi-${icon} me-2"></i>
-            <span>${message}</span>
-        `;
-
-        statusArea.appendChild(statusElement);
-
-        // If duration is specified, clear after timeout
-        if (duration > 0) {
-            fieldOpsConfig.statusTimeout = setTimeout(() => {
-                statusArea.innerHTML = '';
-            }, duration);
-        }
+    // Set timeout to fade out
+    if (duration > 0) {
+        container.fadeTimeout = setTimeout(() => {
+            container.classList.remove('show');
+            setTimeout(() => {
+                alert.classList.add('d-none');
+            }, 500); // Wait for fade out animation
+        }, duration);
     }
 }
 
@@ -199,6 +179,8 @@ async function handleTakAlert(event) {
     const button = event.currentTarget;
     const fieldOpSlug = button.dataset.fieldOpSlug;
     const markType = button.dataset.markType;
+    const row = button.closest('tr');
+    const originalButtonClass = markType === 'field' ? 'btn-success' : 'btn-danger';
 
     if (fieldOpsConfig.debug) {
         console.log(`Sending ${markType} TAK alert for ${fieldOpSlug}`, {
@@ -222,8 +204,8 @@ async function handleTakAlert(event) {
     `;
     button.disabled = true;
 
-    // Update status area
-    updateStatusMessage(`Sending ${markType} mark to TAK for ${fieldOpSlug}...`, 'info');
+    // Update status message
+    showStatusMessage(row, `Sending ${markType} mark to TAK...`, 'info');
 
     try {
         const response = await fetch(fieldOpsConfig.urls.sendCot(fieldOpSlug), {
@@ -238,25 +220,16 @@ async function handleTakAlert(event) {
             })
         });
 
-        if (fieldOpsConfig.debug) {
-            console.log('Server response:', {
-                status: response.status,
-                statusText: response.statusText,
-                headers: Object.fromEntries(response.headers.entries())
-            });
-        }
-
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
         }
 
         const data = await response.json();
 
-        if (fieldOpsConfig.debug) {
-            console.log('Response data:', data);
-        }
-
         if (data.status === 'success') {
+            // Store the sendcot_id for status checks
+            fieldOpsConfig.lastSendcotId = data.sendcot_id;
+
             // Show success state briefly
             button.innerHTML = `
                 <div class="d-flex align-items-center">
@@ -268,22 +241,20 @@ async function handleTakAlert(event) {
                 </div>
             `;
             button.classList.remove('btn-success', 'btn-danger');
-            button.classList.add(markType === 'FieldOp' ? 'btn-success' : 'btn-danger');
-
-            // Update status message
-            updateStatusMessage(`Successfully sent ${markType} mark to TAK for ${fieldOpSlug}`, 'success', 3000);
+            button.classList.add('btn-outline-success');
 
             // Check connection status after successful send
             const statusData = await checkConnectionStatus(fieldOpSlug);
-
             if (statusData?.port_status === 'open') {
-                updateStatusMessage(`Warning: TAK server connection port still open for ${fieldOpSlug}`, 'warning');
+                showStatusMessage(row, `Warning: TAK server connection port still open`, 'warning');
             }
 
             // Reset button after 2 seconds
             setTimeout(() => {
                 button.innerHTML = originalContent;
                 button.disabled = false;
+                button.classList.remove('btn-outline-success');
+                button.classList.add(originalButtonClass);
             }, 2000);
         } else {
             throw new Error(data.message || `Failed to send ${markType} mark`);
@@ -307,52 +278,74 @@ async function handleTakAlert(event) {
                 </div>
             </div>
         `;
-        button.classList.remove('btn-success', 'btn-danger');
-        button.classList.add('btn-outline-secondary');
+        button.classList.remove('btn-success', 'btn-danger', 'btn-outline-success');
+        button.classList.add('btn-outline-danger');
 
         // Update status message with error
-        updateStatusMessage(`Failed to send ${markType} mark for ${fieldOpSlug}: ${error.message}`, 'danger', 5000);
+        showStatusMessage(row, `Failed to send ${markType} mark: ${error.message}`, 'danger');
 
         // Reset button after 3 seconds
         setTimeout(() => {
             button.innerHTML = originalContent;
             button.disabled = false;
-            button.classList.remove('btn-outline-secondary');
-            button.classList.add(markType === 'FieldOp' ? 'btn-success' : 'btn-danger');
+            button.classList.remove('btn-outline-danger');
+            button.classList.add(originalButtonClass);
         }, 3000);
     }
 }
 
 async function checkConnectionStatus(fieldOpSlug) {
+    if (fieldOpsConfig.debug) {
+        console.log('Starting connection status check for:', fieldOpSlug);
+    }
+
     try {
-        if (fieldOpsConfig.debug) {
-            console.log('Checking connection status for:', fieldOpSlug);
-        }
+        // Start polling
+        let keepPolling = true;
+        let finalData = null;
 
-        const response = await fetch(fieldOpsConfig.urls.checkStatus(fieldOpSlug), {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
+        while (keepPolling) {
+            const response = await fetch(`${fieldOpsConfig.urls.checkStatus(fieldOpSlug)}?sendcot_id=${fieldOpsConfig.lastSendcotId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+            finalData = data; // Store the latest data
+
+            if (fieldOpsConfig.debug) {
+                console.log('Connection status:', data);
             }
-        });
 
-        const data = await response.json();
+            // Update UI based on status
+            const row = document.querySelector(`tr[data-field-op-slug="${fieldOpSlug}"]`);
 
-        if (fieldOpsConfig.debug) {
-            console.log('Connection status:', data);
+            if (data.status === "PENDING") {
+                showStatusMessage(row, data.message, "info", 0);
+                // Wait before next poll
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                continue;
+            } else if (data.status === "SUCCESS") {
+                showStatusMessage(row, data.result, "success");
+                keepPolling = false;
+            } else if (data.status === "FAILURE") {
+                showStatusMessage(row, `Error: ${data.result}`, "danger");
+                keepPolling = false;
+            } else {
+                showStatusMessage(row, `Unknown status: ${data.status}`, "warning");
+                keepPolling = false;
+            }
         }
 
-        // Here we can handle any connection status information
-        // For example, if the server reports that the port is still open
-        if (data.port_status === 'open') {
-            console.warn('TCP port still open after sending mark');
-        }
-
-        return data;
+        return finalData;
     } catch (error) {
         if (fieldOpsConfig.debug) {
             console.error('Error checking connection status:', error);
         }
+        const row = document.querySelector(`tr[data-field-op-slug="${fieldOpSlug}"]`);
+        showStatusMessage(row, `Error checking status: ${error.message}`, "danger");
         return null;
     }
 }

@@ -18,10 +18,6 @@ class TakServer(models.Model):
         upload_to='certificates/certprivate/',
         help_text="Upload the private certificate file - PEM Format"
     )
-    notes = models.TextField(
-        blank=True,
-        help_text="Additional notes about the server"
-    )
 
     def __str__(self):
         return self.name

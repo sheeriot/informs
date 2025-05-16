@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from aidrequests.scheduled_tasks import hourly_field_op_cot
+import asyncio
+from aidrequests.tasks import send_cot_task
 
 
 class Command(BaseCommand):
@@ -19,7 +20,11 @@ class Command(BaseCommand):
         )
 
         try:
-            hourly_field_op_cot(field_op_slug=options.get('field_op'))
+            # Run the async task in a new event loop
+            result = asyncio.run(send_cot_task(
+                field_op_slug=options.get('field_op'),
+                mark_type='field'
+            ))
             self.stdout.write(self.style.SUCCESS('Successfully sent COT messages'))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Error sending COT messages: {str(e)}'))

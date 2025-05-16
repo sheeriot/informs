@@ -4,7 +4,7 @@ from datetime import datetime
 from icecream import ic
 
 from .models import AidRequest, FieldOp
-from .tasks import aidrequest_takcot
+from .tasks import send_cot_task
 
 # Get the COT logger
 cot_logger = logging.getLogger('cot')
@@ -27,9 +27,10 @@ def refresh_all_cot_messages():
 
         if active_requests.exists():
             aid_request_ids = list(active_requests.values_list('id', flat=True))
-            aidrequest_takcot(
-                aidrequest_list=aid_request_ids,
-                message_type='update',
+            send_cot_task(
+                field_op_slug=field_op.slug,
+                mark_type='aid',
+                aidrequests=aid_request_ids,
             )
 
 
@@ -80,9 +81,10 @@ def hourly_field_op_cot(field_op_slug=None):
             ic(f"Sending COT for {len(aid_request_ids)} aid requests:", aid_request_ids)
 
             try:
-                result = aidrequest_takcot(
-                    aidrequest_list=aid_request_ids,
-                    message_type='update'
+                result = send_cot_task(
+                    field_op_slug=field_op.slug,
+                    mark_type='aid',
+                    aidrequests=aid_request_ids,
                 )
                 success_msg = f"Successfully sent COT messages for {field_op.name}"
                 ic(success_msg)

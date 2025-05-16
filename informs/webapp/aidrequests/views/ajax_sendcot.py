@@ -5,9 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required, permission_required
 
-from ..tasks import aidrequest_takcot
 from ..models import AidRequest, FieldOp
-
 from icecream import ic
 from datetime import datetime
 
@@ -15,13 +13,19 @@ from datetime import datetime
 @login_required
 @permission_required('aidrequests.view_aidrequest')
 @require_http_methods(["POST"])
-def sendcot_aidrequest(request, field_op=None):
-    """ Starts the async_task and returns task ID
+def send_cot(request, field_op=None):
+    """
+    Unified endpoint for sending COT messages for both field ops and aid requests.
 
-    If no aidrequests array is provided, sends all aid requests for the field_op
+    Expected POST data:
+    - mark_type: 'field' for field op marker, 'aid' for aid requests (default: 'aid')
+    - aidrequests: (optional) List of aid request IDs to send
+
+    If mark_type='aid' and aidrequests is not provided,
+    all active aid requests for the field op will be sent.
     """
     try:
-        data = json.loads(request.body)  # Parse JSON request body
+        data = json.loads(request.body)
     except Exception as e:
         ic(e)
         return JsonResponse({"status": "error", "message": "Could not parse JSON request body."})
@@ -40,81 +44,36 @@ def sendcot_aidrequest(request, field_op=None):
             "message": "COT is disabled for this field operation."
         })
 
-    message_type = data.get('message_type', 'update')
-    if message_type not in ['update', 'remove', 'test']:
-        return JsonResponse({"status": "error", "message": "Invalid message_type provided."})
-
-    mark_type = data.get('mark_type', 'AidRequest')  # Default to AidRequest for backward compatibility
-    if mark_type not in ['FieldOp', 'AidRequest']:
+    # Get mark_type parameter
+    mark_type = data.get('mark_type', 'aid')
+    if mark_type not in ['field', 'aid']:
         return JsonResponse({"status": "error", "message": "Invalid mark_type provided."})
 
     timestamp_now = datetime.now().strftime('%Y%m%d-%H%M%S')
-
-    # Set task title based on message type and mark type
-    task_title = f"TAK{message_type.capitalize()}-{mark_type}-OnDemand_{timestamp_now}"
+    task_title = f"TAK-{mark_type}-OnDemand_{timestamp_now}"
 
     try:
-        if mark_type == 'FieldOp':
-            # Send only field op marker
-            sendcot_id = async_task(
-                'aidrequests.tasks.send_fieldop_cot',
-                field_op_slug=field_operation.slug,
-                message_type=message_type,
-                task_name=task_title
-            )
-        else:
-            # Handle AidRequest marking (existing functionality)
-            aidrequest_id = data.get('aidrequest_id')
-            aidrequests = data.get('aidrequests', [])
+        # Start the async task with appropriate parameters
+        task_kwargs = {
+            'field_op_slug': field_operation.slug,
+            'mark_type': mark_type,
+        }
 
-            if aidrequest_id:
-                # Single aid request case
-                aid_request = get_object_or_404(AidRequest, id=aidrequest_id, field_op=field_operation)
-                sendcot_id = async_task(
-                    aidrequest_takcot,
-                    aidrequest_id=aidrequest_id,
-                    message_type=message_type,
-                    task_name=task_title
-                )
-            elif aidrequests:
-                # Multiple specific aid requests case
-                aidrequest_list = [int(aid) for aid in aidrequests]
-                # Verify all requests belong to this field_op
-                valid_requests = AidRequest.objects.filter(
-                    id__in=aidrequest_list,
-                    field_op=field_operation
-                ).values_list('id', flat=True)
+        # Only add aidrequests if provided and non-empty for aid mark_type
+        if mark_type == 'aid':
+            aidrequests = data.get('aidrequests')
+            if aidrequests:
+                # Ensure aidrequests is a list
+                if not isinstance(aidrequests, list):
+                    aidrequests = [aidrequests]
+                if aidrequests:  # Only add if we have actual IDs
+                    task_kwargs['aidrequests'] = aidrequests
 
-                if len(valid_requests) != len(aidrequest_list):
-                    return JsonResponse({
-                        "status": "error",
-                        "message": "Some aid requests do not belong to this field operation."
-                    })
-
-                sendcot_id = async_task(
-                    aidrequest_takcot,
-                    aidrequest_list=list(valid_requests),
-                    message_type=message_type,
-                    task_name=task_title
-                )
-            else:
-                # Send all aid requests for this field_op case
-                all_requests = AidRequest.objects.filter(
-                    field_op=field_operation
-                ).values_list('id', flat=True)
-
-                if not all_requests.exists():
-                    return JsonResponse({
-                        "status": "error",
-                        "message": "No aid requests found for this field operation."
-                    })
-
-                sendcot_id = async_task(
-                    aidrequest_takcot,
-                    aidrequest_list=list(all_requests),
-                    message_type=message_type,
-                    task_name=task_title
-                )
+        sendcot_id = async_task(
+            'aidrequests.tasks.send_cot_task',
+            task_name=task_title,
+            **task_kwargs
+        )
 
         return JsonResponse({
             "status": "success",
@@ -144,30 +103,36 @@ def sendcot_checkstatus(request, field_op=None, task_id=None):
 
     try:
         task_result = fetch(task_id)
+
+        # Task hasn't completed yet
         if task_result is None:
             return JsonResponse({
                 "status": "PENDING",
-                "message": "Task is still processing"
+                "message": "Sending COT to TAK..."
             })
 
+        # Task completed but had an error
         if isinstance(task_result.result, Exception):
             return JsonResponse({
                 "status": "FAILURE",
                 "result": str(task_result.result)
             })
 
+        # Task completed successfully
         if task_result.success:
             return JsonResponse({
                 "status": "SUCCESS",
                 "result": str(task_result.result)
             })
-        else:
-            return JsonResponse({
-                "status": "FAILURE",
-                "result": "Task failed without an error message"
-            })
+
+        # Task completed but marked as failed
+        return JsonResponse({
+            "status": "FAILURE",
+            "result": "Task failed without an error message"
+        })
 
     except Exception as e:
+        ic(f"Error checking task status: {e}")
         return JsonResponse({
             "status": "error",
             "message": f"Error checking task status: {str(e)}"

@@ -1,47 +1,63 @@
 {% load bootstrap_icons %}
 
 <tr data-field-op-slug="{{ field_op.slug }}">
-    <td class="ps-3">
-        <a href="{% url 'field_op_detail' field_op.slug %}" class="text-decoration-none">
-            <div class="d-flex flex-column">
-                <span>{{ field_op.name }}</span>
-                <span class="text-secondary">
-                    <i class="bi bi-truck me-1"></i>{{ field_op.slug }}
-                </span>
+    <td class="ps-2">
+        <div class="d-flex flex-column">
+            <span>{{ field_op.name }}</span>
+            <div class="d-flex align-items-center text-secondary">
+                <a href="{% url 'field_op_detail' field_op.slug %}" class="text-decoration-none">
+                    <i class="bi bi-truck me-1"></i>
+                    <span>{{ field_op.slug }}</span>
+                </a>
             </div>
-        </a>
+        </div>
     </td>
     <td>
-        <span class="text-nowrap position-relative">
-            <i class="bi bi-geo-alt me-1 text-secondary"></i>
-            <span class="coordinates" data-coordinates="{{ field_op.latitude }}, {{ field_op.longitude }}">
-                {{ field_op.latitude|floatformat:5 }}, {{ field_op.longitude|floatformat:5 }}
+        <div class="d-flex flex-column">
+            <a href="{% url 'aid_request_list' field_op=field_op.slug status_group='active' %}" class="text-decoration-none d-flex align-items-center">
+                <i class="bi bi-life-preserver text-danger me-2"></i>
+                <span>{{ field_op.aidrequests_active_count }}</span>
+            </a>
+            <a href="{% url 'aid_request_list' field_op=field_op.slug status_group='inactive' %}" class="text-decoration-none d-flex align-items-center">
+                <i class="bi bi-life-preserver text-success me-2"></i>
+                <span>{{ field_op.aidrequests_inactive_count }}</span>
+            </a>
+        </div>
+    </td>
+    <td>
+        <div class="d-flex flex-column">
+            <span class="text-nowrap position-relative">
+                <i class="bi bi-geo-alt me-1 text-secondary"></i>
+                <span class="coordinates" data-coordinates="{{ field_op.latitude }}, {{ field_op.longitude }}">
+                    {{ field_op.latitude|floatformat:5 }}, {{ field_op.longitude|floatformat:5 }}
+                </span>
+                <button class="btn btn-link btn-sm p-0 ms-1 copy-coordinates"
+                        data-bs-toggle="tooltip"
+                        data-bs-title="Copy coordinates">
+                    <i class="bi bi-clipboard"></i>
+                </button>
             </span>
-            <button class="btn btn-link btn-sm p-0 ms-1 copy-coordinates"
-                    data-bs-toggle="tooltip"
-                    data-bs-title="Copy coordinates">
-                <i class="bi bi-clipboard"></i>
-            </button>
-        </span>
-    </td>
-    <td>
-        <span class="text-nowrap">
-            <i class="bi bi-record-circle me-1 text-secondary"></i>{{ field_op.ring_size }}&nbsp;km
-        </span>
-    </td>
-    <td>
-        <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="text-decoration-none">
             <span class="text-nowrap">
-                <i class="bi bi-life-preserver text-danger me-1"></i>{{ field_op.aid_request_count }}
+                <i class="bi bi-record-circle me-1 text-secondary"></i>Ring: {{ field_op.ring_size }}&nbsp;km
             </span>
-        </a>
+        </div>
     </td>
     <td>
         {% if field_op.tak_server %}
-            <span class="text-success">
-                <i class="bi bi-hdd-rack"></i><i class="bi bi-plus-circle"></i>
-                {{ field_op.tak_server }}
-            </span>
+            <div class="position-relative">
+                <span class="text-success">
+                    <i class="bi bi-hdd-rack"></i><i class="bi bi-plus-circle"></i>
+                    {{ field_op.tak_server }}
+                </span>
+                <!-- Status message container -->
+                <div class="field-op-status-container opacity-0 transition position-absolute start-0" style="z-index: 1000;">
+                    <div class="alert alert-info py-1 px-2 mb-0 small d-none">
+                        <span class="status-message">&nbsp;</span>
+                        <!-- Hidden placeholder text to help determine minimum width -->
+                        <span class="invisible position-absolute">Status field for TAK server connection state and health updates</span>
+                    </div>
+                </div>
+            </div>
         {% else %}
             <span class="text-secondary">
                 Not Set
@@ -65,47 +81,47 @@
         </div>
     </td>
     <td>
-        {% if field_op.tak_server %}
-            <!-- TAK Alert Buttons - Always in DOM, toggled with d-none -->
-            <div class="btn-group btn-group-sm {% if field_op.disable_cot %}d-none{% endif %}">
-                <button class="btn btn-success send-tak-alert d-flex align-items-center p-1"
-                        data-field-op-slug="{{ field_op.slug }}"
-                        data-mark-type="FieldOp"
-                        {% if field_op.disable_cot %}disabled{% endif %}>
-                    <i class="bi bi-bullseye me-2 fs-5"></i>
-                    <div class="d-flex flex-column pe-2">
-                        <span>Field</span>
-                        <span>Mark</span>
-                    </div>
-                </button>
-                <button class="btn btn-danger send-tak-alert d-flex align-items-center p-1"
-                        data-field-op-slug="{{ field_op.slug }}"
-                        data-mark-type="AidRequest"
-                        {% if field_op.disable_cot %}disabled{% endif %}>
-                    <i class="bi bi-arrow-right-circle me-2 fs-5"></i>
-                    <div class="d-flex flex-column pe-2">
-                        <span>Aid</span>
-                        <span>Marks</span>
-                    </div>
-                </button>
-            </div>
-        {% else %}
-            <span class="text-secondary">
-                <i class="bi bi-dash-circle"></i>
-                Not Available
-            </span>
-        {% endif %}
+    {% if field_op.tak_server %}
+        <!-- TAK Alert Buttons - Always in DOM, toggled with d-none -->
+        <div class="btn-group btn-group-sm {% if field_op.disable_cot %}d-none{% endif %}">
+            <button class="btn btn-success send-tak-alert d-flex align-items-center p-1"
+                    data-field-op-slug="{{ field_op.slug }}"
+                    data-mark-type="field"
+                    {% if field_op.disable_cot %}disabled{% endif %}>
+                <i class="bi bi-bullseye me-2 fs-5"></i>
+                <div class="d-flex flex-column pe-2">
+                    <span>Field</span>
+                    <span>Mark</span>
+                </div>
+            </button>
+            <button class="btn btn-danger send-tak-alert d-flex align-items-center p-1"
+                    data-field-op-slug="{{ field_op.slug }}"
+                    data-mark-type="aid"
+                    {% if field_op.disable_cot %}disabled{% endif %}>
+                <i class="bi bi-clipboard-plus me-2 fs-5"></i>
+                <div class="d-flex flex-column pe-2">
+                    <span>Aid</span>
+                    <span>Marks</span>
+                </div>
+            </button>
+        </div>
+    {% else %}
+        <span class="text-secondary">
+            <i class="bi bi-dash-circle"></i>
+            Not Available
+        </span>
+    {% endif %}
     </td>
     <td class="text-end pe-3">
         <div class="btn-group btn-group-sm">
             <a href="{% url 'field_op_detail' field_op.slug %}"
-               class="btn btn-outline-secondary"
+               class="btn btn-info"
                data-bs-toggle="tooltip"
                data-bs-title="View Details">
                 <i class="bi bi-eye"></i>
             </a>
             <a href="{% url 'field_op_update' field_op.slug %}?next={{ request.path|urlencode }}"
-               class="btn btn-outline-secondary"
+               class="btn btn-warning"
                data-bs-toggle="tooltip"
                data-bs-title="Edit Field Op">
                 <i class="bi bi-pencil"></i>

@@ -60,7 +60,6 @@ function initializeTakAlert() {
                 },
                 body: JSON.stringify({
                     ...(visibleRows.length > 0 ? { aidrequests: visibleRows } : {}),
-                    message_type: 'update'
                 })
             });
 

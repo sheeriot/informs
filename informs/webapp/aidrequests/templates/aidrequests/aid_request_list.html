@@ -91,6 +91,16 @@
         {{ aid_requests_json|safe }}
     </script>
 
+    <!-- Initial state -->
+    <script id="initial-state" type="application/json">
+        {
+            "statusGroup": "{{ current_status_group }}",
+            "activeCount": {{ active_count }},
+            "inactiveCount": {{ inactive_count }},
+            "totalCount": {{ total_count }}
+        }
+    </script>
+
     <!-- Filter data -->
     {% if aid_types_json %}
         <script id="aid-types-json" type="application/json">{{ aid_types_json|safe }}</script>

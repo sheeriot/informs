@@ -6,7 +6,7 @@
  */
 
 // Configuration
-const listConfig = { debug: false };
+const listConfig = { debug: true };
 
 // Main initialization check
 if (window.aidRequestsStore?.initialized) {
@@ -190,6 +190,14 @@ function updateRowVisibility(filterState) {
     let visibleCount = 0;
     const totalRows = rows.length;
 
+    if (listConfig.debug) {
+        console.log('[List] Updating row visibility:', {
+            filterState,
+            totalRows,
+            statusGroups: window.STATUS_GROUPS
+        });
+    }
+
     Array.from(rows).forEach(row => {
         if (row.id === 'aid-request-empty-row') return;
 
@@ -197,31 +205,30 @@ function updateRowVisibility(filterState) {
         const aidType = row.getAttribute('data-aid-type');
         const priority = row.getAttribute('data-priority');
 
-        // Handle null filter states - if any filter is null, only show rows that match that null state
-        let isVisible;
+        // First check if status is in the correct group
+        let isVisible = true;  // Start with visible and apply filters
 
-        if (filterState.aidTypes === null) {
-            // If aid types is null, hide all rows
-            isVisible = false;
-        } else if (filterState.statuses === null) {
-            // If statuses is null, hide all rows (as no status can be null)
-            isVisible = false;
-        } else if (filterState.priorities === null) {
-            // If priorities is null, only show rows with null priority
-            isVisible = priority === 'none';
-        } else {
-            // Normal filtering when no null states
+        // Check status group first - this is the primary filter
+        if (filterState.statusGroup === 'inactive') {
+            isVisible = window.STATUS_GROUPS.inactive.includes(status);
+        } else {  // Default to active
+            isVisible = window.STATUS_GROUPS.active.includes(status);
+        }
+
+        // Then apply other filters if the row is still visible
+        if (isVisible) {
+            // Check if the status is selected within its group
             const matchesStatus = filterState.statuses === 'all' ||
                                 (Array.isArray(filterState.statuses) &&
                                  filterState.statuses.includes(status));
 
             const matchesAidType = filterState.aidTypes === 'all' ||
-                                  (Array.isArray(filterState.aidTypes) &&
-                                   filterState.aidTypes.includes(aidType));
+                                 (Array.isArray(filterState.aidTypes) &&
+                                  filterState.aidTypes.includes(aidType));
 
             const matchesPriority = filterState.priorities === 'all' ||
-                                   (Array.isArray(filterState.priorities) &&
-                                    filterState.priorities.includes(priority === 'none' ? null : priority));
+                                  (Array.isArray(filterState.priorities) &&
+                                   filterState.priorities.includes(priority === 'none' ? null : priority));
 
             isVisible = matchesStatus && matchesAidType && matchesPriority;
         }

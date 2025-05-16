@@ -11,7 +11,7 @@ from .aid_location_forms import AidLocationStatusForm, AidLocationCreateForm
 from .aid_request import has_location_status, format_aid_location_note
 from .maps import staticmap_aid, calculate_zoom
 from ..geocoder import get_azure_geocode, geocode_save
-from ..tasks import aidrequest_takcot
+from ..tasks import send_cot_task
 
 from datetime import datetime
 # from time import perf_counter as timer
@@ -83,7 +83,10 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
                 ic(f"Log Error: {e}")
             # ic(timer()-time_start)
             updated_at_stamp = self.aid_location.updated_at.strftime('%Y%m%d%H%M%S')
-            async_task(aidrequest_takcot, aidrequest_id=self.aid_request.pk,
+            async_task(send_cot_task,
+                      field_op_slug=self.field_op.slug,
+                      mark_type='aid',
+                      aidrequests=[self.aid_request.pk],
                        task_name=f"AidLocation{self.aid_location.pk}-New-SendCOT-{updated_at_stamp}")
             try:
                 self.aid_request.logs.create(

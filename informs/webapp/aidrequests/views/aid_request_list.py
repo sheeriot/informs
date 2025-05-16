@@ -9,6 +9,7 @@ from django_filters.views import FilterView
 import json
 from decimal import Decimal
 import pandas as pd
+from django.views.generic import ListView
 
 from ..models import FieldOp, AidRequest, AidType
 
@@ -54,44 +55,55 @@ class AidRequestFilter(django_filters.FilterSet):
 
 
 # Filter View for AidRequests
-class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView):
+class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = AidRequest
     template_name = 'aidrequests/aid_request_list.html'
     permission_required = 'aidrequests.view_aidrequest'
 
-    filterset_class = AidRequestFilter
+    def get_queryset(self):
+        field_op_slug = self.kwargs.get('field_op')
+        status = self.kwargs.get('status')  # Individual status if provided
+        status_group = self.kwargs.get('status_group', 'active')  # Default to active if not specified
 
-    def get_filterset(self, filterset_class):
-        return filterset_class(self.request.GET, queryset=self.get_queryset(), field_op=self.field_op)
+        # Start with all requests for this field op
+        queryset = AidRequest.objects.filter(field_op__slug=field_op_slug)
 
-    def setup(self, request, *args, **kwargs):
-        super().setup(request, *args, **kwargs)
-        field_op_slug = self.kwargs['field_op']
-        self.field_op = get_object_or_404(FieldOp.objects.select_related('tak_server'), slug=field_op_slug)
-        ic("FieldOp TAK Server Info:", {
-            'field_op': self.field_op.name,
-            'tak_server': self.field_op.tak_server,
-            'disable_cot': self.field_op.disable_cot
+        # Apply status filtering
+        if status:
+            # If specific status provided, filter to just that status
+            queryset = queryset.filter(status=status)
+        elif status_group == 'active':
+            # If no specific status but status_group is active (or default)
+            queryset = queryset.filter(status__in=AidRequest.ACTIVE_STATUSES)
+        elif status_group == 'inactive':
+            # If status_group is inactive
+            queryset = queryset.filter(status__in=AidRequest.INACTIVE_STATUSES)
+
+        ic("AidRequestListView Query Parameters:", {
+            'field_op_slug': field_op_slug,
+            'status': status,
+            'status_group': status_group,
+            'filtered_count': queryset.count()
         })
 
-    def get_queryset(self):
-        super().get_queryset()
-        aid_requests = AidRequest.objects.filter(field_op_id=self.field_op.id).distinct()
-        return aid_requests
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['field_op'] = self.field_op
-        ic(context['field_op'])
-        # ic("Context FieldOp TAK Server:", {
-        #     'has_tak_server': hasattr(context['field_op'], 'tak_server'),
-        #     'tak_server': getattr(context['field_op'], 'tak_server', None),
-        #     'disable_cot': context['field_op'].disable_cot
-        # })
-        context['azure_maps_key'] = settings.AZURE_MAPS_KEY
+        field_op = FieldOp.objects.get(slug=self.kwargs.get('field_op'))
+        status = self.kwargs.get('status')
+        status_group = self.kwargs.get('status_group', 'active')  # Default to active if not specified
+
+        # Store the current filter state
+        context.update({
+            'field_op': field_op,
+            'current_status': status,
+            'current_status_group': status_group,
+            'azure_maps_key': settings.AZURE_MAPS_KEY
+        })
 
         # Get all aid types for client-side filtering
-        aid_types = self.field_op.aid_types.all().distinct()
+        aid_types = field_op.aid_types.all().distinct()
         aid_types_data = [{
             'id': aid_type.id,
             'name': aid_type.name,
@@ -103,29 +115,18 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
         context['aid_types_json'] = json.dumps(aid_types_data, cls=DecimalEncoder)
         context['aid_types_list'] = aid_types_data
 
-        # Get all status options for client-side filtering
+        # Get all status and priority choices for client-side filtering
         status_choices = [[status[0], status[1]] for status in AidRequest.STATUS_CHOICES]
-        context['status_choices_json'] = json.dumps(status_choices, cls=DecimalEncoder)
-        context['status_choices_list'] = status_choices
-
-        # Get all priority options for client-side filtering
         priority_choices = [[priority[0], priority[1]] for priority in AidRequest.PRIORITY_CHOICES]
-        context['priority_choices_json'] = json.dumps(priority_choices, cls=DecimalEncoder)
-        context['priority_choices_list'] = priority_choices
+        context.update({
+            'status_choices_json': json.dumps(status_choices, cls=DecimalEncoder),
+            'status_choices_list': status_choices,
+            'priority_choices_json': json.dumps(priority_choices, cls=DecimalEncoder),
+            'priority_choices_list': priority_choices
+        })
 
-        # Get ALL aid requests for the field op
-        all_aid_requests = self.get_queryset()
-        context['aid_requests'] = all_aid_requests
-
-        # Calculate active/inactive counts based on status groups
-        active_statuses = ['new', 'assigned', 'resolved']
-        inactive_statuses = ['closed', 'rejected', 'other']
-
-        active_requests = [ar for ar in all_aid_requests if ar.status in active_statuses]
-        context['active_count'] = len(active_requests)
-        context['total_count'] = len(all_aid_requests)
-
-        # Convert ALL aid requests to DataFrame for counting
+        # Get ALL aid requests and convert to DataFrame for counting
+        all_aid_requests = AidRequest.objects.filter(field_op__slug=field_op.slug)
         df = pd.DataFrame([{
             'id': ar.pk,
             'status': ar.status,
@@ -136,149 +137,120 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
             'aid_type_slug': ar.aid_type.slug,
             'aid_type_id': ar.aid_type.id,
             'latitude': float(ar.location.latitude) if ar.location else None,
-            'longitude': float(ar.location.longitude) if ar.location else None,
-            'is_active': ar.status in active_statuses
+            'longitude': float(ar.location.longitude) if ar.location else None
         } for ar in all_aid_requests])
 
         if not df.empty:
-            # Calculate both filtered (active only) and total counts for status
-            active_df = df[df['is_active']]
+            # First apply status filtering to match the queryset
+            if status:
+                filtered_mask = df['status'] == status
+            elif status_group == 'inactive':
+                filtered_mask = df['status'].isin(AidRequest.INACTIVE_STATUSES)
+            else:  # active or default
+                filtered_mask = df['status'].isin(AidRequest.ACTIVE_STATUSES)
 
-            # Status counts - calculate both filtered and total
+            filtered_df = df[filtered_mask]
+
+            # Calculate counts after filtering
+            context.update({
+                'active_count': len(df[df['status'].isin(AidRequest.ACTIVE_STATUSES)]),  # Total active count
+                'inactive_count': len(df[df['status'].isin(AidRequest.INACTIVE_STATUSES)]),  # Total inactive count
+                'total_count': len(df),  # Total count of all requests
+                'filtered_count': len(filtered_df)  # Count of currently visible requests
+            })
+
+            # Calculate status counts
             status_counts = {}
-
-            # First get total counts for all statuses
-            total_status_counts = df.groupby(['status_display', 'status']).size().reset_index()
-            total_status_counts.columns = ['display', 'value', 'count']
-
-            # Then get filtered counts (active only)
-            filtered_status_counts = active_df.groupby(['status_display', 'status']).size().reset_index()
-            filtered_status_counts.columns = ['display', 'value', 'count']
-
-            # Combine into final status_counts structure
-            for _, row in total_status_counts.iterrows():
-                status_counts[row['display']] = {
-                    'value': row['value'],
-                    'total': row['count'],  # Always include total count
-                    'count': row['count'] if row['value'] in inactive_statuses else
-                            filtered_status_counts[filtered_status_counts['value'] == row['value']]['count'].iloc[0]
-                            if not filtered_status_counts[filtered_status_counts['value'] == row['value']].empty else 0
+            for status_code, status_name in AidRequest.STATUS_CHOICES:
+                matching_status = df[df['status'] == status_code]
+                status_counts[status_name] = {
+                    'value': status_code,
+                    'total': len(matching_status),  # Total count for this status
+                    'count': len(matching_status[filtered_mask])  # Filtered count
                 }
 
-            # Calculate group counts
-            group_counts = {
-                'active': {
-                    'total': len(df[df['status'].isin(active_statuses)]),
-                    'filtered': len(active_df)
-                },
-                'inactive': {
-                    'total': len(df[df['status'].isin(inactive_statuses)]),
-                    'filtered': 0  # Always 0 initially since inactive statuses are unselected
-                }
-            }
-            context['group_counts'] = group_counts
-
-            # Priority counts - calculate both filtered and total
-            priority_counts = {}
-
-            # First get total counts for all priorities
-            total_priority_counts = df.groupby(['priority_display', 'priority'], dropna=False).size().reset_index()
-            total_priority_counts.columns = ['display', 'value', 'count']
-
-            # Then get filtered counts (active only)
-            filtered_priority_counts = active_df.groupby(['priority_display', 'priority'], dropna=False).size().reset_index()
-            filtered_priority_counts.columns = ['display', 'value', 'count']
-
-            # Combine into final priority_counts structure
-            for _, row in total_priority_counts.iterrows():
-                # Use the actual display name from the row, or 'None' if it's None/NaN
-                display_name = row['display'] if pd.notna(row['display']) else 'None'
-                priority_value = row['value'] if pd.notna(row['value']) else None
-
-                # Find the filtered count for this priority
-                filtered_count = 0
-                filtered_match = filtered_priority_counts[
-                    (filtered_priority_counts['value'].isna() if pd.isna(priority_value)
-                     else filtered_priority_counts['value'] == priority_value)
-                ]
-                if not filtered_match.empty:
-                    filtered_count = int(filtered_match['count'].iloc[0])
-
-                priority_counts[display_name] = {
-                    'value': 'none' if priority_value is None else priority_value,
-                    'total': int(row['count']),
-                    'count': filtered_count
-                }
-
-            # Make sure we have an entry for each priority choice
-            for priority_code, priority_name in AidRequest.PRIORITY_CHOICES:
-                if priority_name not in priority_counts:
-                    priority_counts[priority_name] = {
-                        'value': priority_code if priority_code is not None else 'none',
-                        'total': 0,
-                        'count': 0
-                    }
-
-            # Aid type counts (active only initially)
-            aid_type_counts = active_df.groupby(['aid_type_name', 'aid_type_slug']).size().reset_index()
+            # Calculate aid type counts based on filtered data
+            aid_type_counts = filtered_df.groupby(['aid_type_name', 'aid_type_slug']).size().reset_index()
             aid_type_counts.columns = ['name', 'value', 'count']
             aid_type_counts = aid_type_counts.to_dict('records')
             aid_type_counts = {item['name']: {'count': item['count'], 'value': item['value']}
                              for item in aid_type_counts}
 
-            # Calculate map bounds using the best location from each aid request
-            aid_requests = self.get_queryset()
-            valid_locations = [ar.location for ar in aid_requests if ar.location is not None]
+            # Calculate priority counts based on filtered data
+            priority_counts = {}
+            for priority_code, priority_name in AidRequest.PRIORITY_CHOICES:
+                matching_priority = filtered_df[filtered_df['priority'].fillna('null') == (priority_code or 'null')]
+                priority_counts[priority_name] = {
+                    'value': priority_code if priority_code is not None else 'none',
+                    'total': len(matching_priority),
+                    'count': len(matching_priority)
+                }
 
+            # Calculate group counts
+            active_mask = df['status'].isin(AidRequest.ACTIVE_STATUSES)
+            inactive_mask = df['status'].isin(AidRequest.INACTIVE_STATUSES)
+
+            group_counts = {
+                'active': {
+                    'total': len(df[active_mask]),
+                    'filtered': len(filtered_df[filtered_df['status'].isin(AidRequest.ACTIVE_STATUSES)])
+                },
+                'inactive': {
+                    'total': len(df[inactive_mask]),
+                    'filtered': len(filtered_df[filtered_df['status'].isin(AidRequest.INACTIVE_STATUSES)])
+                }
+            }
+            context['group_counts'] = group_counts
+
+            # Calculate map bounds using all locations
+            valid_locations = [ar.location for ar in all_aid_requests if ar.location is not None]
             if valid_locations:
                 min_lat = min(float(loc.latitude) for loc in valid_locations)
                 max_lat = max(float(loc.latitude) for loc in valid_locations)
                 min_lon = min(float(loc.longitude) for loc in valid_locations)
                 max_lon = max(float(loc.longitude) for loc in valid_locations)
-            else:
-                min_lat = max_lat = float(self.field_op.latitude)
-                min_lon = max_lon = float(self.field_op.longitude)
 
-            # Add field op location to bounds
-            if min_lat is not None:
-                min_lat = float(min(min_lat, self.field_op.latitude))
-                max_lat = float(max(max_lat, self.field_op.latitude))
-                min_lon = float(min(min_lon, self.field_op.longitude))
-                max_lon = float(max(max_lon, self.field_op.longitude))
+                # Add field op location to bounds
+                min_lat = float(min(min_lat, field_op.latitude))
+                max_lat = float(max(max_lat, field_op.latitude))
+                min_lon = float(min(min_lon, field_op.longitude))
+                max_lon = float(max(max_lon, field_op.longitude))
 
-                # Add a small padding (about 10% of the span)
+                # Add padding
                 lat_span = max_lat - min_lat
                 lon_span = max_lon - min_lon
-                lat_padding = max(lat_span * 0.1, 0.001)  # At least 0.001 degrees
-                lon_padding = max(lon_span * 0.1, 0.001)  # At least 0.001 degrees
+                lat_padding = max(lat_span * 0.1, 0.001)
+                lon_padding = max(lon_span * 0.1, 0.001)
 
                 min_lat -= lat_padding
                 max_lat += lat_padding
                 min_lon -= lon_padding
                 max_lon += lon_padding
 
-                # Add bounds and field op data to context
                 context.update({
                     'min_lat': min_lat,
                     'max_lat': max_lat,
                     'min_lon': min_lon,
-                    'max_lon': max_lon,
-                    # 'field_op': {
-                    #     'name': self.field_op.name,
-                    #     'slug': self.field_op.slug,
-                    #     'latitude': float(self.field_op.latitude),
-                    #     'longitude': float(self.field_op.longitude),
-                    #     'ring_size': getattr(self.field_op, 'ring_size', 10)  # Default to 10km if not set
-                    # }
+                    'max_lon': max_lon
                 })
+            else:
+                # Use field op location if no valid locations
+                min_lat = max_lat = float(field_op.latitude)
+                min_lon = max_lon = float(field_op.longitude)
         else:
             # Handle empty DataFrame case
-            status_counts = {}
-            priority_counts = {}
-            aid_type_counts = {aid_type['name']: {'count': 0, 'value': aid_type['slug']}
-                             for aid_type in aid_types_data}
-            min_lat = max_lat = float(self.field_op.latitude)
-            min_lon = max_lon = float(self.field_op.longitude)
+            context.update({
+                'active_count': 0,
+                'inactive_count': 0,
+                'total_count': 0,
+                'filtered_count': 0,
+                'status_counts': {},
+                'priority_counts': {},
+                'aid_type_counts': {aid_type['name']: {'count': 0, 'value': aid_type['slug']}
+                                  for aid_type in aid_types_data}
+            })
+            min_lat = max_lat = float(field_op.latitude)
+            min_lon = max_lon = float(field_op.longitude)
 
         # Add ALL aid requests to JSON data for JavaScript
         aid_requests_data = [{
@@ -317,15 +289,14 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView
 
         context.update({
             'aid_requests_json': json.dumps(aid_requests_data, cls=DecimalEncoder),
-            'status_counts': status_counts,
-            'priority_counts': priority_counts,
-            'aid_type_counts': aid_type_counts,
+            'status_counts': status_counts if 'status_counts' in locals() else {},
+            'priority_counts': priority_counts if 'priority_counts' in locals() else {},
+            'aid_type_counts': aid_type_counts if 'aid_type_counts' in locals() else {},
             'status_groups': {
-                'active': active_statuses,
-                'inactive': inactive_statuses
+                'active': AidRequest.ACTIVE_STATUSES,
+                'inactive': AidRequest.INACTIVE_STATUSES
             }
         })
-        ic(context['field_op'])
 
         return context
 
