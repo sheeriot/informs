@@ -183,6 +183,7 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None):
                 # Run until complete
                 await cot_queues.run()
 
+                # Return success message
                 return "COT messages sent successfully"
 
             except Exception as e:
@@ -190,11 +191,27 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None):
                 raise
 
             finally:
-                # Ensure proper cleanup
-                if cot_queues and hasattr(cot_queues, 'close'):
+                # Ensure proper cleanup of all resources
+                if cot_queues:
                     try:
-                        await cot_queues.close()
-                        logger.info("PyTAK connection closed successfully")
+                        # First, close all connections gracefully
+                        if hasattr(cot_queues, 'close'):
+                            await cot_queues.close()
+                            logger.info("PyTAK connection closed successfully")
+
+                        # Cancel any remaining tasks
+                        for task in cot_queues._tasks:
+                            if task and not task.done():
+                                task.cancel()
+                                try:
+                                    # Give task a short time to finish cleanup
+                                    await asyncio.wait_for(asyncio.shield(task), timeout=2.0)
+                                except (asyncio.CancelledError, asyncio.TimeoutError):
+                                    pass
+
+                        # Clear tasks set to help garbage collection
+                        cot_queues._tasks.clear()
+
                     except Exception as e:
                         logger.warning(f"Warning: Error during PyTAK connection closure: {e}")
 
@@ -242,6 +259,14 @@ async def send_cot_message(data, tak_server):
             # Ensure proper cleanup
             if hasattr(cot_queues, 'close'):
                 await cot_queues.close()
+
+                # Cancel any remaining tasks
+                for task in cot_queues._tasks:
+                    if task and not task.done():
+                        task.cancel()
+
+                # Clear tasks set to help garbage collection
+                cot_queues._tasks.clear()
 
     except Exception as e:
         logger.error("Error sending COT message:", e)
