@@ -120,9 +120,32 @@ def sendcot_checkstatus(request, field_op=None, task_id=None):
 
         # Task completed successfully
         if task_result.success:
+            # Parse the result to extract mark statistics
+            result_str = str(task_result.result)
+
+            # Initialize statistics with default values
+            stats = {
+                'field_marks': 0,
+                'aid_marks': 0
+            }
+
+            # Extract statistics from the result string - look for new format
+            import re
+
+            # Look for field markers first
+            field_match = re.search(r'(\d+) field marker', result_str)
+            if field_match:
+                stats['field_marks'] = int(field_match.group(1))
+
+            # Look for aid markers
+            aid_match = re.search(r'(\d+) aid marker', result_str)
+            if aid_match:
+                stats['aid_marks'] = int(aid_match.group(1))
+
             return JsonResponse({
                 "status": "SUCCESS",
-                "result": str(task_result.result)
+                "result": result_str,
+                "stats": stats
             })
 
         # Task completed but marked as failed

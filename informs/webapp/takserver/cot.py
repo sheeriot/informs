@@ -49,12 +49,29 @@ class CotSender(pytak.QueueWorker):
     async def handle_data(self, data=None):
         """Process data through the queue. In our case, build and send messages."""
         try:
-            # Build all messages
+            # If direct data is provided, use it
+            if data is not None:
+                # Log the XML message
+                if isinstance(data, bytes):
+                    cot_logger.info(f"COT Message (direct):\n{data.decode('utf-8')}")
+                else:
+                    cot_logger.info(f"COT Message (direct):\n{data}")
+
+                # Queue the message
+                await self.queue.put(data)
+                logger.debug(f"{self._task_name}: Queued direct message, depth: {self.queue.qsize()}")
+                return 1
+
+            # Otherwise, build messages from config
             messages = await self.cot_maker.build_messages()
             logger.info(f"{self._task_name}: Built {len(messages)} COT messages")
 
-            # Queue each message
+            # Queue each message and log it
             for idx, message in enumerate(messages, 1):
+                # Log the XML message
+                cot_logger.info(f"COT Message {idx}/{len(messages)}:\n{message.decode('utf-8')}")
+
+                # Queue the message
                 await self.queue.put(message)
                 logger.debug(f"{self._task_name}: Queued message {idx}/{len(messages)}, depth: {self.queue.qsize()}")
 
@@ -206,6 +223,17 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None):
                             except Exception as e2:
                                 logger.debug(f"Queue drain exception (non-critical): {e2}")
 
+                        # Direct access to workers to close their connections
+                        if hasattr(cot_queues, 'workers'):
+                            for worker in cot_queues.workers:
+                                try:
+                                    if hasattr(worker, 'writer') and worker.writer:
+                                        logger.debug(f"Directly closing writer for {type(worker).__name__}")
+                                        worker.writer.close()
+                                        await worker.writer.wait_closed()
+                                except Exception as ex:
+                                    logger.debug(f"Error closing worker writer: {ex}")
+
                         # Close all connections by accessing the workers directly
                         if hasattr(cot_queues, 'running_tasks'):
                             for task in list(cot_queues.running_tasks):
@@ -268,6 +296,12 @@ async def send_cot_message(data, tak_server):
             "PYTAK_TLS_DONT_CHECK_HOSTNAME": True
         }
 
+        # Log the COT message being sent
+        if isinstance(data, bytes):
+            cot_logger.info(f"Sending direct COT message:\n{data.decode('utf-8')}")
+        else:
+            cot_logger.info(f"Sending direct COT message:\n{data}")
+
         # Create and setup the queues
         cot_queues = pytak.CLITool(cot_config)
         await cot_queues.setup()
@@ -302,7 +336,18 @@ async def send_cot_message(data, tak_server):
                 except Exception as e2:
                     logger.debug(f"Queue drain exception (non-critical): {e2}")
 
-            # Close all connections by accessing the workers directly
+            # Direct access to workers to close their connections
+            if hasattr(cot_queues, 'workers'):
+                for worker in cot_queues.workers:
+                    try:
+                        if hasattr(worker, 'writer') and worker.writer:
+                            logger.debug(f"Directly closing writer for {type(worker).__name__}")
+                            worker.writer.close()
+                            await worker.writer.wait_closed()
+                    except Exception as ex:
+                        logger.debug(f"Error closing worker writer: {ex}")
+
+            # Close all connections by accessing the workers through tasks
             if hasattr(cot_queues, 'running_tasks'):
                 for task in list(cot_queues.running_tasks):
                     try:
@@ -344,5 +389,5 @@ async def send_cot_message(data, tak_server):
             logger.debug("PyTAK connection cleanup complete")
 
     except Exception as e:
-        logger.error("Error sending COT message:", e)
+        logger.error(f"Error sending COT message: {e}")
         raise

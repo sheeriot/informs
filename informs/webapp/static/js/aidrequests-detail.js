@@ -70,7 +70,31 @@ const ui = {
                         ui.setStatus("Sending COT...");
                         // Continue polling
                     } else if (response.status === "SUCCESS") {
-                        ui.setStatus(response.result);
+                        // Format the result to include statistics if available
+                        let statusText = response.result;
+                        if (response.stats) {
+                            const stats = response.stats;
+                            let statsText = "";
+
+                            // Only include field markers if any were sent
+                            if (stats.field_marks > 0) {
+                                statsText += `${stats.field_marks} field marker${stats.field_marks > 1 ? 's' : ''}`;
+                            }
+
+                            // Only include aid markers if any were sent
+                            if (stats.aid_marks > 0) {
+                                if (statsText) {
+                                    statsText += ", ";
+                                }
+                                statsText += `${stats.aid_marks} aid marker${stats.aid_marks > 1 ? 's' : ''}`;
+                            }
+
+                            // Only add the stat text if we have any markers
+                            if (statsText) {
+                                statusText = `COT sent (${statsText})`;
+                            }
+                        }
+                        ui.setStatus(statusText);
                         clearInterval(interval);
                     } else if (response.status === "FAILURE") {
                         ui.setStatus("Error: " + response.result);

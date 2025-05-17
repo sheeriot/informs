@@ -231,15 +231,11 @@ div.aid-coords label {
 }
 
 /* SendCOT status message container */
-.transition {
-    transition: opacity 0.5s ease-in-out;
+.tak-message-status {
+    z-index: 1000;
 }
 
-.sendcot-statuscontainer {
-    min-height: 24px;
-}
-
-.sendcot-statuscontainer.show {
+.tak-message-status.show {
     opacity: 1 !important;
 }
 
