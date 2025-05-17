@@ -184,7 +184,8 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None):
                 await cot_queues.run()
 
                 # Return success message
-                return "COT messages sent successfully"
+                msg = "COT messages sent successfully"
+                return msg
 
             except Exception as e:
                 logger.error(f"Error in _run_cot: {e}")
@@ -194,23 +195,57 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None):
                 # Ensure proper cleanup of all resources
                 if cot_queues:
                     try:
-                        # First, close all connections gracefully
-                        if hasattr(cot_queues, 'close'):
-                            await cot_queues.close()
-                            logger.info("PyTAK connection closed successfully")
+                        # First, ensure queue is empty
+                        if hasattr(cot_queues, 'tx_queue') and cot_queues.tx_queue:
+                            try:
+                                if not cot_queues.tx_queue.empty():
+                                    logger.debug("Draining remaining queue items...")
+                                    while not cot_queues.tx_queue.empty():
+                                        await cot_queues.tx_queue.get()
+                                        cot_queues.tx_queue.task_done()
+                            except Exception as e2:
+                                logger.debug(f"Queue drain exception (non-critical): {e2}")
 
-                        # Cancel any remaining tasks
-                        for task in cot_queues._tasks:
-                            if task and not task.done():
-                                task.cancel()
+                        # Close all connections by accessing the workers directly
+                        if hasattr(cot_queues, 'running_tasks'):
+                            for task in list(cot_queues.running_tasks):
                                 try:
-                                    # Give task a short time to finish cleanup
-                                    await asyncio.wait_for(asyncio.shield(task), timeout=2.0)
-                                except (asyncio.CancelledError, asyncio.TimeoutError):
-                                    pass
+                                    # Access the original worker through the task's coroutine safely
+                                    if hasattr(task, '_coro'):
+                                        coro = task._coro
+                                        if coro and hasattr(coro, 'cr_frame') and coro.cr_frame:
+                                            frame = coro.cr_frame
+                                            if frame and hasattr(frame, 'f_locals'):
+                                                worker = frame.f_locals.get('self')
+                                                if worker and hasattr(worker, 'writer') and worker.writer:
+                                                    writer = worker.writer
+                                                    if hasattr(writer, 'close'):
+                                                        logger.debug(f"Closing writer for {type(worker).__name__}")
+                                                        writer.close()
+                                                        await writer.wait_closed()
+                                except Exception as ex:
+                                    logger.debug(f"Error accessing worker: {ex}")
 
-                        # Clear tasks set to help garbage collection
-                        cot_queues._tasks.clear()
+                                # Cancel the task
+                                if not task.done():
+                                    task.cancel()
+                                    try:
+                                        await asyncio.wait_for(asyncio.shield(task), timeout=1.0)
+                                    except (asyncio.CancelledError, asyncio.TimeoutError):
+                                        pass
+
+                            # Clear tasks
+                            cot_queues.running_tasks.clear()
+
+                        # Clear any other task references
+                        if hasattr(cot_queues, 'tasks'):
+                            cot_queues.tasks.clear()
+
+                        # Force garbage collection to clean up any lingering resources
+                        import gc
+                        gc.collect()
+
+                        logger.info("PyTAK connection cleanup complete")
 
                     except Exception as e:
                         logger.warning(f"Warning: Error during PyTAK connection closure: {e}")
@@ -257,16 +292,56 @@ async def send_cot_message(data, tak_server):
 
         finally:
             # Ensure proper cleanup
-            if hasattr(cot_queues, 'close'):
-                await cot_queues.close()
+            if hasattr(cot_queues, 'tx_queue') and cot_queues.tx_queue:
+                try:
+                    if not cot_queues.tx_queue.empty():
+                        logger.debug("Draining remaining queue items...")
+                        while not cot_queues.tx_queue.empty():
+                            await cot_queues.tx_queue.get()
+                            cot_queues.tx_queue.task_done()
+                except Exception as e2:
+                    logger.debug(f"Queue drain exception (non-critical): {e2}")
 
-                # Cancel any remaining tasks
-                for task in cot_queues._tasks:
-                    if task and not task.done():
+            # Close all connections by accessing the workers directly
+            if hasattr(cot_queues, 'running_tasks'):
+                for task in list(cot_queues.running_tasks):
+                    try:
+                        # Access the original worker through the task's coroutine safely
+                        if hasattr(task, '_coro'):
+                            coro = task._coro
+                            if coro and hasattr(coro, 'cr_frame') and coro.cr_frame:
+                                frame = coro.cr_frame
+                                if frame and hasattr(frame, 'f_locals'):
+                                    worker = frame.f_locals.get('self')
+                                    if worker and hasattr(worker, 'writer') and worker.writer:
+                                        writer = worker.writer
+                                        if hasattr(writer, 'close'):
+                                            logger.debug(f"Closing writer for {type(worker).__name__}")
+                                            writer.close()
+                                            await writer.wait_closed()
+                    except Exception as ex:
+                        logger.debug(f"Error accessing worker: {ex}")
+
+                    # Cancel the task
+                    if not task.done():
                         task.cancel()
+                        try:
+                            await asyncio.wait_for(asyncio.shield(task), timeout=1.0)
+                        except (asyncio.CancelledError, asyncio.TimeoutError):
+                            pass
 
-                # Clear tasks set to help garbage collection
-                cot_queues._tasks.clear()
+                # Clear tasks
+                cot_queues.running_tasks.clear()
+
+            # Clear any other task references
+            if hasattr(cot_queues, 'tasks'):
+                cot_queues.tasks.clear()
+
+            # Force garbage collection
+            import gc
+            gc.collect()
+
+            logger.debug("PyTAK connection cleanup complete")
 
     except Exception as e:
         logger.error("Error sending COT message:", e)
