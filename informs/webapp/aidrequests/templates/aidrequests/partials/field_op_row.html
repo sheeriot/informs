@@ -6,8 +6,10 @@
             <span>{{ field_op.name }}</span>
             <div class="d-flex align-items-center text-secondary">
                 <a href="{% url 'field_op_detail' field_op.slug %}" class="text-decoration-none">
-                    <i class="bi bi-truck me-1"></i>
-                    <span>{{ field_op.slug }}</span>
+                    <span class="text-nowrap">
+                        <i class="bi bi-truck me-1"></i>
+                        <span>{{ field_op.slug }}</span>
+                    </span>
                 </a>
             </div>
         </div>
@@ -43,41 +45,43 @@
         </div>
     </td>
     <td>
-        {% if field_op.tak_server %}
-            <div class="position-relative">
-                <span class="text-success">
-                    <i class="bi bi-hdd-rack"></i><i class="bi bi-plus-circle"></i>
-                    {{ field_op.tak_server }}
-                </span>
-                <!-- Status message container -->
-                <div class="field-op-status-container opacity-0 transition position-absolute start-0" style="z-index: 1000;">
-                    <div class="alert alert-info py-1 px-2 mb-0 small d-none">
-                        <span class="status-message">&nbsp;</span>
-                        <!-- Hidden placeholder text to help determine minimum width -->
-                        <span class="invisible position-absolute">Status field for TAK server connection state and health updates</span>
+        <div class="position-relative">
+            {% if field_op.tak_server %}
+                <div class="d-flex align-items-center">
+                    <span class="text-success text-nowrap">
+                        <i class="bi bi-hdd-rack"></i><i class="bi bi-plus-circle"></i>
+                        {{ field_op.tak_server }}
+                    </span>
+
+                    <div class="ms-3 form-check form-switch mb-0">
+                        <input type="checkbox"
+                               class="form-check-input cot-status-toggle"
+                               id="cotToggle-{{ field_op.slug }}"
+                               data-field-op-slug="{{ field_op.slug }}"
+                               data-current-status="{% if field_op.disable_cot %}disabled{% else %}active{% endif %}"
+                               {% if field_op.disable_cot %}{% else %}checked{% endif %}
+                               {% if not field_op.tak_server %}disabled{% endif %}>
+                        <label class="form-check-label" for="cotToggle-{{ field_op.slug }}">
+                            <span class="status-text {% if field_op.disable_cot %}text-danger{% else %}text-success{% endif %}">
+                                {% if field_op.disable_cot %}Disabled{% else %}Active{% endif %}
+                            </span>
+                        </label>
                     </div>
                 </div>
+            {% else %}
+                <div>
+                    <span class="text-secondary">
+                        Not Set
+                    </span>
+                </div>
+            {% endif %}
+
+            <!-- Status message container -->
+            <div class="tak-message-status opacity-0 position-absolute top-100 start-0 mt-1 w-auto text-nowrap transition-opacity duration-300">
+                <div class="alert alert-info py-1 px-2 mb-0 small shadow-sm d-none">
+                    <span class="status-message"></span>
+                </div>
             </div>
-        {% else %}
-            <span class="text-secondary">
-                Not Set
-            </span>
-        {% endif %}
-    </td>
-    <td>
-        <div class="form-check form-switch">
-            <input type="checkbox"
-                   class="form-check-input cot-status-toggle"
-                   id="cotToggle-{{ field_op.slug }}"
-                   data-field-op-slug="{{ field_op.slug }}"
-                   data-current-status="{% if field_op.disable_cot %}disabled{% else %}active{% endif %}"
-                   {% if field_op.disable_cot %}{% else %}checked{% endif %}
-                   {% if not field_op.tak_server %}disabled{% endif %}>
-            <label class="form-check-label" for="cotToggle-{{ field_op.slug }}">
-                <span class="status-text {% if field_op.disable_cot %}text-danger{% else %}text-success{% endif %}">
-                    {% if field_op.disable_cot %}Disabled{% else %}Active{% endif %}
-                </span>
-            </label>
         </div>
     </td>
     <td>

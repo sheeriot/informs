@@ -2,7 +2,7 @@
 // Handles COT status toggle and TAK alerts for field operations
 
 const fieldOpsConfig = {
-    debug: true,
+    debug: false,
     urls: {
         toggleCot: (fieldOpSlug) => `/api/${fieldOpSlug}/toggle-cot/`,
         sendCot: (fieldOpSlug) => `/api/${fieldOpSlug}/send-cot/`,
@@ -149,29 +149,53 @@ async function handleCotToggle(event) {
 }
 
 function showStatusMessage(row, message, type = 'info', duration = 15000) {
-    const container = row.querySelector('.field-op-status-container');
+    const container = row.querySelector('.tak-message-status');
     const alert = container.querySelector('.alert');
     const messageEl = container.querySelector('.status-message');
 
     // Set message and type
     messageEl.textContent = message;
-    alert.className = `alert alert-${type} py-1 px-2 mb-0`;
+
+    // Update alert classes for the proper style
+    alert.className = `alert alert-${type} py-1 px-2 mb-0 small shadow-sm`;
+
+    // Display the alert before any other changes to avoid layout shifts
     alert.classList.remove('d-none');
-    container.classList.add('show');
+
+    // Wait a tiny bit for the alert to be in the DOM to avoid frame jump
+    setTimeout(() => {
+        // Make container visible with Bootstrap opacity classes
+        container.classList.remove('opacity-0');
+        container.classList.add('opacity-100', 'show');
+    }, 10);
 
     // Clear any existing timeout
     if (container.fadeTimeout) {
         clearTimeout(container.fadeTimeout);
     }
 
-    // Set timeout to fade out
+    // Set timeout to fade out if duration > 0
     if (duration > 0) {
         container.fadeTimeout = setTimeout(() => {
-            container.classList.remove('show');
+            // Start fade out using Bootstrap opacity classes
+            container.classList.remove('opacity-100', 'show');
+            container.classList.add('opacity-0');
+
+            // After fade completes, hide alert
             setTimeout(() => {
                 alert.classList.add('d-none');
             }, 500); // Wait for fade out animation
         }, duration);
+    }
+
+    if (fieldOpsConfig.debug) {
+        console.log('Status message shown:', {
+            message,
+            type,
+            duration,
+            container,
+            visible: container.classList.contains('show')
+        });
     }
 }
 
@@ -192,7 +216,12 @@ async function handleTakAlert(event) {
     // Store original button content
     const originalContent = button.innerHTML;
 
-    // Show loading state
+    // Disable both buttons to prevent multiple sends while one is in progress
+    const buttonGroup = button.closest('.btn-group');
+    const allButtons = buttonGroup.querySelectorAll('.send-tak-alert');
+    allButtons.forEach(btn => btn.disabled = true);
+
+    // Show loading state on clicked button
     button.innerHTML = `
         <div class="d-flex align-items-center">
             <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -202,10 +231,9 @@ async function handleTakAlert(event) {
             </div>
         </div>
     `;
-    button.disabled = true;
 
     // Update status message
-    showStatusMessage(row, `Sending ${markType} mark to TAK...`, 'info');
+    showStatusMessage(row, `Sending ${markType} mark to TAK...`, 'info', 0);
 
     try {
         const response = await fetch(fieldOpsConfig.urls.sendCot(fieldOpSlug), {
@@ -221,7 +249,8 @@ async function handleTakAlert(event) {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}. ${errorText}`);
         }
 
         const data = await response.json();
@@ -243,18 +272,31 @@ async function handleTakAlert(event) {
             button.classList.remove('btn-success', 'btn-danger');
             button.classList.add('btn-outline-success');
 
+            // Update success message
+            showStatusMessage(row, `${markType.charAt(0).toUpperCase() + markType.slice(1)} mark sent successfully. Checking connection...`, 'success', 0);
+
             // Check connection status after successful send
-            const statusData = await checkConnectionStatus(fieldOpSlug);
-            if (statusData?.port_status === 'open') {
-                showStatusMessage(row, `Warning: TAK server connection port still open`, 'warning');
+            try {
+                const statusData = await checkConnectionStatus(fieldOpSlug);
+
+                // Status message is updated by checkConnectionStatus, no need to do it here
+
+                if (fieldOpsConfig.debug) {
+                    console.log('Connection status check complete:', statusData);
+                }
+            } catch (statusError) {
+                showStatusMessage(row, `Mark sent, but error checking connection: ${statusError.message}`, 'warning');
+                console.error('Error checking connection status:', statusError);
             }
 
             // Reset button after 2 seconds
             setTimeout(() => {
                 button.innerHTML = originalContent;
-                button.disabled = false;
                 button.classList.remove('btn-outline-success');
                 button.classList.add(originalButtonClass);
+
+                // Re-enable all buttons
+                allButtons.forEach(btn => btn.disabled = false);
             }, 2000);
         } else {
             throw new Error(data.message || `Failed to send ${markType} mark`);
@@ -287,9 +329,11 @@ async function handleTakAlert(event) {
         // Reset button after 3 seconds
         setTimeout(() => {
             button.innerHTML = originalContent;
-            button.disabled = false;
             button.classList.remove('btn-outline-danger');
             button.classList.add(originalButtonClass);
+
+            // Re-enable all buttons
+            allButtons.forEach(btn => btn.disabled = false);
         }, 3000);
     }
 }
@@ -303,8 +347,17 @@ async function checkConnectionStatus(fieldOpSlug) {
         // Start polling
         let keepPolling = true;
         let finalData = null;
+        let pollCount = 0;
+        const maxPolls = 5; // Maximum number of polls before giving up
 
-        while (keepPolling) {
+        const row = document.querySelector(`tr[data-field-op-slug="${fieldOpSlug}"]`);
+
+        // Show initial status as we begin checking
+        showStatusMessage(row, "Checking TAK server connection status...", "info", 0);
+
+        while (keepPolling && pollCount < maxPolls) {
+            pollCount++;
+
             const response = await fetch(`${fieldOpsConfig.urls.checkStatus(fieldOpSlug)}?sendcot_id=${fieldOpsConfig.lastSendcotId}`, {
                 method: 'GET',
                 headers: {
@@ -316,27 +369,67 @@ async function checkConnectionStatus(fieldOpSlug) {
             finalData = data; // Store the latest data
 
             if (fieldOpsConfig.debug) {
-                console.log('Connection status:', data);
+                console.log('Connection status check #' + pollCount + ':', data);
             }
 
             // Update UI based on status
-            const row = document.querySelector(`tr[data-field-op-slug="${fieldOpSlug}"]`);
-
             if (data.status === "PENDING") {
-                showStatusMessage(row, data.message, "info", 0);
+                // Still waiting for results
+                showStatusMessage(row, data.message || "Checking connection status...", "info", 0);
                 // Wait before next poll
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 continue;
             } else if (data.status === "SUCCESS") {
-                showStatusMessage(row, data.result, "success");
+                // Connection succeeded
+                let messageType = "success";
+                let message = data.result || "TAK server connection successful";
+
+                // Add statistics if available
+                if (data.stats) {
+                    const stats = data.stats;
+                    let statsText = "";
+
+                    // Only include field markers if any were sent
+                    if (stats.field_marks > 0) {
+                        statsText += `${stats.field_marks} field marker${stats.field_marks > 1 ? 's' : ''}`;
+                    }
+
+                    // Only include aid markers if any were sent
+                    if (stats.aid_marks > 0) {
+                        if (statsText) {
+                            statsText += ", ";
+                        }
+                        statsText += `${stats.aid_marks} aid marker${stats.aid_marks > 1 ? 's' : ''}`;
+                    }
+
+                    // Only add the stat text if we have any markers
+                    if (statsText) {
+                        message = `TAK connection successful (${statsText})`;
+                    }
+                }
+
+                // Check for port still being open
+                if (data.port_status === "open") {
+                    message = "Warning: TAK server connection port still open";
+                    messageType = "warning";
+                }
+
+                showStatusMessage(row, message, messageType);
                 keepPolling = false;
             } else if (data.status === "FAILURE") {
-                showStatusMessage(row, `Error: ${data.result}`, "danger");
+                // Connection failed
+                showStatusMessage(row, `Error: ${data.result || "Connection failed"}`, "danger");
                 keepPolling = false;
             } else {
+                // Unknown status
                 showStatusMessage(row, `Unknown status: ${data.status}`, "warning");
                 keepPolling = false;
             }
+        }
+
+        // If we hit the poll limit, show a timeout message
+        if (pollCount >= maxPolls && keepPolling) {
+            showStatusMessage(row, "Status check timed out after multiple attempts", "warning");
         }
 
         return finalData;
@@ -399,6 +492,16 @@ function updateTakAlertButtons(fieldOpSlug, disabled) {
     takAlertButtons.forEach(button => {
         button.disabled = disabled;
     });
+
+    // Also update the button group visibility
+    const buttonGroup = row.querySelector('.btn-group');
+    if (buttonGroup) {
+        if (disabled) {
+            buttonGroup.classList.add('d-none');
+        } else {
+            buttonGroup.classList.remove('d-none');
+        }
+    }
 }
 
 function getCsrfToken() {

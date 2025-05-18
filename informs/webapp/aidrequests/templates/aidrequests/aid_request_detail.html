@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
+{% load static %}
 
 {% block content %}
 <div class="container m-4">
@@ -53,21 +54,23 @@
                     <th class="col-auto">ID</th>
                     <th class="col-auto">Field Op</th>
                     <th class="col-auto">Aid Type</th>
-                    <th class="col-auto">Group Size</th>
+                    <th class="col-auto text-nowrap">Group Size</th>
                 </tr>
                 <tr>
                     <td class="col-auto">
-                        <a href="{% url 'aid_request_update' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
-                            <i class="bi bi-pencil"></i> {{ object.pk }}
-                        </a>
+                        <div id="tak-status-wrapper" class="d-flex text-nowrap">
+                            <a href="{% url 'aid_request_update' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
+                                <i class="bi bi-pencil"></i> {{ object.pk }}
+                            </a>
+                        </div>
                     </td>
-                    <td class="col-auto">
+                    <td class="col-auto text-nowrap">
                         <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-outline-primary btn-sm mx-1 p-1">
                             <i class="bi bi-truck text"></i> <span class="text-dark">{{ field_op.name }}</span>
                         </a>
                     </td>
-                    <td class="col-auto">{{ object.aid_type }}</td>
-                    <td class="col-auto text-center">{{ object.group_size }}</td>
+                    <td class="col-auto text-nowrap">{{ object.aid_type }}</td>
+                    <td class="col-auto text-center text-nowrap">{{ object.group_size }}</td>
                 </tr>
                 <tr><th colspan="4">Address Provided</th></tr>
                 <tr>
@@ -116,7 +119,7 @@
             </table>
         </div>
         <hr class="m-1">
-        <div class="d-inline-flex align-items-left">
+        <div class="d-inline-flex align-items-center w-100">
             <a href="{% url 'aid_request_notify' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-info btn-sm mx-1 p-1">
                 <i class="bi bi-send-fill"></i> Email
             </a>
@@ -128,20 +131,27 @@
                 data-url-check-status="{% url 'sendcot_checkstatus' field_op=field_op.slug %}">
             </div>
             <input type="hidden" id="aidrequest_id" value="{{ aid_request.pk }}">
-            <div class="position-relative">
-                <button id="send-cot-button" class="btn btn-danger btn-sm mx-1 p-1">
-                    <i class="bi bi-bullseye"></i> Alert TAK
+
+            <!-- TAK Alert button with responsive width -->
+            <div class="d-inline-flex align-items-center">
+                <button id="tak-alert-button" class="btn btn-danger btn-sm mx-1 p-1 px-2">
+                    <span class="d-inline-flex align-items-center justify-content-center">
+                        <i class="bi bi-bullseye me-1"></i>
+                        <span>Alert TAK</span>
+                    </span>
                 </button>
-                <!-- Status message container -->
-                <div class="sendcot-statuscontainer opacity-0 transition position-absolute start-0" style="z-index: 1000;">
-                    <div class="alert alert-info py-1 px-2 mb-0 small d-none">
-                        <span class="status-message">&nbsp;</span>
-                        <!-- Hidden placeholder text to help determine minimum width -->
-                        <span class="invisible position-absolute">Status field for TAK server connection state and health updates</span>
-                    </div>
-                </div>
-                <div class="d-inline-flex align-items-left mx-1 p-0 text-dark font-monospace">
-                    <div id="send-cot-status"></div>
+            </div>
+
+            <!-- SINGLE TAK status container that gets updated -->
+            <div id="tak-status-wrapper" class="d-flex align-items-center ms-2 py-1">
+                <!-- Only this single element should be updated -->
+                <div id="send-cot-status" class="small text-nowrap rounded px-2 py-1 transition-opacity"></div>
+            </div>
+
+            <!-- Hidden popup status container (kept for backward compatibility) -->
+            <div class="sendcot-statuscontainer d-none">
+                <div class="alert alert-info py-1 px-2 mb-0 small d-none">
+                    <span class="status-message"></span>
                 </div>
             </div>
         </div>
@@ -337,5 +347,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/aidrequests-detail.js' %}"></script>
+<script src="{% static 'js/tak-alert.js' %}"></script>
 {% endblock %}

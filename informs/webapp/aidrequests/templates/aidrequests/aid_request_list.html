@@ -16,69 +16,8 @@
         </div>
     </div>
 
-    <!-- Field Op Key Data -->
-    <div class="row mb-3">
-        <div class="col-auto">
-            <div class="card">
-                <div class="card-body p-2">
-                    <div class="d-flex gap-4">
-                        <div>
-                            <strong>Coordinates:</strong>
-                            <div class="input-group" style="max-width: 300px;">
-                                <input type="text" class="form-control text-dark font-monospace" id="coordinates"
-                                    value="{{ field_op.latitude }},{{ field_op.longitude }}" readonly>
-                                <button class="btn btn-outline-secondary" type="button" onclick="copyCoordinates()">
-                                    <i class="bi bi-clipboard"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div>
-                            <strong>TAK Server:</strong>
-                            <div class="text-dark">
-                                {% if field_op.tak_server %}
-                                    {{ field_op.tak_server }}
-                                {% else %}
-                                    <span class="text-muted">Not set</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div>
-                            <strong>Slug:</strong>
-                            <div class="text-dark font-monospace">{{ field_op.slug }}</div>
-                        </div>
-                        <div class="ms-auto">
-                            {% if not field_op.tak_server %}
-                                <span class="badge bg-secondary">
-                                    <i class="bi bi-x-circle"></i> No TAK Server
-                                </span>
-                            {% elif field_op.disable_cot %}
-                                <span class="badge bg-warning text-dark">
-                                    <i class="bi bi-exclamation-triangle"></i> TAK Messaging Disabled
-                                </span>
-                            {% else %}
-                                <div class="d-flex align-items-center gap-2">
-                                    <div class="position-relative">
-                                        <button id="tak-alert-button" class="btn btn-danger">
-                                            <i class="bi bi-bullseye me-1"></i>Alert TAK
-                                        </button>
-                                        <!-- Status message container -->
-                                        <div class="sendcot-statuscontainer opacity-0 transition position-absolute start-0" style="z-index: 1000;">
-                                            <div class="alert alert-info py-1 px-2 mb-0 small d-none">
-                                                <span class="status-message">&nbsp;</span>
-                                                <!-- Hidden placeholder text to help determine minimum width -->
-                                                <span class="invisible position-absolute">Status field for TAK server connection state and health updates</span>
-                                            </div>
-                                        </div>
-                                        <div id="tak-alert-status" class="d-none"></div>
-                                    </div>
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Include Field Op Key Data from partial -->
+    {% include "aidrequests/partials/aid_request_list_header.html" %}
 
     <!-- Aid Requests Filter section -->
     {% include "aidrequests/includes/aid_requests_filter.html" %}
@@ -122,6 +61,23 @@
 <!-- Azure Maps CSS -->
 <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
 <link href="{% static 'css/azure-maps-layer-legend.css' %}" rel="stylesheet" />
+
+<!-- Fix for table dropdowns visibility -->
+<style>
+    /* Fix for dropdowns that overflow the table container */
+    #aid-request-list-table-container {
+        overflow: visible !important;
+    }
+
+    /* Alternative solution for mobile/smaller screens */
+    @media (max-width: 992px) {
+        .dropdown-fix-overflow .dropdown-menu {
+            position: fixed !important;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block extra_js %}

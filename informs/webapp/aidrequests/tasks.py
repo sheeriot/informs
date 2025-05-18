@@ -190,40 +190,50 @@ def send_email(message):
     return result
 
 
-# def send_all_field_op_cot():
-#     """Send COT messages for all active field ops that have COT enabled."""
-#     try:
-#         # Get all field ops with TAK servers and COT enabled
-#         field_ops = FieldOp.objects.filter(tak_server__isnull=False, disable_cot=False)
-#         ic(f"Found {field_ops.count()} field ops with TAK servers and COT enabled")
+def send_all_field_op_cot():
+    """Send COT messages for all active field ops that have COT enabled.
 
-#         if field_ops.count() == 0:
-#             # If no field ops found, check what we have in the system
-#             all_field_ops = FieldOp.objects.all()
-#             ic(f"Total field ops in system: {all_field_ops.count()}")
-#             for fo in all_field_ops:
-#                 ic(f"Field op {fo.slug} - TAK server: {fo.tak_server}, COT enabled: {not fo.disable_cot}")
+    This is the function called by the hourly scheduler to send both
+    field operation markers and aid request markers with a stale time
+    of +1 day (86400 seconds).
+    """
+    try:
+        # Get all field ops with TAK servers and COT enabled
+        field_ops = FieldOp.objects.filter(tak_server__isnull=False, disable_cot=False)
+        logger.info(f"Found {field_ops.count()} field ops with TAK servers and COT enabled")
 
-#         results = []
-#         for field_op in field_ops:
-#             try:
-#                 ic(f"Sending COT for field op: {field_op.slug}")
-#                 # Run the async task in a new event loop
-#                 result = asyncio.run(send_cot_task(
-#                     field_op_slug=field_op.slug,
-#                     mark_type='field'
-#                 ))
-#                 results.append(f"Successfully sent COT for {field_op.slug}")
-#             except Exception as e:
-#                 ic(f"Error for {field_op.slug}: {str(e)}")
-#                 results.append(f"Error sending COT for {field_op.slug}: {str(e)}")
+        if field_ops.count() == 0:
+            # If no field ops found, check what we have in the system
+            all_field_ops = FieldOp.objects.all()
+            logger.info(f"Total field ops in system: {all_field_ops.count()}")
+            for fo in all_field_ops:
+                logger.info(f"Field op {fo.slug} - TAK server: {fo.tak_server}, COT enabled: {not fo.disable_cot}")
+            return "No COT messages were sent - no eligible field ops found"
 
-#         if not results:
-#             return "No COT messages were sent - no eligible field ops found"
-#         return "\n".join(results)
-#     except Exception as e:
-#         ic(f"Main error: {str(e)}")
-#         return f"Error in send_all_field_op_cot: {str(e)}"
+        results = []
+        for field_op in field_ops:
+            try:
+                logger.info(f"Sending hourly COT update for field op: {field_op.slug}")
+                # Use the enhanced send_cot_task which handles both field and aid marks appropriately
+                task_result = send_cot_task(
+                    field_op_slug=field_op.slug,
+                    mark_type='aid'  # This will send both field mark and all aid marks
+                )
+                results.append(task_result)
+            except Exception as e:
+                error_msg = f"Error sending COT for {field_op.slug}: {str(e)}"
+                logger.error(error_msg)
+                results.append(error_msg)
+
+        if not results:
+            return "No COT messages were sent - no eligible field ops found"
+
+        # Log the completion
+        logger.info(f"Hourly COT update completed at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        return "\n".join(results)
+    except Exception as e:
+        logger.error(f"Main error in send_all_field_op_cot: {str(e)}")
+        return f"Error in send_all_field_op_cot: {str(e)}"
 
 
 # def send_fieldop_cot_task(field_op_slug, message_type='update'):
@@ -259,9 +269,16 @@ def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests
     all active aid requests for the field op will be sent.
 
     Returns:
-        str: Status message indicating success or failure
+        str: Status message indicating success or failure with mark counts
     """
     try:
+        # Track counts of marks sent
+        stats = {
+            'field_marks_sent': 0,
+            'aid_marks_sent': 0,
+            'total_marks_sent': 0
+        }
+
         # Get the field op
         from .models import FieldOp, AidRequest
         try:
@@ -283,13 +300,18 @@ def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests
             if aidrequest or aidrequests:
                 logger.warning("Warning: aidrequest/aidrequests parameters ignored for field mark type")
             aid_request_ids = None
+            send_field_mark = True
         else:  # mark_type == 'aid'
             # Convert single aidrequest to list if provided
             if aidrequest is not None:
                 aid_request_ids = [aidrequest]
+                # Single aid request doesn't need field mark sent with it
+                send_field_mark = False
             # Use aidrequests list if provided
             elif aidrequests is not None:
                 aid_request_ids = aidrequests if isinstance(aidrequests, list) else [aidrequests]
+                # Multiple aid requests should include field mark for context
+                send_field_mark = len(aid_request_ids) > 1
             # If neither provided, get all active aid requests
             else:
                 active_requests = AidRequest.objects.filter(
@@ -303,6 +325,9 @@ def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests
                 else:
                     logger.info(f"Found {len(active_requests)} active aid requests")
                     aid_request_ids = list(active_requests)
+
+                # When sending all aid requests, include field mark for context
+                send_field_mark = True
 
         # Log TAK server configuration
         logger.info("TAK Server Config:", {
@@ -321,19 +346,59 @@ def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests
             logger.info(f"No TAK server configured for field op: {field_op.slug}")
             return 'No TAK server configured for field operation'
 
-        # Use the synchronous pytak_send_cot function from takserver.cot
-        result = pytak_send_cot(field_op_slug, mark_type, aid_request_ids)
+        results = []
 
-        if isinstance(result, Exception):
-            error_msg = f"Error sending COT: {str(result)}"
-            logger.error(error_msg)
-            return error_msg
+        # Send field mark first if needed
+        if mark_type == 'field' or (mark_type == 'aid' and send_field_mark):
+            logger.info(f"Sending field mark for {field_op.slug}")
+            field_result = pytak_send_cot(field_op_slug, 'field', None)
 
-        # Return appropriate success message
-        if mark_type == 'field':
-            return f"Successfully sent field mark for {field_op.slug}"
-        else:
-            return f"Successfully sent aid marks for {field_op.slug}"
+            if isinstance(field_result, Exception):
+                error_msg = f"Error sending field mark: {str(field_result)}"
+                logger.error(error_msg)
+                results.append(error_msg)
+            else:
+                stats['field_marks_sent'] += 1
+                stats['total_marks_sent'] += 1
+                results.append(f"Successfully sent field mark for {field_op.slug}")
+
+        # Send aid marks if requested
+        if mark_type == 'aid' and aid_request_ids is not None:
+            if aid_request_ids:
+                aid_count = len(aid_request_ids)
+                logger.info(f"Sending {aid_count} aid marks for {field_op.slug}")
+                aid_result = pytak_send_cot(field_op_slug, 'aid', aid_request_ids)
+
+                if isinstance(aid_result, Exception):
+                    error_msg = f"Error sending aid marks: {str(aid_result)}"
+                    logger.error(error_msg)
+                    results.append(error_msg)
+                else:
+                    stats['aid_marks_sent'] += aid_count
+                    stats['total_marks_sent'] += aid_count
+                    results.append(f"Successfully sent {aid_count} aid marks for {field_op.slug}")
+            else:
+                logger.info("No aid requests to send")
+                results.append("No aid requests to send")
+
+        # Add statistics to the result
+        stats_msg = ""
+        if stats['field_marks_sent'] > 0:
+            stats_msg += f"{stats['field_marks_sent']} field marker"
+            if stats['field_marks_sent'] > 1:
+                stats_msg += "s"
+
+        if stats['aid_marks_sent'] > 0:
+            if stats_msg:
+                stats_msg += ", "
+            stats_msg += f"{stats['aid_marks_sent']} aid marker"
+            if stats['aid_marks_sent'] > 1:
+                stats_msg += "s"
+
+        if stats_msg:
+            results.append(f"Sent: {stats_msg}")
+
+        return "\n".join(results)
 
     except Exception as e:
         error_msg = f"Error in send_cot_task: {str(e)}"

@@ -1,0 +1,81 @@
+<!-- Field Op Key Data -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body p-2">
+                <div class="row align-items-center">
+                    <!-- Left Column: Field Op Name, Slug and Coordinates -->
+                    <div class="col-md-4">
+                        <div class="d-flex flex-column">
+                            <div class="mb-2">
+                                <strong>{{ field_op.name }}</strong>
+                                <span class="font-monospace ms-2">({{ field_op.slug }})</span>
+                            </div>
+                            <div class="input-group">
+                                <input type="text" class="form-control text-dark font-monospace" id="coordinates"
+                                    value="{{ field_op.latitude }},{{ field_op.longitude }}" readonly>
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyCoordinates()">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: TAK Server, Button and Status - All left aligned -->
+                    <div class="col-md-8">
+                        <div class="card border border-light">
+                            <div class="card-body p-2">
+                                <div class="d-flex align-items-center flex-wrap">
+                                    <!-- TAK Server Label and Value -->
+                                    <div class="me-3 mb-2 mb-md-0">
+                                        <strong>TAK Server:</strong>
+                                        <span class="text-dark">
+                                            {% if field_op.tak_server %}
+                                                {{ field_op.tak_server }}
+                                            {% else %}
+                                                <span class="text-muted">Not set</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+
+                                    {% if not field_op.tak_server %}
+                                        <span class="badge bg-secondary ms-3">
+                                            <i class="bi bi-x-circle"></i> No TAK Server
+                                        </span>
+                                    {% elif field_op.disable_cot %}
+                                        <span class="badge bg-warning text-dark ms-3">
+                                            <i class="bi bi-exclamation-triangle"></i> TAK Messaging Disabled
+                                        </span>
+                                    {% else %}
+                                        <!-- Config data -->
+                                        <div id="aid-request-config"
+                                            data-csrf-token="{{ csrf_token }}"
+                                            data-field-op="{{ field_op.slug }}"
+                                            data-url-send-cot="{% url 'send_cot' field_op=field_op.slug %}"
+                                            data-url-check-status="{% url 'sendcot_checkstatus' field_op=field_op.slug %}">
+                                        </div>
+
+                                        <!-- TAK Button - Always to the left of status -->
+                                        <div class="d-inline-flex align-items-center mx-3 mb-2 mb-md-0">
+                                            <button id="tak-alert-button" class="btn btn-danger">
+                                                <span class="d-inline-flex align-items-center justify-content-center">
+                                                    <i class="bi bi-bullseye me-1"></i>
+                                                    <span>Alert TAK</span>
+                                                </span>
+                                            </button>
+                                        </div>
+
+                                        <!-- Status message container - Always to the right of button -->
+                                        <div id="tak-status-wrapper" class="d-flex align-items-center py-1">
+                                            <div id="send-cot-status" class="small text-nowrap rounded px-2 py-1 transition-opacity"></div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
