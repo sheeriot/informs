@@ -2,12 +2,12 @@
  * tak-alert.js
  *
  * Handles TAK alert functionality for aid requests
- * Version: 0.0.4
+ * Version: 0.0.5
  */
 
 const takConfig = {
     debug: true,  // Enable debug logging
-    version: '0.0.4'
+    version: '0.0.5'
 };
 
 // Main execution
@@ -16,13 +16,24 @@ document.addEventListener('DOMContentLoaded', initializeTakAlert);
 // Initialize TAK Alert functionality
 function initializeTakAlert() {
     const takAlertButton = document.getElementById('tak-alert-button');
-    const fieldOpSlug = document.body.dataset.fieldOpSlug;
+    const configElement = document.getElementById('aid-request-config');
+    let fieldOpSlug = null;
+
+    if (configElement) {
+        fieldOpSlug = configElement.dataset.fieldOp;
+        takConfig.csrfToken = configElement.dataset.csrfToken;
+    }
+
+    if (!fieldOpSlug && document.body.dataset.fieldOpSlug) {
+        fieldOpSlug = document.body.dataset.fieldOpSlug;
+    }
 
     if (takConfig.debug) {
         console.log('[TAK] Initializing:', {
             version: takConfig.version,
             button: takAlertButton ? 'found' : 'disabled',
-            fieldOp: fieldOpSlug || 'not found'
+            fieldOp: fieldOpSlug || 'not found',
+            csrfToken: takConfig.csrfToken ? 'found' : 'not found'
         });
     }
 
@@ -35,6 +46,9 @@ function initializeTakAlert() {
         return;
     }
 
+    // Set fieldOpSlug in a global variable for use in other functions
+    takConfig.fieldOpSlug = fieldOpSlug;
+
     // Only add the click handler, no UI modifications
     takAlertButton.addEventListener('click', handleTakAlert);
 }
@@ -42,7 +56,7 @@ function initializeTakAlert() {
 // Handle TAK Alert button click
 async function handleTakAlert() {
     const takAlertButton = document.getElementById('tak-alert-button');
-    const fieldOpSlug = document.body.dataset.fieldOpSlug;
+    const fieldOpSlug = takConfig.fieldOpSlug;
     const aidRequestIds = getVisibleAidRequestIds();
 
     if (takConfig.debug) {
@@ -128,17 +142,54 @@ function getVisibleAidRequestIds() {
 
 // Send TAK alert to server
 async function sendTakAlert(fieldOpSlug, aidRequestIds) {
+    // Try to get CSRF token from takConfig first (set during initialization),
+    // then fall back to the DOM if needed
+    let csrfToken = takConfig.csrfToken;
+    if (!csrfToken) {
+        const tokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (tokenElement) {
+            csrfToken = tokenElement.value;
+        }
+    }
+
+    if (takConfig.debug && !csrfToken) {
+        console.warn('[TAK] CSRF token not found');
+    }
+
+    // Format the request payload to match what the server expects
+    // For list view, we send multiple aid requests
+    // For detail view, we need to use a different format with aidrequest_id
+    let requestPayload;
+
+    if (aidRequestIds.length === 1 && document.getElementById('aidrequest_id')) {
+        // Detail view - use aidrequest_id format
+        requestPayload = {
+            aidrequest_id: aidRequestIds[0],
+            mark_type: 'aid'
+        };
+    } else {
+        // List view - use aidrequests array format
+        requestPayload = {
+            aidrequests: aidRequestIds,
+            mark_type: 'aid'
+        };
+    }
+
+    if (takConfig.debug) {
+        console.log('[TAK] Sending request:', {
+            url: `/api/${fieldOpSlug}/send-cot/`,
+            payload: requestPayload
+        });
+    }
+
     const response = await fetch(`/api/${fieldOpSlug}/send-cot/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'X-CSRFToken': csrfToken,
             'Accept': 'application/json'
         },
-        body: JSON.stringify({
-            aidrequests: aidRequestIds,
-            mark_type: 'aid'
-        })
+        body: JSON.stringify(requestPayload)
     });
 
     if (!response.ok) {
@@ -169,7 +220,7 @@ async function pollTaskStatus(taskId) {
     const maxAttempts = 30; // Maximum number of polling attempts
     const pollInterval = 2000; // Poll every 2 seconds
     let attempts = 0;
-    const fieldOpSlug = document.body.dataset.fieldOpSlug;
+    const fieldOpSlug = takConfig.fieldOpSlug;
 
     const poll = async () => {
         try {
@@ -309,10 +360,12 @@ function resetButton(button) {
 
 // Helper function to show status messages
 function showStatus(type, message) {
+    // Update status in the sendcot-statuscontainer
     const statusContainer = document.querySelector('.sendcot-statuscontainer');
+    const sendCotStatus = document.getElementById('send-cot-status');
 
-    if (!statusContainer) {
-        if (takConfig.debug) console.warn('[TAK] Status container not found');
+    if (!statusContainer && !sendCotStatus) {
+        if (takConfig.debug) console.warn('[TAK] Status containers not found');
         return;
     }
 
@@ -321,22 +374,21 @@ function showStatus(type, message) {
         clearTimeout(window.takStatusTimeout);
     }
 
-    // Show status container
-    statusContainer.classList.remove('opacity-0');
-
-    const alertElement = statusContainer.querySelector('.alert');
-    const statusMessage = statusContainer.querySelector('.status-message');
-
-    if (alertElement) {
-        alertElement.classList.remove('d-none');
-    }
-
+    // Generate status text based on type
     let statusHtml = '';
+    let statusText = '';
+    let textClass = '';
+    let bgClass = '';
+    let icon = '';
     let timeout = 0;
 
     switch (type) {
         case 'sending':
             statusHtml = '<span class="text-info"><i class="bi bi-arrow-repeat"></i> Sending to TAK...</span>';
+            statusText = 'Sending to TAK...';
+            textClass = 'text-primary';
+            bgClass = 'bg-primary bg-opacity-10';
+            icon = '<i class="bi bi-arrow-repeat me-1"></i>';
             timeout = 0; // No timeout for sending state
             break;
 
@@ -347,6 +399,10 @@ function showStatus(type, message) {
                     ${message}
                 </span>
             `;
+            statusText = message;
+            textClass = 'text-success';
+            bgClass = 'bg-success bg-opacity-10';
+            icon = '<i class="bi bi-check-circle me-1"></i>';
             timeout = 10000;
             break;
 
@@ -357,6 +413,10 @@ function showStatus(type, message) {
                     ${message}
                 </span>
             `;
+            statusText = message;
+            textClass = 'text-danger';
+            bgClass = 'bg-danger bg-opacity-10';
+            icon = '<i class="bi bi-exclamation-circle me-1"></i>';
             timeout = 15000;
             break;
 
@@ -367,6 +427,10 @@ function showStatus(type, message) {
                     ${message}
                 </span>
             `;
+            statusText = message;
+            textClass = 'text-warning';
+            bgClass = 'bg-warning bg-opacity-10';
+            icon = '<i class="bi bi-exclamation-triangle me-1"></i>';
             timeout = 5000;
             break;
 
@@ -377,6 +441,10 @@ function showStatus(type, message) {
                     ${message}
                 </span>
             `;
+            statusText = message;
+            textClass = 'text-info';
+            bgClass = 'bg-info bg-opacity-10';
+            icon = '<i class="bi bi-arrow-repeat me-1"></i>';
             timeout = 0; // No timeout for polling state
             break;
     }
@@ -389,20 +457,65 @@ function showStatus(type, message) {
         });
     }
 
-    // Update status message
-    if (statusMessage) {
-        statusMessage.innerHTML = statusHtml;
+    // Update statusContainer if it exists
+    if (statusContainer) {
+        // Show status container
+        statusContainer.classList.remove('opacity-0');
+
+        const alertElement = statusContainer.querySelector('.alert');
+        const statusMessage = statusContainer.querySelector('.status-message');
+
+        if (alertElement) {
+            alertElement.classList.remove('d-none');
+        }
+
+        // Update status message
+        if (statusMessage) {
+            statusMessage.innerHTML = statusHtml;
+        }
+
+        // Set timeout to hide status if needed
+        if (timeout > 0) {
+            window.takStatusTimeout = setTimeout(() => {
+                statusContainer.classList.add('opacity-0');
+                if (alertElement) {
+                    setTimeout(() => {
+                        alertElement.classList.add('d-none');
+                    }, 500); // Wait for fade out animation
+                }
+            }, timeout);
+        }
     }
 
-    // Set timeout to hide status if needed
-    if (timeout > 0) {
-        window.takStatusTimeout = setTimeout(() => {
-            statusContainer.classList.add('opacity-0');
-            if (alertElement) {
+    // Also update the send-cot-status element if it exists
+    if (sendCotStatus) {
+        // Remove any previous classes except 'small' and basic classes
+        sendCotStatus.className = 'small text-nowrap rounded px-2 py-1';
+
+        // Add new status-specific classes
+        sendCotStatus.classList.add(textClass, bgClass);
+
+        // Set content with icon and message
+        sendCotStatus.innerHTML = `${icon}${statusText}`;
+
+        // Make sure the element is visible
+        sendCotStatus.style.opacity = '1';
+
+        // For the inline display, also set a timeout to clear it after a while if it's a final status
+        if (timeout > 0) {
+            setTimeout(() => {
+                // Fade out effect using opacity
+                sendCotStatus.style.transition = 'opacity 0.5s ease';
+                sendCotStatus.style.opacity = '0';
+
+                // Clear content after fade
                 setTimeout(() => {
-                    alertElement.classList.add('d-none');
-                }, 500); // Wait for fade out animation
-            }
-        }, timeout);
+                    sendCotStatus.innerHTML = '';
+                    sendCotStatus.className = 'small text-nowrap rounded px-2 py-1';
+                    sendCotStatus.style.opacity = '1';
+                    sendCotStatus.style.transition = '';
+                }, 500);
+            }, timeout);
+        }
     }
 }

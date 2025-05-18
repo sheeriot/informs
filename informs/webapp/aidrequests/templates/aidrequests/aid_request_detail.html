@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
+{% load static %}
 
 {% block content %}
 <div class="container m-4">
@@ -128,20 +129,22 @@
                 data-url-check-status="{% url 'sendcot_checkstatus' field_op=field_op.slug %}">
             </div>
             <input type="hidden" id="aidrequest_id" value="{{ aid_request.pk }}">
-            <div class="position-relative">
-                <button id="send-cot-button" class="btn btn-danger btn-sm mx-1 p-1">
+            <div class="d-flex align-items-center">
+                <button id="tak-alert-button" class="btn btn-danger btn-sm mx-1 p-1">
                     <i class="bi bi-bullseye"></i> Alert TAK
                 </button>
-                <!-- Status message container -->
-                <div class="sendcot-statuscontainer opacity-0 transition position-absolute start-0" style="z-index: 1000;">
+
+                <!-- Inline status display -->
+                <div class="d-flex align-items-center ms-2">
+                    <div id="send-cot-status" class="small text-nowrap rounded px-2 py-1"></div>
+                </div>
+
+                <!-- Hidden popup status container (kept for backward compatibility) -->
+                <div class="sendcot-statuscontainer opacity-0 d-none position-absolute start-0" style="z-index: 1000;">
                     <div class="alert alert-info py-1 px-2 mb-0 small d-none">
                         <span class="status-message">&nbsp;</span>
-                        <!-- Hidden placeholder text to help determine minimum width -->
                         <span class="invisible position-absolute">Status field for TAK server connection state and health updates</span>
                     </div>
-                </div>
-                <div class="d-inline-flex align-items-left mx-1 p-0 text-dark font-monospace">
-                    <div id="send-cot-status"></div>
                 </div>
             </div>
         </div>
@@ -337,5 +340,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/aidrequests-detail.js' %}"></script>
+<script src="{% static 'js/tak-alert.js' %}"></script>
 {% endblock %}
