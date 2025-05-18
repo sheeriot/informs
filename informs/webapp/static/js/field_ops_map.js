@@ -1,6 +1,6 @@
 // Debug flag
 const fieldOpsConfig = {
-    debug: true
+    debug: false
 };
 
 let map;

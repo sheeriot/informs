@@ -104,59 +104,85 @@ def sendcot_checkstatus(request, field_op=None, task_id=None):
     try:
         task_result = fetch(task_id)
 
+        # Add consistent logging for debug
+        ic(f"Task status check for ID: {task_id}")
+
         # Task hasn't completed yet
         if task_result is None:
-            return JsonResponse({
+            response = {
                 "status": "PENDING",
                 "message": "Sending COT to TAK..."
-            })
+            }
+            ic("API Response (PENDING):", response)
+            return JsonResponse(response)
 
         # Task completed but had an error
         if isinstance(task_result.result, Exception):
-            return JsonResponse({
+            response = {
                 "status": "FAILURE",
                 "result": str(task_result.result)
-            })
+            }
+            ic("API Response (FAILURE):", response)
+            return JsonResponse(response)
 
         # Task completed successfully
         if task_result.success:
-            # Parse the result to extract mark statistics
+            # Get the raw result string
             result_str = str(task_result.result)
+            ic("Raw task result string:", result_str)
 
-            # Initialize statistics with default values
-            stats = {
-                'field_marks': 0,
-                'aid_marks': 0
-            }
-
-            # Extract statistics from the result string - look for new format
+            # Extract statistics from the result string
             import re
 
             # Look for field markers first
+            field_count = 0
             field_match = re.search(r'(\d+) field marker', result_str)
             if field_match:
-                stats['field_marks'] = int(field_match.group(1))
+                field_count = int(field_match.group(1))
+                ic("Extracted field count:", field_count)
 
             # Look for aid markers
+            aid_count = 0
             aid_match = re.search(r'(\d+) aid marker', result_str)
             if aid_match:
-                stats['aid_marks'] = int(aid_match.group(1))
+                aid_count = int(aid_match.group(1))
+                ic("Extracted aid count:", aid_count)
 
-            return JsonResponse({
+            # Format a clean, consistent message
+            message_parts = []
+            if field_count > 0:
+                message_parts.append(f"{field_count} field marker{'' if field_count == 1 else 's'}")
+            if aid_count > 0:
+                message_parts.append(f"{aid_count} aid marker{'' if aid_count == 1 else 's'}")
+
+            # Create the final message
+            if message_parts:
+                formatted_result = f"Sent: {', '.join(message_parts)}"
+            else:
+                formatted_result = "Sent: markers to TAK"
+
+            ic("Formatted result:", formatted_result)
+
+            response = {
                 "status": "SUCCESS",
-                "result": result_str,
-                "stats": stats
-            })
+                "result": formatted_result
+            }
+            ic("API Response (SUCCESS):", response)
+            return JsonResponse(response)
 
         # Task completed but marked as failed
-        return JsonResponse({
+        response = {
             "status": "FAILURE",
             "result": "Task failed without an error message"
-        })
+        }
+        ic("API Response (FAILURE - no message):", response)
+        return JsonResponse(response)
 
     except Exception as e:
         ic(f"Error checking task status: {e}")
-        return JsonResponse({
+        response = {
             "status": "error",
             "message": f"Error checking task status: {str(e)}"
-        })
+        }
+        ic("API Response (ERROR):", response)
+        return JsonResponse(response)

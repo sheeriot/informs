@@ -2,7 +2,7 @@
 // Handles COT status toggle and TAK alerts for field operations
 
 const fieldOpsConfig = {
-    debug: true,
+    debug: false,
     urls: {
         toggleCot: (fieldOpSlug) => `/api/${fieldOpSlug}/toggle-cot/`,
         sendCot: (fieldOpSlug) => `/api/${fieldOpSlug}/send-cot/`,

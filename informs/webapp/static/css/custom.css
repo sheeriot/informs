@@ -239,7 +239,7 @@ div.aid-coords label {
     opacity: 1 !important;
 }
 
-/* Ensure buttons maintain consistent width */
-/* .send-tak-alert {
-    min-width: 120px;
-} */
+/* Transition effect for status messages */
+.transition-opacity {
+    transition: opacity 0.3s ease-in-out;
+}
