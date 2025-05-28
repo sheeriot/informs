@@ -20,7 +20,7 @@ class FieldOpForm(forms.ModelForm):
     class Meta:
         """ meta """
         model = FieldOp
-        fields = ('name', 'slug', 'latitude', 'longitude', 'ring_size', 'tak_server', 'disable_cot', 'aid_types')
+        fields = ('name', 'slug', 'latitude', 'longitude', 'ring_size', 'tak_server', 'disable_cot')
 
         widgets = {
             'latitude': forms.NumberInput(attrs={
