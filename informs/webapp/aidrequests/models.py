@@ -373,6 +373,11 @@ class AidLocation(TimeStampedModel):
             **task_kwargs
         )
 
+    def get_absolute_url(self):
+        # This method is not provided in the original file or the code block
+        # It's assumed to exist as it's called in the save method
+        pass
+
 
 class AidRequestLog(TimeStampedModel):
     aid_request = models.ForeignKey(

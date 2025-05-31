@@ -1,7 +1,7 @@
 ---
 description:
 globs:
-alwaysApply: true
+alwaysApply: false
 ---
 * always use the native asyncio and pytak way of doing things
 * do not timeout and manually end connections that are should be under control of pytak and asyncio

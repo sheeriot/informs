@@ -26,10 +26,10 @@ LOGS_DIR.mkdir(exist_ok=True)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
-ENV_NAME = os.environ.get('ENV_NAME', '')
+ENV_NAME = os.environ.get('ENV_NAME', 'sand')
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-))gr)koo$_$jilzn-gcqe!q82%s&ce6de*vxu7@#rc4#j_0!l5')
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 if os.environ.get('DJANGO_DEBUG') == 'False':
@@ -318,15 +318,47 @@ AZURE_MAPS_STATIC_URL = 'https://atlas.microsoft.com/map/static'
 MAPS_PATH = 'media/maps'
 
 Q_CLUSTER = {
-    'name': 'informs-queues',
-    'label': 'queues',
+    'name': 'ORM',
     'workers': 1,
+    'timeout': 180,
+    'retry': 300,
+    'queue_limit': 500,
+    'bulk': 10,
     'orm': 'default',
-    'retry': 120,
-    'timeout': 60,
-    'recycle': 500,
-    'scheduler': True,  # Enable scheduler
+    'sync': DEBUG,
+    'scheduler': True,
+    'catch_up': False,
+    'label': 'Default ORM Queue'
 }
+
+# Q_CLUSTERS can be removed or commented out if only Q_CLUSTER is used
+# Q_CLUSTERS = {
+#     'default': {
+#         'workers': 2,  # General purpose workers
+#         'timeout': 60,
+#         'retry': 120,
+#         'recycle': 500,
+#         'orm': 'default',
+#         'scheduler': True,  # Enable scheduler on the default queue
+#         'label': 'Default Queue'
+#     },
+#     'cot_messaging': {
+#         'workers': 1,  # Single-threaded for CoT operations
+#         'timeout': 180, # Potentially longer timeout for network ops
+#         'retry': 300,   # Retry for longer if CoT server is down
+#         'recycle': 500,
+#         'orm': 'default',
+#         'label': 'CoT Messaging Queue'
+#     },
+#     'email_sending': {
+#         'workers': 2,  # Can be adjusted based on email volume
+#         'timeout': 120,
+#         'retry': 180,
+#         'recycle': 500,
+#         'orm': 'default',
+#         'label': 'Email Sending Queue'
+#     }
+# }
 
 # DEBUG_TOOLBAR_CONFIG = {
 #     'SHOW_TOOLBAR_CALLBACK': lambda request: os.environ.get('DEBUG_TOOLBAR', 'False') == 'True',  # Show the django-debug-toolbar?
@@ -357,3 +389,8 @@ icons_config.read(os.path.join(BASE_DIR, 'takserver/cot_icons.ini'))
 
 COT_ICONS = {key: value for key, value in icons_config.items('Icons')}
 # ic(COT_ICONS)
+
+# Version information
+VERSION = '0.3.1'
+
+# PYTAK_FLUSH_TIMEOUT = 40 # seconds
