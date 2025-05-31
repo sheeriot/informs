@@ -9,31 +9,6 @@ from .tasks import send_cot_task
 # Get the COT logger
 cot_logger = logging.getLogger('cot')
 
-
-def refresh_all_cot_messages():
-    """
-    Periodic task to refresh all active COT messages.
-    This ensures TAK clients have up-to-date information even if they missed some updates.
-    """
-    timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
-
-    # Get all field ops
-    for field_op in FieldOp.objects.all():
-        # Get all active aid requests for this field op
-        active_requests = AidRequest.objects.filter(
-            field_op=field_op,
-            status__in=['new', 'assigned', 'resolved']  # Only send active requests
-        )
-
-        if active_requests.exists():
-            aid_request_ids = list(active_requests.values_list('id', flat=True))
-            send_cot_task(
-                field_op_slug=field_op.slug,
-                mark_type='aid',
-                aidrequests=aid_request_ids,
-            )
-
-
 def hourly_field_op_cot(field_op_slug=None):
     """
     Hourly task to send COT messages for each Field Op that has a TAK server configured.

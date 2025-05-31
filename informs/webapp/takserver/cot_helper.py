@@ -1,4 +1,5 @@
 from django.conf import settings
+import platform # Added import
 
 import xml.etree.ElementTree as ET
 import pytak
@@ -10,7 +11,6 @@ def aidrequest_location(locations=None):
     status = aidrequest_locationstatus(locations)
     if status == 'confirmed':
         location = next((location for location in locations if location.status == 'confirmed'), None)
-        # location = locations.filter(status='confirmed').first()
     elif status == 'new':
         location = next((location for location in locations if location.status == 'new'), None)
     else:
@@ -27,98 +27,88 @@ def aidrequest_locationstatus(locations=None):
 
 def make_cot(cot_icon=None,
              lat=0.0, lon=0.0,
-             uuid=None, name=None,
+             uuid=None, # Unique ID for data markers (e.g., AidRequest.1), fully suffixed
+             name=None,  # Base callsign for data markers (e.g., AR1), fully suffixed
              remarks=None,
-             parent_name=None,
-             parent_uuid=None,
-             mark_type='field',
-             poll_interval="86400"):
-    """Create a COT XML message.
+             mark_type='field', # Used for stale time logic
+             poll_interval="86400", # Default stale time in seconds if mark_type='field'
+             client_static_uid: str = None, # FULL, SUFFIXED UID of the client (e.g., informs-dev.dev)
+             link_to_client_uid: str = None, # FULL, SUFFIXED UID of the parent marker for linked markers
+             link_type: str = None, # CoT type of the parent marker (e.g., a-n-G)
+             link_parent_callsign: str = None # Callsign of the parent marker
+             ):
+    """Create a generic COT XML message.
 
     Args:
-        cot_icon (str): Icon name from settings.COT_ICONS
-        lat (float): Latitude
-        lon (float): Longitude
-        uuid (str): Unique identifier
-        name (str): Display name
-        remarks (str): Remarks text
-        parent_name (str, optional): Parent marker name for aid requests
-        parent_uuid (str, optional): Parent marker UUID for aid requests
-        mark_type (str): Either 'field' or 'aid'
-        poll_interval (str): Stale time in seconds
+        cot_icon (str): Icon name from settings.COT_ICONS.
+        lat (float): Latitude.
+        lon (float): Longitude.
+        uuid (str): The unique, fully suffixed ID for the event (e.g., "aidrequest.1.dev"). Required.
+        name (str): The fully suffixed callsign/name for the marker (e.g., "AR1.dev"). Used for <contact callsign>. Required.
+        remarks (str): Remarks text.
+        mark_type (str): Governs stale time. 'field' uses poll_interval, others use a default.
+        poll_interval (str): Stale time in seconds if mark_type='field'.
+        client_static_uid (str): The FULL static, unique, SUFFIXED identifier for the EUD/client
+                                 sending the CoT (e.g., "informs-dev.dev"). Required.
+        link_to_client_uid (str): For linked markers, the FULL, SUFFIXED UID of the parent marker.
+        link_type (str): For linked markers, the CoT 'type' of the parent marker.
+        link_parent_callsign (str): For linked markers, the callsign of the parent marker.
     """
-    if settings.ENV_NAME == 'prod':
-        event_uuid = uuid
-    else:
-        event_uuid = f"{uuid}.{settings.ENV_NAME}"
-        name = f"{name}.{settings.ENV_NAME}"
+    if not client_static_uid:
+        raise ValueError("client_static_uid (full, suffixed) is always required.")
 
-    # red_diamond = 'a-h-G'
-    # green_square_x = 'a-n-G-U-C-I'
+    if not uuid:
+        raise ValueError("uuid (event UID, fully suffixed) is required.")
+    if not name:
+        raise ValueError("name (fully suffixed callsign/identifier for contact) is required.")
 
-    # if message_type == 'remove':
-    #     cot_icon = 'square_green_x'
-    #     remarks = f"**** CLEARED ****\n{remarks}"
-    # elif message_type == 'test':
-    #     remarks = "**** TEST ****"
+    event_actual_uid = uuid
 
-    # use icon name to lookup 'cot_type' from cot_icons.ini file, or 'a-n-G'.
-    cot_type = settings.COT_ICONS.get(cot_icon, 'a-n-G')
+    cot_type_from_icon = settings.COT_ICONS.get(cot_icon, 'a-n-G') # Default to Neutral Generic
 
-    # Start the XML tree
     event = ET.Element("event")
     event.set("version", "2.0")
-    event.set("uid", event_uuid)
-    event.set("type", cot_type)
-    event.set('how', 'h-g-i-g-o')
-    # event.set("how", "m-g")
+    event.set("uid", event_actual_uid)
+    event.set("type", cot_type_from_icon)
+    event.set('how', 'm-e') # Manual-entry
     cot_time = pytak.cot_time()
     event.set("time", cot_time)
     event.set("start", cot_time)
-    event.set("stale", pytak.cot_time(int(poll_interval)))
-    # event.set("access", "Undefined")
 
-    # This is a Point event, the sub-element
+    # Stale time logic
+    if mark_type == 'field':
+        stale_time_seconds = int(poll_interval)
+    else:
+        stale_time_seconds = 21600  # 6 hours
+    event.set("stale", pytak.cot_time(stale_time_seconds))
+
     point = ET.SubElement(event, 'point')
     point.set('lat', str(lat))
     point.set('lon', str(lon))
     point.set('hae', '0')
-    point.set('ce', '0.0')
-    point.set('le', '0.0')
+    point.set('ce', '9999999')
+    point.set('le', '9999999')
 
-    #  Add a Detail sub-element
     detail = ET.SubElement(event, 'detail')
 
-    # add Contact to Detail
-    contact = ET.SubElement(detail, "contact")
-    contact.set("callsign", name)
-    # if message_type == 'test':
-    #     contact.set("endpoint", "*:-1:stcp")
+    if link_to_client_uid and link_type:
+        link = ET.SubElement(detail, 'link')
+        link.set('uid', link_to_client_uid)
+        link.set('relation', 'p-p') # Parent-child relationship
+        link.set('type', link_type)
+        if link_parent_callsign:
+            link.set('parent_callsign', link_parent_callsign)
 
     precisionlocation = ET.SubElement(detail, "precisionlocation")
     precisionlocation.set("geopointsrc", "???")
     precisionlocation.set("altsrc", "???")
 
-    status = ET.SubElement(detail, 'status')
-    status.set('readiness', 'true')
-
-    # Add parent link for aid requests
-    if mark_type == 'aid' and parent_name and parent_uuid:
-            # add parent suffix for different environments
-            if settings.ENV_NAME != 'prod':
-                parent_uuid = f"{parent_uuid}.{settings.ENV_NAME}"
-                parent_name = f"{parent_name}.{settings.ENV_NAME}"
-            link = ET.SubElement(detail, 'link')
-            link.set('uid', parent_uuid)
-            link.set('production_time', cot_time)
-            link.set('type', 'a-f-G-U-C')
-            link.set('parent_callsign', parent_name)
-            link.set('relation', 'p-p')
-
-    color = ET.SubElement(detail, 'color')
-    color.set('argb', "-1")
-
     remarks_element = ET.SubElement(detail, 'remarks')
-    remarks_element.text = remarks
+    remarks_element.text = remarks if remarks else ""
+
+    # Add contact element with callsign from the name parameter
+    if name:
+        contact_element = ET.SubElement(detail, 'contact')
+        contact_element.set('callsign', name)
 
     return ET.tostring(event)

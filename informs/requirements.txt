@@ -32,3 +32,6 @@ icecream
 
 # if dev ?
 # django-debug-toolbar
+
+loguru
+lxml

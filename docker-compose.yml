@@ -25,8 +25,6 @@ services:
     restart: unless-stopped
     env_file:
       - informs/env/django.env
-    # entrypoint: export static_files, migrate DB, then run "command"
-    # entrypoint: /opt/app/docker-entrypoint.sh
     command: python manage.py qcluster
     volumes:
       - informs_staticfiles:/opt/app/static_files
