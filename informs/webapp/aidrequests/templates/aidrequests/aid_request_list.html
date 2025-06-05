@@ -91,22 +91,5 @@
 <script src="{% static 'js/map_aidrequests.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/aidrequests-ajax.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/tak-alert.js' %}?v={{static_version}}"></script>
-
-<script>
-    function copyCoordinates() {
-        const coordInput = document.getElementById('coordinates');
-        coordInput.select();
-        coordInput.setSelectionRange(0, 99999); // For mobile devices
-        navigator.clipboard.writeText(coordInput.value).then(() => {
-            const btn = event.currentTarget;
-            const icon = btn.querySelector('i');
-            icon.classList.remove('bi-clipboard');
-            icon.classList.add('bi-clipboard-check');
-            setTimeout(() => {
-                icon.classList.remove('bi-clipboard-check');
-                icon.classList.add('bi-clipboard');
-            }, 2000);
-        });
-    }
-</script>
+<script src="{% static 'js/utils-copy-coordinates.js' %}?v={{static_version}}"></script>
 {% endblock %}

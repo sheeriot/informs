@@ -75,34 +75,34 @@ class CotMaker:
                 full_client_uid_for_cot_maker = local_server_name_part
 
             # Generate and add takPong message first
-            timestamp_str = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
-            takpong_uid = f"{full_client_uid_for_cot_maker}.{timestamp_str}"
+            # timestamp_str = datetime.utcnow().strftime("%Y%m%d%H%M%S%f") # Removed
+            # takpong_uid = f"{full_client_uid_for_cot_maker}.{timestamp_str}" # Removed
 
-            pong_root = ET.Element("event")
-            pong_root.set("version", "2.0")
-            pong_root.set("type", "t-x-d-d")  # takPong type
-            pong_root.set("uid", full_client_uid_for_cot_maker)
-            pong_root.set("how", "m-g") # Machine-generated
-            current_cot_time = pytak.cot_time()
-            pong_root.set("time", current_cot_time)
-            pong_root.set("start", current_cot_time)
-            pong_root.set("stale", pytak.cot_time(3600)) # 1 hour stale, as per PyTAK example
+            # pong_root = ET.Element("event") # Removed
+            # pong_root.set("version", "2.0") # Removed
+            # pong_root.set("type", "t-x-d-d")  # takPong type # Removed
+            # pong_root.set("uid", full_client_uid_for_cot_maker) # Removed
+            # pong_root.set("how", "m-g") # Machine-generated # Removed
+            # current_cot_time = pytak.cot_time() # Removed
+            # pong_root.set("time", current_cot_time) # Removed
+            # pong_root.set("start", current_cot_time) # Removed
+            # pong_root.set("stale", pytak.cot_time(3600)) # 1 hour stale, as per PyTAK example # Removed
 
-            # Add detail with contact and takv for initial pong EUD registration
-            detail_element = ET.SubElement(pong_root, "detail")
+            # # Add detail with contact and takv for initial pong EUD registration # Removed
+            # detail_element = ET.SubElement(pong_root, "detail") # Removed
 
-            contact_element = ET.SubElement(detail_element, "contact")
-            contact_element.set("callsign", full_client_uid_for_cot_maker) # Stable server callsign, no timestamp
+            # # contact_element = ET.SubElement(detail_element, "contact") # Removed
+            # # contact_element.set("callsign", full_client_uid_for_cot_maker) # Stable server callsign, no timestamp # Removed
 
-            takv_element = ET.SubElement(detail_element, "takv")
-            takv_element.set("os", platform.system())
-            takv_element.set("platform", "informs")
-            takv_element.set("version", getattr(settings, 'VERSION', 'unknown'))
-            takv_element.set("device", "informs")
+            # # takv_element = ET.SubElement(detail_element, "takv") # Removed
+            # # takv_element.set("os", platform.system()) # Removed
+            # # takv_element.set("platform", "informs") # Removed
+            # # takv_element.set("version", getattr(settings, 'VERSION', 'unknown')) # Removed
+            # # takv_element.set("device", "informs") # Removed
 
-            takpong_message = ET.tostring(pong_root)
-            messages.append(takpong_message)
-            ic(f"Built initial takPong message with event UID and contact callsign: {full_client_uid_for_cot_maker}")
+            # # takpong_message = ET.tostring(pong_root) # Removed
+            # # messages.append(takpong_message) # Removed
+            # # ic(f"Built initial takPong message with event UID and contact callsign: {full_client_uid_for_cot_maker}") # Removed
 
             # Determine the CoT type for the FieldOp's marker.
             # This should come from the field_op.cot_icon, resolved to a CoT type string.

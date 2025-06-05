@@ -5,7 +5,7 @@ Forms
 from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, HTML, Fieldset, Field
-from crispy_forms.bootstrap import FormActions
+from crispy_forms.bootstrap import FormActions, InlineCheckboxes
 from icecream import ic
 
 from ..models import FieldOp
@@ -20,7 +20,7 @@ class FieldOpForm(forms.ModelForm):
     class Meta:
         """ meta """
         model = FieldOp
-        fields = ('name', 'slug', 'latitude', 'longitude', 'ring_size', 'tak_server', 'disable_cot')
+        fields = ('name', 'slug', 'latitude', 'longitude', 'ring_size', 'tak_server', 'disable_cot', 'aid_types')
 
         widgets = {
             'latitude': forms.NumberInput(attrs={
@@ -50,7 +50,10 @@ class FieldOpForm(forms.ModelForm):
             }),
             'disable_cot': forms.CheckboxInput(attrs={
                 'class': 'form-check-input'
-            })
+            }),
+            'aid_types': forms.CheckboxSelectMultiple(attrs={
+                'class': 'form-check-input'
+            }),
         }
 
     def clean_latitude(self):
@@ -90,6 +93,8 @@ class FieldOpForm(forms.ModelForm):
         self.fields['tak_server'].help_text = "Select TAK server for COT updates"
         self.fields['disable_cot'].help_text = "check to disable TAK Server Updates"
         self.fields['disable_cot'].label = "Disable COT"
+        self.fields['aid_types'].help_text = "Select applicable Aid Types for this Field Operation"
+        self.fields['aid_types'].label = "Aid Types"
 
         # Set readonly fields for update
         if self.action == 'update':
@@ -133,6 +138,13 @@ class FieldOpForm(forms.ModelForm):
                     Row(
                         Column('tak_server', css_class='form-group col-md-8 p-1'),
                         Column('disable_cot', css_class='form-group col-md-4 p-1'),
+                        css_class='row g-0 mb-2'
+                    ),
+                    Row(
+                        Column(
+                            InlineCheckboxes('aid_types'),
+                            css_class='form-group col-md-12 p-1'
+                        ),
                         css_class='row g-0 mb-2'
                     ),
                     css_class='fieldset-box p-3 border rounded mb-3'
