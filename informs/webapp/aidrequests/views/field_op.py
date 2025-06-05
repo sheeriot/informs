@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.urls import reverse_lazy
 from django.views.generic import DetailView, CreateView, UpdateView
 from django.http import HttpResponseRedirect
-from ..models import FieldOp
+from ..models import FieldOp, AidRequest, AidType
 from .forms import FieldOpForm
 from icecream import ic
 
@@ -14,7 +14,20 @@ class FieldOpDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['azure_maps_key'] = settings.AZURE_MAPS_KEY
+        # field_op = self.object # self.object is already in context
+
+        # All map-specific context can be removed.
+        # context['azure_maps_key'] = settings.AZURE_MAPS_KEY
+        # context['field_op_name'] = field_op.name
+        # ... and all other map_bounds, center_lat/lon, aid_locations_json, etc.
+
+        # If AidRequest and AidType were only imported for map data,
+        # and are not used for other context variables, they can be removed from imports.
+        # Similarly for 'json' and 'Decimal' imports.
+
+        # For example, if object.aid_requests.count is used in the template,
+        # then AidRequest model import is still needed, and the related manager works fine.
+
         return context
 
 class FieldOpCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):

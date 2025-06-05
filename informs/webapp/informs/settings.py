@@ -147,6 +147,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'django.template.context_processors.static',
+                'informs.context_processors.server_hostname',
                 'aidrequests.context_processors.fieldops_active',
                 'aidrequests.context_processors.basevars',
                 'aidrequests.context_processors.field_op_context',
@@ -325,7 +326,7 @@ Q_CLUSTER = {
     'queue_limit': 500,
     'bulk': 10,
     'orm': 'default',
-    'sync': DEBUG,
+    # 'sync': DEBUG,
     'scheduler': True,
     'catch_up': False,
     'label': 'Default ORM Queue'
@@ -391,6 +392,6 @@ COT_ICONS = {key: value for key, value in icons_config.items('Icons')}
 # ic(COT_ICONS)
 
 # Version information
-VERSION = '0.3.1'
+VERSION = '0.3.2'
 
 # PYTAK_FLUSH_TIMEOUT = 40 # seconds

@@ -29,18 +29,23 @@ const mapRequestsConfig = {
 function loadMapConfiguration() {
     if (mapRequestsConfig.debug) {
         console.time('map-config-load');
-        console.log('[Map] Loading configuration...');
+        console.log('[Map] Loading configuration START');
     }
     mapRequestsConfig.performance.loadStart = performance.now();
 
     const mapContainer = document.getElementById('aid-request-map');
     if (!mapContainer) {
+        console.error('[Map] CRITICAL: Map container (aid-request-map) not found in DOM.');
         throw new Error('Map container not found');
+    }
+    if (mapRequestsConfig.debug) {
+        console.log('[Map] mapContainer found. Dataset:', JSON.parse(JSON.stringify(mapContainer.dataset)));
     }
 
     // Debug log raw dataset values
     if (mapRequestsConfig.debug) {
-        console.log('[Map] Raw dataset values:', {
+        console.log('[Map] Raw dataset values from mapContainer:', {
+            azureMapsKey: mapContainer.dataset.azureMapsKey,
             boundsWest: mapContainer.dataset.boundsWest,
             boundsSouth: mapContainer.dataset.boundsSouth,
             boundsEast: mapContainer.dataset.boundsEast,
@@ -51,7 +56,13 @@ function loadMapConfiguration() {
         });
     }
 
-    // Get configuration from data attributes using bounds
+    // Robustly parse ringSize, ensuring it's a positive number.
+    const rawRingSize = mapContainer.dataset.ringSize;
+    let parsedRingSize = parseFloat(rawRingSize);
+    const defaultRingSize = 10; // km
+    const finalRingSize = (isNaN(parsedRingSize) || parsedRingSize <= 0) ? defaultRingSize : parsedRingSize;
+
+    // Get configuration from data attributes
     const config = {
         key: mapContainer.dataset.azureMapsKey,
         bounds: [
@@ -67,37 +78,130 @@ function loadMapConfiguration() {
         ],
         fieldOpName: mapContainer.dataset.fieldOpName,
         fieldOpSlug: mapContainer.dataset.fieldOpSlug,
-        ringSize: parseFloat(mapContainer.dataset.ringSize) || 10
+        ringSize: finalRingSize // Use validated finalRingSize
     };
 
     if (!config.key) {
         throw new Error('Azure Maps key not found in data attributes');
     }
 
+    // Load aid locations data EARLY - needed to decide on bounds strategy
+    const aidLocationsElement = document.getElementById('aid-locations-data');
+    if (aidLocationsElement && aidLocationsElement.textContent.trim()) {
+        try {
+            mapRequestsConfig.aidLocations = JSON.parse(aidLocationsElement.textContent);
+            if (mapRequestsConfig.debug) {
+                console.log('[Map] Aid Locations loaded early:', {
+                    count: mapRequestsConfig.aidLocations.length,
+                    byType: mapRequestsConfig.aidLocations.reduce((acc, loc) => {
+                        acc[loc.aid_type.slug] = (acc[loc.aid_type.slug] || 0) + 1;
+                        return acc;
+                    }, {})
+                });
+            }
+        } catch (error) {
+            console.warn('[Map] Error parsing aid locations data, proceeding with empty list:', error.message);
+            mapRequestsConfig.aidLocations = []; // Default to empty list on error
+        }
+    } else {
+        if (mapRequestsConfig.debug) {
+            console.log('[Map] No aid-locations-data element found or it is empty. Defaulting to empty aid locations list.');
+        }
+        mapRequestsConfig.aidLocations = []; // Default to empty list if element not found or empty
+    }
+
+    // Fallback bounds logic:
+    // If original bounds from dataset are invalid, or if there are too few aid locations,
+    // calculate new bounds based on field op center and ring size.
+    let originalBoundsFromDataset = [...config.bounds]; // Keep a copy for logging
+    let useFallbackBounds = false;
+    const areOriginalDatasetBoundsInvalid = originalBoundsFromDataset.some(isNaN) || originalBoundsFromDataset.every(val => val === 0);
+
+    if (areOriginalDatasetBoundsInvalid || mapRequestsConfig.aidLocations.length <= 1) {
+        useFallbackBounds = true;
+        if (mapRequestsConfig.debug) {
+            console.log('[Map] Using fallback bounds calculation.', {
+                reason: areOriginalDatasetBoundsInvalid ? "Original dataset bounds invalid" : "Not enough aid locations (<=1)",
+                originalDatasetBounds: originalBoundsFromDataset,
+                aidLocationCount: mapRequestsConfig.aidLocations.length,
+                fieldOpCenter: config.center,
+                fieldOpRingSizeKm: config.ringSize
+            });
+        }
+
+        // Validate center and ringSize before using them for fallback
+        if (isNaN(config.center[0]) || isNaN(config.center[1])) {
+            console.error('[Map] CRITICAL: Cannot calculate fallback bounds because center coordinates are invalid.', config.center);
+            throw new Error('Invalid map center coordinates, cannot calculate fallback bounds.');
+        }
+        // config.ringSize is already ensured to be positive by `finalRingSize` logic
+
+        const centerLon = config.center[0];
+        const centerLat = config.center[1];
+        const ringRadiusKm = config.ringSize; // This is already validated to be positive
+
+        // Define a viewable area that includes the ring with some padding
+        const viewDiameterPaddingFactor = 2.5; // Makes the view ~2.5x the ring diameter
+        const viewRadiusKm = ringRadiusKm * (viewDiameterPaddingFactor / 2);
+
+        const LAT_DEG_PER_KM = 1 / 111.32; // Approximate degrees latitude per km
+        const lonDegPerKmAtCenterLat = 1 / (111.32 * Math.cos(centerLat * Math.PI / 180)); // Degrees longitude per km
+
+        const deltaLat = viewRadiusKm * LAT_DEG_PER_KM;
+        let deltaLon = viewRadiusKm * lonDegPerKmAtCenterLat;
+
+        // Safety for extreme latitudes where Math.cos approaches 0
+        if (Math.abs(centerLat) >= 89) { // Very close to poles
+            // For extreme latitudes, longitude span can become excessively large or small.
+            // Use a fallback based on latitude delta, assuming roughly square area.
+            deltaLon = deltaLat;
+            if (mapRequestsConfig.debug) {
+                console.warn(`[Map] Center latitude ${centerLat} is very near a pole. Adjusted deltaLon for fallback bounds to ${deltaLon} (approx ${viewRadiusKm}km).`);
+            }
+        }
+
+        config.bounds = [
+            centerLon - deltaLon, // minLon
+            centerLat - deltaLat, // minLat
+            centerLon + deltaLon, // maxLon
+            centerLat + deltaLat  // maxLat
+        ];
+
+        if (mapRequestsConfig.debug) {
+            console.log('[Map] Calculated new fallback bounds:', JSON.parse(JSON.stringify(config.bounds)));
+        }
+    }
+
     // Enhanced bounds validation with detailed logging
-    const boundsData = {
-        raw: {
+    // This `boundsData` captures the state of `config.bounds` AFTER potential fallback.
+    const boundsDataForLog = {
+        rawFromDataset: { // Keep raw dataset values for context
             west: mapContainer.dataset.boundsWest,
             south: mapContainer.dataset.boundsSouth,
             east: mapContainer.dataset.boundsEast,
             north: mapContainer.dataset.boundsNorth
         },
-        parsed: config.bounds
+        initiallyParsedFromDataset: originalBoundsFromDataset, // Bounds as parsed from dataset before fallback
+        finalBoundsUsed: config.bounds, // The bounds that will actually be used (dataset or fallback)
+        source: useFallbackBounds ? "fallback_calculation" : "dataset"
     };
 
     if (mapRequestsConfig.debug) {
-        console.log('[Map] Bounds data:', boundsData);
+        console.log('[Map] Bounds data for map initialization:', boundsDataForLog);
     }
 
-    // Validate bounds values
+    // Validate final `config.bounds` values (these could be from dataset or fallback)
     if (config.bounds.some(isNaN) || config.bounds.every(val => val === 0)) {
-        console.error('[Map] Invalid or missing bounds values:', boundsData);
-        throw new Error('Invalid or missing map bounds coordinates');
+        console.error('[Map] CRITICAL: Invalid or missing bounds values after parsing and potential fallback.', {
+            logContext: boundsDataForLog, // provides full context
+            aidLocationCount: mapRequestsConfig.aidLocations.length
+        });
+        throw new Error('Invalid or missing map bounds coordinates (post-fallback).');
     }
 
     // Validate center coordinates
     if (isNaN(config.center[0]) || isNaN(config.center[1])) {
-        console.error('[Map] Invalid center coordinates:', {
+        console.error('[Map] CRITICAL: Invalid center coordinates after parsing:', {
             raw: {
                 lon: mapContainer.dataset.centerLon,
                 lat: mapContainer.dataset.centerLat
@@ -181,35 +285,22 @@ function loadMapConfiguration() {
         }
     }
 
-    // Get aid locations data
-    const aidLocationsElement = document.getElementById('aid-locations-data');
-    if (aidLocationsElement && aidLocationsElement.textContent.trim()) {
-        try {
-            mapRequestsConfig.aidLocations = JSON.parse(aidLocationsElement.textContent);
-            if (mapRequestsConfig.debug) {
-                console.log('[Map] Aid Locations loaded:', {
-                    count: mapRequestsConfig.aidLocations.length,
-                    byType: mapRequestsConfig.aidLocations.reduce((acc, loc) => {
-                        acc[loc.aid_type.slug] = (acc[loc.aid_type.slug] || 0) + 1;
-                        return acc;
-                    }, {})
-                });
-            }
-        } catch (error) {
-            throw new Error('Error parsing aid locations data: ' + error.message);
-        }
-    }
-
     mapRequestsConfig.performance.configLoaded = performance.now();
     if (mapRequestsConfig.debug) {
         console.timeEnd('map-config-load');
         console.log('[Map] Configuration load time:',
             (mapRequestsConfig.performance.configLoaded - mapRequestsConfig.performance.loadStart).toFixed(2), 'ms');
+        console.log('[Map] Loading configuration END');
     }
 }
 
 // Main initialization function
 async function initializeMapWithFilter(filterState) {
+    if (mapRequestsConfig.debug) {
+        console.log('[Map] initializeMapWithFilter START. Initialized already? ', mapRequestsConfig.initialized);
+        console.log('[Map] Received filterState for initializeMapWithFilter:', JSON.parse(JSON.stringify(filterState)));
+    }
+
     if (mapRequestsConfig.initialized) {
         if (mapRequestsConfig.debug) console.log('[Map] Already initialized, skipping');
         return;
@@ -218,15 +309,19 @@ async function initializeMapWithFilter(filterState) {
     try {
         if (mapRequestsConfig.debug) {
             console.time('map-full-init');
-            console.log('[Map] Starting initialization with filter state:', filterState);
-            console.log('[Map] Store state:', window.aidRequestsStore?.currentState);
+            console.log('[Map] Starting full initialization sequence in initializeMapWithFilter.');
+            console.log('[Map] Current aidRequestsStore state (if available):', window.aidRequestsStore?.currentState);
         }
 
         // Load configuration first
+        console.log('[Map] Calling loadMapConfiguration...');
         loadMapConfiguration();
+        console.log('[Map] loadMapConfiguration complete. mapRequestsConfig.config:', JSON.parse(JSON.stringify(mapRequestsConfig.config)));
 
         // Initialize the map
+        console.log('[Map] Calling initializeMap with config...');
         await initializeMap(mapRequestsConfig.config);
+        console.log('[Map] initializeMap complete.');
         mapRequestsConfig.performance.mapInitialized = performance.now();
 
         // Mark as initialized
@@ -246,16 +341,16 @@ async function initializeMapWithFilter(filterState) {
 
         if (mapRequestsConfig.debug) {
             console.timeEnd('map-full-init');
-            console.log('[Map] Performance metrics:', {
+            console.log('[Map] Performance metrics after initializeMapWithFilter:', {
                 configLoad: (mapRequestsConfig.performance.configLoaded - mapRequestsConfig.performance.loadStart).toFixed(2) + 'ms',
                 mapInit: (mapRequestsConfig.performance.mapInitialized - mapRequestsConfig.performance.configLoaded).toFixed(2) + 'ms',
                 total: (mapRequestsConfig.performance.fullyReady - mapRequestsConfig.performance.loadStart).toFixed(2) + 'ms'
             });
         }
     } catch (error) {
-        console.error('[Map] Initialization failed:', error);
+        console.error('[Map] CRITICAL: Initialization failed in initializeMapWithFilter:', error);
         if (mapRequestsConfig.debug) {
-            console.error('[Map] Initialization state:', {
+            console.error('[Map] State at failure in initializeMapWithFilter:', {
                 configLoaded: !!mapRequestsConfig.config,
                 aidTypesLoaded: Object.keys(mapRequestsConfig.aidTypesConfig).length,
                 locationsLoaded: mapRequestsConfig.aidLocations.length,
@@ -270,27 +365,42 @@ async function initializeMapWithFilter(filterState) {
 document.addEventListener('DOMContentLoaded', function() {
     if (mapRequestsConfig.debug) {
         console.time('map-init-sequence');
-        console.log('[Map] DOM ready, checking filter state');
+        console.log('[Map] DOM ready, checking filter state for map initialization.');
     }
 
-    // Check if filter is already initialized
+    const initialFilterStateElement = document.getElementById('filter-state-initial');
+    let initialFilterData = null;
+    if (initialFilterStateElement) {
+        try {
+            initialFilterData = JSON.parse(initialFilterStateElement.textContent);
+            if (mapRequestsConfig.debug) {
+                console.log('[Map] Successfully parsed initial_filter_state from DOM:', initialFilterData);
+            }
+        } catch (e) {
+            console.error('[Map] ERROR: Failed to parse initial_filter_state from DOM. Content was:', initialFilterStateElement.textContent, e);
+        }
+    }
+
+    // Check if filter is already initialized (applies to aid_request_list page)
     if (window.aidRequestsStore?.initialized) {
         if (mapRequestsConfig.debug) {
-            console.log('[Map] Filter ready, initializing with state:', {
-                filterState: window.aidRequestsStore.currentState,
-                storeData: {
-                    aidTypes: Object.keys(window.aidRequestsStore.data.aidTypes).length,
-                    aidRequests: window.aidRequestsStore.data.aidRequests.length
-                }
-            });
+            console.log('[Map] aidRequestsStore is already initialized. Initializing map with its current state:', JSON.parse(JSON.stringify(window.aidRequestsStore.currentState)));
         }
         initializeMapWithFilter(window.aidRequestsStore.currentState).catch(error => {
-            console.error('[Map] Failed to initialize with existing filter state:', error);
+            console.error('[Map] CRITICAL: Failed to initialize with existing aidRequestsStore state:', error);
+        });
+    } else if (initialFilterData) { // For pages like field_op_detail that provide initial state directly
+        if (mapRequestsConfig.debug) {
+            console.log('[Map] aidRequestsStore not initialized. Using initialFilterData from DOM to initialize map:', JSON.parse(JSON.stringify(initialFilterData)));
+        }
+        initializeMapWithFilter({ filterState: initialFilterData, counts: {matched: 0, total:0} } ).catch(error => { // Pass a structure similar to store state
+            console.error('[Map] CRITICAL: Failed to initialize map with initialFilterData from DOM:', error);
         });
     } else {
-        if (mapRequestsConfig.debug) console.log('[Map] Waiting for filter initialization...');
-
-        // Wait for filter initialization
+        if (mapRequestsConfig.debug) {
+            console.warn('[Map] Neither aidRequestsStore initialized nor initialFilterData found. Waiting for aidRequestsFilterReady event (this might not fire on field_op_detail page).');
+        }
+        // Fallback: Wait for filter initialization event (primarily for aid_request_list page)
         document.addEventListener('aidRequestsFilterReady', function(event) {
             if (mapRequestsConfig.debug) {
                 console.timeEnd('map-init-sequence');
@@ -309,7 +419,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // Initialize the map with minimum configuration
 function initializeMap(config) {
     if (mapRequestsConfig.debug) {
-        console.log('Map View: Initializing map with config:', config);
+        console.log('[Map] initializeMap START with config:', JSON.parse(JSON.stringify(config)));
+    }
+    if (!config || !config.key) {
+        console.error('[Map] CRITICAL: initializeMap called with invalid or incomplete config. API key missing?', JSON.parse(JSON.stringify(config)));
+        return Promise.reject('Invalid map config provided to initializeMap');
     }
 
     return new Promise((resolve, reject) => {
@@ -364,24 +478,35 @@ function initializeMap(config) {
             // Wait for the map to be ready before adding layers
             map.events.add('ready', async function() {
                 if (mapRequestsConfig.debug) {
-                    console.log('[Map] Ready event fired, camera:', map.getCamera());
+                    console.log('[Map] Map ready event fired. Current map camera:', map.getCamera());
                 }
 
                 try {
                     // Set the camera bounds again after map is ready to ensure they're applied
-                    map.setCamera({
-                        bounds: config.bounds,
-                        padding: config.padding
-                    });
+                    if (config.bounds && config.bounds.length === 4 && !config.bounds.some(isNaN)) {
+                        map.setCamera({
+                            bounds: config.bounds,
+                            padding: config.padding || 50
+                        });
+                         if (mapRequestsConfig.debug) {
+                            console.log('[Map] Map ready event: Camera bounds set to:', config.bounds, 'with padding:', config.padding || 50);
+                        }
+                    } else {
+                        console.warn('[Map] Map ready event: Invalid or missing bounds in config, cannot set camera bounds. Config bounds:', config.bounds);
+                    }
 
                     // Initialize field op layer first
+                    console.log('[Map] Map ready event: Calling initializeFieldOpLayer...');
                     initializeFieldOpLayer();
+                    console.log('[Map] Map ready event: initializeFieldOpLayer complete.');
 
                     // Then initialize aid request layer
+                    console.log('[Map] Map ready event: Calling initializeAidRequestLayer...');
                     await initializeAidRequestLayer();
+                    console.log('[Map] Map ready event: initializeAidRequestLayer complete.');
 
                     if (mapRequestsConfig.debug) {
-                        console.log('[Map] Layers initialized, final camera:', map.getCamera());
+                        console.log('[Map] All layers initialized in ready event. Final map camera:', map.getCamera());
                     }
 
                     // Listen for filter changes
@@ -397,13 +522,18 @@ function initializeMap(config) {
 
                     resolve();
                 } catch (error) {
-                    console.error('Error in map ready handler:', error);
+                    console.error('[Map] CRITICAL: Error within map ready event handler:', error);
                     reject(error);
                 }
             });
 
+            map.events.add('error', function(e) {
+                console.error('[Map] CRITICAL: Map error event:', e.error);
+                reject(e.error); // Reject the promise on map error
+            });
+
         } catch (error) {
-            console.error('Error initializing map:', error);
+            console.error('[Map] CRITICAL: Error during atlas.Map instantiation in initializeMap:', error);
             reject(error);
         }
     });
