@@ -106,6 +106,12 @@ class FieldOpForm(forms.ModelForm):
 
         ic("Form next value:", self.initial.get('next'))
 
+        initial_lat = ""
+        initial_lon = ""
+        if self.instance and self.instance.pk and self.instance.latitude is not None and self.instance.longitude is not None:
+            initial_lat = f'{self.instance.latitude:.5f}'
+            initial_lon = f'{self.instance.longitude:.5f}'
+
         # Modern layout with clear row organization
         self.helper.layout = Layout(
             Div(
@@ -130,6 +136,16 @@ class FieldOpForm(forms.ModelForm):
                         Column('ring_size', css_class='form-group col-md-2 p-1'),
                         css_class='row g-0 mb-2'
                     ),
+                    HTML(f"""
+                        <div class="row g-0 mb-2">
+                            <div class="form-group col-md-12 p-1">
+                                <div id="location-picker-map"
+                                     style="height: 400px; border: 1px solid #ced4da; border-radius: .25rem;"
+                                     data-initial-lat="{initial_lat}"
+                                     data-initial-lon="{initial_lon}"></div>
+                            </div>
+                        </div>
+                    """),
                     css_class='fieldset-box p-3 border rounded mb-3'
                 ),
                 # Fieldset 3: Settings

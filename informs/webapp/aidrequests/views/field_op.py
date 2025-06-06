@@ -6,6 +6,7 @@ from django.http import HttpResponseRedirect
 from ..models import FieldOp, AidRequest, AidType
 from .forms import FieldOpForm
 from icecream import ic
+import json
 
 class FieldOpDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     permission_required = 'aidrequests.view_fieldop'
@@ -14,19 +15,27 @@ class FieldOpDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # field_op = self.object # self.object is already in context
+        field_op = self.object
 
-        # All map-specific context can be removed.
-        # context['azure_maps_key'] = settings.AZURE_MAPS_KEY
-        # context['field_op_name'] = field_op.name
-        # ... and all other map_bounds, center_lat/lon, aid_locations_json, etc.
+        # Map data
+        context['azure_maps_key'] = settings.AZURE_MAPS_KEY
+        context['field_op_name'] = field_op.name
+        context['field_op_slug'] = field_op.slug
+        context['center_lat'] = field_op.latitude
+        context['center_lon'] = field_op.longitude
+        context['ring_size'] = field_op.ring_size
 
-        # If AidRequest and AidType were only imported for map data,
-        # and are not used for other context variables, they can be removed from imports.
-        # Similarly for 'json' and 'Decimal' imports.
+        # map_aidrequests.js expects these, but we don't have aid requests to show on this map.
+        # It can handle an empty list.
+        context['aid_locations_json'] = json.dumps([])
 
-        # For example, if object.aid_requests.count is used in the template,
-        # then AidRequest model import is still needed, and the related manager works fine.
+        # We need to provide the aid types for the field op
+        aid_types_data = list(field_op.aid_types.values('slug', 'name', 'description'))
+        context['aid_types_json'] = json.dumps(aid_types_data)
+
+        # The JS script calculates bounds. We can pass 0s for bounds, and the script will fallback
+        # to using the center and ring size.
+        context['map_bounds'] = [0, 0, 0, 0]
 
         return context
 
@@ -35,6 +44,13 @@ class FieldOpCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
     model = FieldOp
     form_class = FieldOpForm
     template_name = 'aidrequests/field_op_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'azure_maps_key': settings.AZURE_MAPS_KEY,
+        })
+        return context
 
     def get_success_url(self):
         return reverse_lazy('field_op_detail', kwargs={'slug': self.object.slug})
@@ -62,6 +78,13 @@ class FieldOpUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
     model = FieldOp
     form_class = FieldOpForm
     template_name = 'aidrequests/field_op_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'azure_maps_key': settings.AZURE_MAPS_KEY,
+        })
+        return context
 
     def get_success_url(self):
         # First try to get the next URL from POST or GET
