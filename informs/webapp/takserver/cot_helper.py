@@ -70,7 +70,7 @@ def make_cot(cot_icon=None,
     event.set("version", "2.0")
     event.set("uid", event_actual_uid)
     event.set("type", cot_type_from_icon)
-    event.set('how', 'm-e') # Manual-entry
+    event.set('how', 'h-e') # h-e for human created, estimated.
     cot_time = pytak.cot_time()
     event.set("time", cot_time)
     event.set("start", cot_time)
@@ -90,6 +90,15 @@ def make_cot(cot_icon=None,
     point.set('le', '9999999')
 
     detail = ET.SubElement(event, 'detail')
+
+    # For persistence on iTAK
+    ET.SubElement(detail, 'archive')
+
+    status_element = ET.SubElement(detail, 'status')
+    status_element.set('readiness', 'true')
+
+    color_element = ET.SubElement(detail, 'color')
+    color_element.set('argb', '-1') # -1 is white
 
     if link_to_client_uid and link_type:
         link = ET.SubElement(detail, 'link')
