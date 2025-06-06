@@ -11,7 +11,7 @@ let layersByType = {};  // Store layers by aid type
 
 // Configuration
 const mapRequestsConfig = {
-    debug: false,  // Set to false in production
+    debug: true,  // Set to false in production
     initialized: false,
     config: null,
     aidLocations: [],
