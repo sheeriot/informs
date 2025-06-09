@@ -61,23 +61,6 @@
 <!-- Azure Maps CSS -->
 <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
 <link href="{% static 'css/azure-maps-layer-legend.css' %}" rel="stylesheet" />
-
-<!-- Fix for table dropdowns visibility -->
-<style>
-    /* Fix for dropdowns that overflow the table container */
-    #aid-request-list-table-container {
-        overflow: visible !important;
-    }
-
-    /* Alternative solution for mobile/smaller screens */
-    @media (max-width: 992px) {
-        .dropdown-fix-overflow .dropdown-menu {
-            position: fixed !important;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-    }
-</style>
 {% endblock %}
 
 {% block extra_js %}
