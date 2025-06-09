@@ -105,12 +105,14 @@ function validateFilterState(initialFilterState) {
     const expectedKeys = ['statuses', 'aid_types', 'priorities'];
     const missingKeys = expectedKeys.filter(key => !(key in initialFilterState));
     if (missingKeys.length > 0) {
-        console.table({
-            'Validation': 'Missing Keys',
-            'Expected': expectedKeys.join(', '),
-            'Found': Object.keys(initialFilterState).join(', '),
-            'Missing': missingKeys.join(', ')
-        });
+        if (listConfig.debug) {
+            console.table({
+                'Validation': 'Missing Keys',
+                'Expected': expectedKeys.join(', '),
+                'Found': Object.keys(initialFilterState).join(', '),
+                'Missing': missingKeys.join(', ')
+            });
+        }
     }
 }
 
@@ -144,14 +146,16 @@ function validateInitialRowStates(initialFilterState) {
 function validateVisibilityMismatches(rowAnalysis) {
     const visibilityMismatches = rowAnalysis.filter(row => row.isHidden !== row.shouldBeHidden);
     if (visibilityMismatches.length > 0) {
-        console.log('[AidRequestList] Row visibility mismatches found:');
-        console.table(visibilityMismatches.map(row => ({
-            'Row ID': row.id,
-            'Status': row.status,
-            'Currently Hidden': row.isHidden,
-            'Should Be Hidden': row.shouldBeHidden,
-            'Mismatch Type': row.isHidden ? 'Hidden but should show' : 'Shown but should hide'
-        })));
+        if (listConfig.debug) {
+            console.log('[AidRequestList] Row visibility mismatches found:');
+            console.table(visibilityMismatches.map(row => ({
+                'Row ID': row.id,
+                'Status': row.status,
+                'Currently Hidden': row.isHidden,
+                'Should Be Hidden': row.shouldBeHidden,
+                'Mismatch Type': row.isHidden ? 'Hidden but should show' : 'Shown but should hide'
+            })));
+        }
     }
 }
 
@@ -162,13 +166,15 @@ function validateEmptyRowState(rowAnalysis) {
         const emptyRowVisible = !emptyRow.classList.contains('d-none');
         const shouldShowEmpty = visibleRows.length === 0;
         if (emptyRowVisible !== shouldShowEmpty) {
-            console.table({
-                'Empty Row': {
-                    'Currently Visible': emptyRowVisible,
-                    'Should Be Visible': shouldShowEmpty,
-                    'Visible Row Count': visibleRows.length
-                }
-            });
+            if (listConfig.debug) {
+                console.table({
+                    'Empty Row': {
+                        'Currently Visible': emptyRowVisible,
+                        'Should Be Visible': shouldShowEmpty,
+                        'Visible Row Count': visibleRows.length
+                    }
+                });
+            }
         }
     }
 }
@@ -337,7 +343,7 @@ function updateListSummary(filterState, counts) {
 
 function buildSummaryParts(filterState, counts) {
     const parts = [];
-    if (filterState.aidTypes === null) {
+    if (filterState.aid_types === null) {
         parts.push('Type: None selected');
     } else if (filterState.statuses === null) {
         parts.push('Status: None selected');
@@ -374,8 +380,8 @@ function logVisibilityUpdate(rows, visibleCount, filterState) {
 
 // Summary Part Helper Functions
 function addAidTypePart(parts, filterState) {
-    if (filterState.aidTypes !== 'all' && Array.isArray(filterState.aidTypes) && filterState.aidTypes.length > 0) {
-        const typeLabels = filterState.aidTypes.map(type => {
+    if (filterState.aid_types !== 'all' && Array.isArray(filterState.aid_types) && filterState.aid_types.length > 0) {
+        const typeLabels = filterState.aid_types.map(type => {
             if (type === null) return 'None';
             const config = window.aidRequestsStore.data.aidTypes[type];
             return config ? config.name : type;

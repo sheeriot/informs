@@ -16,6 +16,7 @@
             <button type="button"
                     class="btn btn-sm status-button {% if aid_request.status == 'new' %}btn-outline-warning{% elif aid_request.status == 'assigned' %}btn-outline-warning{% elif aid_request.status == 'resolved' %}btn-outline-success{% elif aid_request.status == 'closed' %}btn-outline-primary{% elif aid_request.status == 'rejected' %}btn-outline-danger{% else %}btn-outline-secondary{% endif %}"
                     data-bs-toggle="dropdown"
+                    data-bs-strategy="fixed"
                     aria-expanded="false"
                     data-request-id="{{ aid_request.id }}"
                     data-current-status="{{ aid_request.status }}">
@@ -48,6 +49,7 @@
             <button type="button"
                     class="btn btn-sm priority-button {% if aid_request.priority == 'high' %}btn-danger{% elif aid_request.priority == 'medium' %}btn-warning{% elif aid_request.priority == 'low' %}btn-primary{% else %}btn-secondary{% endif %}"
                     data-bs-toggle="dropdown"
+                    data-bs-strategy="fixed"
                     aria-expanded="false"
                     data-request-id="{{ aid_request.id }}"
                     data-current-priority="{{ aid_request.priority }}">

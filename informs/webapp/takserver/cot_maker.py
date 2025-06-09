@@ -193,6 +193,7 @@ class CotMaker:
         try:
             remarks = [
                 f"Aid Request #{aid_request.pk}",
+                f"Field Op: {field_op.name} ({field_op.slug})",
                 f"Type: {aid_request.aid_type.name}",
                 f"Status: {aid_request.status.upper()}"
             ]
@@ -201,17 +202,23 @@ class CotMaker:
             if location_obj.note: remarks.append(f"Location Note: {location_obj.note}")
             if aid_request.aid_description: remarks.append(f"\nDescription:\n{aid_request.aid_description}")
 
-            # Base for this Aid Request marker's own callsign and part of its event UID
-            aid_request_base_identifier = f"{aid_request.aid_type.slug}.{aid_request.pk}"
-            contact_callsign_for_marker = aid_request_base_identifier
+            # Base for this Aid Request marker's own callsign. This can change if aid_type changes.
+            aid_request_callsign_identifier = f"{aid_request.aid_type.slug}.{aid_request.pk}"
+            contact_callsign_for_marker = aid_request_callsign_identifier
             if settings.ENV_NAME:
-                contact_callsign_for_marker = f"{aid_request_base_identifier}.{settings.ENV_NAME}"
+                contact_callsign_for_marker = f"{aid_request_callsign_identifier}.{settings.ENV_NAME}"
+
+            # Base for this Aid Request marker's event UID. This must be stable.
+            aid_request_uid_identifier = f"{field_op.slug}.{aid_request.pk}"
+            event_uid_base_for_marker = aid_request_uid_identifier
+            if settings.ENV_NAME:
+                event_uid_base_for_marker = f"{aid_request_uid_identifier}.{settings.ENV_NAME}"
 
             # Unique event UID for this aid request map marker (includes TAKV signature)
-            event_uid_for_marker = contact_callsign_for_marker # Start with base callsign (slug.pk.env)
+            event_uid_for_marker = event_uid_base_for_marker
             takv_signature = getattr(settings, 'TAKV_DEVICE_SIGNATURE', None)
             if takv_signature:
-                event_uid_for_marker = f"{contact_callsign_for_marker}.{takv_signature}"
+                event_uid_for_marker = f"{event_uid_base_for_marker}.{takv_signature}"
 
             # Event UID of the parent FieldOp map marker (for linking the map items)
             parent_marker_base_event_uid = field_op.slug.upper()
