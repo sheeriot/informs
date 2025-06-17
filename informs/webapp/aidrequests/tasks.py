@@ -2,9 +2,10 @@ from django.conf import settings
 
 from azure.communication.email import EmailClient
 from datetime import datetime
+from geopy.distance import geodesic
 
 from .email_creator import email_connectstring, email_creator_html
-from .geocoder import get_azure_geocode, geocode_save
+from .geocoder import get_azure_geocode, geocode_save, get_azure_reverse_geocode
 from .views.maps import staticmap_aid, calculate_zoom
 from .models import FieldOpNotify, AidRequest, FieldOp, AidLocation
 from takserver.cot import CotSender, pytak_send_cot
@@ -27,37 +28,90 @@ logger = logging.getLogger(__name__)
 cot_logger = logging.getLogger('cot')
 
 def aid_request_postsave(aid_request, **kwargs):
-    # ic(kwargs)
-    savetype = kwargs['savetype']
-    if savetype == 'new':
-        geocode_results = get_azure_geocode(aid_request)
-        aid_location = geocode_save(aid_request, geocode_results)
-        zoom = calculate_zoom(aid_location.distance)
-        # ic(zoom)
-
-        staticmap_data = staticmap_aid(
-            width=600, height=600, zoom=zoom,
-            fieldop_lat=aid_request.field_op.latitude,
-            fieldop_lon=aid_request.field_op.longitude,
-            aid1_lat=aid_location.latitude,
-            aid1_lon=aid_location.longitude,
-        )
-
-        if staticmap_data:
-            timestamp = datetime.now().strftime("%y%m%d%H%M%S")
-            map_filename = f"AR{aid_request.pk}-map_{timestamp}.png"
-            map_file = f"{settings.MAPS_PATH}/{map_filename}"
-            with open(map_file, 'wb') as file:
-                file.write(staticmap_data)
-
-                if file:
-                    try:
-                        aid_location.map_filename = map_filename
-                        aid_location.save()
-                    except Exception as e:
-                        logger.error(f"Error saving map: {e}")
+    logger.info(f"Staring aid_request_postsave for AR-{aid_request.pk} with kwargs: {kwargs}")
+    savetype = kwargs.get('savetype')
+    latitude = kwargs.get('latitude')
+    longitude = kwargs.get('longitude')
+    aid_location = None
 
     if savetype == 'new':
+        if latitude and longitude:
+            # If coordinates are provided, create the AidLocation directly
+            logger.info(f"AR-{aid_request.pk}: Coordinates provided, creating AidLocation directly.")
+
+            # First, geocode the address from the form to get the original location
+            original_geocode_results = get_azure_geocode(aid_request)
+            original_geocode_note = ""
+            if original_geocode_results.get('status') == 'Success':
+                original_lat = original_geocode_results['latitude']
+                original_lon = original_geocode_results['longitude']
+                original_geocode_note = f"User Picked. Geocode for address returned ({original_lat:.5f}, {original_lon:.5f}).\n"
+
+            aid_location = AidLocation.objects.create(
+                aid_request=aid_request,
+                latitude=latitude,
+                longitude=longitude,
+                source='user_picked',
+                status='confirmed'
+            )
+            # Then perform a reverse geocode to fill in address details
+            logger.info(f"AR-{aid_request.pk}: Performing reverse geocode.")
+            reverse_results = get_azure_reverse_geocode(latitude, longitude)
+            if reverse_results['status'] == 'Success':
+                aid_location.address_found = reverse_results['address_found']
+                aid_location.note = original_geocode_note + reverse_results['note']
+            else:
+                logger.warning(f"AR-{aid_request.pk}: Reverse geocode failed: {reverse_results.get('note')}")
+                aid_location.note = original_geocode_note
+
+            # And calculate the distance
+            logger.info(f"AR-{aid_request.pk}: Calculating distance.")
+            distance = round(geodesic(
+                (aid_request.field_op.latitude, aid_request.field_op.longitude),
+                (latitude, longitude)
+            ).km, 2)
+            aid_location.distance = distance
+            aid_location.save()
+        else:
+            # Fallback to geocoding the address if no coordinates are provided
+            logger.info(f"AR-{aid_request.pk}: No coordinates provided, falling back to address geocoding.")
+            geocode_results = get_azure_geocode(aid_request)
+            aid_location = geocode_save(aid_request, geocode_results)
+
+        if aid_location:
+            logger.info(f"AR-{aid_request.pk}: AidLocation created/found: {aid_location.pk}, distance: {aid_location.distance}km.")
+            zoom = calculate_zoom(aid_location.distance) if aid_location.distance is not None else 10
+            logger.info(f"AR-{aid_request.pk}: Calculated zoom: {zoom}")
+            # ic(zoom)
+
+            staticmap_data = staticmap_aid(
+                width=600, height=600, zoom=zoom,
+                fieldop_lat=aid_request.field_op.latitude,
+                fieldop_lon=aid_request.field_op.longitude,
+                aid1_lat=aid_location.latitude,
+                aid1_lon=aid_location.longitude,
+            )
+            logger.info(f"AR-{aid_request.pk}: Static map API call prepared.")
+
+            if staticmap_data:
+                timestamp = datetime.now().strftime("%y%m%d%H%M%S")
+                map_filename = f"AR{aid_request.pk}-map_{timestamp}.png"
+                map_file = f"{settings.MAPS_PATH}/{map_filename}"
+                with open(map_file, 'wb') as file:
+                    file.write(staticmap_data)
+                    logger.info(f"AR-{aid_request.pk}: Static map saved to {map_file}")
+
+                    if file:
+                        try:
+                            aid_location.map_filename = map_filename
+                            aid_location.save()
+                        except Exception as e:
+                            logger.error(f"Error saving map: {e}")
+            else:
+                logger.warning(f"AR-{aid_request.pk}: staticmap_aid call did not return PNG data.")
+
+    if savetype == 'new' and aid_location:
+        logger.info(f"AR-{aid_request.pk}: Preparing to send notification emails.")
         notify_emails = aid_request.field_op.notify.filter(type__startswith='email')
         email_results = ""
         for notify in notify_emails:

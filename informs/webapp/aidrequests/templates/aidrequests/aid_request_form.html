@@ -46,17 +46,15 @@
     {% endif %}
 </div>
 
-<script>
-    function differentContact() {
-        const fieldset = document.getElementById("different_contact_fieldset");
-        const checkbox = document.getElementById("different_contact");
-        // Toggle visibility based on the checkbox state
-        if (checkbox.checked) {
-            fieldset.classList.remove("d-none");
-        } else {
-            fieldset.classList.add("d-none");
-        }
-    }
-</script>
+{% endblock %}
 
+{% block extra_css %}
+    <link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" type="text/css" />
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+    <script src="{% static 'js/aidrequest-form.js' %}"></script>
+    <script src="{% static 'js/aidrequest-form-map.js' %}"></script>
+    <script src="{% static 'js/utils-copy-to-clipboard.js' %}"></script>
 {% endblock %}

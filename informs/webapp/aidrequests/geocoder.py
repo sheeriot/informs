@@ -85,6 +85,33 @@ def geocode_note(geocode_results):
     return note
 
 
+def get_azure_reverse_geocode(latitude, longitude):
+    """
+    Get address details from coordinates using Azure Maps reverse geocoding.
+    """
+    try:
+        cred = AzureKeyCredential(settings.AZURE_MAPS_KEY)
+        with MapsSearchClient(credential=cred) as client:
+            results = client.get_reverse_geocoding(coordinates=[longitude, latitude])
+    except Exception as e:
+        ic(e)
+        return {"status": "Error", "note": str(e)}
+
+    addresses = results.get('addresses', [])
+    if not addresses:
+        return {"status": "No Match", "note": "No address found for coordinates."}
+
+    address_data = addresses[0]
+    address_info = address_data.get('address', {})
+
+    response = {
+        'status': 'Success',
+        'address_found': address_info.get('freeformAddress'),
+        'note': f"Reverse geocoded from user-provided location.\nConfidence: {address_data.get('confidence')}"
+    }
+    return response
+
+
 def geocode_save(aid_request, geocode_results):
     aid_location = AidLocation(
         aid_request=aid_request,

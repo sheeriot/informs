@@ -3,11 +3,12 @@ from django.contrib import admin
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils.html import format_html
+from django.conf import settings
 
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Fieldset, Field, Submit, Row, Column, Div, Hidden
+from crispy_forms.layout import Layout, Fieldset, Field, Submit, Row, Column, Div, Hidden, HTML
 
-from ..models import FieldOp, AidRequest, AidRequestLog
+from ..models import FieldOp, AidRequest, AidRequestLog, AidLocation
 from ..context_processors import get_field_op_for_form
 
 # from icecream import ic
@@ -44,10 +45,30 @@ class AidRequestCreateForm(forms.ModelForm):
             'additional_info'
         ]
 
+        widgets = {
+            'latitude': forms.HiddenInput(),
+            'longitude': forms.HiddenInput(),
+        }
+
+    latitude = forms.DecimalField(
+        max_digits=8, decimal_places=5,
+        widget=forms.HiddenInput(),
+        required=False
+    )
+    longitude = forms.DecimalField(
+        max_digits=9, decimal_places=5,
+        widget=forms.HiddenInput(),
+        required=False
+    )
+    coordinates = forms.CharField(
+        label="Coordinates",
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control text-dark font-monospace'})
+    )
+    location_modified = forms.BooleanField(widget=forms.HiddenInput(), required=False, initial=False)
     different_contact = forms.BooleanField(
         required=False,
-        label="Add a different AID contact",
-        widget=forms.CheckboxInput(attrs={"onclick": "differentContact()"})
+        label="Add a different AID contact"
     )
 
     def __init__(self, *args, **kwargs):
@@ -57,6 +78,27 @@ class AidRequestCreateForm(forms.ModelForm):
 
         # Get field_op using our utility function
         self.field_op, self.fieldop_slug = get_field_op_for_form(kwargs['initial'])
+
+        azure_maps_key = settings.AZURE_MAPS_KEY or ""
+        geocode_url = reverse('geocode_address', kwargs={'field_op': self.fieldop_slug})
+
+        field_op_lat = f'{self.field_op.latitude:.5f}' if self.field_op.latitude is not None else ""
+        field_op_lon = f'{self.field_op.longitude:.5f}' if self.field_op.longitude is not None else ""
+
+        initial_lat = field_op_lat
+        initial_lon = field_op_lon
+
+        if self.is_bound:
+            submitted_lat = self.data.get('latitude')
+            submitted_lon = self.data.get('longitude')
+            if submitted_lat and submitted_lon:
+                initial_lat = submitted_lat
+                initial_lon = submitted_lon
+        else:
+            if self.field_op.latitude is not None and self.field_op.longitude is not None:
+                self.initial['coordinates'] = f"{field_op_lat},{field_op_lon}"
+
+        field_op_ring_size = self.field_op.ring_size or ""
 
         self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in self.field_op.aid_types.all()]
 
@@ -68,6 +110,9 @@ class AidRequestCreateForm(forms.ModelForm):
 
         self.helper.layout = Layout(
             Hidden('field_op', self.field_op.id),
+            'location_modified',
+            'latitude',
+            'longitude',
             Fieldset(
                 'Requestor Details',
                 Row(
@@ -115,13 +160,58 @@ class AidRequestCreateForm(forms.ModelForm):
             ),
             Fieldset(
                 'Location of Aid Request',
-                Row('street_address', css_class='col-12 mb-2'),
+                Row(
+                    Column(
+                        Field('street_address', css_class="form-control"),
+                        css_class='col-12 mb-2'
+                    ),
+                ),
                 Row(
                     Column('city', css_class='col-md-4 mb-2'),
                     Column('state', css_class='col-md-3 mb-2'),
                     Column('zip_code', css_class='col-md-3 mb-2'),
                     Column('country', css_class='col-md-2 mb-2'),
                 ),
+                Row(
+                    Column(
+                        HTML("""
+                            <button type="button" id="lookup-address" class="btn btn-success btn-sm me-2">
+                                <i class="bi bi-geo-alt"></i> Lookup Address
+                            </button>
+                            <button type="button" id="get-location" class="btn btn-danger btn-sm">
+                                <i class="bi bi-bullseye"></i> Get My Location
+                            </button>
+                        """),
+                        css_class='col-auto'
+                    ),
+                    Column(
+                        HTML("""
+                            <div class="input-group">
+                                {{ form.coordinates }}
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard(event, 'id_coordinates')">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        """),
+                        css_class='col-md-5'
+                    ),
+                    css_class='row g-2 mb-2 align-items-center'
+                ),
+                HTML(f"""
+                    <div class="row g-0 mt-2">
+                        <div class="form-group col-md-12 p-1">
+                            <div id="aid-request-location-picker-map"
+                                 style="height: 400px; border: 1px solid #ced4da; border-radius: .25rem;"
+                                 data-azure-maps-key="{azure_maps_key}"
+                                 data-geocode-url="{geocode_url}"
+                                 data-initial-lat="{initial_lat}"
+                                 data-initial-lon="{initial_lon}"
+                                 data-fieldop-lat="{field_op_lat}"
+                                 data-fieldop-lon="{field_op_lon}"
+                                 data-fieldop-ringsize="{field_op_ring_size}"></div>
+                        </div>
+                    </div>
+                """),
                 css_class="fieldset-box p-3 border rounded"
             ),
             Fieldset(
@@ -137,6 +227,17 @@ class AidRequestCreateForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        coordinates = cleaned_data.get("coordinates")
+        if coordinates:
+            try:
+                lat_str, lon_str = coordinates.split(',')
+                cleaned_data['latitude'] = float(lat_str.strip())
+                cleaned_data['longitude'] = float(lon_str.strip())
+            except (ValueError, TypeError):
+                # Fail silently, as this is a fallback for non-JS.
+                # The hidden fields will be populated by JS if available.
+                pass
+
         # Validate field_op if fieldop_slug was provided
         if hasattr(self, 'fieldop_slug') and self.fieldop_slug:
             field_op_from_form = cleaned_data.get('field_op')
@@ -181,10 +282,25 @@ class AidRequestUpdateForm(forms.ModelForm):
             'additional_info'
         ]
 
+    latitude = forms.DecimalField(
+        max_digits=8, decimal_places=5,
+        widget=forms.HiddenInput(),
+        required=False
+    )
+    longitude = forms.DecimalField(
+        max_digits=9, decimal_places=5,
+        widget=forms.HiddenInput(),
+        required=False
+    )
+    coordinates = forms.CharField(
+        label="Coordinates",
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control text-dark font-monospace'})
+    )
+    location_modified = forms.BooleanField(widget=forms.HiddenInput(), required=False, initial=False)
     different_contact = forms.BooleanField(
         required=False,
-        label="Add a different contact person",
-        widget=forms.CheckboxInput(attrs={"onclick": "differentContact()"})
+        label="Add a different contact person"
     )
 
     def __init__(self, *args, action='create', **kwargs):
@@ -197,8 +313,42 @@ class AidRequestUpdateForm(forms.ModelForm):
         # Get the field_op from the instance
         self.field_op = kwargs['instance'].field_op
 
+        azure_maps_key = settings.AZURE_MAPS_KEY or ""
+        geocode_url = reverse('geocode_address', kwargs={'field_op': self.field_op.slug})
+
         # Store fieldop_slug from initial data if provided
         self.fieldop_slug = kwargs.get('initial', {}).get('fieldop_slug')
+
+        initial_lat = ""
+        initial_lon = ""
+
+        if self.is_bound:
+            submitted_lat = self.data.get('latitude')
+            submitted_lon = self.data.get('longitude')
+            if submitted_lat and submitted_lon:
+                initial_lat = submitted_lat
+                initial_lon = submitted_lon
+        else:
+            # Populate initial lat/lon from the most recent location or field_op
+            latest_location = self.instance.locations.last()
+            if latest_location:
+                self.initial['latitude'] = latest_location.latitude
+                self.initial['longitude'] = latest_location.longitude
+                if latest_location.latitude is not None and latest_location.longitude is not None:
+                    initial_lat = f'{latest_location.latitude:.5f}'
+                    initial_lon = f'{latest_location.longitude:.5f}'
+                    self.initial['coordinates'] = f"{initial_lat},{initial_lon}"
+            elif self.field_op:
+                self.initial['latitude'] = self.field_op.latitude
+                self.initial['longitude'] = self.field_op.longitude
+                if self.field_op.latitude is not None and self.field_op.longitude is not None:
+                    initial_lat = f'{self.field_op.latitude:.5f}'
+                    initial_lon = f'{self.field_op.longitude:.5f}'
+                    self.initial['coordinates'] = f"{initial_lat},{initial_lon}"
+
+        field_op_lat = f'{self.field_op.latitude:.5f}' if self.field_op.latitude else ""
+        field_op_lon = f'{self.field_op.longitude:.5f}' if self.field_op.longitude else ""
+        field_op_ring_size = self.field_op.ring_size or ""
 
         # Set up aid type choices
         self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in self.field_op.aid_types.all()]
@@ -211,6 +361,9 @@ class AidRequestUpdateForm(forms.ModelForm):
         self.fields['additional_info'].widget.attrs['rows'] = 4
 
         self.helper.layout = Layout(
+            'location_modified',
+            'latitude',
+            'longitude',
             Fieldset(
                 'Ticket Status',
                 Row(
@@ -273,6 +426,46 @@ class AidRequestUpdateForm(forms.ModelForm):
                     Column('zip_code', css_class='col-md-3 mb-2'),
                     Column('country', css_class='col-md-2 mb-2'),
                 ),
+                Row(
+                    Column(
+                        HTML("""
+                            <button type="button" id="lookup-address" class="btn btn-success btn-sm me-2">
+                                <i class="bi bi-geo-alt"></i> Lookup Address
+                            </button>
+                            <button type="button" id="get-location" class="btn btn-danger btn-sm">
+                                <i class="bi bi-bullseye"></i> Get My Location
+                            </button>
+                        """),
+                        css_class='col-auto'
+                    ),
+                    Column(
+                        HTML("""
+                            <div class="input-group">
+                                {{ form.coordinates }}
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard(event, 'id_coordinates')">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        """),
+                        css_class='col-md-5'
+                    ),
+                    css_class='row g-2 mb-2 align-items-center'
+                ),
+                HTML(f"""
+                    <div class="row g-0 mt-2">
+                        <div class="form-group col-md-12 p-1">
+                            <div id="aid-request-location-picker-map"
+                                 style="height: 400px; border: 1px solid #ced4da; border-radius: .25rem;"
+                                 data-azure-maps-key="{azure_maps_key}"
+                                 data-geocode-url="{geocode_url}"
+                                 data-initial-lat="{initial_lat}"
+                                 data-initial-lon="{initial_lon}"
+                                 data-fieldop-lat="{field_op_lat}"
+                                 data-fieldop-lon="{field_op_lon}"
+                                 data-fieldop-ringsize="{field_op_ring_size}"></div>
+                        </div>
+                    </div>
+                """),
                 css_class="fieldset-box p-3 border rounded"
             ),
             Fieldset(
@@ -288,6 +481,15 @@ class AidRequestUpdateForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        coordinates = cleaned_data.get("coordinates")
+        if coordinates:
+            try:
+                lat_str, lon_str = coordinates.split(',')
+                cleaned_data['latitude'] = float(lat_str.strip())
+                cleaned_data['longitude'] = float(lon_str.strip())
+            except (ValueError, TypeError):
+                # Fail silently, as this is a fallback for non-JS.
+                pass
         # Validate that the aid request belongs to the field_op in the URL
         if hasattr(self, 'fieldop_slug') and self.fieldop_slug:
             try:

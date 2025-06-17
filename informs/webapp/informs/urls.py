@@ -33,6 +33,7 @@ from aidrequests.views.aid_location import (
 
 from aidrequests.views.ajax_sendcot import send_cot, sendcot_checkstatus
 from aidrequests.views.ajax_fieldop import toggle_cot
+from aidrequests.views.location import geocode_address
 
 from .views import home
 
@@ -106,6 +107,7 @@ urlpatterns = [
      path('api/<slug:field_op>/send-cot/', send_cot, name='send_cot'),
      path('api/<slug:field_op>/sendcot-aidrequest/', send_cot, name='sendcot_aidrequest'),
      path('api/<slug:field_op>/sendcot-checkstatus/', sendcot_checkstatus, name='sendcot_checkstatus'),
+     path('api/<slug:field_op>/geocode/', geocode_address, name='geocode_address'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
