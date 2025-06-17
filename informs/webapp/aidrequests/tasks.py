@@ -132,8 +132,7 @@ def aid_request_postsave(aid_request, **kwargs):
         return "No location created, skipping post-save actions."
 
 
-
-(aid_request, **kwargs):
+def aid_request_notify(aid_request, **kwargs):
 
     aid_location = aid_request.location
     map_file = f"{settings.MAPS_PATH}/{aid_location.map_filename}"
