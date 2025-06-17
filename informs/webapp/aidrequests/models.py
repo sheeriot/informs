@@ -6,6 +6,8 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
+from django.urls import reverse
+from django_q.tasks import async_task
 
 from .timestamped_model import TimeStampedModel
 from takserver.models import TakServer
@@ -171,6 +173,12 @@ class AidRequest(TimeStampedModel):
     zip_code = models.CharField(max_length=10, blank=True)
     country = models.CharField(max_length=30, blank=True)
 
+    @property
+    def full_address(self):
+        """Returns the full address as a single string."""
+        parts = [self.street_address, self.city, self.state, self.zip_code, self.country]
+        return ", ".join(filter(None, parts))
+
     # 4. Type of assistance requested
     # ASSISTANCE_CHOICES = [
     #     ('evacuation', 'Evacuation'),
@@ -250,23 +258,44 @@ class AidRequest(TimeStampedModel):
 
     @property
     def location_status(self):
-        if self.locations.filter(status='confirmed').exists():
-            status = 'confirmed'
-        elif self.locations.filter(status='new').exists():
-            status = 'new'
-        else:
-            status = None
-        return status
+        """
+        Calculates the primary location status from prefetched locations.
+        This avoids N+1 queries by operating on the prefetched `locations` queryset.
+        Order of precedence: 'confirmed', then 'new'.
+        """
+        # self.locations.all() will use the prefetched queryset if available
+        all_locs = self.locations.all()
+        has_confirmed = any(loc.status == 'confirmed' for loc in all_locs)
+        if has_confirmed:
+            return 'confirmed'
+
+        has_new = any(loc.status == 'new' for loc in all_locs)
+        if has_new:
+            return 'new'
+
+        return None
 
     @property
     def location(self):
-        if self.location_status == 'confirmed':
-            location = self.locations.filter(status='confirmed').first()
-        elif self.location_status == 'new':
-            location = self.locations.filter(status='new').first()
-        else:
-            location = None
-        return location
+        """
+        Finds the primary location object from prefetched locations.
+        This avoids N+1 queries by operating on the prefetched `locations` queryset.
+        Order of precedence: 'confirmed', then 'new'.
+        """
+        # self.locations.all() will use the prefetched queryset if available
+        all_locs = list(self.locations.all()) # Convert to list to iterate multiple times
+
+        # Find the first 'confirmed' location
+        for loc in all_locs:
+            if loc.status == 'confirmed':
+                return loc
+
+        # If no 'confirmed', find the first 'new' location
+        for loc in all_locs:
+            if loc.status == 'new':
+                return loc
+
+        return None
 
     class Meta:
         verbose_name = 'Aid Request'
@@ -277,29 +306,32 @@ class AidRequest(TimeStampedModel):
                - {self.aid_type}"""
 
     def save(self, *args, **kwargs):
-        is_new = self.pk is None
+        is_new = self._state.adding
+        super().save(*args)
 
-        # Call the "real" save() method
-        super().save(*args, **kwargs)
-
-        # Always send COT on save
-        from django_q.tasks import async_task
-        from .tasks import send_cot_task
-        updated_at_stamp = self.updated_at.strftime('%Y%m%d%H%M%S')
-        task_name = f"AidRequest{self.pk}-{'New' if is_new else 'Update'}-SendCot-{updated_at_stamp}"
-
-        # Start the async task with appropriate parameters
         task_kwargs = {
-            'field_op_slug': self.field_op.slug,
-            'mark_type': 'aid',
-            'aidrequest': self.pk  # Single ID uses singular parameter name
+            'trigger': 'AidRequest.save',
+            'instance_pk': self.pk,
+            'is_new': is_new
         }
 
-        async_task(
-            send_cot_task,
-            task_name=task_name,
-            **task_kwargs
-        )
+        if is_new:
+            from .tasks import aid_request_postsave
+            updated_at_stamp = self.updated_at.strftime('%Y%m%d%H%M%S')
+
+            if kwargs.get('location_modified'):
+                task_kwargs.update({
+                    'latitude': kwargs.get('latitude'),
+                    'longitude': kwargs.get('longitude'),
+                    'location_note': kwargs.get('location_note')
+                })
+
+            async_task(
+                aid_request_postsave,
+                self,
+                task_name=f"AR{self.pk}-PostSave-{updated_at_stamp}",
+                **task_kwargs
+            )
 
 
 class AidLocation(TimeStampedModel):
@@ -349,34 +381,32 @@ class AidLocation(TimeStampedModel):
         return f"Location ({round(self.latitude, 5)}, {round(self.longitude, 5)}) - {self.status} - {self.source}"
 
     def save(self, *args, **kwargs):
-        is_new = self.pk is None
+        is_new = self._state.adding
+        changed_fields = []
+        if not is_new:
+            old = AidLocation.objects.get(pk=self.pk)
+            for field in self._meta.fields:
+                if getattr(old, field.name) != getattr(self, field.name):
+                    changed_fields.append(field.name)
 
-        # Call the "real" save() method
         super().save(*args, **kwargs)
 
-        # Always send COT on save
-        from django_q.tasks import async_task
-        from .tasks import send_cot_task
-        updated_at_stamp = self.updated_at.strftime('%Y%m%d%H%M%S')
-        task_name = f"AidLocation{self.pk}-{'New' if is_new else 'Update'}-SendCot-{updated_at_stamp}"
-
-        # Start the async task with appropriate parameters
-        task_kwargs = {
-            'field_op_slug': self.aid_request.field_op.slug,
-            'mark_type': 'aid',
-            'aidrequest': self.aid_request.pk  # Single ID uses singular parameter name
-        }
-
-        async_task(
-            send_cot_task,
-            task_name=task_name,
-            **task_kwargs
-        )
+        if is_new or 'latitude' in changed_fields or 'longitude' in changed_fields:
+            from .tasks import send_cot_task
+            updated_at_stamp = self.updated_at.strftime('%Y%m%d%H%M%S')
+            task_name = f"AidLocation{self.pk}-{'New' if is_new else 'Update'}-SendCot-{updated_at_stamp}"
+            async_task(
+                send_cot_task,
+                self.aid_request.field_op.slug,
+                mark_type='aid',
+                aidrequests=[self.aid_request.pk],
+                task_name=task_name,
+                trigger='AidLocation.save',
+                changed_fields=changed_fields
+            )
 
     def get_absolute_url(self):
-        # This method is not provided in the original file or the code block
-        # It's assumed to exist as it's called in the save method
-        pass
+        return reverse('aid_location_detail', kwargs={'pk': self.pk})
 
 
 class AidRequestLog(TimeStampedModel):

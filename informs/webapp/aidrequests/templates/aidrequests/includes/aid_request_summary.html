@@ -1,0 +1,39 @@
+<table class="table table-bordered table-data caption-top me-2 border border-3 border-success">
+    <caption>Aid Summary</caption>
+    <tr>
+        <th class="col-auto">ID</th>
+        <th class="col-auto">Field Op</th>
+        <th class="col-auto">Aid Type</th>
+        <th class="col-auto text-nowrap">Group Size</th>
+    </tr>
+    <tr>
+        <td class="col-auto">
+            <div id="tak-status-wrapper" class="d-flex text-nowrap">
+                <a href="{% url 'aid_request_update' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
+                    <i class="bi bi-pencil"></i> {{ object.pk }}
+                </a>
+            </div>
+        </td>
+        <td class="col-auto text-nowrap">
+            {% include 'aidrequests/partials/_field_op_cell.html' %}
+        </td>
+        <td class="col-auto text-nowrap">{{ object.aid_type }}</td>
+        <td class="col-auto text-center text-nowrap">{{ object.group_size }}</td>
+    </tr>
+    <tr><th colspan="4">Address Provided</th></tr>
+    <tr>
+        <td colspan="4" class='text-wrap text-break overflow-hidden'>
+            {{ object.street_address }}
+            {{ object.city }}
+            {{ object.state }}
+            {{ object.zip_code }}
+            {{ object.country }}
+        </td>
+    </tr>
+    <tr><th colspan="4">Description</th></tr>
+    <tr>
+        <td colspan="4">
+            {{ object.aid_description }}
+        </td>
+    </tr>
+</table>

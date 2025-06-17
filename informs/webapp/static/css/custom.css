@@ -243,3 +243,39 @@ div.aid-coords label {
 .transition-opacity {
     transition: opacity 0.3s ease-in-out;
 }
+
+.tak-server-icon {
+    color: var(--bs-purple);
+}
+
+.map-container-shared {
+    min-width: 290px;
+    height: 600px;
+}
+
+.map-container-full-width {
+    height: 600px;
+    width: 100%;
+}
+
+.btn-danger-no-underline {
+    color: white;
+    text-decoration: none;
+}
+
+.font-monospace-small {
+    font-size: 0.75rem;
+}
+
+.pre-wrap-normal {
+    font-weight: normal;
+    white-space: pre-wrap;
+}
+
+.table-font-small {
+    font-size: 0.75rem;
+}
+
+.icon-size-1-25 {
+    font-size: 1.25rem;
+}

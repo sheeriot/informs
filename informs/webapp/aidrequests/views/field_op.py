@@ -5,8 +5,10 @@ from django.views.generic import DetailView, CreateView, UpdateView
 from django.http import HttpResponseRedirect
 from ..models import FieldOp, AidRequest, AidType
 from .forms import FieldOpForm
+from .utils import prepare_aid_locations_for_map, locations_to_bounds
 from icecream import ic
 import json
+from django.core.serializers.json import DjangoJSONEncoder
 
 class FieldOpDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     permission_required = 'aidrequests.view_fieldop'
@@ -25,17 +27,17 @@ class FieldOpDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
         context['center_lon'] = field_op.longitude
         context['ring_size'] = field_op.ring_size
 
-        # map_aidrequests.js expects these, but we don't have aid requests to show on this map.
-        # It can handle an empty list.
-        context['aid_locations_json'] = json.dumps([])
+        # Fetch related aid requests for the map
+        aid_requests = AidRequest.objects.filter(field_op=field_op)
+        aid_locations = prepare_aid_locations_for_map(aid_requests)
+        context['aid_locations_json'] = json.dumps(aid_locations, cls=DjangoJSONEncoder)
 
         # We need to provide the aid types for the field op
         aid_types_data = list(field_op.aid_types.values('slug', 'name', 'description'))
         context['aid_types_json'] = json.dumps(aid_types_data)
 
-        # The JS script calculates bounds. We can pass 0s for bounds, and the script will fallback
-        # to using the center and ring size.
-        context['map_bounds'] = [0, 0, 0, 0]
+        # Calculate map bounds from aid request locations
+        context['map_bounds'] = locations_to_bounds(aid_locations)
 
         return context
 

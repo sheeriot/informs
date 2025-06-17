@@ -8,6 +8,7 @@ def staticmap_aid(width=600, height=400, zoom=13,
                   fieldop_lat=0.0, fieldop_lon=0.0,
                   aid1_lat=0.0, aid1_lon=0.0):
 
+    ic("build staticmap_aid")
     # ic(type(aid1_lat), type(aid1_lon))
     # ic(type(fieldop_lat), type(fieldop_lon))
     center_lat = (float(fieldop_lat) + float(aid1_lat)) / 2

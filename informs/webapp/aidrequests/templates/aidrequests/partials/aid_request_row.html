@@ -64,6 +64,19 @@
             </ul>
         </div>
     </td>
+    <td class="py-1 text-center">
+        {% with primary_location=aid_request.location %}
+            {% if primary_location %}
+                {% if primary_location.status == 'confirmed' %}
+                    <i class="bi bi-geo-alt-fill text-success" title="Confirmed Location"></i>
+                {% elif primary_location.status == 'new' %}
+                    <i class="bi bi-geo-alt-fill text-warning" title="New Location"></i>
+                {% endif %}
+            {% else %}
+                <i class="bi bi-question-lg text-danger" title="No plottable location"></i>
+            {% endif %}
+        {% endwith %}
+    </td>
     <td class="py-1">
         {{ aid_request.street_address }},
         {{ aid_request.city }},

@@ -1,0 +1,17 @@
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        <h5 class="card-title mb-0">Notify Contacts</h5>
+    </div>
+    <div class="card-body">
+        <dl class="row mb-0 align-items-center">
+            {% for contact in contacts %}
+                {% get_notification_type contact as notification_type %}
+                <dt class="col-sm-3">{{ contact.get_full_name|default:contact.username }}</dt>
+                <dd class="col-sm-9">{{ notification_type }}</dd>
+                {% if not forloop.last %}<hr class="my-1">{% endif %}
+            {% empty %}
+                <dd class="col-sm-12 text-muted">No notify contacts specified.</dd>
+            {% endfor %}
+        </dl>
+    </div>
+</div>

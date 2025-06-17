@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container m-4">
+    <div class="alert alert-success" role="alert">
+        <h4 class="alert-heading">Submission Successful!</h4>
+        <p>Your Aid Request has been submitted and is now being processed. You can see the details of your submission below.</p>
+        <hr>
+        <p class="mb-0">You may now close this page.</p>
+    </div>
+
+    <div class="row flex-row align-items-center my-1">
+        <div class="col-auto">
+            <h1 class="mb-0">
+                Aid Request:
+                {% if user.is_authenticated %}
+                    <a href="{% url 'aid_request_detail' pk=object.pk field_op=field_op.slug %}">{{ object.pk }}</a>
+                {% else %}
+                    {{ object.pk }}
+                {% endif %}
+            </h1>
+        </div>
+    </div>
+    <hr class="m-0" />
+    <div class="container font-monospace mt-1">
+        <div class="d-flex flex-column flex-lg-row">
+            <table class="table table-bordered table-data caption-top me-2 border border-3 border-success">
+                <caption>Aid Summary</caption>
+                <tr>
+                    <th class="col-auto">ID</th>
+                    <th class="col-auto">Field Op</th>
+                    <th class="col-auto">Aid Type</th>
+                    <th class="col-auto text-nowrap">Group Size</th>
+                </tr>
+                <tr>
+                    <td class="col-auto">
+                        {% if user.is_authenticated %}
+                            <a href="{% url 'aid_request_detail' pk=object.pk field_op=field_op.slug %}">{{ object.pk }}</a>
+                        {% else %}
+                            {{ object.pk }}
+                        {% endif %}
+                    </td>
+                    <td class="col-auto text-nowrap">
+                        {{ field_op.name }}
+                    </td>
+                    <td class="col-auto text-nowrap">{{ object.aid_type }}</td>
+                    <td class="col-auto text-center text-nowrap">{{ object.group_size }}</td>
+                </tr>
+                <tr><th colspan="4">Address Provided</th></tr>
+                <tr>
+                    <td colspan="4" class='text-wrap text-break overflow-hidden'>
+                        {{ object.street_address }}
+                        {{ object.city }}
+                        {{ object.state }}
+                        {{ object.zip_code }}
+                        {{ object.country }}
+                    </td>
+                </tr>
+                <tr><th colspan="4">Descripton</th></tr>
+                <tr>
+                    <td colspan="4">
+                        {{ object.aid_description }}
+                    </td>
+                </tr>
+                <tr><td colspan="4">created: {{ object.created_at|date:"Y-m-d H:i" }}</td></tr>
+            </table>
+            <table class="table table-bordered table-data border border-3 border-info w-auto caption-top mx-1">
+                <caption>Contact Information</caption>
+                <tr>
+                    <th class="col-auto">Requestor Name</th>
+                    <th class="col-auto">Requestor Phone</th>
+                    <th class="col-auto">Requestor Email</th>
+                </tr>
+                <tr>
+                    <td class="col-auto">{{ object.requestor_first_name }} {{ object.requestor_last_name }}</td>
+                    <td class="col-auto">{{ object.requestor_phone }}</td>
+                    <td class="col-auto">{{ object.requestor_email }}</td>
+                </tr>
+                <tr>
+                    <th class="col-auto">Contact Name</th>
+                    <th class="col-auto">Contact Phone</th>
+                    <th class="col-auto">Contact Email</th>
+                </tr>
+                <tr>
+                    <td class="col-auto">{{ object.aid_first_name|default:"None" }} {{ object.aid_last_name }}</td>
+                    <td class="col-auto">{{ object.aid_phone|default:"None" }}</td>
+                    <td class="col-auto">{{ object.aid_email|default:"None" }}</td>
+                </tr>
+                <tr>
+                    <td colspan="3">
+                        <strong>Methods</strong>:<br>{{ object.contact_methods }}
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock content %}

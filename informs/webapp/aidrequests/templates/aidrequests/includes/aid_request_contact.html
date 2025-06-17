@@ -1,0 +1,28 @@
+<table class="table table-bordered table-data border border-3 border-info w-auto caption-top mx-1">
+    <caption>Contact Information</caption>
+    <tr>
+        <th class="col-auto">Requestor Name</th>
+        <th class="col-auto">Requestor Phone</th>
+        <th class="col-auto">Requestor Email</th>
+    </tr>
+    <tr>
+        <td class="col-auto">{{ object.requestor_first_name }} {{ object.requestor_last_name }}</td>
+        <td class="col-auto">{{ object.requestor_phone }}</td>
+        <td class="col-auto">{{ object.requestor_email }}</td>
+    </tr>
+    <tr>
+        <th class="col-auto">Contact Name</th>
+        <th class="col-auto">Contact Phone</th>
+        <th class="col-auto">Contact Email</th>
+    </tr>
+    <tr>
+        <td class="col-auto">{{ object.aid_first_name|default:"None" }} {{ object.aid_last_name }}</td>
+        <td class="col-auto">{{ object.aid_phone|default:"None" }}</td>
+        <td class="col-auto">{{ object.aid_email|default:"None" }}</td>
+    </tr>
+    <tr>
+        <td colspan="3">
+            <strong>Methods</strong>:<br>{{ object.contact_methods }}
+        </td>
+    </tr>
+</table>

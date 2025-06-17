@@ -1,0 +1,46 @@
+<div class="row flex-row align-items-center my-1">
+    <div class="col-auto">
+        <h1 class="mb-0">Aid Request</h1>
+    </div>
+    <div class="col-auto font-monospace bg-light ms-4 p-0 font-monospace-small">
+        <span class="p-1">{{ object.pk_str }}</span>
+    </div>
+    <div class="col text-end">
+        <div class="col-auto font-monospace bg-light ms-4 p-0" style="font-size: 0.75rem;">
+            <table class="table border border-1 m-0 p-0">
+                <tr>
+                    <td class="border border-info bg-transparent m-0 px-1 py-0">
+                        priority:
+                        {{ object.priority }}
+                    </td>
+                    <td class="border border-info bg-transparent m-0 px-1 py-0">
+                        created:
+                        {{ object.created_at|date:"Y-m-d H:i" }}
+                        ({{ object.created_by }})
+                    </td>
+                    <th class="border border-info bg-transparent m-0 px-1 py-0">
+                        Locations
+                    </th>
+                </tr>
+                <tr>
+                    <td class="border border-info bg-transparent m-0 px-1 py-0">
+                        status:
+                        {{ object.status }}
+                    </td>
+                    <td class="border border-info bg-transparent m-0 px-1 py-0">
+                        updated:
+                        {{ object.updated_at|date:"Y-m-d H:i" }}
+                        ({{ object.updated_by }})
+                    </td>
+                    <td class="border border-info bg-transparent m-0 px-1 py-0">{{ locations|length }}
+                        {% if confirmed %}
+                        <span class="text-success"><i class="bi bi-check"></i> ok</span>
+                    {% else %}
+                        <span class="text-danger"><i class="bi bi-exclamation"></i> NOT CONFIRMED</span>
+                    {% endif %}
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>

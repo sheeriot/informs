@@ -13,7 +13,7 @@ from aidrequests.views.aid_request import (
      AidRequestLogCreateView
      )
 from aidrequests.views.aid_request_list import AidRequestListView, update_aid_request
-from aidrequests.views.aid_request_detail import AidRequestDetailView
+from aidrequests.views.aid_request_detail import AidRequestDetailView, AidRequestSubmittedView
 from aidrequests.views.aid_request_notify import AidRequestNotifyView
 
 from aidrequests.views.field_op import (
@@ -75,6 +75,11 @@ urlpatterns = [
           '<slug:field_op>/aidrequest/<int:pk>/',
           AidRequestDetailView.as_view(),
           name='aid_request_detail'
+          ),
+     path(
+          '<slug:field_op>/aidrequest/<int:pk>/submitted/',
+          AidRequestSubmittedView.as_view(),
+          name='aid_request_submitted'
           ),
      path(
           '<slug:field_op>/aidrequest/export-csv/',
