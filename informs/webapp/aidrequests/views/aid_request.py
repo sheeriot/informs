@@ -2,13 +2,14 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.urls import reverse_lazy, reverse
 from django.views.generic import CreateView, UpdateView
+from django.conf import settings
 
 from django_q.tasks import async_chain
 
 from geopy.distance import geodesic
 from jinja2 import Template
 
-from ..models import AidRequest, FieldOp, AidRequestLog
+from ..models import AidRequest, FieldOp, AidRequestLog, AidLocation
 from ..tasks import aid_request_postsave, send_cot_task
 from .aid_request_forms import AidRequestCreateForm, AidRequestUpdateForm, AidRequestLogForm
 from ..context_processors import get_field_op_from_kwargs
@@ -87,6 +88,7 @@ class AidRequestCreateView(CreateView):
         context = super().get_context_data(**kwargs)
         context['field_op'] = self.field_op
         context['fieldop_slug'] = self.fieldop_slug
+        context['azure_maps_key'] = settings.AZURE_MAPS_KEY
         if self.object is None:
             context['New'] = True
         else:
@@ -118,12 +120,23 @@ class AidRequestCreateView(CreateView):
 
         # ----- post save starts here ------
         updated_at_stamp = self.object.updated_at.strftime('%Y%m%d%H%M%S')
+        latitude = form.cleaned_data.get('latitude')
+        longitude = form.cleaned_data.get('longitude')
+        location_modified = form.cleaned_data.get('location_modified')
+
+        task_kwargs = {
+            'savetype': 'new',
+            'task_name': f"AR{self.object.pk}-AidRequestNew-Email-{updated_at_stamp}"
+        }
+
+        if location_modified:
+            task_kwargs['latitude'] = latitude
+            task_kwargs['longitude'] = longitude
+
         # ic(self.object.__dict__.keys())
         savetype = 'new'
         postsave_tasks = async_chain([
-            (aid_request_postsave, [self.object], {
-                'savetype': savetype,
-                'task_name': f"AR{self.object.pk}-AidRequestNew-Email-{updated_at_stamp}"}),
+            (aid_request_postsave, [self.object], task_kwargs),
             (send_cot_task, [self.object.field_op.slug], {
                 'mark_type': 'aid',
                 'aidrequest': self.object.pk,
@@ -156,6 +169,7 @@ class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVi
         context = super().get_context_data(**kwargs)
         context['field_op'] = self.field_op
         context['fieldop_slug'] = self.fieldop_slug
+        context['azure_maps_key'] = settings.AZURE_MAPS_KEY
         return context
 
     def get_form_kwargs(self):
@@ -179,6 +193,27 @@ class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVi
         else:
             form.instance.updated_by = None
         self.object.save()
+
+        # Create or update AidLocation
+        latitude = form.cleaned_data.get('latitude')
+        longitude = form.cleaned_data.get('longitude')
+        if latitude and longitude:
+            # Check if an AidLocation already exists for this AidRequest
+            aid_location, created = AidLocation.objects.get_or_create(
+                aid_request=self.object,
+                defaults={
+                    'latitude': latitude,
+                    'longitude': longitude,
+                    'source': 'azure_maps',  # Assuming azure maps for now
+                    'status': 'confirmed'  # Assuming confirmed for now
+                }
+            )
+            # If it's not a new one, update it
+            if not created:
+                aid_location.latitude = latitude
+                aid_location.longitude = longitude
+                aid_location.save()
+
         return super().form_valid(form)
 
 
