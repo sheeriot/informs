@@ -20,6 +20,17 @@ from icecream import ic
 
 logger = logging.getLogger(__name__)
 
+
+class AidRequestSubmittedView(DetailView):
+    model = AidRequest
+    template_name = 'aidrequests/aid_request_submitted.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['field_op'] = get_object_or_404(FieldOp, slug=self.kwargs['field_op'])
+        return context
+
+
 # Detail View for AidRequest
 class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     permission_required = 'aidrequests.view_aidrequest'
@@ -84,12 +95,6 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
             except Exception as e:
                 ic(f"Log Error: {e}")
             # ic(timer()-time_start)
-            updated_at_stamp = self.aid_location.updated_at.strftime('%Y%m%d%H%M%S')
-            async_task(send_cot_task,
-                      field_op_slug=self.field_op.slug,
-                      mark_type='aid',
-                      aidrequests=[self.aid_request.pk],
-                       task_name=f"AidLocation{self.aid_location.pk}-New-SendCOT-{updated_at_stamp}")
             try:
                 self.aid_request.logs.create(
                     log_entry=f'COT Sent! New Location {self.aid_location}')

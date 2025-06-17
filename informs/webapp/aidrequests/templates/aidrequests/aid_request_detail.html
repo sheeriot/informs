@@ -4,119 +4,12 @@
 
 {% block content %}
 <div class="container m-4">
-    <div class="row flex-row align-items-center my-1">
-        <div class="col-auto display-6 font-monospace">
-            Aid Request Detail
-        </div>
-        <div class="col-auto font-monospace bg-light ms-4 p-0" style="font-size: 0.75rem;">
-            <table class="table border border-1 m-0 p-0">
-                <tr>
-                    <td class="border border-info bg-transparent m-0 px-1 py-0">
-                        priority:
-                        {{ object.priority }}
-                    </td>
-                    <td class="border border-info bg-transparent m-0 px-1 py-0">
-                        created:
-                        {{ object.created_at|date:"Y-m-d H:i" }}
-                        ({{ object.created_by }})
-                    </td>
-                    <th class="border border-info bg-transparent m-0 px-1 py-0">
-                        Locations
-                    </th>
-                </tr>
-                <tr>
-                    <td class="border border-info bg-transparent m-0 px-1 py-0">
-                        status:
-                        {{ object.status }}
-                    </td>
-                    <td class="border border-info bg-transparent m-0 px-1 py-0">
-                        updated:
-                        {{ object.updated_at|date:"Y-m-d H:i" }}
-                        ({{ object.updated_by }})
-                    </td>
-                    <td class="border border-info bg-transparent m-0 px-1 py-0">{{ locations|length }}
-                        {% if confirmed %}
-                        <span class="text-success"><i class="bi bi-check"></i> ok</span>
-                    {% else %}
-                        <span class="text-danger"><i class="bi bi-exclamation"></i> NOT CONFIRMED</span>
-                    {% endif %}
-                    </td>
-                </tr>
-            </table>
-        </div>
-    </div>
+    {% include 'aidrequests/partials/aid_request_header.html' %}
     <hr class="m-0" />
     <div class="container font-monospace mt-1">
         <div class="d-flex flex-column flex-lg-row">
-            <table class="table table-bordered table-data caption-top me-2 border border-3 border-success">
-                <caption>Aid Summary</caption>
-                <tr>
-                    <th class="col-auto">ID</th>
-                    <th class="col-auto">Field Op</th>
-                    <th class="col-auto">Aid Type</th>
-                    <th class="col-auto text-nowrap">Group Size</th>
-                </tr>
-                <tr>
-                    <td class="col-auto">
-                        <div id="tak-status-wrapper" class="d-flex text-nowrap">
-                            <a href="{% url 'aid_request_update' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-warning btn-sm mx-1 p-1">
-                                <i class="bi bi-pencil"></i> {{ object.pk }}
-                            </a>
-                        </div>
-                    </td>
-                    <td class="col-auto text-nowrap">
-                        <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-outline-primary btn-sm mx-1 p-1">
-                            <i class="bi bi-truck text"></i> <span class="text-dark">{{ field_op.name }}</span>
-                        </a>
-                    </td>
-                    <td class="col-auto text-nowrap">{{ object.aid_type }}</td>
-                    <td class="col-auto text-center text-nowrap">{{ object.group_size }}</td>
-                </tr>
-                <tr><th colspan="4">Address Provided</th></tr>
-                <tr>
-                    <td colspan="4" class='text-wrap text-break overflow-hidden'>
-                        {{ object.street_address }}
-                        {{ object.city }}
-                        {{ object.state }}
-                        {{ object.zip_code }}
-                        {{ object.country }}
-                    </td>
-                </tr>
-                <tr><th colspan="4">Descripton</th></tr>
-                <tr>
-                    <td colspan="4">
-                        {{ object.aid_description }}
-                    </td>
-                </tr>
-            </table>
-            <table class="table table-bordered table-data border border-3 border-info w-auto caption-top mx-1">
-                <caption>Contact Information</caption>
-                <tr>
-                    <th class="col-auto">Requestor Name</th>
-                    <th class="col-auto">Requestor Phone</th>
-                    <th class="col-auto">Requestor Email</th>
-                </tr>
-                <tr>
-                    <td class="col-auto">{{ object.requestor_first_name }} {{ object.requestor_last_name }}</td>
-                    <td class="col-auto">{{ object.requestor_phone }}</td>
-                    <td class="col-auto">{{ object.requestor_email }}</td>
-                </tr>
-                <tr>
-                    <th class="col-auto">Contact Name</th>
-                    <th class="col-auto">Contact Phone</th>
-                    <th class="col-auto">Contact Email</th>
-                </tr>
-                <tr>
-                    <td class="col-auto">{{ object.aid_first_name|default:"None" }} {{ object.aid_last_name }}</td>
-                    <td class="col-auto">{{ object.aid_phone|default:"None" }}</td>
-                    <td class="col-auto">{{ object.aid_email|default:"None" }}</td>
-                </tr>
-                <tr>
-                    <td colspan="3">
-                        <strong>Methods</strong>:<br>{{ object.contact_methods }}
-                    </td>
-                </tr>
-            </table>
+            {% include 'aidrequests/includes/aid_request_summary.html' %}
+            {% include 'aidrequests/includes/aid_request_contact.html' %}
         </div>
         <hr class="m-1">
         <div class="d-inline-flex align-items-center w-100">
@@ -158,70 +51,7 @@
     </div>
     <hr class="m-1">
     <div class="row flex-row align-items-center my-1">
-        <div class="col-auto font-monospace">
-            <table class="table table-bordered table-data w-auto caption-top w-auto border border-3 border-warning font-monospace ms-4">
-                <caption>{{ field_op.name }} Center: {{ field_op.latitude }},{{ field_op.longitude }}</div>
-                </caption>
-                <tr>
-                    <th class="col-auto">Location Info</th>
-                    {% if map_filename %}
-                        <th class="col-auto">Location Map</th>
-                    {% endif %}
-                </tr>
-                <tr>
-                    <td class="col-auto">
-                        {% if location.address_searched %}
-                            Address Searched:<br>
-                            {{ location.address_searched }}
-                            <hr class="my-1 py-0">
-                        {% endif %}
-                        {% if location.address_found %}
-                            Address Found:<br>
-                            {{ location.address_found }}
-                            <hr class="my-1 py-0">
-                        {% endif %}
-                        {% if confirmed or new %}
-                            <div>Aid Location: {{ location.pk }}<br>{{ location.latitude }},{{ location.longitude }}</div>
-                            {% if location.distance %}
-                                <div>Distance: {{ location.distance }} km</div>
-                            {% endif %}
-                            {% if confirmed %}
-                                <div>Status: <span class="text-success"><i class="bi bi-check"></i> Confirmed</span></div>
-                            {% endif %}
-                            {% if new %}
-                                <div>Status: <span class="text-success"><i class="bi bi-compass"></i> New</span></div>
-                            {% endif %}
-                            {% if location.source %}
-                                <div>Source: {{ location.source }}</div>
-                            {% endif %}
-                            <hr class="my-1 py-0">
-                            {% if location_note %}
-                                <div style="font-weight: normal;"><pre>{{ location_note }}</pre></div>
-                            {% endif %}
-                            {% if new %}
-                                {% crispy aid_location_status_form %}
-                            {% endif %}
-                        {% else %}
-                            <span class="text-danger">No Confirmed or new Location</span>
-                        {% endif %}
-                    </td>
-                    {% if map_filename %}
-                    <td class="col-auto">
-                        <div>
-                            <div id="map-image">
-                                <img src="/{{ MAPS_PATH }}/{{ map_filename }}" alt="Aid Request - Location Map">
-                            </div>
-                        </div>
-                    </td>
-                    {% endif %}
-                </tr>
-                <tr>
-                    <td colspan="2" class="col-auto">
-                        {% crispy aid_location_manual_form %}
-                    </td>
-                </tr>
-            </table>
-        </div>
+        {% include 'aidrequests/includes/aid_request_map.html' %}
     </div>
 
     <div class="container font-monospace">
@@ -297,7 +127,7 @@
     </div>
     <hr class="m-1">
     <div class="container font-monospace">
-        <table class="table table-sm table-warning table-striped table-bordered style="font-size: 0.75rem;">
+        <table class="table table-sm table-warning table-striped table-bordered table-font-small">
             <thead>
                 <tr>
                     <th class="col-auto">Updated</th>

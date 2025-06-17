@@ -1,16 +1,12 @@
 <div class="col-6">
     <div class="card shadow-sm">
-        <div class="card-header py-2">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Map View</h5>
-                <div class="d-flex align-items-center">
-                    <small id="map-filter-summary" class="text-muted"></small>
-                </div>
-            </div>
+        <div class="card-header d-flex justify-content-between align-items-center p-2">
+            <h5 class="mb-0">Map</h5>
+            <div id="map-filter-summary" class="small text-muted me-auto ms-2"></div>
         </div>
-        <div class="card-body p-2">
+        <div class="card-body p-0">
             <!-- Map container with data attributes -->
-            <div id="aid-request-map" class="position-relative w-100" style="min-width: 290px; height: 600px;"
+            <div id="aid-request-map" class="position-relative w-100 map-container-shared"
                 data-azure-maps-key="{{ azure_maps_key }}"
                 data-center-lat="{{ field_op.latitude|stringformat:".6f"|default:"0" }}"
                 data-center-lon="{{ field_op.longitude|stringformat:".6f"|default:"0" }}"

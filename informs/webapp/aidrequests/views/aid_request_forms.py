@@ -48,6 +48,8 @@ class AidRequestCreateForm(forms.ModelForm):
         widgets = {
             'latitude': forms.HiddenInput(),
             'longitude': forms.HiddenInput(),
+            'location_note': forms.HiddenInput(),
+            'location_modified': forms.HiddenInput(),
         }
 
     latitude = forms.DecimalField(
@@ -66,6 +68,7 @@ class AidRequestCreateForm(forms.ModelForm):
         widget=forms.TextInput(attrs={'class': 'form-control text-dark font-monospace'})
     )
     location_modified = forms.BooleanField(widget=forms.HiddenInput(), required=False, initial=False)
+    location_note = forms.CharField(widget=forms.HiddenInput(), required=False)
     different_contact = forms.BooleanField(
         required=False,
         label="Add a different AID contact"
@@ -113,6 +116,7 @@ class AidRequestCreateForm(forms.ModelForm):
             'location_modified',
             'latitude',
             'longitude',
+            'location_note',
             Fieldset(
                 'Requestor Details',
                 Row(
@@ -298,6 +302,7 @@ class AidRequestUpdateForm(forms.ModelForm):
         widget=forms.TextInput(attrs={'class': 'form-control text-dark font-monospace'})
     )
     location_modified = forms.BooleanField(widget=forms.HiddenInput(), required=False, initial=False)
+    location_note = forms.CharField(widget=forms.HiddenInput(), required=False)
     different_contact = forms.BooleanField(
         required=False,
         label="Add a different contact person"
@@ -311,7 +316,8 @@ class AidRequestUpdateForm(forms.ModelForm):
         button_text = 'Update'
 
         # Get the field_op from the instance
-        self.field_op = kwargs['instance'].field_op
+        self.field_op = self.instance.field_op
+        self.fieldop_slug = self.field_op.slug
 
         azure_maps_key = settings.AZURE_MAPS_KEY or ""
         geocode_url = reverse('geocode_address', kwargs={'field_op': self.field_op.slug})
@@ -364,6 +370,7 @@ class AidRequestUpdateForm(forms.ModelForm):
             'location_modified',
             'latitude',
             'longitude',
+            'location_note',
             Fieldset(
                 'Ticket Status',
                 Row(

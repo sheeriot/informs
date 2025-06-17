@@ -1,0 +1,60 @@
+{% load crispy_forms_tags %}
+<div class="col-auto font-monospace">
+    <table class="table table-bordered table-data w-auto caption-top w-auto border border-3 border-warning font-monospace ms-4">
+        <caption>{{ field_op.name }} Center: {{ field_op.latitude }},{{ field_op.longitude }}</caption>
+        <tr>
+            <th class="col-auto">Location Info</th>
+            {% if map_filename %}
+                <th class="col-auto">Location Map</th>
+            {% endif %}
+        </tr>
+        <tr>
+            <td class="col-auto">
+                {% if location.address_searched %}
+                    Address Searched:<br>
+                    {{ location.address_searched }}
+                    <hr class="my-1 py-0">
+                {% endif %}
+                {% if location.address_found %}
+                    Address Found:<br>
+                    {{ location.address_found }}
+                    <hr class="my-1 py-0">
+                {% endif %}
+                {% if confirmed or new %}
+                    <div>Aid Location: {{ location.pk }}<br>{{ location.latitude }},{{ location.longitude }}</div>
+                    {% if location.distance %}
+                        <div>Distance: {{ location.distance }} km</div>
+                    {% endif %}
+                    {% if confirmed %}
+                        <div>Status: <span class="text-success"><i class="bi bi-check"></i> Confirmed</span></div>
+                    {% endif %}
+                    {% if new %}
+                        <div>Status: <span class="text-success"><i class="bi bi-compass"></i> New</span></div>
+                    {% endif %}
+                    {% if location.source %}
+                        <div>Source: {{ location.source }}</div>
+                    {% endif %}
+                    <hr class="my-1 py-0">
+                    {% if location_note %}
+                        <div style="font-weight: normal;"><pre>{{ location_note }}</pre></div>
+                    {% endif %}
+                    {% if new %}
+                        {% crispy aid_location_status_form %}
+                    {% endif %}
+                {% else %}
+                    <span class="text-danger">No Confirmed or new Location</span>
+                {% endif %}
+            </td>
+            {% if map_filename %}
+            <td class="col-auto">
+                {% include 'aidrequests/partials/location_map_partial.html' %}
+            </td>
+            {% endif %}
+        </tr>
+        <!-- <tr>
+            <td colspan="2" class="col-auto">
+                {% crispy aid_location_manual_form %}
+            </td>
+        </tr> -->
+    </table>
+</div>

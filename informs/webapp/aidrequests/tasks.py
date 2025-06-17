@@ -5,7 +5,7 @@ from datetime import datetime
 from geopy.distance import geodesic
 
 from .email_creator import email_connectstring, email_creator_html
-from .geocoder import get_azure_geocode, geocode_save, get_azure_reverse_geocode
+from .geocoder import get_azure_geocode, geocode_save
 from .views.maps import staticmap_aid, calculate_zoom
 from .models import FieldOpNotify, AidRequest, FieldOp, AidLocation
 from takserver.cot import CotSender, pytak_send_cot
@@ -29,112 +29,111 @@ cot_logger = logging.getLogger('cot')
 
 def aid_request_postsave(aid_request, **kwargs):
     logger.info(f"Staring aid_request_postsave for AR-{aid_request.pk} with kwargs: {kwargs}")
-    savetype = kwargs.get('savetype')
+    is_new = kwargs.get('is_new')
+
+    if not is_new:
+        return "Not a new aid request, no post-save actions taken."
+
     latitude = kwargs.get('latitude')
     longitude = kwargs.get('longitude')
+    location_note = kwargs.get('location_note')
     aid_location = None
+    map_file = None
 
-    if savetype == 'new':
-        if latitude and longitude:
-            # If coordinates are provided, create the AidLocation directly
-            logger.info(f"AR-{aid_request.pk}: Coordinates provided, creating AidLocation directly.")
+    if latitude and longitude:
+        logger.info(f"AR-{aid_request.pk}: Coordinates provided, creating AidLocation directly.")
+        original_geocode_results = get_azure_geocode(aid_request)
+        original_geocode_note = ""
+        if original_geocode_results.get('status') == 'Success':
+            original_lat = original_geocode_results['latitude']
+            original_lon = original_geocode_results['longitude']
+            original_geocode_note = f"Address Geocoded: {original_lat:.5f}, {original_lon:.5f}"
 
-            # First, geocode the address from the form to get the original location
-            original_geocode_results = get_azure_geocode(aid_request)
-            original_geocode_note = ""
-            if original_geocode_results.get('status') == 'Success':
-                original_lat = original_geocode_results['latitude']
-                original_lon = original_geocode_results['longitude']
-                original_geocode_note = f"User Picked. Geocode for address returned ({original_lat:.5f}, {original_lon:.5f}).\n"
+        aid_location = AidLocation.objects.create(
+            aid_request=aid_request,
+            latitude=latitude,
+            longitude=longitude,
+            source='user_picked',
+            status='confirmed'
+        )
 
-            aid_location = AidLocation.objects.create(
-                aid_request=aid_request,
-                latitude=latitude,
-                longitude=longitude,
-                source='user_picked',
-                status='confirmed'
-            )
-            # Then perform a reverse geocode to fill in address details
-            logger.info(f"AR-{aid_request.pk}: Performing reverse geocode.")
-            reverse_results = get_azure_reverse_geocode(latitude, longitude)
-            if reverse_results['status'] == 'Success':
-                aid_location.address_found = reverse_results['address_found']
-                aid_location.note = original_geocode_note + reverse_results['note']
-            else:
-                logger.warning(f"AR-{aid_request.pk}: Reverse geocode failed: {reverse_results.get('note')}")
-                aid_location.note = original_geocode_note
+        logger.info(f"AR-{aid_request.pk}: Calculating distance from FieldOp.")
+        distance = round(geodesic(
+            (aid_request.field_op.latitude, aid_request.field_op.longitude),
+            (latitude, longitude)
+        ).km, 2)
+        aid_location.distance = distance
+        aid_location.save()
 
-            # And calculate the distance
-            logger.info(f"AR-{aid_request.pk}: Calculating distance.")
-            distance = round(geodesic(
-                (aid_request.field_op.latitude, aid_request.field_op.longitude),
-                (latitude, longitude)
-            ).km, 2)
-            aid_location.distance = distance
-            aid_location.save()
-        else:
-            # Fallback to geocoding the address if no coordinates are provided
-            logger.info(f"AR-{aid_request.pk}: No coordinates provided, falling back to address geocoding.")
-            geocode_results = get_azure_geocode(aid_request)
+    else:
+        logger.info(f"AR-{aid_request.pk}: No coordinates provided, falling back to address geocoding.")
+        geocode_results = get_azure_geocode(aid_request)
+        if geocode_results.get('status') == 'Success':
             aid_location = geocode_save(aid_request, geocode_results)
+        else:
+            logger.error(f"AR-{aid_request.pk}: Address geocoding failed, no location will be created.")
 
-        if aid_location:
-            logger.info(f"AR-{aid_request.pk}: AidLocation created/found: {aid_location.pk}, distance: {aid_location.distance}km.")
-            zoom = calculate_zoom(aid_location.distance) if aid_location.distance is not None else 10
-            logger.info(f"AR-{aid_request.pk}: Calculated zoom: {zoom}")
-            # ic(zoom)
+    if aid_location:
+        logger.info(f"AR-{aid_request.pk}: AidLocation created/found: {aid_location.pk}, distance: {aid_location.distance}km.")
 
-            staticmap_data = staticmap_aid(
-                width=600, height=600, zoom=zoom,
-                fieldop_lat=aid_request.field_op.latitude,
-                fieldop_lon=aid_request.field_op.longitude,
-                aid1_lat=aid_location.latitude,
-                aid1_lon=aid_location.longitude,
-            )
-            logger.info(f"AR-{aid_request.pk}: Static map API call prepared.")
+        zoom = calculate_zoom(aid_location.distance) if aid_location.distance is not None else 10
+        logger.info(f"AR-{aid_request.pk}: Calculated zoom: {zoom}")
 
-            if staticmap_data:
-                timestamp = datetime.now().strftime("%y%m%d%H%M%S")
-                map_filename = f"AR{aid_request.pk}-map_{timestamp}.png"
-                map_file = f"{settings.MAPS_PATH}/{map_filename}"
-                with open(map_file, 'wb') as file:
-                    file.write(staticmap_data)
-                    logger.info(f"AR-{aid_request.pk}: Static map saved to {map_file}")
+        staticmap_data = staticmap_aid(
+            width=600, height=600, zoom=zoom,
+            fieldop_lat=aid_request.field_op.latitude,
+            fieldop_lon=aid_request.field_op.longitude,
+            aid1_lat=aid_location.latitude,
+            aid1_lon=aid_location.longitude,
+        )
+        logger.info(f"AR-{aid_request.pk}: Static map API call prepared.")
 
-                    if file:
-                        try:
-                            aid_location.map_filename = map_filename
-                            aid_location.save()
-                        except Exception as e:
-                            logger.error(f"Error saving map: {e}")
-            else:
-                logger.warning(f"AR-{aid_request.pk}: staticmap_aid call did not return PNG data.")
+        if staticmap_data:
+            timestamp = datetime.now().strftime("%y%m%d%H%M%S")
+            map_filename = f"AR{aid_request.pk}-map_{timestamp}.png"
+            map_file = f"{settings.MAPS_PATH}/{map_filename}"
+            with open(map_file, 'wb') as file:
+                file.write(staticmap_data)
+            logger.info(f"AR-{aid_request.pk}: Static map saved to {map_file}")
 
-    if savetype == 'new' and aid_location:
+            try:
+                aid_location.map_filename = map_filename
+                aid_location.save()
+            except Exception as e:
+                logger.error(f"Error saving map filename to AidLocation: {e}")
+        else:
+            logger.warning(f"AR-{aid_request.pk}: staticmap_aid call did not return PNG data.")
+
         logger.info(f"AR-{aid_request.pk}: Preparing to send notification emails.")
         notify_emails = aid_request.field_op.notify.filter(type__startswith='email')
         email_results = ""
         for notify in notify_emails:
             message = email_creator_html(aid_request, aid_location, notify, map_file)
             try:
-                async_task('aidrequests.tasks.send_email', message)
-                email_results += f"Email task for {notify.name} enqueued.\n"
+                task_name = f"AR{aid_request.pk}_SendEmail_New_{notify.pk}"
+                async_task('aidrequests.tasks.send_email', message, task_name=task_name)
+                email_results += f"Email task for {notify.name} enqueued.\\n"
             except Exception as e:
                 logger.error(f"Error enqueuing email task for {notify.name}: {e}")
-                email_results += f"Email Enqueue Error for {notify.name}: {e}\n"
-        if email_results.endswith('\n'):
-            email_results = email_results[:-1]
+                email_results += f"Email Enqueue Error for {notify.name}: {e}\\n"
+
+        if email_results.endswith('\\n'):
+            email_results = email_results[:-2]
+
         try:
-            aid_request.logs.create(
-                log_entry=f'{email_results}'
-            )
+            aid_request.logs.create(log_entry=f'{email_results}')
         except Exception as e:
             logger.error(f"Error logging email results: {e}")
 
-    return email_results
+        return email_results
+
+    else:
+        logger.warning(f"AR-{aid_request.pk}: No AidLocation was created. Skipping map and notifications.")
+        return "No location created, skipping post-save actions."
 
 
-def aid_request_notify(aid_request, **kwargs):
+
+(aid_request, **kwargs):
 
     aid_location = aid_request.location
     map_file = f"{settings.MAPS_PATH}/{aid_location.map_filename}"
@@ -150,7 +149,9 @@ def aid_request_notify(aid_request, **kwargs):
             )
             message = email_creator_html(aid_request, aid_location, notify, map_file)
             try:
-                async_task('aidrequests.tasks.send_email', message)
+                timestamp = datetime.now().strftime('%H%M%S')
+                task_name = f"AR{aid_request.pk}_SendEmail_Manual_Adhoc_{timestamp}"
+                async_task('aidrequests.tasks.send_email', message, task_name=task_name)
                 results += f"Email task for {notify.email} enqueued.\n |"
             except Exception as e:
                 logger.error(f"Error enqueuing email task for {notify.email}: {e}")
@@ -161,7 +162,8 @@ def aid_request_notify(aid_request, **kwargs):
     for notify in notify_emails:
         message = email_creator_html(aid_request, aid_location, notify, map_file)
         try:
-            async_task('aidrequests.tasks.send_email', message)
+            task_name = f"AR{aid_request.pk}_SendEmail_Manual_{notify.pk}"
+            async_task('aidrequests.tasks.send_email', message, task_name=task_name)
             results += f"Email task for {notify.email} enqueued.\n"
         except Exception as e:
             logger.error(f"Error enqueuing email task for {notify.email}: {e}")
@@ -315,7 +317,7 @@ def send_all_field_op_cot():
 #         return error_msg
 
 
-def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests=None):
+def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests=None, **kwargs):
     """Django-Q2 task for sending COT messages for field ops and/or aid requests.
 
     This function is a synchronous interface for Django-Q2.
@@ -334,6 +336,7 @@ def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests
         str: Status message indicating success or failure with mark counts
     """
     try:
+        logger.info(f"send_cot_task called with kwargs: {kwargs}")
         # Get the field op
         from .models import FieldOp, AidRequest # Keep this import for model access
         try:

@@ -104,7 +104,8 @@ class AidRequestCreateView(CreateView):
         return kwargs
 
     def form_valid(self, form):
-        self.object = form.save()
+        ic(form.cleaned_data)
+        self.object = form.save(commit=False)
 
         if not self.object.requestor_email and not self.object.requestor_phone:
             form.add_error(None, 'Provide one of phone or email.')
@@ -116,36 +117,10 @@ class AidRequestCreateView(CreateView):
         else:
             self.object.created_by = None
             self.object.updated_by = None
-        self.object.save()
-
-        # ----- post save starts here ------
-        updated_at_stamp = self.object.updated_at.strftime('%Y%m%d%H%M%S')
-        latitude = form.cleaned_data.get('latitude')
-        longitude = form.cleaned_data.get('longitude')
-        location_modified = form.cleaned_data.get('location_modified')
-
-        task_kwargs = {
-            'savetype': 'new',
-            'task_name': f"AR{self.object.pk}-AidRequestNew-Email-{updated_at_stamp}"
-        }
-
-        if location_modified:
-            task_kwargs['latitude'] = latitude
-            task_kwargs['longitude'] = longitude
-
-        # ic(self.object.__dict__.keys())
-        savetype = 'new'
-        postsave_tasks = async_chain([
-            (aid_request_postsave, [self.object], task_kwargs),
-            (send_cot_task, [self.object.field_op.slug], {
-                'mark_type': 'aid',
-                'aidrequest': self.object.pk,
-                'task_name': f"AR{self.object.pk}-AidRequestNew-TAK-{updated_at_stamp}"})
-                ])
-        ic('postsave_tasks', postsave_tasks)
+        self.object.save(**form.cleaned_data)
 
         # Redirect to the list view for this field_op after creating
-        self.success_url = reverse_lazy('aid_request_list', kwargs={'field_op': self.fieldop_slug})
+        self.success_url = reverse_lazy('aid_request_submitted', kwargs={'field_op': self.fieldop_slug, 'pk': self.object.pk})
         return super().form_valid(form)
 
 
@@ -197,6 +172,7 @@ class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVi
         # Create or update AidLocation
         latitude = form.cleaned_data.get('latitude')
         longitude = form.cleaned_data.get('longitude')
+        location_note = form.cleaned_data.get('location_note')
         if latitude and longitude:
             # Check if an AidLocation already exists for this AidRequest
             aid_location, created = AidLocation.objects.get_or_create(
@@ -205,13 +181,15 @@ class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVi
                     'latitude': latitude,
                     'longitude': longitude,
                     'source': 'azure_maps',  # Assuming azure maps for now
-                    'status': 'confirmed'  # Assuming confirmed for now
+                    'status': 'confirmed',  # Assuming confirmed for now
+                    'note': location_note
                 }
             )
             # If it's not a new one, update it
             if not created:
                 aid_location.latitude = latitude
                 aid_location.longitude = longitude
+                aid_location.note = location_note
                 aid_location.save()
 
         return super().form_valid(form)

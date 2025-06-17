@@ -44,6 +44,7 @@ function loadMapConfiguration() {
 
     // Debug log raw dataset values
     if (mapRequestsConfig.debug) {
+        /*
         console.log('[Map] Raw dataset values from mapContainer:', {
             azureMapsKey: mapContainer.dataset.azureMapsKey,
             boundsWest: mapContainer.dataset.boundsWest,
@@ -54,6 +55,7 @@ function loadMapConfiguration() {
             centerLon: mapContainer.dataset.centerLon,
             allDataset: mapContainer.dataset
         });
+        */
     }
 
     // Robustly parse ringSize, ensuring it's a positive number.
@@ -119,6 +121,7 @@ function loadMapConfiguration() {
 
     if (areOriginalDatasetBoundsInvalid || mapRequestsConfig.aidLocations.length <= 1) {
         useFallbackBounds = true;
+        /*
         if (mapRequestsConfig.debug) {
             console.log('[Map] Using fallback bounds calculation.', {
                 reason: areOriginalDatasetBoundsInvalid ? "Original dataset bounds invalid" : "Not enough aid locations (<=1)",
@@ -128,7 +131,7 @@ function loadMapConfiguration() {
                 fieldOpRingSizeKm: config.ringSize
             });
         }
-
+        */
         // Validate center and ringSize before using them for fallback
         if (isNaN(config.center[0]) || isNaN(config.center[1])) {
             console.error('[Map] CRITICAL: Cannot calculate fallback bounds because center coordinates are invalid.', config.center);
@@ -155,9 +158,11 @@ function loadMapConfiguration() {
             // For extreme latitudes, longitude span can become excessively large or small.
             // Use a fallback based on latitude delta, assuming roughly square area.
             deltaLon = deltaLat;
+            /*
             if (mapRequestsConfig.debug) {
                 console.warn(`[Map] Center latitude ${centerLat} is very near a pole. Adjusted deltaLon for fallback bounds to ${deltaLon} (approx ${viewRadiusKm}km).`);
             }
+            */
         }
 
         config.bounds = [
@@ -185,11 +190,11 @@ function loadMapConfiguration() {
         finalBoundsUsed: config.bounds, // The bounds that will actually be used (dataset or fallback)
         source: useFallbackBounds ? "fallback_calculation" : "dataset"
     };
-
+    /*
     if (mapRequestsConfig.debug) {
         console.log('[Map] Bounds data for map initialization:', boundsDataForLog);
     }
-
+    */
     // Validate final `config.bounds` values (these could be from dataset or fallback)
     if (config.bounds.some(isNaN) || config.bounds.every(val => val === 0)) {
         console.error('[Map] CRITICAL: Invalid or missing bounds values after parsing and potential fallback.', {
@@ -237,6 +242,7 @@ function loadMapConfiguration() {
     const lonSpan = maxLon - minLon;
 
     if (mapRequestsConfig.debug) {
+        /*
         console.log('[Map] Configuration details:', {
             bounds: {
                 minLon, minLat, maxLon, maxLat
@@ -251,6 +257,7 @@ function loadMapConfiguration() {
             },
             padding: config.padding
         });
+        */
     }
 
     // Warn if spans seem unreasonably large
@@ -310,18 +317,18 @@ async function initializeMapWithFilter(filterState) {
         if (mapRequestsConfig.debug) {
             console.time('map-full-init');
             console.log('[Map] Starting full initialization sequence in initializeMapWithFilter.');
-            console.log('[Map] Current aidRequestsStore state (if available):', window.aidRequestsStore?.currentState);
+            // console.log('[Map] Current aidRequestsStore state (if available):', window.aidRequestsStore?.currentState);
         }
 
         // Load configuration first
-        console.log('[Map] Calling loadMapConfiguration...');
+        if (mapRequestsConfig.debug) console.log('[Map] Calling loadMapConfiguration...');
         loadMapConfiguration();
-        console.log('[Map] loadMapConfiguration complete. mapRequestsConfig.config:', JSON.parse(JSON.stringify(mapRequestsConfig.config)));
+        if (mapRequestsConfig.debug) console.log('[Map] loadMapConfiguration complete. mapRequestsConfig.config:', JSON.parse(JSON.stringify(mapRequestsConfig.config)));
 
         // Initialize the map
-        console.log('[Map] Calling initializeMap with config...');
+        if (mapRequestsConfig.debug) console.log('[Map] Calling initializeMap with config...');
         await initializeMap(mapRequestsConfig.config);
-        console.log('[Map] initializeMap complete.');
+        if (mapRequestsConfig.debug) console.log('[Map] initializeMap complete.');
         mapRequestsConfig.performance.mapInitialized = performance.now();
 
         // Mark as initialized
@@ -340,12 +347,14 @@ async function initializeMapWithFilter(filterState) {
         }
 
         if (mapRequestsConfig.debug) {
+            /*
             console.timeEnd('map-full-init');
             console.log('[Map] Performance metrics after initializeMapWithFilter:', {
                 configLoad: (mapRequestsConfig.performance.configLoaded - mapRequestsConfig.performance.loadStart).toFixed(2) + 'ms',
                 mapInit: (mapRequestsConfig.performance.mapInitialized - mapRequestsConfig.performance.configLoaded).toFixed(2) + 'ms',
                 total: (mapRequestsConfig.performance.fullyReady - mapRequestsConfig.performance.loadStart).toFixed(2) + 'ms'
             });
+            */
         }
     } catch (error) {
         console.error('[Map] CRITICAL: Initialization failed in initializeMapWithFilter:', error);
@@ -418,122 +427,85 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Initialize the map with minimum configuration
 function initializeMap(config) {
-    if (mapRequestsConfig.debug) {
-        console.log('[Map] initializeMap START with config:', JSON.parse(JSON.stringify(config)));
-    }
-    if (!config || !config.key) {
-        console.error('[Map] CRITICAL: initializeMap called with invalid or incomplete config. API key missing?', JSON.parse(JSON.stringify(config)));
-        return Promise.reject('Invalid map config provided to initializeMap');
-    }
-
     return new Promise((resolve, reject) => {
+        if (mapRequestsConfig.debug) {
+            console.time('map-init');
+            console.log('[Map] Initializing map with config:', JSON.parse(JSON.stringify(config)));
+        }
+
+        if (!config || !config.key) {
+            const error = new Error('Map initialization failed: Missing config or Azure Maps key.');
+            console.error('[Map]', error.message);
+            reject(error);
+            return;
+        }
+
         try {
-            // Initialize map with bounds-based camera
+            // Initialize the map ONCE, combining all necessary options.
             map = new atlas.Map('aid-request-map', {
-                style: 'road',
-                view: 'Auto',
-                showFeedbackLink: false,
-                showLogo: false,
                 authOptions: {
                     authType: 'subscriptionKey',
                     subscriptionKey: config.key
                 },
-                // Properly set camera bounds using CameraBoundsOptions
-                cameraBoundsOptions: {
-                    bounds: config.bounds,
-                    padding: config.padding,
-                    maxZoom: 18  // Prevent zooming too far in
-                }
+                style: 'road',
+                showFeedbackLink: false,
+                showLogo: false,
+                // Disable unwanted user interactions
+                scrollZoomInteraction: false,
             });
 
-            if (mapRequestsConfig.debug) {
-                console.log('[Map] Initialized with camera bounds:', {
-                    bounds: config.bounds,
-                    padding: config.padding,
-                });
-            }
-
-            // Add zoom control (top-left)
-            map.controls.add(new atlas.control.ZoomControl(), {
-                position: 'top-left'
+            // Handle any errors during map setup
+            map.events.add('error', (e) => {
+                console.error('[Map] CRITICAL: Map error event:', e.error);
+                reject(e.error);
             });
 
-            // Add compass control (top-left)
-            map.controls.add(new atlas.control.CompassControl(), {
-                position: 'top-left'
-            });
-
-            // Add style control (top-right)
-            map.controls.add(new atlas.control.StyleControl({
-                mapStyles: ['road', 'satellite', 'hybrid']
-            }), {
-                position: 'top-right'
-            });
-
-            // Add pitch control (top-right)
-            map.controls.add(new atlas.control.PitchControl(), {
-                position: 'top-right'
-            });
-
-            // Wait for the map to be ready before adding layers
-            map.events.add('ready', async function() {
+            // Add a single 'ready' event listener to set up the map fully
+            map.events.add('ready', async () => {
                 if (mapRequestsConfig.debug) {
-                    console.log('[Map] Map ready event fired. Current map camera:', map.getCamera());
+                    console.timeEnd('map-init');
+                    console.log('[Map] Map ready event fired.');
                 }
 
                 try {
-                    // Set the camera bounds again after map is ready to ensure they're applied
-                    if (config.bounds && config.bounds.length === 4 && !config.bounds.some(isNaN)) {
-                        map.setCamera({
-                            bounds: config.bounds,
-                            padding: config.padding || 50
-                        });
-                         if (mapRequestsConfig.debug) {
-                            console.log('[Map] Map ready event: Camera bounds set to:', config.bounds, 'with padding:', config.padding || 50);
-                        }
-                    } else {
-                        console.warn('[Map] Map ready event: Invalid or missing bounds in config, cannot set camera bounds. Config bounds:', config.bounds);
-                    }
+                    // Set the camera to the configured bounds once map is ready
+                    map.setCamera({
+                        bounds: config.bounds,
+                        padding: config.padding,
+                        maxZoom: 18
+                    });
 
-                    // Initialize field op layer first
-                    console.log('[Map] Map ready event: Calling initializeFieldOpLayer...');
+                    // Add map controls
+                    map.controls.add(new atlas.control.ZoomControl(), { position: 'top-left' });
+                    map.controls.add(new atlas.control.CompassControl(), { position: 'top-left' });
+                    map.controls.add(new atlas.control.StyleControl({ mapStyles: ['road', 'satellite', 'hybrid'] }), { position: 'top-right' });
+                    map.controls.add(new atlas.control.PitchControl(), { position: 'top-right' });
+
+                    // Initialize the layers for field ops and aid requests
                     initializeFieldOpLayer();
-                    console.log('[Map] Map ready event: initializeFieldOpLayer complete.');
-
-                    // Then initialize aid request layer
-                    console.log('[Map] Map ready event: Calling initializeAidRequestLayer...');
                     await initializeAidRequestLayer();
-                    console.log('[Map] Map ready event: initializeAidRequestLayer complete.');
 
                     if (mapRequestsConfig.debug) {
-                        console.log('[Map] All layers initialized in ready event. Final map camera:', map.getCamera());
+                        console.log('[Map] All layers initialized.');
                     }
 
-                    // Listen for filter changes
+                    // Set up a listener for filter changes
                     document.addEventListener('aidRequestsFiltered', function(event) {
-                        if (mapRequestsConfig.debug) {
-                            console.log('Map View: Filter event received:', event.detail);
-                        }
-
+                        if (mapRequestsConfig.debug) console.log('Map View: Filter event received:', event.detail);
                         if (event.detail && event.detail.filterState) {
                             updateLayerVisibility(event.detail.filterState, event.detail.counts);
                         }
                     });
 
-                    resolve();
+                    resolve(); // Signal that initialization is complete
+
                 } catch (error) {
                     console.error('[Map] CRITICAL: Error within map ready event handler:', error);
                     reject(error);
                 }
             });
-
-            map.events.add('error', function(e) {
-                console.error('[Map] CRITICAL: Map error event:', e.error);
-                reject(e.error); // Reject the promise on map error
-            });
-
         } catch (error) {
-            console.error('[Map] CRITICAL: Error during atlas.Map instantiation in initializeMap:', error);
+            console.error('[Map] CRITICAL: Error during atlas.Map instantiation:', error);
             reject(error);
         }
     });
@@ -579,7 +551,7 @@ function updateLayerVisibility(filterState, counts) {
             // Match exactly how aidrequests-filter.js checks aid types
             const showLayer = filterState.aid_types === 'all' ||
                             (filterState.aid_types && filterState.aid_types.includes(aidType));
-
+            /*
             if (mapRequestsConfig.debug) {
                 console.log(`Layer ${aidType} visibility check:`, {
                     showLayer,
@@ -589,7 +561,7 @@ function updateLayerVisibility(filterState, counts) {
                     included: Array.isArray(filterState.aid_types) ? filterState.aid_types.includes(aidType) : 'n/a'
                 });
             }
-
+            */
             // Build filter expression for other filters (status, priority)
             let filterExpr = ['all',
                 ['boolean', showLayer],  // Layer visibility based on aid type
@@ -608,7 +580,7 @@ function updateLayerVisibility(filterState, counts) {
                 filter: filterExpr,
                 visible: showLayer  // Explicitly set layer visibility based on aid type
             });
-
+            /*
             if (mapRequestsConfig.debug) {
                 const totalPoints = source.getShapes().length;
                 const visiblePoints = source.getShapes().filter(shape => {
@@ -641,7 +613,7 @@ function updateLayerVisibility(filterState, counts) {
                     }
                 });
             }
-
+            */
         } catch (error) {
             console.error(`Error updating visibility for layer ${aidType}:`, error);
         }
@@ -764,14 +736,14 @@ function initializeFieldOpLayer() {
             slug: mapRequestsConfig.config.fieldOpSlug
         }
     );
-
+    /*
     if (mapRequestsConfig.debug) {
         console.log('Created field op center:', {
             position: centerPosition,
             properties: foCenter.properties
         });
     }
-
+    */
     fieldOpCenterSource.add(foCenter);
 
     // Add Symbol Layer for the Field Op Center Marker
@@ -804,11 +776,13 @@ function initializeFieldOpLayer() {
     const ringSize = parseFloat(mapContainer.dataset.ringSize) || 10; // Default to 10km if not specified
 
     if (mapRequestsConfig.debug) {
+        /*
         console.log('Ring configuration:', {
             ringSize: ringSize,
             dataAttribute: mapContainer.dataset.ringSize,
             center: centerPosition
         });
+        */
     }
 
     const fieldOpRingSource = new atlas.source.DataSource();
@@ -822,7 +796,7 @@ function initializeFieldOpLayer() {
             radius: ringSize * 1000  // Convert km to meters
         }
     );
-
+    /*
     if (mapRequestsConfig.debug) {
         console.log('Created field op ring:', {
             feature: fieldOpRing,
@@ -831,16 +805,16 @@ function initializeFieldOpLayer() {
             radius: ringSize * 1000
         });
     }
-
+    */
     fieldOpRingSource.add(fieldOpRing);
-
+    /*
     if (mapRequestsConfig.debug) {
         console.log('Added field op ring to source:', {
             sourceId: fieldOpRingSource.getId(),
             shapeCount: fieldOpRingSource.getShapes().length
         });
     }
-
+    */
     // Add ring PolygonLayer
     const ringLayer = new atlas.layer.PolygonLayer(
         fieldOpRingSource,
@@ -852,14 +826,14 @@ function initializeFieldOpLayer() {
             strokeWidth: 2
         }
     );
-
+    /*
     if (mapRequestsConfig.debug) {
         console.log('Ring layer configuration:', {
             layerId: ringLayer.getId(),
             options: ringLayer.getOptions()
         });
     }
-
+    */
     map.layers.add(ringLayer);
     if (mapRequestsConfig.debug) console.log('Added field op ring layer to map');
 }
@@ -868,10 +842,22 @@ function initializeFieldOpLayer() {
 async function initializeAidRequestLayer() {
     if (mapRequestsConfig.debug) {
         console.log('=== Starting Aid Request Layer Initialization ===');
+    }
+
+    // Optimization: If there are no locations, do not proceed with layer creation.
+    if (!mapRequestsConfig.aidLocations || mapRequestsConfig.aidLocations.length === 0) {
+        if (mapRequestsConfig.debug) {
+            console.log('No aid locations found. Skipping creation of aid request layers.');
+        }
+        return; // Exit the function early
+    }
+
+    if (mapRequestsConfig.debug) {
         console.log('Aid Types Config:', mapRequestsConfig.aidTypesConfig);
         console.log('Aid Locations:', mapRequestsConfig.aidLocations);
 
         // Add console.table for marker positions
+        /*
         const markerPositions = mapRequestsConfig.aidLocations.map(request => ({
             id: request.id,
             type: request.aid_type.slug,
@@ -882,6 +868,7 @@ async function initializeAidRequestLayer() {
             address: request.address.full
         }));
         console.table(markerPositions, ['id', 'type', 'status', 'priority', 'lat', 'lon']);
+        */
     }
 
     // Create icons first

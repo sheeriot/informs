@@ -1,0 +1,9 @@
+<div class="d-flex flex-row align-items-center">
+    <a href="{% url 'field_op_detail' slug=field_op.slug %}" class="btn btn-outline-primary btn-sm m-1 p-1 text-nowrap">
+        <i class="bi bi-truck text"></i> <span class="text-dark">{{ field_op.name }}</span>
+    </a>
+    <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm m-1 p-1 text-nowrap">
+        <i class="bi bi-life-preserver text-danger"></i> Aid Requests
+        <span class="badge bg-info text-dark ms-1">{{ field_op.aid_requests.count }}</span>
+    </a>
+</div>

@@ -37,67 +37,16 @@
                 </div>
             </div>
 
-            <div class="card mb-4">
-                <div class="card-header bg-light">
-                    <h5 class="card-title mb-0">Details</h5>
-                </div>
-                <div class="card-body">
-                    <dl class="row mb-0 align-items-center">
-                        <dt class="col-sm-2"><i class="bi bi-card-heading text-dark me-2"></i>Name</dt>
-                        <dd class="col-sm-4">{{ object.name }}</dd>
-
-                        <dt class="col-sm-2"><i class="bi bi-tag text-dark me-2"></i>Slug</dt>
-                        <dd class="col-sm-4">{{ object.slug }}</dd>
-
-                        <dt class="col-sm-2"><i class="bi bi-geo-alt text-success me-2"></i>Coordinates</dt>
-                        <dd class="col-sm-4">
-                            <span class="input-group input-group-sm">
-                                <input type="text" class="form-control form-control-sm" id="coordinates" value="{{ object.latitude|floatformat:5 }}, {{ object.longitude|floatformat:5 }}" readonly>
-                                <button class="btn btn-outline-secondary" type="button" onclick="copyCoordinates(event)" title="Copy to clipboard">
-                                    <i class="bi bi-clipboard"></i>
-                                </button>
-                            </span>
-                        </dd>
-
-                        <dt class="col-sm-2"><i class="bi bi-circle text-primary me-2"></i>Ring Size</dt>
-                        <dd class="col-sm-4">{{ object.ring_size }} km</dd>
-
-                        <dt class="col-sm-2">
-                            <i class="bi bi-hdd-rack" style="color: var(--bs-purple);"></i><i class="bi bi-plus-circle me-2" style="color: var(--bs-purple);"></i>TAK Server
-                        </dt>
-                        <dd class="col-sm-4">{{ object.tak_server.name|default:"Not set" }}</dd>
-
-                        <dt class="col-sm-2">
-                            <i class="bi bi-power {% if object.disable_cot %}text-secondary{% else %}text-success{% endif %} me-2"></i>COT Status
-                        </dt>
-                        <dd class="col-sm-4">
-                           {% if object.disable_cot %}
-                               <span class="text-secondary">Disabled</span>
-                           {% else %}
-                               <span class="text-success">Enabled</span>
-                           {% endif %}
-                        </dd>
-
-                        <dt class="col-sm-2"><i class="bi bi-life-preserver text-danger me-2"></i>Aid Types</dt>
-                        <dd class="col-sm-10">
-                            {% for type in object.aid_types.all %}
-                                {{ type.name }}{% if not forloop.last %}, {% endif %}
-                            {% empty %}
-                                <span class="text-muted">No aid types specified.</span>
-                            {% endfor %}
-                        </dd>
-                    </dl>
-                </div>
-            </div>
+            {% include 'aidrequests/includes/field_op_summary.html' %}
 
             <!-- Map -->
-            <div class="card" style="height: 100%;">
+            <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">Field Operation Map</h5>
                 </div>
                 <div class="card-body p-0">
                     <div id="aid-request-map"
-                         style="height: 600px; width: 100%;"
+                         class="map-container-full-width"
                          data-azure-maps-key="{{ azure_maps_key }}"
                          data-field-op-name="{{ field_op_name }}"
                          data-field-op-slug="{{ field_op_slug }}"

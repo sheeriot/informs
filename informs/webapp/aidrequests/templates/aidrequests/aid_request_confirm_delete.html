@@ -7,12 +7,13 @@
 
     <h2>{{ object }}</h2>
 
-    <form method="post">
+    <form method="post" action="">
         {% csrf_token %}
-        <a href="#" onclick="this.closest('form').submit(); return false;" style="color: white; text-decoration: none;" class="btn btn-danger">Yes, delete</a>
-        <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-secondary">
-            <i class="bi bi-x-circle"></i> Cancel
-        </a>
+        <p>Are you sure you want to delete this aid request?</p>
+        <p>This action cannot be undone.</p>
+        <button type="submit" class="d-none" id="confirm-delete-btn"></button>
+        <a href="#" onclick="document.getElementById('confirm-delete-btn').click(); return false;" class="btn btn-danger btn-danger-no-underline">Yes, delete</a>
+        <a href="{% url 'aid_request_detail' field_op=object.field_op.slug pk=object.pk %}" class="btn btn-secondary">Cancel</a>
     </form>
 
 <hr>

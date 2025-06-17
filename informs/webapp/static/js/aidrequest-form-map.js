@@ -2,7 +2,7 @@
  * Azure Maps location picker for AidRequest form
  */
 const aidRequestFormMapConfig = {
-    debug: true // Set to false for production
+    debug: false // Set to false for production
 };
 
 let map;
@@ -23,6 +23,7 @@ function initAidRequestLocationPicker(mapElementId) {
 
     const azureMapsKey = mapElement.dataset.azureMapsKey;
     const geocodeUrl = mapElement.dataset.geocodeUrl;
+    const reverseGeocodeUrl = mapElement.dataset.reverseGeocodeUrl;
 
     if (!azureMapsKey) {
         console.warn("Azure Maps key not provided via data-azure-maps-key attribute. Map will not initialize.");
@@ -51,8 +52,9 @@ function initAidRequestLocationPicker(mapElementId) {
     const getLocationBtn = document.getElementById('get-location');
     const locationModifiedInput = document.getElementById('id_location_modified');
     const coordinatesInput = document.getElementById('id_coordinates');
+    const locationNoteInput = document.getElementById('id_location_note');
 
-    if (!latInput || !lonInput || !streetAddressInput || !cityInput || !stateInput || !zipCodeInput || !countryInput || !lookupAddressBtn || !getLocationBtn || !locationModifiedInput || !coordinatesInput) {
+    if (!latInput || !lonInput || !streetAddressInput || !cityInput || !stateInput || !zipCodeInput || !countryInput || !lookupAddressBtn || !getLocationBtn || !locationModifiedInput || !coordinatesInput || !locationNoteInput) {
         console.error('One or more required form fields or buttons are missing.');
         return;
     }
@@ -182,6 +184,7 @@ function initAidRequestLocationPicker(mapElementId) {
             console.log('Form fields updated:', { latitude: lat, longitude: lon });
         }
         locationModifiedInput.value = 'true';
+        // reverseGeocodeAndUpdateNote(position);
     }
 
     function updateMapFromForm() {
@@ -208,6 +211,7 @@ function initAidRequestLocationPicker(mapElementId) {
             }
         }
         locationModifiedInput.value = 'true';
+        // reverseGeocodeAndUpdateNote(position);
     }
 
     function setMapLocation(position) {

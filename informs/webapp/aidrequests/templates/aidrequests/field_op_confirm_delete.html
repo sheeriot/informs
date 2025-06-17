@@ -7,26 +7,26 @@
 
     <h2>{{ object }}</h2>
 
-    <form method="post">
+    <form method="post" action="">
         {% csrf_token %}
-        <a href="#" onclick="this.closest('form').submit(); return false;" style="color: white; text-decoration: none;" class="btn btn-danger">Yes, delete</a>
-        <a href="{% url 'field_op_list' %}" class="btn btn-secondary">
-            <i class="bi bi-x-circle"></i> List
-                Cancel
-        </a>
+        <p>Are you sure you want to delete the field op "{{ object }}"?</p>
+        <p>This action cannot be undone.</p>
+        <button type="submit" class="d-none" id="confirm-delete-btn"></button>
+        <a href="#" onclick="document.getElementById('confirm-delete-btn').click(); return false;" class="btn btn-danger btn-danger-no-underline">Yes, delete</a>
+        <a href="{% url 'field_op_detail' object.slug %}" class="btn btn-secondary">Cancel</a>
     </form>
-<hr>
-<h2>Field Op</h2>
 
-<p>Name: {{ object.name }}</p>
-<p>Slug: {{ object.slug }}</p>
+    <hr>
+    <h2>Field Op</h2>
 
-<h2>Location</h2>
-<p>GPS Center:</p>
-<ul>
-    <li>Latitude: {{ object.latitude }}</li>
-    <li>Longitude: {{ object.longitude }}</li>
-</ul>
+    <p>Name: {{ object.name }}</p>
+    <p>Slug: {{ object.slug }}</p>
 
+    <h2>Location</h2>
+    <p>GPS Center:</p>
+    <ul>
+        <li>Latitude: {{ object.latitude }}</li>
+        <li>Longitude: {{ object.longitude }}</li>
+    </ul>
 
 {% endblock %}
