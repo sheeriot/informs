@@ -3,22 +3,14 @@
 {% load bootstrap_icons %}
 {% block content %}
 
-<div class="container m-4"
+<div class="container m-2"
     {% if New %}
-    <div class='form-header mb-5'>
-    <h2>Aid Request: {{ field_op.name }}</h2>
-    <div>Evacuation, Resupply, Welfare Check</div>
-    <p>
-        <strong>
-        Please use this form to request aid from Save our Allies.
-        </strong>
-    </p>
-    <span>
-        <em>
-        This form should only be used for first-hand requests for aid. Please do not relay aid messages from social media that are not first hand information. Thank you!
-        </em>
-    </span>
-    <hr>
+    <div class='form-header mb-3'>
+        <h2>Aid Request: {{ field_op.name }}</h2>
+        <small class="text-muted">
+            Please use this form to request aid from Save our Allies. This form should only be used for first-hand requests for aid. Please do not relay aid messages from social media that are not first hand information. Thank you!
+        </small>
+    </div>
     {% else %}
     <div class="form-header">
         <h2>Update Aid Request</h2>
