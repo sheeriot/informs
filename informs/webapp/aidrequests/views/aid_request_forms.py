@@ -65,13 +65,17 @@ class AidRequestCreateForm(forms.ModelForm):
     coordinates = forms.CharField(
         label="Coordinates",
         required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control text-dark font-monospace'})
+        widget=forms.TextInput(attrs={'class': 'form-control text-dark font-monospace w-auto'})
     )
     location_modified = forms.BooleanField(widget=forms.HiddenInput(), required=False, initial=False)
     location_note = forms.CharField(widget=forms.HiddenInput(), required=False)
     different_contact = forms.BooleanField(
         required=False,
-        label="Add a different AID contact"
+        label="Add a different Aid contact"
+    )
+    show_additional_info = forms.BooleanField(
+        required=False,
+        label="Add additional details"
     )
 
     def __init__(self, *args, **kwargs):
@@ -105,11 +109,12 @@ class AidRequestCreateForm(forms.ModelForm):
 
         self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in self.field_op.aid_types.all()]
 
-        self.fields['contact_methods'].widget.attrs['rows'] = 4
-        self.fields['medical_needs'].widget.attrs['rows'] = 4
-        self.fields['supplies_needed'].widget.attrs['rows'] = 4
-        self.fields['welfare_check_info'].widget.attrs['rows'] = 4
-        self.fields['additional_info'].widget.attrs['rows'] = 4
+        self.fields['aid_description'].widget.attrs['rows'] = 2
+        self.fields['contact_methods'].widget.attrs['rows'] = 2
+        self.fields['medical_needs'].widget.attrs['rows'] = 2
+        self.fields['supplies_needed'].widget.attrs['rows'] = 2
+        self.fields['welfare_check_info'].widget.attrs['rows'] = 2
+        self.fields['additional_info'].widget.attrs['rows'] = 2
 
         self.helper.layout = Layout(
             Hidden('field_op', self.field_op.id),
@@ -118,86 +123,81 @@ class AidRequestCreateForm(forms.ModelForm):
             'longitude',
             'location_note',
             Fieldset(
-                'Requestor Details',
+                format_html('<i class="bi bi-life-preserver"></i> 1. Select Type of Aid'),
                 Row(
-                    Column('requestor_first_name', css_class='col-md-6 mb-2'),
-                    Column('requestor_last_name', css_class='col-md-6 mb-2'),
+                    Column('aid_type', css_class='col-md-4 mb-1')
                 ),
-                Row(
-                    Column('requestor_phone', css_class='col-md-6 mb-2'),
-                    Column('requestor_email', css_class='col-md-6 mb-2'),
-                ),
-                css_class="fieldset-box p-3 border rounded"
-            ),
-            Field('different_contact', css_class="form-check-input", id="different_contact"),
-            Div(
-                Fieldset(
-                    'Contact Details for Party Needing Aid (if different)',
-                    Row(
-                        Column('aid_first_name', css_class='col-md-6 mb-2'),
-                        Column('aid_last_name', css_class='col-md-6 mb-2'),
-                    ),
-                    Row(
-                        Column('aid_phone', css_class='col-md-6 mb-2'),
-                        Column('aid_email', css_class='col-md-6 mb-2'),
-                    ),
-                    css_class="fieldset-box p-3 border rounded"
-                ),
-                css_id="different_contact_fieldset",
-                css_class="d-none"
+                css_class="fieldset-box p-2 border rounded mb-2 mx-2"
             ),
             Fieldset(
-                "Contact Preferences",
+                format_html('<i class="bi bi-person-raised-hand"></i> 2. Requestor Details'),
                 Row(
-                    Column('contact_methods', css_class='col-md-8 mb-2')
+                    Column(Field('requestor_first_name', css_class='mb-2'), css_class='col-md-6'),
+                    Column(Field('requestor_last_name', css_class='mb-2'), css_class='col-md-6'),
                 ),
-                css_class="col-md-8 fieldset-box p-3 border rounded"
-            ),
-            Fieldset(
-                'Type of Aid Requested',
+                HTML('<small class="form-text text-muted">Phone or Email required</small>'),
                 Row(
-                    Column('aid_type', css_class='col-md-4 mb-2'),
-                    Column('group_size', css_class='col-md-2 mb-2'),
+                    Column(Field('requestor_phone', css_class='mt-1'), css_class='col-md-6'),
+                    Column(Field('requestor_email', css_class='mt-1'), css_class='col-md-6'),
                 ),
-                'aid_description',
-                css_class="fieldset-box p-3 border rounded"
-            ),
-            Fieldset(
-                'Location of Aid Request',
-                Row(
-                    Column(
-                        Field('street_address', css_class="form-control"),
-                        css_class='col-12 mb-2'
+                Field('different_contact', css_class="form-check-input mt-2", id="different_contact"),
+                Div(
+                    Fieldset(
+                        "",
+                        Row(
+                            Column('aid_first_name', css_class='col-md-6 mb-1'),
+                            Column('aid_last_name', css_class='col-md-6 mb-1'),
+                        ),
+                        Row(
+                            Column('aid_phone', css_class='col-md-6 mb-1'),
+                            Column('aid_email', css_class='col-md-6 mb-1'),
+                        ),
+                        css_class="fieldset-box p-2 border rounded"
                     ),
+                    css_id="different_contact_fieldset",
+                    css_class="d-none mb-2"
+                ),
+                css_class="fieldset-box p-2 border rounded mb-2 mx-2"
+            ),
+            Fieldset(
+                format_html('<i class="bi bi-geo-alt"></i> Location Details'),
+                Row(
+                    Column(Field('street_address', css_class='mb-2'), css_class='col-12'),
                 ),
                 Row(
-                    Column('city', css_class='col-md-4 mb-2'),
-                    Column('state', css_class='col-md-3 mb-2'),
-                    Column('zip_code', css_class='col-md-3 mb-2'),
-                    Column('country', css_class='col-md-2 mb-2'),
+                    Column(Field('city', css_class='mb-2'), css_class='col-md-4'),
+                    Column(Field('state', css_class='mb-2'), css_class='col-md-3'),
+                    Column(Field('zip_code', css_class='mb-2'), css_class='col-md-3'),
+                    Column(Field('country', css_class='mb-2'), css_class='col-md-2'),
                 ),
+                HTML('<hr class="my-2">'),
                 Row(
                     Column(
                         HTML("""
-                            <button type="button" id="lookup-address" class="btn btn-success btn-sm me-2">
-                                <i class="bi bi-geo-alt"></i> Lookup Address
+                            <button type="button" id="lookup-address" class="btn btn-primary btn-sm me-2 text-nowrap">
+                                <i class="bi bi-geo-alt"></i> Locate Address
                             </button>
-                            <button type="button" id="get-location" class="btn btn-danger btn-sm">
-                                <i class="bi bi-bullseye"></i> Get My Location
+                            <button type="button" id="get-location" class="btn btn-danger btn-sm text-nowrap">
+                                <i class="bi bi-bullseye"></i> Get Location
                             </button>
                         """),
                         css_class='col-auto'
                     ),
                     Column(
                         HTML("""
-                            <div class="input-group">
-                                {{ form.coordinates }}
-                                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard(event, 'id_coordinates')">
-                                    <i class="bi bi-clipboard"></i>
+                            <div class="d-flex align-items-center">
+                                <div class="input-group">
+                                    {{ form.coordinates }}
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard(event, 'id_coordinates')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                                <button type="button" id="confirm-location" class="btn btn-success btn-sm ms-2 d-none text-nowrap">
+                                    <i class="bi bi-check-circle"></i> Confirm Location
                                 </button>
                             </div>
                         """),
-                        css_class='col-md-5'
+                        css_class='col-md-auto'
                     ),
                     css_class='row g-2 mb-2 align-items-center'
                 ),
@@ -205,7 +205,7 @@ class AidRequestCreateForm(forms.ModelForm):
                     <div class="row g-0 mt-2">
                         <div class="form-group col-md-12 p-1">
                             <div id="aid-request-location-picker-map"
-                                 style="height: 400px; border: 1px solid #ced4da; border-radius: .25rem;"
+                                 style="height: 450px; border: 1px solid #ced4da; border-radius: .25rem;"
                                  data-azure-maps-key="{azure_maps_key}"
                                  data-geocode-url="{geocode_url}"
                                  data-initial-lat="{initial_lat}"
@@ -216,21 +216,47 @@ class AidRequestCreateForm(forms.ModelForm):
                         </div>
                     </div>
                 """),
-                css_class="fieldset-box p-3 border rounded"
+                css_class="fieldset-box p-2 border rounded mb-2 mx-2"
             ),
             Fieldset(
-                'Additional Information',
-                Row('medical_needs'),
-                'supplies_needed',
-                'welfare_check_info',
-                'additional_info',
-                css_class="fieldset-box p-3 border rounded"
+                format_html('<i class="bi bi-card-list"></i> 4. Aid Request Details'),
+                Row(
+                    Column('group_size', css_class='col-2 mb-1'),
+                ),
+                'aid_description',
+                HTML('<hr class="my-2">'),
+                Field('show_additional_info', css_class="form-check-input", id="show_additional_info"),
+                Div(
+                    Fieldset(
+                        "",
+                        'contact_methods',
+                        'medical_needs',
+                        'supplies_needed',
+                        'welfare_check_info',
+                        'additional_info',
+                        css_class="fieldset-box p-2 border rounded mt-2"
+                    ),
+                    css_id="additional_info_fieldset",
+                    css_class="d-none"
+                ),
+                css_class="fieldset-box p-2 border rounded mb-2 mx-2"
             ),
-            Submit('submit', 'Create Aid Request', css_class='btn btn-primary')
+            Div(
+                Submit('submit', f'Create Aid Request for {self.field_op.name}', css_class='btn btn-primary mt-2'),
+                css_class="mx-4"
+            )
         )
 
     def clean(self):
         cleaned_data = super().clean()
+
+        phone = cleaned_data.get('requestor_phone')
+        email = cleaned_data.get('requestor_email')
+
+        if not phone and not email:
+            self.add_error('requestor_phone', "At least one of phone or email is required.")
+            self.add_error('requestor_email', "")
+
         coordinates = cleaned_data.get("coordinates")
         if coordinates:
             try:
@@ -299,13 +325,17 @@ class AidRequestUpdateForm(forms.ModelForm):
     coordinates = forms.CharField(
         label="Coordinates",
         required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control text-dark font-monospace'})
+        widget=forms.TextInput(attrs={'class': 'form-control text-dark font-monospace w-auto'})
     )
     location_modified = forms.BooleanField(widget=forms.HiddenInput(), required=False, initial=False)
     location_note = forms.CharField(widget=forms.HiddenInput(), required=False)
     different_contact = forms.BooleanField(
         required=False,
-        label="Add a different contact person"
+        label="Add a different Aid contact"
+    )
+    show_additional_info = forms.BooleanField(
+        required=False,
+        label="Add additional details"
     )
 
     def __init__(self, *args, action='create', **kwargs):
@@ -313,7 +343,7 @@ class AidRequestUpdateForm(forms.ModelForm):
         self.action = action
         self.helper = FormHelper()
         self.helper.form_method = 'post'
-        button_text = 'Update'
+        button_text = 'Update Aid Request'
 
         # Get the field_op from the instance
         self.field_op = self.instance.field_op
@@ -360,11 +390,12 @@ class AidRequestUpdateForm(forms.ModelForm):
         self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in self.field_op.aid_types.all()]
 
         # Configure textarea row sizes
-        self.fields['contact_methods'].widget.attrs['rows'] = 4
-        self.fields['medical_needs'].widget.attrs['rows'] = 4
-        self.fields['supplies_needed'].widget.attrs['rows'] = 4
-        self.fields['welfare_check_info'].widget.attrs['rows'] = 4
-        self.fields['additional_info'].widget.attrs['rows'] = 4
+        self.fields['aid_description'].widget.attrs['rows'] = 2
+        self.fields['contact_methods'].widget.attrs['rows'] = 2
+        self.fields['medical_needs'].widget.attrs['rows'] = 2
+        self.fields['supplies_needed'].widget.attrs['rows'] = 2
+        self.fields['welfare_check_info'].widget.attrs['rows'] = 2
+        self.fields['additional_info'].widget.attrs['rows'] = 2
 
         self.helper.layout = Layout(
             'location_modified',
@@ -377,84 +408,77 @@ class AidRequestUpdateForm(forms.ModelForm):
                     Column('priority', css_class='col mb-2'),
                     Column('status', css_class='col mb-2'),
                 ),
-                css_class="fieldset-box p-3 border rounded"
+                css_class="fieldset-box p-3 border rounded mb-2 mx-2"
             ),
             Fieldset(
-                'Requestor Details',
+                format_html('<i class="bi bi-person-raised-hand"></i> Requestor Details'),
                 Row(
-                    Column('requestor_first_name', css_class='col-md-6 mb-2'),
-                    Column('requestor_last_name', css_class='col-md-6 mb-2'),
+                    Column(Field('requestor_first_name', css_class='mb-2'), css_class='col-md-6'),
+                    Column(Field('requestor_last_name', css_class='mb-2'), css_class='col-md-6'),
                 ),
+                HTML('<small class="form-text text-muted">Phone or Email required</small>'),
                 Row(
-                    Column('requestor_phone', css_class='col-md-6 mb-2'),
-                    Column('requestor_email', css_class='col-md-6 mb-2'),
+                    Column(Field('requestor_phone', css_class='mt-1'), css_class='col-md-6'),
+                    Column(Field('requestor_email', css_class='mt-1'), css_class='col-md-6'),
                 ),
-                css_class="fieldset-box p-3 border rounded"
-            ),
-            Field('different_contact', css_class="form-check-input", id="different_contact"),
-            Div(
-                Fieldset(
-                    'Contact Details for Party Needing Assistance (if different)',
-                    Row(
-                        Column('aid_first_name', css_class='col-md-6 mb-2'),
-                        Column('aid_last_name', css_class='col-md-6 mb-2'),
+                Field('different_contact', css_class="form-check-input mt-2", id="different_contact"),
+                Div(
+                    Fieldset(
+                        "",
+                        Row(
+                            Column('aid_first_name', css_class='col-md-6 mb-1'),
+                            Column('aid_last_name', css_class='col-md-6 mb-1'),
+                        ),
+                        Row(
+                            Column('aid_phone', css_class='col-md-6 mb-1'),
+                            Column('aid_email', css_class='col-md-6 mb-1'),
+                        ),
+                        css_class="fieldset-box p-2 border rounded"
                     ),
-                    Row(
-                        Column('aid_phone', css_class='col-md-6 mb-2'),
-                        Column('aid_email', css_class='col-md-6 mb-2'),
-                    ),
-                    css_class="fieldset-box p-3 border rounded"
+                    css_id="different_contact_fieldset",
+                    css_class="d-none mb-2"
                 ),
-                css_id="different_contact_fieldset",
-                css_class="d-none"
+                css_class="fieldset-box p-2 border rounded mb-2 mx-2"
             ),
             Fieldset(
-                "Contact Preferences",
+                format_html('<i class="bi bi-geo-alt"></i> Location Details'),
                 Row(
-                    Column('contact_methods', css_class='col-md-8 mb-2')
+                    Column(Field('street_address', css_class='mb-2'), css_class='col-12'),
                 ),
-                css_class="col-md-8 fieldset-box p-3 border rounded"
-            ),
-            Fieldset(
-                'Type of Assistance Requested',
                 Row(
-                    Column('aid_type', css_class='col-md-4 mb-2'),
-                    Column('group_size', css_class='col-md-2 mb-2'),
+                    Column(Field('city', css_class='mb-2'), css_class='col-md-4'),
+                    Column(Field('state', css_class='mb-2'), css_class='col-md-3'),
+                    Column(Field('zip_code', css_class='mb-2'), css_class='col-md-3'),
+                    Column(Field('country', css_class='mb-2'), css_class='col-md-2'),
                 ),
-                'aid_description',
-                css_class="fieldset-box p-3 border rounded"
-            ),
-            Fieldset(
-                'Location of Assistance Request',
-                Row('street_address', css_class='col-12 mb-2'),
-                Row(
-                    Column('city', css_class='col-md-4 mb-2'),
-                    Column('state', css_class='col-md-3 mb-2'),
-                    Column('zip_code', css_class='col-md-3 mb-2'),
-                    Column('country', css_class='col-md-2 mb-2'),
-                ),
+                HTML('<hr class="my-2">'),
                 Row(
                     Column(
                         HTML("""
-                            <button type="button" id="lookup-address" class="btn btn-success btn-sm me-2">
-                                <i class="bi bi-geo-alt"></i> Lookup Address
+                            <button type="button" id="lookup-address" class="btn btn-primary btn-sm me-2 text-nowrap">
+                                <i class="bi bi-geo-alt"></i> Locate Address
                             </button>
-                            <button type="button" id="get-location" class="btn btn-danger btn-sm">
-                                <i class="bi bi-bullseye"></i> Get My Location
+                            <button type="button" id="get-location" class="btn btn-danger btn-sm text-nowrap">
+                                <i class="bi bi-bullseye"></i> Get Location
                             </button>
                         """),
                         css_class='col-auto'
                     ),
                     Column(
                         HTML("""
-                            <div class="input-group">
-                                {{ form.coordinates }}
-                                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard(event, 'id_coordinates')">
-                                    <i class="bi bi-clipboard"></i>
+                            <div class="d-flex align-items-center">
+                                <div class="input-group">
+                                    {{ form.coordinates }}
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard(event, 'id_coordinates')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                                <button type="button" id="confirm-location" class="btn btn-success btn-sm ms-2 d-none text-nowrap">
+                                    <i class="bi bi-check-circle"></i> Confirm Location
                                 </button>
                             </div>
                         """),
-                        css_class='col-md-5'
+                        css_class='col-md-auto'
                     ),
                     css_class='row g-2 mb-2 align-items-center'
                 ),
@@ -462,7 +486,7 @@ class AidRequestUpdateForm(forms.ModelForm):
                     <div class="row g-0 mt-2">
                         <div class="form-group col-md-12 p-1">
                             <div id="aid-request-location-picker-map"
-                                 style="height: 400px; border: 1px solid #ced4da; border-radius: .25rem;"
+                                 style="height: 450px; border: 1px solid #ced4da; border-radius: .25rem;"
                                  data-azure-maps-key="{azure_maps_key}"
                                  data-geocode-url="{geocode_url}"
                                  data-initial-lat="{initial_lat}"
@@ -473,21 +497,48 @@ class AidRequestUpdateForm(forms.ModelForm):
                         </div>
                     </div>
                 """),
-                css_class="fieldset-box p-3 border rounded"
+                css_class="fieldset-box p-2 border rounded mb-2 mx-2"
             ),
             Fieldset(
-                'Additional Information',
-                Row('medical_needs'),
-                'supplies_needed',
-                'welfare_check_info',
-                'additional_info',
-                css_class="fieldset-box p-3 border rounded"
+                format_html('<i class="bi bi-card-list"></i> Aid Request Details'),
+                Row(
+                    Column('aid_type', css_class='col-md-4 mb-2'),
+                    Column('group_size', css_class='col-2 mb-2'),
+                ),
+                'aid_description',
+                HTML('<hr class="my-2">'),
+                Field('show_additional_info', css_class="form-check-input", id="show_additional_info"),
+                Div(
+                    Fieldset(
+                        "",
+                        'contact_methods',
+                        'medical_needs',
+                        'supplies_needed',
+                        'welfare_check_info',
+                        'additional_info',
+                        css_class="fieldset-box p-2 border rounded mt-2"
+                    ),
+                    css_id="additional_info_fieldset",
+                    css_class="d-none"
+                ),
+                css_class="fieldset-box p-2 border rounded mb-2 mx-2"
             ),
-            Submit('submit', button_text, css_class='btn btn-primary')
+            Div(
+                Submit('submit', button_text, css_class='btn btn-primary mt-2'),
+                css_class="mx-4"
+            )
         )
 
     def clean(self):
         cleaned_data = super().clean()
+
+        phone = cleaned_data.get('requestor_phone')
+        email = cleaned_data.get('requestor_email')
+
+        if not phone and not email:
+            self.add_error('requestor_phone', "At least one of phone or email is required.")
+            self.add_error('requestor_email', "")
+
         coordinates = cleaned_data.get("coordinates")
         if coordinates:
             try:
@@ -496,15 +547,18 @@ class AidRequestUpdateForm(forms.ModelForm):
                 cleaned_data['longitude'] = float(lon_str.strip())
             except (ValueError, TypeError):
                 # Fail silently, as this is a fallback for non-JS.
+                # The hidden fields will be populated by JS if available.
                 pass
-        # Validate that the aid request belongs to the field_op in the URL
+
+        # Validate field_op if fieldop_slug was provided
         if hasattr(self, 'fieldop_slug') and self.fieldop_slug:
+            field_op_from_form = cleaned_data.get('field_op')
             try:
                 expected_field_op = FieldOp.objects.get(slug=self.fieldop_slug)
-                if self.instance.field_op != expected_field_op:
-                    self.add_error(None, "The aid request does not belong to the specified field operation")
+                if field_op_from_form and field_op_from_form != expected_field_op:
+                    self.add_error('field_op', "Field operation does not match the URL parameter")
             except FieldOp.DoesNotExist:
-                self.add_error(None, "Invalid field operation specified in URL")
+                self.add_error('field_op', "Invalid field operation specified in URL")
         return cleaned_data
 
 

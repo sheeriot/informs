@@ -9,6 +9,7 @@ let map;
 let marker;
 let datasource;
 let fieldOpMarker;
+let locationSource = 'initial';
 
 function initAidRequestLocationPicker(mapElementId) {
     if (aidRequestFormMapConfig.debug) {
@@ -53,6 +54,7 @@ function initAidRequestLocationPicker(mapElementId) {
     const locationModifiedInput = document.getElementById('id_location_modified');
     const coordinatesInput = document.getElementById('id_coordinates');
     const locationNoteInput = document.getElementById('id_location_note');
+    const confirmLocationBtn = document.getElementById('confirm-location');
 
     if (!latInput || !lonInput || !streetAddressInput || !cityInput || !stateInput || !zipCodeInput || !countryInput || !lookupAddressBtn || !getLocationBtn || !locationModifiedInput || !coordinatesInput || !locationNoteInput) {
         console.error('One or more required form fields or buttons are missing.');
@@ -110,7 +112,7 @@ function initAidRequestLocationPicker(mapElementId) {
             style: 'road',
             showFeedbackLink: false,
             showLogo: false,
-            scrollZoomInteraction: 'disabled',
+            scrollZoomInteraction: false,
             ...cameraOptions
         });
 
@@ -145,6 +147,8 @@ function initAidRequestLocationPicker(mapElementId) {
             }
 
             map.events.add('dragend', marker, function () {
+                locationSource = 'manual_selection';
+                resetConfirmButtonState();
                 const position = marker.getOptions().position;
                 if (aidRequestFormMapConfig.debug) {
                     console.log('Marker dragged to:', position);
@@ -153,6 +157,8 @@ function initAidRequestLocationPicker(mapElementId) {
             });
 
             map.events.add('click', function (e) {
+                locationSource = 'manual_selection';
+                resetConfirmButtonState();
                 if (aidRequestFormMapConfig.debug) {
                     console.log('Map clicked at:', e.position);
                 }
@@ -163,10 +169,36 @@ function initAidRequestLocationPicker(mapElementId) {
                 updateFormFields(e.position);
             });
 
-            lookupAddressBtn.addEventListener('click', geocodeAndCenter);
-            getLocationBtn.addEventListener('click', getUserLocation);
+            lookupAddressBtn.addEventListener('click', function() {
+                locationSource = 'address_geocoded';
+                geocodeAndCenter();
+            });
+            getLocationBtn.addEventListener('click', function() {
+                locationSource = 'device_picked';
+                getUserLocation();
+            });
 
-            coordinatesInput.addEventListener('input', updateMapFromForm);
+            coordinatesInput.addEventListener('input', function() {
+                locationSource = 'manual_entry';
+                updateMapFromForm();
+            });
+
+            if (confirmLocationBtn) {
+                confirmLocationBtn.addEventListener('click', function() {
+                    const position = marker.getOptions().position;
+                    if (position) {
+                        locationNoteInput.value = locationSource;
+                        confirmLocationBtn.classList.remove('btn-success');
+                        confirmLocationBtn.classList.add('btn-outline-success');
+                        confirmLocationBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Location Confirmed';
+                        if (aidRequestFormMapConfig.debug) {
+                            console.log(`Location confirmed. Method: ${locationSource}, Position: ${position}. Note set to: ${locationNoteInput.value}`);
+                        }
+                    } else {
+                        alert('Please select a location on the map first.');
+                    }
+                });
+            }
         });
 
     } catch (error) {
@@ -179,6 +211,7 @@ function initAidRequestLocationPicker(mapElementId) {
         latInput.value = lat;
         lonInput.value = lon;
         coordinatesInput.value = `${lat},${lon}`;
+        showConfirmButton();
 
         if (aidRequestFormMapConfig.debug) {
             console.log('Form fields updated:', { latitude: lat, longitude: lon });
@@ -206,15 +239,18 @@ function initAidRequestLocationPicker(mapElementId) {
             if (map.getCamera().center.join(',') !== position.join(',')) {
                 map.setCamera({ center: position });
             }
+            showConfirmButton();
             if (aidRequestFormMapConfig.debug) {
                 console.log('Map updated from form fields.');
             }
         }
         locationModifiedInput.value = 'true';
         // reverseGeocodeAndUpdateNote(position);
+        resetConfirmButtonState();
     }
 
     function setMapLocation(position) {
+        resetConfirmButtonState();
         marker.setOptions({
             position: position,
             visible: true
@@ -282,6 +318,24 @@ function initAidRequestLocationPicker(mapElementId) {
         } catch (error) {
             console.error('Error during geocoding:', error);
             alert('An error occurred while geocoding.');
+        }
+    }
+
+    function resetConfirmButtonState() {
+        if (confirmLocationBtn) {
+            confirmLocationBtn.classList.remove('btn-outline-success');
+            confirmLocationBtn.classList.add('btn-success');
+            confirmLocationBtn.innerHTML = '<i class="bi bi-check-circle"></i> Confirm Location';
+        }
+        if (locationNoteInput) {
+            locationNoteInput.value = '';
+        }
+    }
+
+    function showConfirmButton() {
+        const confirmLocationBtn = document.getElementById('confirm-location');
+        if (confirmLocationBtn) {
+            confirmLocationBtn.classList.remove('d-none');
         }
     }
 }

@@ -23,3 +23,26 @@ document.addEventListener('DOMContentLoaded', function() {
         checkbox.addEventListener('click', differentContact);
     }
 });
+
+function toggleAdditionalInfo() {
+    const fieldset = document.getElementById("additional_info_fieldset");
+    const checkbox = document.getElementById("show_additional_info");
+
+    if (!fieldset || !checkbox) {
+        return;
+    }
+
+    if (checkbox.checked) {
+        fieldset.classList.remove("d-none");
+    } else {
+        fieldset.classList.add("d-none");
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const additionalInfoCheckbox = document.getElementById("show_additional_info");
+    if (additionalInfoCheckbox) {
+        toggleAdditionalInfo();
+        additionalInfoCheckbox.addEventListener('click', toggleAdditionalInfo);
+    }
+});
