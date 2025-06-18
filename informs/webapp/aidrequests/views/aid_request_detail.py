@@ -1,13 +1,13 @@
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-# from django.urls import reverse
-from django.views.generic import DetailView
+from django.urls import reverse_lazy, reverse
+from django.views.generic import DetailView, CreateView
 from django_q.tasks import async_task
 import logging
 
-from ..models import AidRequest, FieldOp
-from .aid_request_forms import AidRequestLogForm
+from ..models import AidRequest, FieldOp, AidRequestLog
+from .aid_request_forms_a import AidRequestLogForm
 from .aid_location_forms import AidLocationStatusForm, AidLocationCreateForm
 from .aid_request import has_location_status, format_aid_location_note
 from .maps import staticmap_aid, calculate_zoom
@@ -55,51 +55,30 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
             self.aid_location_new = locs_new.first()
             self.aid_location = self.aid_location_new
         else:
-            # not confirmed, not new, better geocode and map it.
-            # getting location and map here means it is ready for the web page if needed.
-            # this may cause a pause on loading the Aid Request Detail page
-            try:
-                self.geocode_results = get_azure_geocode(self.aid_request)
-            except Exception as e:
-                ic(e)
-            try:
-                self.aid_location = geocode_save(self.aid_request, self.geocode_results)
-            except Exception as e:
-                ic(e)
-            # ic(self.aid_location)
-            self.aid_location_new = self.aid_location
-            zoom = calculate_zoom(self.geocode_results['distance'])
-            ic(zoom)
+            # If no location is found, it means post_save hasn't run or completed yet.
+            # This can happen on a quick redirect. We should wait and not create a new one.
+            self.aid_location = self.aid_request.locations.all().first()
+
+        # Ensure the location has a map
+        if self.aid_location and not self.aid_location.map_filename:
+            logger.info(f"AR-{self.aid_request.pk}: Location {self.aid_location.pk} is missing a map. Generating one now.")
+            zoom = calculate_zoom(self.aid_location.distance) if self.aid_location.distance is not None else 10
             staticmap_data = staticmap_aid(
-                width=600, height=600,
+                width=600, height=600, zoom=zoom,
                 fieldop_lat=self.aid_request.field_op.latitude,
                 fieldop_lon=self.aid_request.field_op.longitude,
                 aid1_lat=self.aid_location.latitude,
-                aid1_lon=self.aid_location.longitude,)
-
+                aid1_lon=self.aid_location.longitude,
+            )
             if staticmap_data:
                 timestamp = datetime.now().strftime("%y%m%d%H%M%S")
                 map_filename = f"AR{self.aid_request.pk}-map_{timestamp}.png"
                 map_file = f"{settings.MAPS_PATH}/{map_filename}"
                 with open(map_file, 'wb') as file:
                     file.write(staticmap_data)
-                try:
-                    self.aid_location.map_filename = map_filename
-                    self.aid_location.save()
-                except Exception as e:
-                    ic(e)
-            try:
-                self.aid_request.logs.create(
-                    log_entry=f'New Aid Location {self.aid_location} Created!'
-                )
-            except Exception as e:
-                ic(f"Log Error: {e}")
-            # ic(timer()-time_start)
-            try:
-                self.aid_request.logs.create(
-                    log_entry=f'COT Sent! New Location {self.aid_location}')
-            except Exception as e:
-                ic(f"Log Error: {e}")
+                self.aid_location.map_filename = map_filename
+                self.aid_location.save()
+                logger.info(f"AR-{self.aid_request.pk}: Map generated and saved as {map_filename}")
 
     def get_context_data(self, **kwargs):
         try:

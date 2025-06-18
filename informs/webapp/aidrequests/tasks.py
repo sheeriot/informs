@@ -42,19 +42,13 @@ def aid_request_postsave(aid_request, **kwargs):
 
     if latitude and longitude:
         logger.info(f"AR-{aid_request.pk}: Coordinates provided, creating AidLocation directly.")
-        original_geocode_results = get_azure_geocode(aid_request)
-        original_geocode_note = ""
-        if original_geocode_results.get('status') == 'Success':
-            original_lat = original_geocode_results['latitude']
-            original_lon = original_geocode_results['longitude']
-            original_geocode_note = f"Address Geocoded: {original_lat:.5f}, {original_lon:.5f}"
-
         aid_location = AidLocation.objects.create(
             aid_request=aid_request,
             latitude=latitude,
             longitude=longitude,
             source='user_picked',
-            status='confirmed'
+            status='confirmed',
+            note=location_note
         )
 
         logger.info(f"AR-{aid_request.pk}: Calculating distance from FieldOp.")

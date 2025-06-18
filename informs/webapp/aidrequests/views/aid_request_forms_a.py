@@ -14,7 +14,7 @@ from ..context_processors import get_field_op_for_form
 # from icecream import ic
 
 
-class AidRequestCreateForm(forms.ModelForm):
+class AidRequestCreateFormA(forms.ModelForm):
     """ Aid Request Form """
 
     class Meta:
@@ -79,7 +79,8 @@ class AidRequestCreateForm(forms.ModelForm):
     )
 
     def __init__(self, *args, **kwargs):
-        super(AidRequestCreateForm, self).__init__(*args, **kwargs)
+        self.request = kwargs.pop('request', None)
+        super(AidRequestCreateFormA, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_method = 'post'
 
@@ -107,7 +108,7 @@ class AidRequestCreateForm(forms.ModelForm):
 
         field_op_ring_size = self.field_op.ring_size or ""
 
-        self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in self.field_op.aid_types.all()]
+        self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in self.field_op.aid_types.all().order_by('weight', 'name')]
 
         self.fields['aid_description'].widget.attrs['rows'] = 2
         self.fields['contact_methods'].widget.attrs['rows'] = 2
@@ -174,9 +175,6 @@ class AidRequestCreateForm(forms.ModelForm):
                 Row(
                     Column(
                         HTML("""
-                            <button type="button" id="lookup-address" class="btn btn-primary btn-sm me-2 text-nowrap">
-                                <i class="bi bi-geo-alt"></i> Locate Address
-                            </button>
                             <button type="button" id="get-location" class="btn btn-danger btn-sm text-nowrap">
                                 <i class="bi bi-bullseye"></i> Get Location
                             </button>
@@ -387,7 +385,7 @@ class AidRequestUpdateForm(forms.ModelForm):
         field_op_ring_size = self.field_op.ring_size or ""
 
         # Set up aid type choices
-        self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in self.field_op.aid_types.all()]
+        self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in self.field_op.aid_types.all().order_by('weight', 'name')]
 
         # Configure textarea row sizes
         self.fields['aid_description'].widget.attrs['rows'] = 2
@@ -455,9 +453,6 @@ class AidRequestUpdateForm(forms.ModelForm):
                 Row(
                     Column(
                         HTML("""
-                            <button type="button" id="lookup-address" class="btn btn-primary btn-sm me-2 text-nowrap">
-                                <i class="bi bi-geo-alt"></i> Locate Address
-                            </button>
                             <button type="button" id="get-location" class="btn btn-danger btn-sm text-nowrap">
                                 <i class="bi bi-bullseye"></i> Get Location
                             </button>
