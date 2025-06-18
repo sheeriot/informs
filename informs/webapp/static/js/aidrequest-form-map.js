@@ -11,6 +11,15 @@ let datasource;
 let fieldOpMarker;
 let locationSource = 'initial';
 
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+}
+
 function initAidRequestLocationPicker(mapElementId) {
     if (aidRequestFormMapConfig.debug) {
         console.log('Initializing location picker map with params:', { mapElementId });
@@ -49,14 +58,13 @@ function initAidRequestLocationPicker(mapElementId) {
     const stateInput = document.getElementById('id_state');
     const zipCodeInput = document.getElementById('id_zip_code');
     const countryInput = document.getElementById('id_country');
-    const lookupAddressBtn = document.getElementById('lookup-address');
     const getLocationBtn = document.getElementById('get-location');
     const locationModifiedInput = document.getElementById('id_location_modified');
     const coordinatesInput = document.getElementById('id_coordinates');
     const locationNoteInput = document.getElementById('id_location_note');
     const confirmLocationBtn = document.getElementById('confirm-location');
 
-    if (!latInput || !lonInput || !streetAddressInput || !cityInput || !stateInput || !zipCodeInput || !countryInput || !lookupAddressBtn || !getLocationBtn || !locationModifiedInput || !coordinatesInput || !locationNoteInput) {
+    if (!latInput || !lonInput || !streetAddressInput || !cityInput || !stateInput || !zipCodeInput || !countryInput || !getLocationBtn || !locationModifiedInput || !coordinatesInput || !locationNoteInput) {
         console.error('One or more required form fields or buttons are missing.');
         return;
     }
@@ -154,6 +162,7 @@ function initAidRequestLocationPicker(mapElementId) {
                     console.log('Marker dragged to:', position);
                 }
                 updateFormFields(position);
+                updateDistance(position);
             });
 
             map.events.add('click', function (e) {
@@ -167,14 +176,11 @@ function initAidRequestLocationPicker(mapElementId) {
                     visible: true
                 });
                 updateFormFields(e.position);
+                updateDistance(e.position);
             });
 
-            lookupAddressBtn.addEventListener('click', function() {
-                locationSource = 'address_geocoded';
-                geocodeAndCenter();
-            });
             getLocationBtn.addEventListener('click', function() {
-                locationSource = 'device_picked';
+                locationSource = 'device_location';
                 getUserLocation();
             });
 
@@ -199,10 +205,37 @@ function initAidRequestLocationPicker(mapElementId) {
                     }
                 });
             }
+
+            const debouncedGeocode = debounce(() => {
+                const address = streetAddressInput.value;
+                const city = cityInput.value;
+                const state = stateInput.value;
+
+                if (address && city && state) {
+                    locationSource = 'geocoded_coordinates';
+                    geocodeAndCenter();
+                }
+            }, 1500);
+
+            streetAddressInput.addEventListener('input', debouncedGeocode);
+            cityInput.addEventListener('input', debouncedGeocode);
+            stateInput.addEventListener('input', debouncedGeocode);
+            zipCodeInput.addEventListener('input', debouncedGeocode);
+            countryInput.addEventListener('input', debouncedGeocode);
+
         });
 
     } catch (error) {
         console.error('Error initializing map:', error);
+    }
+
+    function updateDistance(position) {
+        if (!fieldOpPosition) return;
+        const distance = atlas.math.getDistanceTo(position, fieldOpPosition, 'kilometers');
+        const distanceDisplay = document.getElementById('distance-display');
+        if (distanceDisplay) {
+            distanceDisplay.innerHTML = `Distance from Field Op: <strong>${distance.toFixed(1)} km</strong>`;
+        }
     }
 
     function updateFormFields(position) {
@@ -218,6 +251,7 @@ function initAidRequestLocationPicker(mapElementId) {
         }
         locationModifiedInput.value = 'true';
         // reverseGeocodeAndUpdateNote(position);
+        resetConfirmButtonState();
     }
 
     function updateMapFromForm() {
@@ -235,10 +269,7 @@ function initAidRequestLocationPicker(mapElementId) {
                 position: position,
                 visible: true
             });
-            // Only move the camera if the center has changed significantly
-            if (map.getCamera().center.join(',') !== position.join(',')) {
-                map.setCamera({ center: position });
-            }
+            updateMapViewAndDistance(position);
             showConfirmButton();
             if (aidRequestFormMapConfig.debug) {
                 console.log('Map updated from form fields.');
@@ -255,10 +286,7 @@ function initAidRequestLocationPicker(mapElementId) {
             position: position,
             visible: true
         });
-        map.setCamera({
-            center: position,
-            zoom: 14
-        });
+        updateMapViewAndDistance(position);
         updateFormFields(position);
     }
 
@@ -337,6 +365,25 @@ function initAidRequestLocationPicker(mapElementId) {
         if (confirmLocationBtn) {
             confirmLocationBtn.classList.remove('d-none');
         }
+    }
+
+    function updateMapViewAndDistance(newPosition) {
+        if (!fieldOpPosition) {
+            map.setCamera({
+                center: newPosition,
+                zoom: 14
+            });
+            return;
+        }
+
+        const positions = [newPosition, fieldOpPosition];
+        const newBounds = atlas.data.BoundingBox.fromPositions(positions);
+        map.setCamera({
+            bounds: newBounds,
+            padding: { top: 50, bottom: 80, left: 50, right: 50 }
+        });
+
+        updateDistance(newPosition);
     }
 }
 

@@ -6,10 +6,11 @@ from django.contrib import admin
 from django.db.models import Count
 from django.contrib import messages
 from django.utils.html import format_html
+from django.urls import reverse
 
 from .models import FieldOp, FieldOpNotify, AidType, AidRequest, AidRequestLog, AidLocation
 from .views.aid_location_forms import AidLocationInline
-from .views.aid_request_forms import AidRequestInline
+from .views.aid_request_forms_a import AidRequestInline
 
 
 def validate_aid_types(modeladmin, request, queryset):

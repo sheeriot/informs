@@ -51,6 +51,11 @@ class AidType(models.Model):
     slug = models.SlugField(unique=True)
     name = models.CharField(max_length=50)
     description = models.TextField(blank=True, null=True)
+    weight = models.PositiveIntegerField(
+        default=5,
+        validators=[MinValueValidator(1), MaxValueValidator(10)],
+        help_text='1-10, lower is higher priority for lists'
+    )
 
     ICON_CHOICES = [
             ('marker', 'marker'),

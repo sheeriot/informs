@@ -11,7 +11,12 @@ from jinja2 import Template
 
 from ..models import AidRequest, FieldOp, AidRequestLog, AidLocation
 from ..tasks import aid_request_postsave, send_cot_task
-from .aid_request_forms import AidRequestCreateForm, AidRequestUpdateForm, AidRequestLogForm
+from .aid_request_forms_a import (
+    AidRequestCreateFormA,
+    AidRequestUpdateForm,
+    AidRequestLogForm,
+)
+from .aid_request_forms_b import AidRequestCreateFormB
 from ..context_processors import get_field_op_from_kwargs
 
 from icecream import ic
@@ -72,10 +77,18 @@ def format_aid_location_note(aid_location):
 class AidRequestCreateView(CreateView):
     """ Aid Request - Create """
     model = AidRequest
-    form_class = AidRequestCreateForm
     template_name = 'aidrequests/aid_request_form.html'
-    # should return to Field Op Home
     success_url = reverse_lazy('home')
+
+    FORM_CLASSES = {
+        'A': AidRequestCreateFormA,
+        'B': AidRequestCreateFormB,
+    }
+    DEFAULT_FORM = 'B'
+
+    def get_form_class(self):
+        form_key = self.request.GET.get('form', self.DEFAULT_FORM).upper()
+        return self.FORM_CLASSES.get(form_key, self.FORM_CLASSES[self.DEFAULT_FORM])
 
     def setup(self, request, *args, **kwargs):
         super().setup(request, *args, **kwargs)
@@ -97,6 +110,7 @@ class AidRequestCreateView(CreateView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
+        kwargs['request'] = self.request
         kwargs['initial'] = {
             'field_op': self.field_op.pk,
             'fieldop_slug': self.fieldop_slug
@@ -117,11 +131,34 @@ class AidRequestCreateView(CreateView):
         else:
             self.object.created_by = None
             self.object.updated_by = None
-        self.object.save(**form.cleaned_data)
+
+        # for FormB, we need to handle the location data differently
+        if isinstance(form, AidRequestCreateFormB):
+            self.object.save() # save object to get pk
+            latitude = form.cleaned_data.get('latitude')
+            longitude = form.cleaned_data.get('longitude')
+            location_note = form.cleaned_data.get('location_note')
+            if latitude and longitude:
+                AidLocation.objects.create(
+                    aid_request=self.object,
+                    latitude=latitude,
+                    longitude=longitude,
+                    source='azure_maps',
+                    status='confirmed',
+                    note=location_note,
+                    created_by=user if user.is_authenticated else None
+                )
+        else:
+            self.object.save(**form.cleaned_data)
 
         # Redirect to the list view for this field_op after creating
         self.success_url = reverse_lazy('aid_request_submitted', kwargs={'field_op': self.fieldop_slug, 'pk': self.object.pk})
         return super().form_valid(form)
+
+    def form_invalid(self, form):
+        ic("Form is invalid, rendering again with errors.")
+        ic(form.errors.as_json())
+        return super().form_invalid(form)
 
 
 # Update View for AidRequest
