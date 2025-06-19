@@ -56,7 +56,6 @@ function initAidRequestLocationPicker(mapElementId) {
     const streetAddressInput = document.getElementById('id_street_address');
     const cityInput = document.getElementById('id_city');
     const stateInput = document.getElementById('id_state');
-    const zipCodeInput = document.getElementById('id_zip_code');
     const countryInput = document.getElementById('id_country');
     const getLocationBtn = document.getElementById('get-location');
     const locationModifiedInput = document.getElementById('id_location_modified');
@@ -64,9 +63,25 @@ function initAidRequestLocationPicker(mapElementId) {
     const locationNoteInput = document.getElementById('id_location_note');
     const confirmLocationBtn = document.getElementById('confirm-location');
 
-    if (!latInput || !lonInput || !streetAddressInput || !cityInput || !stateInput || !zipCodeInput || !countryInput || !getLocationBtn || !locationModifiedInput || !coordinatesInput || !locationNoteInput) {
+    if (!latInput || !lonInput || !streetAddressInput || !cityInput || !stateInput || !getLocationBtn || !locationModifiedInput || !coordinatesInput || !locationNoteInput) {
         console.error('One or more required form fields or buttons are missing.');
         return;
+    }
+
+    // Function to perform reverse geocoding
+    function reverseGeocode(position) {
+        const reverseGeocodeUrl = `https://atlas.microsoft.com/search/address/reverse/json?api-version=1.0&query=${position[1]},${position[0]}&subscription-key=${azureMapsKey}`;
+        fetch(reverseGeocodeUrl)
+            .then(response => response.json())
+            .then(data => {
+                if (data.addresses && data.addresses.length > 0) {
+                    const address = data.addresses[0].address;
+                    if(cityInput) cityInput.value = address.municipality || '';
+                    if(stateInput) stateInput.value = address.countrySubdivisionName || '';
+                    if(streetAddressInput) streetAddressInput.value = address.streetNameAndNumber || '';
+                }
+            })
+            .catch(error => console.error('Error during reverse geocoding:', error));
     }
 
     let cameraOptions = {};
@@ -136,12 +151,23 @@ function initAidRequestLocationPicker(mapElementId) {
                 position: 'top-left'
             });
 
-            marker = new atlas.HtmlMarker({
-                position: initialPosition,
-                draggable: true,
-                visible: !!initialPosition
-            });
-            map.markers.add(marker);
+            // Only create the marker if we have a valid initial position
+            if (initialPosition) {
+                marker = new atlas.HtmlMarker({
+                    position: initialPosition,
+                    draggable: true,
+                    visible: true
+                });
+                map.markers.add(marker);
+            } else {
+                // If there's no initial position, create a hidden marker that can be shown on click
+                marker = new atlas.HtmlMarker({
+                    position: fieldOpPosition || [0, 0], // Default to something valid if fieldOp is also missing
+                    draggable: true,
+                    visible: false
+                });
+                map.markers.add(marker);
+            }
 
             if (fieldOpPosition) {
                 fieldOpMarker = new atlas.HtmlMarker({
@@ -156,27 +182,28 @@ function initAidRequestLocationPicker(mapElementId) {
 
             map.events.add('dragend', marker, function () {
                 locationSource = 'manual_selection';
-                resetConfirmButtonState();
                 const position = marker.getOptions().position;
                 if (aidRequestFormMapConfig.debug) {
                     console.log('Marker dragged to:', position);
                 }
                 updateFormFields(position);
                 updateDistance(position);
+                reverseGeocode(position);
             });
 
             map.events.add('click', function (e) {
                 locationSource = 'manual_selection';
-                resetConfirmButtonState();
+                const position = e.position;
                 if (aidRequestFormMapConfig.debug) {
-                    console.log('Map clicked at:', e.position);
+                    console.log('Map clicked at:', position);
                 }
                 marker.setOptions({
-                    position: e.position,
+                    position: position,
                     visible: true
                 });
-                updateFormFields(e.position);
-                updateDistance(e.position);
+                updateFormFields(position);
+                updateDistance(position);
+                reverseGeocode(position);
             });
 
             getLocationBtn.addEventListener('click', function() {
@@ -211,17 +238,15 @@ function initAidRequestLocationPicker(mapElementId) {
                 const city = cityInput.value;
                 const state = stateInput.value;
 
-                if (address && city && state) {
+                if (city && state) {
                     locationSource = 'geocoded_coordinates';
                     geocodeAndCenter();
                 }
             }, 1500);
 
-            streetAddressInput.addEventListener('input', debouncedGeocode);
-            cityInput.addEventListener('input', debouncedGeocode);
-            stateInput.addEventListener('input', debouncedGeocode);
-            zipCodeInput.addEventListener('input', debouncedGeocode);
-            countryInput.addEventListener('input', debouncedGeocode);
+            if (streetAddressInput) streetAddressInput.addEventListener('input', debouncedGeocode);
+            if (cityInput) cityInput.addEventListener('input', debouncedGeocode);
+            if (stateInput) stateInput.addEventListener('input', debouncedGeocode);
 
         });
 
@@ -244,14 +269,12 @@ function initAidRequestLocationPicker(mapElementId) {
         latInput.value = lat;
         lonInput.value = lon;
         coordinatesInput.value = `${lat},${lon}`;
-        showConfirmButton();
 
         if (aidRequestFormMapConfig.debug) {
             console.log('Form fields updated:', { latitude: lat, longitude: lon });
         }
         locationModifiedInput.value = 'true';
-        // reverseGeocodeAndUpdateNote(position);
-        resetConfirmButtonState();
+        document.dispatchEvent(new CustomEvent('locationUpdated', { detail: { source: locationSource } }));
     }
 
     function updateMapFromForm() {
@@ -270,18 +293,15 @@ function initAidRequestLocationPicker(mapElementId) {
                 visible: true
             });
             updateMapViewAndDistance(position);
-            showConfirmButton();
             if (aidRequestFormMapConfig.debug) {
                 console.log('Map updated from form fields.');
             }
+            document.dispatchEvent(new CustomEvent('locationUpdated', { detail: { source: locationSource } }));
         }
         locationModifiedInput.value = 'true';
-        // reverseGeocodeAndUpdateNote(position);
-        resetConfirmButtonState();
     }
 
     function setMapLocation(position) {
-        resetConfirmButtonState();
         marker.setOptions({
             position: position,
             visible: true
@@ -298,6 +318,7 @@ function initAidRequestLocationPicker(mapElementId) {
                     console.log('User location obtained:', userPosition);
                 }
                 setMapLocation(userPosition);
+                reverseGeocode(userPosition);
             }, () => {
                 alert('Unable to retrieve your location.');
             });
@@ -307,16 +328,16 @@ function initAidRequestLocationPicker(mapElementId) {
     }
 
     async function geocodeAndCenter() {
+        const countryValue = countryInput ? countryInput.value : document.getElementById('id_country')?.value || 'USA';
+
         const address = [
             streetAddressInput.value,
             cityInput.value,
             stateInput.value,
-            zipCodeInput.value,
-            countryInput.value
+            countryValue
         ].filter(Boolean).join(', ');
 
         if (!address) {
-            alert('Please enter an address to look up.');
             return;
         }
 
@@ -346,24 +367,6 @@ function initAidRequestLocationPicker(mapElementId) {
         } catch (error) {
             console.error('Error during geocoding:', error);
             alert('An error occurred while geocoding.');
-        }
-    }
-
-    function resetConfirmButtonState() {
-        if (confirmLocationBtn) {
-            confirmLocationBtn.classList.remove('btn-outline-success');
-            confirmLocationBtn.classList.add('btn-success');
-            confirmLocationBtn.innerHTML = '<i class="bi bi-check-circle"></i> Confirm Location';
-        }
-        if (locationNoteInput) {
-            locationNoteInput.value = '';
-        }
-    }
-
-    function showConfirmButton() {
-        const confirmLocationBtn = document.getElementById('confirm-location');
-        if (confirmLocationBtn) {
-            confirmLocationBtn.classList.remove('d-none');
         }
     }
 

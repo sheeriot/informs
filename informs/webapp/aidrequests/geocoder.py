@@ -23,47 +23,50 @@ def get_azure_geocode(aid_request):
         f"{aid_request.country}"
     )
     field_op_coords = [aid_request.field_op.longitude, aid_request.field_op.latitude]
+    results = {'address_searched': query_address}
+    query_results = None
 
     try:
         cred = AzureKeyCredential(settings.AZURE_MAPS_KEY)
-        with MapsSearchClient(credential=cred) as client:
-            query_results = client.get_geocoding(query=query_address, coordinates=field_op_coords)
+        client = MapsSearchClient(credential=cred)
+        query_results = client.get_geocoding(query=query_address, coordinates=field_op_coords)
     except Exception as e:
         ic(e)
+        results['status'] = "Error"
+        results['note'] = f"Azure Maps API call failed: {e}"
+        return results
+
+    if not query_results or not query_results.get('features'):
+        results['status'] = "No Match"
+        return results
 
     features = query_results['features']
-    results = {}
-    results['address_searched'] = query_address
     # ic(query_address)
-    if features:
-        results['status'] = "Success"
-        feature0 = query_results['features'][0]
-        coordinates = feature0['geometry']['coordinates']
-        results['latitude'] = round(coordinates[1], 5)
-        results['longitude'] = round(coordinates[0], 5)
-        results['features'] = query_results['features']
-        results['confidence'] = feature0['properties']['confidence']
-        results['address_found'] = feature0['properties']['address']['formattedAddress']
-        results['locality'] = feature0['properties']['address'].get('locality', None)
-        results['neighborhood'] = feature0['properties']['address'].get('neighborhood', None)
-        results['match_codes'] = feature0['properties'].get('matchCodes', None)
-        results['match_type'] = feature0['properties'].get('type', None)
-        districts = feature0['properties']['address'].get('adminDistricts', None)
-        results['districts'] = [district['shortName'] for district in districts][::-1]
+    results['status'] = "Success"
+    feature0 = features[0]
+    coordinates = feature0['geometry']['coordinates']
+    results['latitude'] = round(coordinates[1], 5)
+    results['longitude'] = round(coordinates[0], 5)
+    results['features'] = features
+    results['confidence'] = feature0['properties']['confidence']
+    results['address_found'] = feature0['properties']['address']['formattedAddress']
+    results['locality'] = feature0['properties']['address'].get('locality', None)
+    results['neighborhood'] = feature0['properties']['address'].get('neighborhood', None)
+    results['match_codes'] = feature0['properties'].get('matchCodes', None)
+    results['match_type'] = feature0['properties'].get('type', None)
+    districts = feature0['properties']['address'].get('adminDistricts', None)
+    results['districts'] = [district['shortName'] for district in districts][::-1]
 
-        distance = round(geodesic(
-                            (aid_request.field_op.latitude, aid_request.field_op.longitude),
-                            (results['latitude'], results['longitude'])
-                            ).km, 2)
+    distance = round(geodesic(
+                        (aid_request.field_op.latitude, aid_request.field_op.longitude),
+                        (results['latitude'], results['longitude'])
+                        ).km, 2)
 
-        results['distance'] = distance
+    results['distance'] = distance
 
-        note = geocode_note(results)
-        results['note'] = note
-        results['source'] = "azure_maps"
-
-    else:
-        results['status'] = "No Match"
+    note = geocode_note(results)
+    results['note'] = note
+    results['source'] = "azure_maps"
 
     return results
 

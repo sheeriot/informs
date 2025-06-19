@@ -4,10 +4,13 @@
 {% block content %}
 <div class="container m-4">
     <div class="alert alert-success" role="alert">
-        <h4 class="alert-heading">Submission Successful!</h4>
-        <p>Your Aid Request has been submitted and is now being processed. You can see the details of your submission below.</p>
-        <hr>
-        <p class="mb-0">You may now close this page.</p>
+        <h4 class="alert-heading">Thank you for your submission!</h4>
+        <p>Your Aid Request has been submitted and is now being processed. We will contact you with the information you provided.</p>
+    </div>
+
+    <div class="d-flex justify-content-start my-2">
+        <button id="submit-another-btn" class="btn btn-primary me-2">Submit Another Request</button>
+        <button onclick="window.print()" class="btn btn-secondary me-2">Print</button>
     </div>
 
     <div class="row flex-row align-items-center my-1">
@@ -15,7 +18,7 @@
             <h1 class="mb-0">
                 Aid Request:
                 {% if user.is_authenticated %}
-                    <a href="{% url 'aid_request_detail' pk=object.pk field_op=field_op.slug %}">{{ object.pk }}</a>
+                    <a href="{% url 'aid_request_detail' pk=object.pk field_op=object.field_op.slug %}">{{ object.pk }}</a>
                 {% else %}
                     {{ object.pk }}
                 {% endif %}
@@ -36,13 +39,13 @@
                 <tr>
                     <td class="col-auto">
                         {% if user.is_authenticated %}
-                            <a href="{% url 'aid_request_detail' pk=object.pk field_op=field_op.slug %}">{{ object.pk }}</a>
+                            <a href="{% url 'aid_request_detail' pk=object.pk field_op=object.field_op.slug %}">{{ object.pk }}</a>
                         {% else %}
                             {{ object.pk }}
                         {% endif %}
                     </td>
                     <td class="col-auto text-nowrap">
-                        {{ field_op.name }}
+                        {{ object.field_op.name }}
                     </td>
                     <td class="col-auto text-nowrap">{{ object.aid_type }}</td>
                     <td class="col-auto text-center text-nowrap">{{ object.group_size }}</td>
@@ -97,3 +100,18 @@
     </div>
 </div>
 {% endblock content %}
+
+{% block extra_js %}
+    <script>
+        sessionStorage.setItem('informsFormCSubmitted', 'true');
+        sessionStorage.setItem('informsFormLastSubmittedPk', '{{ object.pk }}');
+
+        document.getElementById('submit-another-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            sessionStorage.removeItem('informsFormCSubmitted');
+            sessionStorage.removeItem('informsFormLastSubmittedPk');
+            sessionStorage.removeItem('informsFormCData');
+            window.location.href = "{% url 'aid_request_new' field_op=object.field_op.slug %}";
+        });
+    </script>
+{% endblock %}
