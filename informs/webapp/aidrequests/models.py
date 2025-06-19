@@ -111,6 +111,7 @@ class FieldOp(TimeStampedModel):
     """Field Ops"""
     slug = models.SlugField(unique=True)
     name = models.CharField(max_length=50)
+    country = models.CharField(max_length=30, blank=True, default='USA', help_text="Default country for new aid requests.")
     latitude = models.DecimalField(max_digits=7, decimal_places=5)
     longitude = models.DecimalField(max_digits=8, decimal_places=5)
     ring_size = models.PositiveIntegerField(
@@ -172,9 +173,9 @@ class AidRequest(TimeStampedModel):
         return bool(self.aid_first_name or self.aid_last_name or self.aid_email or self.aid_phone)
 
     # 3. Location of assistance request
-    street_address = models.CharField(max_length=50)
-    city = models.CharField(max_length=25)
-    state = models.CharField(max_length=20)
+    street_address = models.CharField(max_length=50, blank=True)
+    city = models.CharField(max_length=25, blank=True)
+    state = models.CharField(max_length=20, blank=True)
     zip_code = models.CharField(max_length=10, blank=True)
     country = models.CharField(max_length=30, blank=True)
 

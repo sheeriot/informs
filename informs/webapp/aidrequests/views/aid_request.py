@@ -17,6 +17,7 @@ from .aid_request_forms_a import (
     AidRequestLogForm,
 )
 from .aid_request_forms_b import AidRequestCreateFormB
+from .aid_request_forms_c import AidRequestCreateFormC
 from ..context_processors import get_field_op_from_kwargs
 
 from icecream import ic
@@ -83,12 +84,19 @@ class AidRequestCreateView(CreateView):
     FORM_CLASSES = {
         'A': AidRequestCreateFormA,
         'B': AidRequestCreateFormB,
+        'C': AidRequestCreateFormC,
     }
-    DEFAULT_FORM = 'B'
+    DEFAULT_FORM = 'C'
 
     def get_form_class(self):
         form_key = self.request.GET.get('form', self.DEFAULT_FORM).upper()
         return self.FORM_CLASSES.get(form_key, self.FORM_CLASSES[self.DEFAULT_FORM])
+
+    def get_template_names(self):
+        form_key = self.request.GET.get('form', self.DEFAULT_FORM).upper()
+        if form_key == 'C':
+            return ['aidrequests/aid_request_form_c.html']
+        return super().get_template_names()
 
     def setup(self, request, *args, **kwargs):
         super().setup(request, *args, **kwargs)
@@ -133,7 +141,7 @@ class AidRequestCreateView(CreateView):
             self.object.updated_by = None
 
         # for FormB, we need to handle the location data differently
-        if isinstance(form, AidRequestCreateFormB):
+        if isinstance(form, (AidRequestCreateFormB, AidRequestCreateFormC)):
             self.object.save() # save object to get pk
             latitude = form.cleaned_data.get('latitude')
             longitude = form.cleaned_data.get('longitude')
@@ -158,7 +166,33 @@ class AidRequestCreateView(CreateView):
     def form_invalid(self, form):
         ic("Form is invalid, rendering again with errors.")
         ic(form.errors.as_json())
-        return super().form_invalid(form)
+
+        context = self.get_context_data(form=form)
+
+        error_fields = list(form.errors.keys())
+        initial_step = 0
+        focus_field_id = ''
+
+        if error_fields:
+            first_error_field = error_fields[0]
+            focus_field_id = f'id_{first_error_field}'
+
+            # This mapping needs to be maintained.
+            step_fields = {
+                0: ['aid_type', 'full_name', 'contact_info'],
+                1: ['street_address', 'city', 'state', 'zip_code', 'country', 'coordinates', 'latitude', 'longitude'],
+                2: ['group_size', 'aid_description', 'medical_needs', 'welfare_check_info', 'supplies_needed', 'contact_methods', 'additional_info']
+            }
+
+            for step, fields in step_fields.items():
+                if first_error_field in fields:
+                    initial_step = step
+                    break
+
+        context['initial_step'] = initial_step
+        context['focus_field_id'] = focus_field_id
+
+        return self.render_to_response(context)
 
 
 # Update View for AidRequest

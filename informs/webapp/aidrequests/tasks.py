@@ -60,12 +60,15 @@ def aid_request_postsave(aid_request, **kwargs):
         aid_location.save()
 
     else:
-        logger.info(f"AR-{aid_request.pk}: No coordinates provided, falling back to address geocoding.")
-        geocode_results = get_azure_geocode(aid_request)
-        if geocode_results.get('status') == 'Success':
-            aid_location = geocode_save(aid_request, geocode_results)
+        logger.info(f"AR-{aid_request.pk}: No coordinates provided, checking for address to geocode.")
+        if aid_request.street_address and aid_request.city and aid_request.state:
+            geocode_results = get_azure_geocode(aid_request)
+            if geocode_results.get('status') == 'Success':
+                aid_location = geocode_save(aid_request, geocode_results)
+            else:
+                logger.error(f"AR-{aid_request.pk}: Address geocoding failed: {geocode_results.get('status')}")
         else:
-            logger.error(f"AR-{aid_request.pk}: Address geocoding failed, no location will be created.")
+            logger.warning(f"AR-{aid_request.pk}: Not enough address information to geocode.")
 
     if aid_location:
         logger.info(f"AR-{aid_request.pk}: AidLocation created/found: {aid_location.pk}, distance: {aid_location.distance}km.")

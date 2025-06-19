@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block header_title %}Aid Request for {{ field_op.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-4" id="form-c-container"
+     data-is-authenticated="{{ user.is_authenticated|yesno:'true,false' }}"
+     data-fieldop-slug="{{ field_op.slug }}">
+
+    {% crispy form %}
+
+    <div class="text-center text-muted mt-4">
+        <small>
+            This form is for first-hand aid requests only.
+            <br>
+            Please do not relay messages from social media.
+        </small>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" type="text/css" />
+    <link rel="stylesheet" href="{% static 'css/aidrequest-form-c.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+    <script type="text/javascript">
+        window.INFORMS_INITIAL_STEP = parseInt("{{ initial_step|default:0 }}");
+        window.INFORMS_FOCUS_FIELD_ID = "{{ focus_field_id|default:'' }}";
+    </script>
+    <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+    <script src="{% static 'js/aidrequest-form-map.js' %}"></script>
+    <script src="{% static 'js/utils-copy-to-clipboard.js' %}"></script>
+    <script src="{% static 'js/aidrequest-formc.js' %}"></script>
+{% endblock %}
