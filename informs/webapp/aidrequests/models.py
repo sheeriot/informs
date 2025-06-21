@@ -308,36 +308,18 @@ class AidRequest(TimeStampedModel):
         verbose_name_plural = 'Aid Requests'
 
     def __str__(self):
-        return f"""AidRequest-{self.pk}: {self.requestor_first_name} {self.requestor_last_name}
-               - {self.aid_type}"""
+        return f"{self.pk} - {self.requester_name}"
 
     def save(self, *args, **kwargs):
-        is_new = self._state.adding
-        super().save(*args)
+        is_new = self.pk is None
+        if is_new and not self.priority:
+            self.priority = 'medium'
 
-        task_kwargs = {
-            'trigger': 'AidRequest.save',
-            'instance_pk': self.pk,
-            'is_new': is_new
-        }
+        # Set default status if it's a new request and no status is provided
+        if is_new and not self.status:
+            self.status = 'new'
 
-        if is_new:
-            from .tasks import aid_request_postsave
-            updated_at_stamp = self.updated_at.strftime('%Y%m%d%H%M%S')
-
-            if kwargs.get('location_modified'):
-                task_kwargs.update({
-                    'latitude': kwargs.get('latitude'),
-                    'longitude': kwargs.get('longitude'),
-                    'location_note': kwargs.get('location_note')
-                })
-
-            async_task(
-                aid_request_postsave,
-                self,
-                task_name=f"AR{self.pk}-PostSave-{updated_at_stamp}",
-                **task_kwargs
-            )
+        super(AidRequest, self).save(*args, **kwargs)
 
 
 class AidLocation(TimeStampedModel):

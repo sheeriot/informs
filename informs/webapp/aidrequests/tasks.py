@@ -37,6 +37,7 @@ def aid_request_postsave(aid_request, **kwargs):
     latitude = kwargs.get('latitude')
     longitude = kwargs.get('longitude')
     location_note = kwargs.get('location_note')
+    location_source = kwargs.get('location_source')
     aid_location = None
     map_file = None
 
@@ -46,7 +47,7 @@ def aid_request_postsave(aid_request, **kwargs):
             aid_request=aid_request,
             latitude=latitude,
             longitude=longitude,
-            source='user_picked',
+            source=location_source or 'user_picked',
             status='confirmed',
             note=location_note
         )
@@ -73,7 +74,8 @@ def aid_request_postsave(aid_request, **kwargs):
     if aid_location:
         logger.info(f"AR-{aid_request.pk}: AidLocation created/found: {aid_location.pk}, distance: {aid_location.distance}km.")
 
-        zoom = calculate_zoom(aid_location.distance) if aid_location.distance is not None else 10
+        zoom_distance = float(aid_location.distance) * 1.2 if aid_location.distance is not None and aid_location.distance > 0 else None
+        zoom = calculate_zoom(zoom_distance) if zoom_distance is not None else 10
         logger.info(f"AR-{aid_request.pk}: Calculated zoom: {zoom}")
 
         staticmap_data = staticmap_aid(

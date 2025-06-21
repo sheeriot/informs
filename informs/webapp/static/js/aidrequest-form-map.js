@@ -61,9 +61,10 @@ function initAidRequestLocationPicker(mapElementId) {
     const locationModifiedInput = document.getElementById('id_location_modified');
     const coordinatesInput = document.getElementById('id_coordinates');
     const locationNoteInput = document.getElementById('id_location_note');
+    const locationSourceInput = document.getElementById('id_location_source');
     const confirmLocationBtn = document.getElementById('confirm-location');
 
-    if (!latInput || !lonInput || !streetAddressInput || !cityInput || !stateInput || !getLocationBtn || !locationModifiedInput || !coordinatesInput || !locationNoteInput) {
+    if (!latInput || !lonInput || !streetAddressInput || !cityInput || !stateInput || !getLocationBtn || !locationModifiedInput || !coordinatesInput || !locationNoteInput || !locationSourceInput) {
         console.error('One or more required form fields or buttons are missing.');
         return;
     }
@@ -71,17 +72,22 @@ function initAidRequestLocationPicker(mapElementId) {
     // Function to perform reverse geocoding
     function reverseGeocode(position) {
         const reverseGeocodeUrl = `https://atlas.microsoft.com/search/address/reverse/json?api-version=1.0&query=${position[1]},${position[0]}&subscription-key=${azureMapsKey}`;
-        fetch(reverseGeocodeUrl)
+        return fetch(reverseGeocodeUrl)
             .then(response => response.json())
             .then(data => {
+                if (aidRequestFormMapConfig.debug) console.log('Reverse geocode response:', data);
                 if (data.addresses && data.addresses.length > 0) {
                     const address = data.addresses[0].address;
                     if(cityInput) cityInput.value = address.municipality || '';
                     if(stateInput) stateInput.value = address.countrySubdivisionName || '';
-                    if(streetAddressInput) streetAddressInput.value = address.streetNameAndNumber || '';
+                    if(streetAddressInput) streetAddressInput.value = address.streetNameAndNumber || address.streetName || '';
                 }
+                return data; // Return raw data
             })
-            .catch(error => console.error('Error during reverse geocoding:', error));
+            .catch(error => {
+                console.error('Error during reverse geocoding:', error);
+                return null;
+            });
     }
 
     let cameraOptions = {};
@@ -180,30 +186,21 @@ function initAidRequestLocationPicker(mapElementId) {
                 map.markers.add(fieldOpMarker);
             }
 
-            map.events.add('dragend', marker, function () {
-                locationSource = 'manual_selection';
+            map.events.add('dragend', marker, async function () {
+                locationSource = 'user_picked';
                 const position = marker.getOptions().position;
-                if (aidRequestFormMapConfig.debug) {
-                    console.log('Marker dragged to:', position);
-                }
-                updateFormFields(position);
+                const geocodeData = await reverseGeocode(position);
+                updateFormFields(position, geocodeData, 'reverse_geocoded');
                 updateDistance(position);
-                reverseGeocode(position);
             });
 
-            map.events.add('click', function (e) {
-                locationSource = 'manual_selection';
+            map.events.add('click', async function (e) {
+                locationSource = 'user_picked';
                 const position = e.position;
-                if (aidRequestFormMapConfig.debug) {
-                    console.log('Map clicked at:', position);
-                }
-                marker.setOptions({
-                    position: position,
-                    visible: true
-                });
-                updateFormFields(position);
+                marker.setOptions({ position: position, visible: true });
+                const geocodeData = await reverseGeocode(position);
+                updateFormFields(position, geocodeData, 'reverse_geocoded');
                 updateDistance(position);
-                reverseGeocode(position);
             });
 
             getLocationBtn.addEventListener('click', function() {
@@ -212,7 +209,7 @@ function initAidRequestLocationPicker(mapElementId) {
             });
 
             coordinatesInput.addEventListener('input', function() {
-                locationSource = 'manual_entry';
+                locationSource = 'user_picked';
                 updateMapFromForm();
             });
 
@@ -239,7 +236,7 @@ function initAidRequestLocationPicker(mapElementId) {
                 const state = stateInput.value;
 
                 if (city && state) {
-                    locationSource = 'geocoded_coordinates';
+                    locationSource = 'address_geocoded';
                     geocodeAndCenter();
                 }
             }, 1500);
@@ -263,26 +260,34 @@ function initAidRequestLocationPicker(mapElementId) {
         }
     }
 
-    function updateFormFields(position) {
-        const lat = position[1].toFixed(5);
-        const lon = position[0].toFixed(5);
-        latInput.value = lat;
-        lonInput.value = lon;
-        coordinatesInput.value = `${lat},${lon}`;
+    function updateFormFields(position, geocodeData, geocodeType) {
+        if (!position || !Array.isArray(position) || position.length < 2) {
+            console.error('Invalid position provided to updateFormFields:', position);
+            return;
+        }
+
+        // Dispatch a custom event with all data needed by the main form
+        const locationUpdateEvent = new CustomEvent('locationUpdated', {
+            detail: {
+                source: locationSource,
+                position: position,
+                geocodeData: geocodeData || null,
+                geocodeType: geocodeType || null
+            }
+        });
+        document.dispatchEvent(locationUpdateEvent);
 
         if (aidRequestFormMapConfig.debug) {
-            console.log('Form fields updated:', { latitude: lat, longitude: lon });
+            console.log('Dispatched locationUpdated event with detail:', locationUpdateEvent.detail);
         }
-        locationModifiedInput.value = 'true';
-        document.dispatchEvent(new CustomEvent('locationUpdated', { detail: { source: locationSource } }));
     }
 
     function updateMapFromForm() {
-        const parts = coordinatesInput.value.split(',');
-        if (parts.length !== 2) return;
+        const coords = coordinatesInput.value.split(',');
+        if (coords.length !== 2) return;
 
-        const lat = parseFloat(parts[0]);
-        const lon = parseFloat(parts[1]);
+        const lat = parseFloat(coords[0]);
+        const lon = parseFloat(coords[1]);
 
         if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
             latInput.value = lat.toFixed(5);
@@ -296,7 +301,7 @@ function initAidRequestLocationPicker(mapElementId) {
             if (aidRequestFormMapConfig.debug) {
                 console.log('Map updated from form fields.');
             }
-            document.dispatchEvent(new CustomEvent('locationUpdated', { detail: { source: locationSource } }));
+            updateFormFields(position);
         }
         locationModifiedInput.value = 'true';
     }
@@ -307,18 +312,18 @@ function initAidRequestLocationPicker(mapElementId) {
             visible: true
         });
         updateMapViewAndDistance(position);
-        updateFormFields(position);
     }
 
     function getUserLocation() {
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(position => {
+            navigator.geolocation.getCurrentPosition(async position => {
                 const userPosition = [position.coords.longitude, position.coords.latitude];
                 if (aidRequestFormMapConfig.debug) {
                     console.log('User location obtained:', userPosition);
                 }
                 setMapLocation(userPosition);
-                reverseGeocode(userPosition);
+                const geocodeData = await reverseGeocode(userPosition);
+                updateFormFields(userPosition, geocodeData, 'reverse_geocoded');
             }, () => {
                 alert('Unable to retrieve your location.');
             });
@@ -328,45 +333,40 @@ function initAidRequestLocationPicker(mapElementId) {
     }
 
     async function geocodeAndCenter() {
-        const countryValue = countryInput ? countryInput.value : document.getElementById('id_country')?.value || 'USA';
-
-        const address = [
-            streetAddressInput.value,
-            cityInput.value,
-            stateInput.value,
-            countryValue
-        ].filter(Boolean).join(', ');
-
-        if (!address) {
-            return;
-        }
-
-        if (aidRequestFormMapConfig.debug) {
-            console.log('Geocoding address:', address);
-        }
+        const street = streetAddressInput.value;
+        const city = cityInput.value;
+        const state = stateInput.value;
 
         try {
             const response = await fetch(geocodeUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    // Note: CSRF token would be needed if not exempt
+                    'X-CSRFToken': '{{ csrf_token }}' // This will be rendered by Django in the template
                 },
-                body: JSON.stringify({ address: address })
+                body: JSON.stringify({
+                    street_address: street,
+                    city: city,
+                    state: state
+                })
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Geocoding failed');
-            }
-
             const data = await response.json();
-            const position = [data.longitude, data.latitude];
-            setMapLocation(position);
+            if (aidRequestFormMapConfig.debug) console.log('Geocode response:', data);
 
+            if (response.ok && data.latitude && data.longitude) {
+                const newPosition = [data.longitude, data.latitude];
+                setMapLocation(newPosition);
+                updateFormFields(newPosition, data, 'geocoded');
+                updateMapViewAndDistance(newPosition);
+
+            } else {
+                const errorNote = `Geocode failed: ${data.error || 'Unknown error'}`;
+                console.error('Geocoding failed:', data.error);
+            }
         } catch (error) {
-            console.error('Error during geocoding:', error);
-            alert('An error occurred while geocoding.');
+            const errorNote = `Geocode fetch error: ${error}`;
+            console.error('Error during geocoding fetch:', error);
         }
     }
 

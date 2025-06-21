@@ -279,3 +279,74 @@ div.aid-coords label {
 .icon-size-1-25 {
     font-size: 1.25rem;
 }
+
+/* Aid Request Form C Styles */
+.no-asterisk .asteriskField {
+    display: none;
+}
+
+.is-required.is-invalid {
+    box-shadow: 0 0 .25rem .1rem rgba(220, 53, 69, 0.25) !important;
+    border-color: #dc3545 !important;
+}
+#form-c-container .form-control,
+#form-c-container .form-select {
+    border-color: #888;
+}
+input.is-invalid ~ .form-text {
+    color: #dc3545 !important;
+}
+.form-step {
+    transition: opacity 0.3s ease-in-out;
+}
+
+.progress-dots .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #adb5bd; /* Dim/inactive gray */
+    transition: all 0.3s ease;
+}
+
+.progress-dots .dot.completed {
+    background-color: #198754; /* Green */
+}
+
+.progress-dots .dot.active {
+    background-color: #0d6efd; /* Blue */
+    transform: scale(1.5);
+}
+
+#div_id_aid_type .form-check-label {
+    color: #212529;
+    opacity: 1.0;
+}
+
+#div_id_aid_type .form-check-input {
+    border-color: #888;
+    border-width: 2px;
+}
+
+.custom-checkbox-column .form-check {
+    padding: 0.375rem 0.75rem;
+    padding-left: 1.75em;
+    cursor: pointer;
+}
+
+.custom-checkbox-column .form-check-input {
+    width: 1.25em;
+    height: 1.25em;
+    border: 2px solid #adb5bd;
+    cursor: pointer;
+    margin-top: 0.2em;
+    margin-left: -1.75em;
+}
+
+.custom-checkbox-column .form-check-input:checked {
+    border-color: #0d6efd;
+    background-color: #0d6efd;
+}
+
+.custom-checkbox-column .form-check-label {
+    cursor: pointer;
+}

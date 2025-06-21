@@ -69,7 +69,7 @@ class CotMaker:
             local_server_name_part = current_site.name
             env_suffix = settings.ENV_NAME
 
-            if env_suffix:
+            if env_suffix and env_suffix != 'prod':
                 full_client_uid_for_cot_maker = f"{local_server_name_part}.{env_suffix}"
             else:
                 full_client_uid_for_cot_maker = local_server_name_part
@@ -164,7 +164,7 @@ class CotMaker:
 
         # Event UID for the map marker
         base_event_uid_identifier = field_op.slug.upper()
-        if settings.ENV_NAME:
+        if settings.ENV_NAME and settings.ENV_NAME != 'prod':
             base_event_uid_identifier = f"{field_op.slug.upper()}.{settings.ENV_NAME}"
 
         takv_signature = getattr(settings, 'TAKV_DEVICE_SIGNATURE', None)
@@ -175,7 +175,7 @@ class CotMaker:
 
         # Contact callsign and EUD identity for this FieldOp marker
         contact_callsign_for_marker = field_op.slug.upper()
-        if settings.ENV_NAME:
+        if settings.ENV_NAME and settings.ENV_NAME != 'prod':
             contact_callsign_for_marker = f"{field_op.slug.upper()}.{settings.ENV_NAME}"
 
         return make_cot(
@@ -205,13 +205,13 @@ class CotMaker:
             # Base for this Aid Request marker's own callsign. This can change if aid_type changes.
             aid_request_callsign_identifier = f"{aid_request.aid_type.slug}.{aid_request.pk}"
             contact_callsign_for_marker = aid_request_callsign_identifier
-            if settings.ENV_NAME:
+            if settings.ENV_NAME and settings.ENV_NAME != 'prod':
                 contact_callsign_for_marker = f"{aid_request_callsign_identifier}.{settings.ENV_NAME}"
 
             # Base for this Aid Request marker's event UID. This must be stable.
             aid_request_uid_identifier = f"{field_op.slug}.{aid_request.pk}"
             event_uid_base_for_marker = aid_request_uid_identifier
-            if settings.ENV_NAME:
+            if settings.ENV_NAME and settings.ENV_NAME != 'prod':
                 event_uid_base_for_marker = f"{aid_request_uid_identifier}.{settings.ENV_NAME}"
 
             # Unique event UID for this aid request map marker (includes TAKV signature)
@@ -222,7 +222,7 @@ class CotMaker:
 
             # Event UID of the parent FieldOp map marker (for linking the map items)
             parent_marker_base_event_uid = field_op.slug.upper()
-            if settings.ENV_NAME:
+            if settings.ENV_NAME and settings.ENV_NAME != 'prod':
                 parent_marker_base_event_uid = f"{field_op.slug.upper()}.{settings.ENV_NAME}"
 
             parent_marker_event_uid = parent_marker_base_event_uid # Base for parent UID
@@ -231,7 +231,7 @@ class CotMaker:
 
             # Callsign of the parent FieldOp marker (for link_parent_callsign)
             parent_fo_contact_callsign = field_op.slug.upper()
-            if settings.ENV_NAME:
+            if settings.ENV_NAME and settings.ENV_NAME != 'prod':
                 parent_fo_contact_callsign = f"{field_op.slug.upper()}.{settings.ENV_NAME}"
 
             return make_cot(

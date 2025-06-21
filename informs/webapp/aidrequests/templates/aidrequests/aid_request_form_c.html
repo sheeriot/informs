@@ -11,19 +11,22 @@
 
     {% crispy form %}
 
-    <div class="text-center text-muted mt-4">
-        <small>
-            This form is for first-hand aid requests only.
-            <br>
-            Please do not relay messages from social media.
-        </small>
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <div id="reset-form-container" class="w-25"></div>
+        <div class="text-center text-muted w-50">
+            <small>
+                This form is for first-hand aid requests only.
+                <br>
+                Please do not relay messages from social media.
+            </small>
+        </div>
+        <div class="w-25"></div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_css %}
     <link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" type="text/css" />
-    <link rel="stylesheet" href="{% static 'css/aidrequest-form-c.css' %}">
 {% endblock %}
 
 {% block extra_js %}

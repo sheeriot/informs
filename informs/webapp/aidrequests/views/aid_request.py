@@ -4,7 +4,7 @@ from django.urls import reverse_lazy, reverse
 from django.views.generic import CreateView, UpdateView
 from django.conf import settings
 
-from django_q.tasks import async_chain
+from django_q.tasks import async_chain, async_task
 
 from geopy.distance import geodesic
 from jinja2 import Template
@@ -140,24 +140,21 @@ class AidRequestCreateView(CreateView):
             self.object.created_by = None
             self.object.updated_by = None
 
-        # for FormB, we need to handle the location data differently
-        if isinstance(form, (AidRequestCreateFormB, AidRequestCreateFormC)):
-            self.object.save() # save object to get pk
-            latitude = form.cleaned_data.get('latitude')
-            longitude = form.cleaned_data.get('longitude')
-            location_note = form.cleaned_data.get('location_note')
-            if latitude and longitude:
-                AidLocation.objects.create(
-                    aid_request=self.object,
-                    latitude=latitude,
-                    longitude=longitude,
-                    source='azure_maps',
-                    status='confirmed',
-                    note=location_note,
-                    created_by=user if user.is_authenticated else None
-                )
-        else:
-            self.object.save(**form.cleaned_data)
+        self.object.save()
+
+        latitude = form.cleaned_data.get('latitude')
+        longitude = form.cleaned_data.get('longitude')
+        location_note = form.cleaned_data.get('location_note')
+        location_source = form.cleaned_data.get('location_source')
+
+        async_task('aidrequests.tasks.aid_request_postsave',
+            self.object,
+            is_new=True,
+            latitude=latitude,
+            longitude=longitude,
+            location_note=location_note,
+            location_source=location_source
+        )
 
         # Redirect to the list view for this field_op after creating
         self.success_url = reverse_lazy('aid_request_submitted', kwargs={'field_op': self.fieldop_slug, 'pk': self.object.pk})
