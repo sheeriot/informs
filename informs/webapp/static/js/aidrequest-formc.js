@@ -6,6 +6,36 @@ window.addEventListener('pageshow', function(event) {
     }
 });
 
+const aidRequestFormCConfig = {
+    debug: true // Set to false for production
+};
+
+function formatAzureMapsNote(data, type) {
+    let noteParts = [];
+    try {
+        if (type === 'reverse_geocoded' && data.addresses && data.addresses.length > 0) {
+            const address = data.addresses[0].address;
+            noteParts.push('address: reverse_geocoded');
+            if (address.freeformAddress) noteParts.push(`Address: ${address.freeformAddress}`);
+            if (address.municipality) noteParts.push(`Municipality: ${address.municipality}`);
+            if (address.countrySubdivisionName) noteParts.push(`State/Province: ${address.countrySubdivisionName}`);
+        } else if (type === 'geocoded' && data.status === 'Success') {
+            noteParts.push('address: provided');
+            if (data.address_found) noteParts.push(`Found: ${data.address_found}`);
+            if (data.confidence) noteParts.push(`Confidence: ${data.confidence}`);
+            if (data.match_type) noteParts.push(`Match Type: ${data.match_type}`);
+            if (data.locality) noteParts.push(`Locality: ${data.locality}`);
+            if (data.neighborhood) noteParts.push(`Neighborhood: ${data.neighborhood}`);
+            if (data.districts && Array.isArray(data.districts)) noteParts.push(`Districts: ${data.districts.join(', ')}`);
+        } else {
+            noteParts.push('Could not format note from data.');
+        }
+    } catch (e) {
+        noteParts.push(`Error formatting note: ${e.message}`);
+    }
+    return noteParts.join('\n');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const formContainer = document.getElementById('form-c-container');
     const isAuthenticated = formContainer.dataset.isAuthenticated === 'true';
@@ -47,6 +77,31 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const form = document.querySelector('form.needs-validation');
+    const storedData = sessionStorage.getItem('informsFormCData');
+
+    if (storedData) {
+        const resetButtonHTML = `
+            <button class="btn btn-sm btn-outline-danger reset-form-btn">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset Form
+            </button>
+        `;
+
+        const resetContainer = document.getElementById('reset-form-container');
+        if (resetContainer) {
+            resetContainer.innerHTML = resetButtonHTML;
+        }
+
+        formContainer.addEventListener('click', function(e) {
+            const resetButton = e.target.closest('.reset-form-btn');
+            if (resetButton) {
+                e.preventDefault();
+                if (confirm('Are you sure you want to clear the form and start over?')) {
+                    sessionStorage.removeItem('informsFormCData');
+                    window.location.reload();
+                }
+            }
+        });
+    }
 
     function saveFormData() {
         if (!form) return;
@@ -123,11 +178,41 @@ document.addEventListener('DOMContentLoaded', function() {
     const prevStep3Btn = document.getElementById('prev-step-3');
 
     document.addEventListener('locationUpdated', (e) => {
+        const { source, position, geocodeData, geocodeType } = e.detail;
+        if (aidRequestFormCConfig.debug) {
+            console.log('form-c.js: locationUpdated event received with detail:', e.detail);
+        }
+
+        let locationLog = [];
+        if (geocodeData) {
+            locationLog.push(formatAzureMapsNote(geocodeData, geocodeType));
+        } else if (source === 'device_location') {
+            locationLog.push('User requested device location.');
+        } else if (source === 'user_picked') {
+            const coords = document.getElementById('id_coordinates').value;
+            locationLog.push(`User manually entered coordinates: ${coords}`);
+        }
+
+        // Update form fields
+        document.getElementById('id_latitude').value = position[1].toFixed(5);
+        document.getElementById('id_longitude').value = position[0].toFixed(5);
+        document.getElementById('id_coordinates').value = `${position[1].toFixed(5)},${position[0].toFixed(5)}`;
+        document.getElementById('id_location_modified').value = 'True';
+        document.getElementById('id_location_source').value = source;
+        document.getElementById('id_location_note').value = locationLog.join('\n');
+
+        saveFormData(); // Persist the new state to session storage
+
+        if (aidRequestFormCConfig.debug) {
+            console.log('form-c.js: Updated form fields and saved to session storage.');
+            console.log('form-c.js: Final location_note:', locationLog.join('\n'));
+        }
+
+        // Enable the 'Confirm & Next' button
         if (confirmAndNextBtn) {
             confirmAndNextBtn.disabled = false;
             confirmAndNextBtn.classList.remove('opacity-25');
             confirmAndNextBtn.textContent = 'Confirm & Next';
-            confirmAndNextBtn.dataset.locationSource = e.detail.source;
         }
     });
 
@@ -141,11 +226,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (confirmAndNextBtn) {
         confirmAndNextBtn.addEventListener('click', () => {
-            const locationNoteInput = document.getElementById('id_location_note');
-            if (locationNoteInput) {
-                locationNoteInput.value = confirmAndNextBtn.dataset.locationSource || 'confirmed_on_form';
-            }
-
             if (validateStep(1)) {
                 currentStep = 2;
                 showStep(currentStep);
@@ -221,6 +301,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         updateProgressDots();
         window.scrollTo(0,0);
+        if (stepIndex === 1) {
+            adjustMapHeight();
+        }
+    }
+
+    function adjustMapHeight() {
+        const mapElement = document.getElementById('aid-request-location-picker-map');
+        if (!mapElement) return;
+
+        const topOffset = mapElement.getBoundingClientRect().top + window.scrollY;
+        const bottomOffset = 150; // space for buttons, footer, etc.
+        const minHeight = 300;
+
+        const availableHeight = window.innerHeight - topOffset - bottomOffset;
+        const newHeight = Math.max(minHeight, availableHeight);
+
+        mapElement.style.height = `${newHeight}px`;
     }
 
     function validateStep(stepIndex) {
@@ -323,6 +420,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // After restoring data, check if location is set and enable button
     if (document.getElementById('id_latitude')?.value && document.getElementById('id_longitude')?.value) {
-        document.dispatchEvent(new CustomEvent('locationUpdated', { detail: { source: 'restored_from_session' } }));
+        const eventDetail = {
+            source: document.getElementById('id_location_source').value || 'restored_from_session',
+            position: [
+                parseFloat(document.getElementById('id_longitude').value),
+                parseFloat(document.getElementById('id_latitude').value)
+            ],
+            log: document.getElementById('id_location_note').value.split('\\n')
+        };
+        document.dispatchEvent(new CustomEvent('locationUpdated', { detail: eventDetail }));
     }
+
+    window.addEventListener('resize', adjustMapHeight);
 });

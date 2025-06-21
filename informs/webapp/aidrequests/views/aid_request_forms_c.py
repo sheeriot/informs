@@ -71,6 +71,7 @@ class AidRequestCreateFormC(forms.ModelForm):
     )
     location_modified = forms.BooleanField(widget=forms.HiddenInput(), required=False, initial=False)
     location_note = forms.CharField(widget=forms.HiddenInput(), required=False)
+    location_source = forms.CharField(widget=forms.HiddenInput(), required=False)
 
     has_medical_needs = forms.BooleanField(label="Medical Needs", required=False)
     has_welfare_check = forms.BooleanField(label="Welfare Check", required=False)
@@ -170,7 +171,7 @@ class AidRequestCreateFormC(forms.ModelForm):
         is_authenticated = self.request and self.request.user.is_authenticated
 
         progress_dots_html = """
-            <div class="progress-dots d-flex justify-content-center">
+            <div class="progress-dots d-flex justify-content-center gap-4">
                 <span class="dot"></span>
                 <span class="dot"></span>
                 <span class="dot"></span>
@@ -179,7 +180,7 @@ class AidRequestCreateFormC(forms.ModelForm):
 
         self.helper.layout = Layout(
             Hidden('field_op', self.field_op.id),
-            'latitude', 'longitude', 'location_note', 'location_modified', 'country',
+            'latitude', 'longitude', 'location_note', 'location_modified', 'country', 'location_source',
 
             # Step 1: Aid Type & Contact
             Div(
@@ -187,11 +188,14 @@ class AidRequestCreateFormC(forms.ModelForm):
                     "",
                     HTML("<h5 class='mb-3'>What kind of aid is needed?</h5>"),
                     InlineRadios('aid_type'),
-                    HTML("<h5 class='mt-4 mb-3'>Who needs aid?</h5>"),
                     Row(
-                        Column('full_name', css_class='col-md-6 mb-2'),
-                        Column('contact_info', css_class='col-md-6 mb-2'),
-                    ),
+                        Column(
+                            HTML("<h5 class='mt-4 mb-3'>Who needs aid?</h5>"),
+                            'full_name',
+                            'contact_info',
+                            css_class="col-lg-8 offset-lg-2"
+                        )
+                    )
                 ),
                 Div(
                     Div(css_class="w-25"),
@@ -224,6 +228,12 @@ class AidRequestCreateFormC(forms.ModelForm):
                     Row(
                         Column(Field('street_address', css_class='mb-2'), css_class='col-12'),
                     ),
+                    Div(
+                        Div(HTML('<button type="button" id="prev-step-2" class="btn btn-secondary btn-lg">Back</button>'), css_class="w-25 d-flex justify-content-start"),
+                        Div(HTML(progress_dots_html), css_class="w-50"),
+                        Div(HTML('<button type="button" id="confirm-and-next-btn" class="btn btn-primary btn-lg opacity-25" disabled>Provide Location</button>'), css_class="w-25 d-flex justify-content-end"),
+                        css_class="d-flex justify-content-between align-items-center my-3"
+                    ),
                     HTML(f"""
                         <div class="row g-0 mt-2">
                             <div class="form-group col-md-12 p-1" style="position: relative;">
@@ -250,12 +260,6 @@ class AidRequestCreateFormC(forms.ModelForm):
                         </div>
                     """),
                 ),
-                Div(
-                    Div(HTML('<button type="button" id="prev-step-2" class="btn btn-secondary btn-lg">Previous</button>'), css_class="w-25 d-flex justify-content-start"),
-                    Div(HTML(progress_dots_html), css_class="w-50"),
-                    Div(HTML('<button type="button" id="confirm-and-next-btn" class="btn btn-primary btn-lg opacity-25" disabled>Provide Location Above</button>'), css_class="w-25 d-flex justify-content-end"),
-                    css_class="d-flex justify-content-between align-items-center mt-3"
-                ),
                 css_id="step-2",
                 css_class="form-step card shadow-sm p-3 d-none"
             ),
@@ -269,12 +273,12 @@ class AidRequestCreateFormC(forms.ModelForm):
                     'aid_description',
                     HTML('<p class="mt-4 mb-3">Check all that apply:</p>'),
                     Row(
-                        Column('has_medical_needs', css_class='col-auto'),
-                        Column('has_welfare_check', css_class='col-auto'),
-                        Column('has_supplies_needed', css_class='col-auto'),
-                        Column('has_contact_methods', css_class='col-auto'),
-                        Column('has_additional_info', css_class='col-auto'),
-                        css_class="mb-2"
+                        Column('has_medical_needs', css_class='col-auto custom-checkbox-column'),
+                        Column('has_welfare_check', css_class='col-auto custom-checkbox-column'),
+                        Column('has_supplies_needed', css_class='col-auto custom-checkbox-column'),
+                        Column('has_contact_methods', css_class='col-auto custom-checkbox-column'),
+                        Column('has_additional_info', css_class='col-auto custom-checkbox-column'),
+                        css_class="mb-2 g-2"
                     ),
                     Div(Field('medical_needs'), css_class="d-none", css_id="div_id_medical_needs"),
                     Div(Field('welfare_check_info'), css_class="d-none", css_id="div_id_welfare_check_info"),
@@ -283,7 +287,7 @@ class AidRequestCreateFormC(forms.ModelForm):
                     Div(Field('additional_info'), css_class="d-none", css_id="div_id_additional_info"),
                 ),
                 Div(
-                    Div(HTML('<button type="button" id="prev-step-3" class="btn btn-secondary btn-lg">Previous</button>'), css_class="w-25 d-flex justify-content-start"),
+                    Div(HTML('<button type="button" id="prev-step-3" class="btn btn-secondary btn-lg">Back</button>'), css_class="w-25 d-flex justify-content-start"),
                     Div(HTML(progress_dots_html), css_class="w-50"),
                     Div(HTML(f"""<button type="submit" id="submit-button" class="btn btn-primary btn-lg">
                             Create Aid Request

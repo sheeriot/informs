@@ -8,43 +8,45 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 import json
 
+from ..geocoder import get_azure_geocode
+from ..context_processors import get_field_op_from_kwargs
+from ..models import AidRequest
+
 @csrf_exempt
 @require_POST
 def geocode_address(request, field_op):
     """
-    Geocode an address using Azure Maps and return the coordinates.
+    Geocode an address using Azure Maps and return the full results.
     """
     try:
+        field_op_obj, _ = get_field_op_from_kwargs({'field_op': field_op})
+        if not field_op_obj:
+            return JsonResponse({'error': 'Field Operation not found'}, status=404)
+
         data = json.loads(request.body)
-        address = data.get('address')
+        street = data.get('street_address', '')
+        city = data.get('city', '')
+        state = data.get('state', '')
 
-        if not address:
-            return JsonResponse({'error': 'Address is required'}, status=400)
+        # Create a temporary AidRequest object to pass to the geocoder
+        temp_aid_request = AidRequest(
+            field_op=field_op_obj,
+            street_address=street,
+            city=city,
+            state=state,
+            country=field_op_obj.country
+        )
 
-        subscription_key = settings.AZURE_MAPS_KEY
-        if not subscription_key:
-            return JsonResponse({'error': 'Azure Maps key is not configured'}, status=500)
+        geocode_results = get_azure_geocode(temp_aid_request)
 
-        url = f'https://atlas.microsoft.com/search/address/json'
-        params = {
-            'api-version': '1.0',
-            'subscription-key': subscription_key,
-            'query': address
-        }
-
-        response = requests.get(url, params=params)
-        response.raise_for_status()  # Raise an exception for bad status codes
-
-        results = response.json().get('results', [])
-        if results:
-            location = results[0]['position']
-            return JsonResponse({'latitude': location['lat'], 'longitude': location['lon']})
+        if geocode_results.get('status') == 'Success':
+            # We don't want to send all the features back, just the essentials
+            geocode_results.pop('features', None)
+            return JsonResponse(geocode_results)
         else:
-            return JsonResponse({'error': 'Address not found'}, status=404)
+            return JsonResponse({'error': geocode_results.get('status', 'Geocoding failed')}, status=400)
 
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
-    except requests.exceptions.RequestException as e:
-        return JsonResponse({'error': str(e)}, status=500)
     except Exception as e:
         return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
