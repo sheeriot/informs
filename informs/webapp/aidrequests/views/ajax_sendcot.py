@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from ..models import AidRequest, FieldOp
 from icecream import ic
 from datetime import datetime
+import re
 
 
 @login_required
@@ -27,7 +28,7 @@ def send_cot(request, field_op=None):
     try:
         data = json.loads(request.body)
     except Exception as e:
-        ic(e)
+        # ic(e)
         return JsonResponse({"status": "error", "message": "Could not parse JSON request body."})
 
     # Validate field_op exists
@@ -82,7 +83,7 @@ def send_cot(request, field_op=None):
         })
 
     except Exception as e:
-        ic(e)
+        # ic(e)
         return JsonResponse({
             "status": "error",
             "message": f"Error processing request: {str(e)}"
@@ -102,87 +103,27 @@ def sendcot_checkstatus(request, field_op=None, task_id=None):
         return JsonResponse({"status": "error", "message": "No task ID provided."})
 
     try:
-        task_result = fetch(task_id)
-
-        # Add consistent logging for debug
-        ic(f"Task status check for ID: {task_id}")
-
-        # Task hasn't completed yet
-        if task_result is None:
+        task = fetch(task_id)
+        if task is None:
             response = {
-                "status": "PENDING",
-                "message": "Sending COT to TAK..."
+                'status': 'PENDING',
+                'message': 'Task is queued or running.'
             }
-            ic("API Response (PENDING):", response)
-            return JsonResponse(response)
-
-        # Task completed but had an error
-        if isinstance(task_result.result, Exception):
+        elif task.success:
             response = {
-                "status": "FAILURE",
-                "result": str(task_result.result)
+                'status': 'SUCCESS',
+                'message': task.result or 'Task completed successfully.'
             }
-            ic("API Response (FAILURE):", response)
-            return JsonResponse(response)
-
-        # Task completed successfully
-        if task_result.success:
-            # Get the raw result string
-            result_str = str(task_result.result)
-            ic("Raw task result string:", result_str)
-
-            # Extract statistics from the result string
-            import re
-
-            # Look for field markers first
-            field_count = 0
-            field_match = re.search(r'(\d+) field marker', result_str)
-            if field_match:
-                field_count = int(field_match.group(1))
-                ic("Extracted field count:", field_count)
-
-            # Look for aid markers
-            aid_count = 0
-            aid_match = re.search(r'(\d+) aid marker', result_str)
-            if aid_match:
-                aid_count = int(aid_match.group(1))
-                ic("Extracted aid count:", aid_count)
-
-            # Format a clean, consistent message
-            message_parts = []
-            if field_count > 0:
-                message_parts.append(f"{field_count} field marker{'' if field_count == 1 else 's'}")
-            if aid_count > 0:
-                message_parts.append(f"{aid_count} aid marker{'' if aid_count == 1 else 's'}")
-
-            # Create the final message
-            if message_parts:
-                formatted_result = f"Sent: {', '.join(message_parts)}"
-            else:
-                formatted_result = "Sent: markers to TAK"
-
-            ic("Formatted result:", formatted_result)
-
+        else: # Task failed
             response = {
-                "status": "SUCCESS",
-                "result": formatted_result
+                'status': 'FAILURE',
+                'message': task.result or 'Task failed with no specific message.'
             }
-            ic("API Response (SUCCESS):", response)
-            return JsonResponse(response)
-
-        # Task completed but marked as failed
-        response = {
-            "status": "FAILURE",
-            "result": "Task failed without an error message"
-        }
-        ic("API Response (FAILURE - no message):", response)
-        return JsonResponse(response)
 
     except Exception as e:
-        ic(f"Error checking task status: {e}")
         response = {
-            "status": "error",
-            "message": f"Error checking task status: {str(e)}"
+            'status': 'ERROR',
+            'message': str(e)
         }
-        ic("API Response (ERROR):", response)
-        return JsonResponse(response)
+
+    return JsonResponse(response)

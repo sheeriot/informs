@@ -348,5 +348,24 @@ input.is-invalid ~ .form-text {
 }
 
 .custom-checkbox-column .form-check-label {
-    cursor: pointer;
+    padding-left: 0.5em; /* Adjust padding as needed */
+    font-size: 0.9em;
+}
+
+.card-header .btn {
+    line-height: 1;
+}
+
+@keyframes flash-warning {
+    0%, 100% { box-shadow: none; }
+    50% { box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.5); }
+}
+
+.btn-flashing {
+    animation: flash-warning 0.5s 2;
+}
+
+/* Allow resizing on textareas that are not disabled */
+textarea:not([disabled]) {
+    resize: vertical;
 }

@@ -2,9 +2,11 @@ from django.contrib import admin
 from django import forms
 from django.urls import reverse
 from django.utils.html import format_html
+from django.conf import settings
+# from icecream import ic
 
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit, Layout, Fieldset, Hidden, Row, Column, Div, HTML
+from crispy_forms.layout import Submit, Layout, Fieldset, Hidden, Row, Column, Div, HTML, Field
 
 from ..models import AidLocation
 # from crispy_forms.layout import Layout, Submit,  Hidden
@@ -14,83 +16,60 @@ from ..models import AidLocation
 
 class AidLocationCreateForm(forms.ModelForm):
     """ AidLocation Form """
+    # These fields are for the UI and map interaction, not for saving to the AidLocation model.
+    address_line_1 = forms.CharField(label="Street Address", required=False)
+    city = forms.CharField(required=False)
+    state = forms.CharField(label="State", required=False)
+    coordinates = forms.CharField(
+        label="Coordinates",
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control text-dark font-monospace', 'readonly': 'readonly'})
+    )
 
     class Meta:
         """ meta """
         model = AidLocation
-        fields = (
-            'aid_request',
-            'latitude',
-            'longitude',
-            'source',
-            'status',
-            'note',
-        )
-        # success_url = 'aid_request_detail'
+        # Only include fields that actually exist on the AidLocation model.
+        fields = ['latitude', 'longitude', 'note', 'source']
         widgets = {
-            'latitude': forms.NumberInput(attrs={
-                'max': '90',    # For maximum number
-                'min': '-90',    # For minimum number
-                'oninput': """
-                    let val = this.value;
-                    if (val.includes('.')) {
-                        const [intPart, decPart] = val.split('.');
-                        this.value = `${intPart}.${decPart.slice(0, 5)}`;  // Truncate decimals
-                    }
-                """
-            }),
-            'longitude': forms.NumberInput(attrs={
-                'max': '180',    # For maximum number
-                'min': '-180',    # For minimum number
-                'oninput': """
-                    let val = this.value;
-                    if (val.includes('.')) {
-                        const [intPart, decPart] = val.split('.');
-                        this.value = `${intPart}.${decPart.slice(0, 5)}`;  // Truncate decimals
-                    }
-                """
-            }),
+            'latitude': forms.HiddenInput(attrs={'id': 'id_latitude_modal'}),
+            'longitude': forms.HiddenInput(attrs={'id': 'id_longitude_modal'}),
+            'source': forms.HiddenInput(attrs={'id': 'id_location_source_modal'}),
+            'note': forms.Textarea(attrs={'id': 'id_note_modal', 'rows': 2, 'placeholder': 'Add any notes about this location...'}),
         }
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['field_op'] = forms.CharField(widget=forms.HiddenInput())
-        self.fields['note'].widget.attrs['rows'] = 1
-        initial = kwargs.get('initial', False)
+        self.request = kwargs.pop('request', None)
+        self.field_op_obj = kwargs.pop('field_op_obj', None)
+        aid_request_obj = kwargs.pop('aid_request_obj', None)
+        super(AidLocationCreateForm, self).__init__(*args, **kwargs)
+        # ic("FORM: __init__ called.")
+        # ic("FORM: self.field_op_obj:", self.field_op_obj)
+        # ic("FORM: self.initial data:", self.initial)
+
+        if aid_request_obj:
+            self.fields['address_line_1'].initial = aid_request_obj.street_address
+            self.fields['city'].initial = aid_request_obj.city
+            self.fields['state'].initial = aid_request_obj.state
+
         self.helper = FormHelper()
         self.helper.form_method = 'post'
-        if initial:
-            action_url = reverse('aid_location_create',
-                                 kwargs={'field_op': initial['field_op'],
-                                         'aid_request': initial['aid_request']})
-            self.helper.form_action = action_url
 
-            self.helper.layout = Layout(
-                Hidden('field_op', initial['field_op']),
-                Hidden('aid_request', initial['aid_request']),
-                Hidden('source', 'manual'),
-                Hidden('status', 'new'),
-                Div(
-                    Fieldset('Add a Manual Location (coordinates)',
-                             HTML("<hr class='my-0'>"),
-                             Row(
-                                 Column('latitude', css_class="col-auto"),
-                                 Column('longitude', css_class="col-auto"),
-                                 Column('note', css_class="col-auto"),
-                                 Column(
-                                        Submit('submit', 'Add Location',
-                                               css_class='btn-warning'),
-                                        css_class="col-auto align-self-end mb-3"),
-                                 css_class=""
-                                 ),
-                             css_class=""
-                             ),
-                    css_class="col-auto aid-coords mb-0"
-                )
-            )
-            self.fields['latitude'].widget.attrs['placeholder'] = 'deg.xxxxx'
-            self.fields['longitude'].widget.attrs['placeholder'] = 'deg.yyyyy'
-            self.fields['note'].widget.attrs['placeholder'] = 'Enter any notes'
+        # Set address fields to read-only
+        for field_name in ['address_line_1', 'city', 'state']:
+            if field_name in self.fields:
+                self.fields[field_name].widget.attrs['readonly'] = True
+
+        self.helper.layout = Layout()
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if not instance.source:
+            instance.source = 'geocoded_address'
+        instance.status = 'new'
+        if commit:
+            instance.save()
+        return instance
 
 
 class AidLocationInline(admin.TabularInline):
@@ -121,13 +100,11 @@ class AidLocationStatusForm(forms.ModelForm):
         self.helper.form_method = 'post'
         if initial:
             form_url = reverse('aid_location_status_update',
-                               kwargs={'field_op': initial['field_op'],
-                                       'aid_request': initial['aid_request'],
-                                       'pk': initial['pk']})
+                               kwargs={'field_op': initial['field_op'], 'location_pk': initial['location_pk']})
             self.helper.form_action = form_url
 
             self.helper.layout = Layout(
-                Hidden('pk', initial['pk']),
+                Hidden('pk', initial['location_pk']),
                 Hidden('field_op', initial['field_op']),
                 Hidden('aid_request', initial['aid_request']),
                 Submit('confirm', 'Confirm Location', css_class='btn btn-success'),

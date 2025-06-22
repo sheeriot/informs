@@ -1,9 +1,9 @@
-function copyCoordinates(event) {
-    const button = event.currentTarget;
-    const coordinatesInput = document.getElementById('coordinates');
+function copyCoordinates(button) {
+    // The text to copy is stored in a data attribute on the button itself.
+    const textToCopy = button.dataset.copyText;
 
-    if (coordinatesInput) {
-        navigator.clipboard.writeText(coordinatesInput.value).then(() => {
+    if (textToCopy) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
             // Provide feedback that the copy was successful
             const originalIcon = button.innerHTML;
             button.innerHTML = '<i class="bi bi-check-lg"></i>'; // Change icon to a checkmark
@@ -14,6 +14,8 @@ function copyCoordinates(event) {
         }).catch(err => {
             console.error('Failed to copy coordinates: ', err);
         });
+    } else {
+        console.error('No text to copy. Ensure the button has a data-copy-text attribute.');
     }
 }
 

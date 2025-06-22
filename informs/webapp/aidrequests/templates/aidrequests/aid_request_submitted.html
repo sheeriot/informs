@@ -1,6 +1,15 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block header_title %}
+Aid Request for {{ object.field_op.name }}
+{% endblock header_title %}
+
+{% block extra_css %}
+<link rel="stylesheet" type="text/css" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" />
+<link rel="stylesheet" href="{% static 'css/azure-maps-layer-legend.css' %}?v={{ static_version }}" type="text/css">
+{% endblock %}
+
 {% block content %}
 <div class="container m-4">
     <div class="alert alert-success" role="alert">
@@ -102,6 +111,7 @@
 {% endblock content %}
 
 {% block extra_js %}
+    <script type="text/javascript" src="{% static 'js/aidrequest-status-poller.js' %}?v={{ static_version }}"></script>
     <script>
         sessionStorage.setItem('informsFormCSubmitted', 'true');
         sessionStorage.setItem('informsFormLastSubmittedPk', '{{ object.pk }}');

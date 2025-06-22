@@ -69,19 +69,19 @@ class CotSender: # Simplified: No longer a pytak.QueueWorker
         from .cot_maker import CotMaker
         self.cot_maker = CotMaker(config['COTINFO'])
 
-        ic(f"{self._task_name}: Initialized (Simplified for linear processing)")
+        # ic(f"{self._task_name}: Initialized (Simplified for linear processing)")
 
     # handle_data and run are no longer primary interface for _run_cot
     # build_messages will be called directly via self.cot_maker by _run_cot
 
     async def cleanup(self):
         """Cleanup resources for CotSender if any."""
-        ic(f"{self._task_name}: Starting cleanup process (Simplified)")
+        # ic(f"{self._task_name}: Starting cleanup process (Simplified)")
         logger.info(f"Starting {self._task_name} cleanup...")
         # Most cleanup (queue draining) was removed in previous steps.
         # If CotMaker or other components initialized by CotSender need cleanup, add here.
         # For now, this is likely minimal.
-        ic(f"{self._task_name}: Cleanup complete (Simplified).")
+        # ic(f"{self._task_name}: Cleanup complete (Simplified).")
         logger.info(f"{self._task_name} cleanup complete.")
 
 # pytak.QueueWorker related methods like handle_data, run are removed or will be unused by _run_cot.
@@ -189,7 +189,7 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None, inclu
             logger.info(f"[{field_op_slug}] Initiating CoT send process (Linear Batch Mode).")
             try:
                 # 1. Instantiate simplified CotSender
-                ic(f"[{field_op_slug}] Preparing CoT components.")
+                # ic(f"[{field_op_slug}] Preparing CoT components.")
                 sender = CotSender(config=cot_config) # No queue passed
 
                 # 2. Establish network connection and get writer
@@ -197,23 +197,23 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None, inclu
                 if not url_parts.hostname or not url_parts.port:
                     logger.error(f"[{field_op_slug}] Could not parse hostname/port from COT_URL: {cot_config['COT_URL']}")
                     raise ValueError(f"Could not parse hostname/port from COT_URL: {cot_config['COT_URL']}")
-                ic(f"[{field_op_slug}] Parsed URL: Host={url_parts.hostname}, Port={url_parts.port}, Scheme={url_parts.scheme}")
+                # ic(f"[{field_op_slug}] Parsed URL: Host={url_parts.hostname}, Port={url_parts.port}, Scheme={url_parts.scheme}")
 
                 ssl_ctx = None
                 if url_parts.scheme == 'tls':
-                    ic(f"[{field_op_slug}] Scheme is TLS. Creating SSLContext.")
+                    # ic(f"[{field_op_slug}] Scheme is TLS. Creating SSLContext.")
                     ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
                     ssl_ctx.check_hostname = not cot_config.get("PYTAK_TLS_DONT_CHECK_HOSTNAME", False)
                     ssl_ctx.verify_mode = ssl.CERT_REQUIRED
                     client_cafile = cot_config.get("PYTAK_TLS_CLIENT_CAFILE")
                     client_cert = cot_config.get("PYTAK_TLS_CLIENT_CERT")
                     if client_cafile:
-                        ic(f"[{field_op_slug}] Loading CA cert: {client_cafile}")
+                        # ic(f"[{field_op_slug}] Loading CA cert: {client_cafile}")
                         ssl_ctx.load_verify_locations(cafile=client_cafile)
                     if client_cert:
-                        ic(f"[{field_op_slug}] Loading client cert/key: {client_cert}")
+                        # ic(f"[{field_op_slug}] Loading client cert/key: {client_cert}")
                         ssl_ctx.load_cert_chain(certfile=client_cert)
-                    ic(f"[{field_op_slug}] SSL context configured.")
+                    # ic(f"[{field_op_slug}] SSL context configured.")
 
                 logger.info(f"[{field_op_slug}] Attempting to connect to {url_parts.hostname}:{url_parts.port} (SSL: {bool(ssl_ctx)})" )
                 try:
@@ -262,7 +262,7 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None, inclu
                     logger.info(f"[{field_op_slug}] Generating CoT messages (timeout: {PYTAK_MESSAGE_GENERATION_TIMEOUT}s).")
                     messages = await asyncio.wait_for(sender.cot_maker.build_messages(), timeout=PYTAK_MESSAGE_GENERATION_TIMEOUT)
                     message_count = len(messages)
-                    ic(f"[{field_op_slug}] Successfully generated {message_count} CoT messages.")
+                    # ic(f"[{field_op_slug}] Successfully generated {message_count} CoT messages.")
                     logger.info(f"[{field_op_slug}] Successfully generated {message_count} CoT messages.")
                 except asyncio.TimeoutError:
                     logger.error(f"[{field_op_slug}] Timeout ({PYTAK_MESSAGE_GENERATION_TIMEOUT}s) generating CoT messages.")
@@ -290,13 +290,13 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None, inclu
                                 cot_logger.info(f"{log_prefix}: Writing message {i+1}/{message_count} to buffer (non-XML/malformed):\n{msg_bytes.decode('utf-8', errors='replace')}")
                         else:
                              cot_logger.info(f"{log_prefix}: Writing message {i+1}/{message_count} to buffer (non-bytes):\n{msg_bytes}")
-                        ic(f"[{field_op_slug}] Wrote message {i+1}/{message_count} to buffer. Buffer size: {writer.transport.get_write_buffer_size() if writer.transport else 'N/A'}")
+                        # ic(f"[{field_op_slug}] Wrote message {i+1}/{message_count} to buffer. Buffer size: {writer.transport.get_write_buffer_size() if writer.transport else 'N/A'}")
 
                     logger.info(f"[{field_op_slug}] All {message_count} messages written to buffer. Draining batch (timeout: {PYTAK_BATCH_DRAIN_TIMEOUT}s).")
                     try:
                         await asyncio.wait_for(writer.drain(), timeout=PYTAK_BATCH_DRAIN_TIMEOUT)
                         logger.info(f"[{field_op_slug}] Batch of {message_count} messages successfully drained (sent).")
-                        ic(f"[{field_op_slug}] Batch drained. Write buffer size: {writer.transport.get_write_buffer_size() if writer.transport else 'N/A'}")
+                        # ic(f"[{field_op_slug}] Batch drained. Write buffer size: {writer.transport.get_write_buffer_size() if writer.transport else 'N/A'}")
                     except asyncio.TimeoutError:
                         logger.error(f"[{field_op_slug}] Timeout ({PYTAK_BATCH_DRAIN_TIMEOUT}s) draining batch of {message_count} messages.")
                         # Note: Even on timeout, some messages might have been sent.
@@ -323,7 +323,7 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None, inclu
                 return f"Failed: {e_val}"
             except Exception as e: # Catch-all for other errors (e.g., message generation, non-connection drain issues re-raised)
                 logger.error(f"[{field_op_slug}] Unhandled exception in _run_cot main try block: {type(e).__name__} - {e}")
-                ic(f"[{field_op_slug}] Unhandled exception context in _run_cot main try block: {e}")
+                # ic(f"[{field_op_slug}] Unhandled exception context in _run_cot main try block: {e}")
                 # Raising the exception will let Django-Q handle it and mark task as failed.
                 # The finally block below will still run for cleanup.
                 raise
@@ -334,7 +334,7 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None, inclu
                 # 1. Call simplified CotSender's cleanup method (if it has one and sender exists)
                 if sender and hasattr(sender, 'cleanup') and callable(getattr(sender, 'cleanup')):
                     try:
-                        ic(f"[{field_op_slug}] FINALLY: Calling sender.cleanup().")
+                        # ic(f"[{field_op_slug}] FINALLY: Calling sender.cleanup().")
                         logger.debug(f"[{field_op_slug}] FINALLY: Calling sender.cleanup().")
                         await sender.cleanup()
                         logger.info(f"[{field_op_slug}] FINALLY: sender.cleanup() completed.")
@@ -344,31 +344,32 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None, inclu
                 # 2. Close the writer if it's open and not already closing
                 if writer and not writer.is_closing():
                     logger.info(f"[{field_op_slug}] FINALLY: Writer is open and not closing. Closing writer directly.")
-                    ic(f"[{field_op_slug}] FINALLY: Closing writer directly.")
+                    # ic(f"[{field_op_slug}] FINALLY: Closing writer directly.")
                     writer.close()
                     try:
                         await asyncio.wait_for(writer.wait_closed(), timeout=PYTAK_WRITER_CLOSE_TIMEOUT)
                         logger.info(f"[{field_op_slug}] FINALLY: Writer closed and waited successfully.")
-                        ic(f"[{field_op_slug}] FINALLY: Writer.wait_closed() completed.")
+                        # ic(f"[{field_op_slug}] FINALLY: Writer.wait_closed() completed.")
                     except asyncio.TimeoutError:
-                        logger.warning(f"[{field_op_slug}] FINALLY: Timeout ({PYTAK_WRITER_CLOSE_TIMEOUT}s) waiting for writer to close after explicit close().")
-                        ic(f"[{field_op_slug}] FINALLY: Timeout waiting for writer.wait_closed().")
+                        pass
+                        # ic(f"[{field_op_slug}] FINALLY: Timeout waiting for writer.wait_closed().")
                     except Exception as e_close_direct:
-                        logger.error(f"[{field_op_slug}] FINALLY: Exception closing/waiting for writer: {type(e_close_direct).__name__} - {e_close_direct}")
-                        ic(f"[{field_op_slug}] FINALLY: writer.close()/wait_closed() exception: {e_close_direct}")
+                        pass
+                        # ic(f"[{field_op_slug}] FINALLY: writer.close()/wait_closed() exception: {e_close_direct}")
                 elif writer and writer.is_closing():
                     logger.info(f"[{field_op_slug}] FINALLY: Writer was already closing. Attempting to wait for it to complete.")
-                    ic(f"[{field_op_slug}] FINALLY: Writer was already closing. Waiting for wait_closed().")
+                    # ic(f"[{field_op_slug}] FINALLY: Writer was already closing. Waiting for wait_closed().")
                     try:
                         await asyncio.wait_for(writer.wait_closed(), timeout=PYTAK_WRITER_CLOSE_TIMEOUT)
                         logger.info(f"[{field_op_slug}] FINALLY: Writer confirmed closed after already closing.")
                     except asyncio.TimeoutError:
-                        logger.warning(f"[{field_op_slug}] FINALLY: Timeout ({PYTAK_WRITER_CLOSE_TIMEOUT}s) waiting for already-closing writer to complete.")
+                        pass
+                        # ic(f"[{field_op_slug}] FINALLY: Timeout waiting for already-closing writer.")
                     except Exception as e_already_closing:
                          logger.warning(f"[{field_op_slug}] FINALLY: Exception waiting for already-closing writer: {type(e_already_closing).__name__} - {e_already_closing}")
                 elif not writer:
                     logger.info(f"[{field_op_slug}] FINALLY: Writer was not created (e.g., connection error). No writer to close.")
-                    ic(f"[{field_op_slug}] FINALLY: Writer is None.")
+                    # ic(f"[{field_op_slug}] FINALLY: Writer is None.")
 
                 logger.info(f"[{field_op_slug}] _run_cot main cleanup phase complete.")
 
@@ -382,7 +383,7 @@ def pytak_send_cot(field_op_slug, mark_type='field', aid_request_ids=None, inclu
 
     except Exception as e:
         logger.error(f"Error in pytak_send_cot: {e}")
-        ic(f"Outer error context in pytak_send_cot: {e}")
+        # ic(f"Outer error context in pytak_send_cot: {e}")
         return e
 
 async def main():

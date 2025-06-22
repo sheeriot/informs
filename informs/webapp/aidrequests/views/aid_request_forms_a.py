@@ -278,6 +278,66 @@ class AidRequestCreateFormA(forms.ModelForm):
         return cleaned_data
 
 
+class RequestorInformationForm(forms.ModelForm):
+    class Meta:
+        model = AidRequest
+        fields = ['requestor_first_name', 'requestor_last_name', 'requestor_phone', 'requestor_email', 'use_whatsapp']
+
+    def __init__(self, *args, **kwargs):
+        super(RequestorInformationForm, self).__init__(*args, **kwargs)
+        self.fields['requestor_phone'].widget.attrs['placeholder'] = 'Phone'
+        self.fields['requestor_email'].widget.attrs['placeholder'] = 'Email'
+
+
+class AidContactInformationForm(forms.ModelForm):
+    class Meta:
+        model = AidRequest
+        fields = ['aid_first_name', 'aid_last_name', 'aid_phone', 'aid_email', 'use_whatsapp_aid']
+        labels = {
+            'use_whatsapp_aid': 'This phone number can be contacted via WhatsApp'
+        }
+
+    def __init__(self, *args, **kwargs):
+        super(AidContactInformationForm, self).__init__(*args, **kwargs)
+
+
+class LocationInformationForm(forms.ModelForm):
+    latitude = forms.DecimalField(max_digits=9, decimal_places=6, required=False, widget=forms.HiddenInput())
+    longitude = forms.DecimalField(max_digits=9, decimal_places=6, required=False, widget=forms.HiddenInput())
+    location_note = forms.CharField(required=False, widget=forms.HiddenInput())
+
+    class Meta:
+        model = AidRequest
+        fields = ['street_address', 'city', 'state', 'zip_code', 'country']
+
+
+class RequestDetailsForm(forms.ModelForm):
+    class Meta:
+        model = AidRequest
+        fields = [
+            'group_size', 'supplies_needed', 'welfare_check_info',
+            'medical_needs', 'additional_info'
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['supplies_needed'].widget.attrs['rows'] = 2
+        self.fields['welfare_check_info'].widget.attrs['rows'] = 2
+        self.fields['medical_needs'].widget.attrs['rows'] = 2
+        self.fields['additional_info'].widget.attrs['rows'] = 2
+
+
+class RequestStatusForm(forms.ModelForm):
+    class Meta:
+        model = AidRequest
+        fields = ['status', 'priority']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['status'].required = False
+        self.fields['priority'].required = False
+
+
 class AidRequestUpdateForm(forms.ModelForm):
     """ Aid Request Form """
 

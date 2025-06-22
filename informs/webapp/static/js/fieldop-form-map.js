@@ -2,7 +2,7 @@
  * Azure Maps location picker for FieldOp form
  */
 const fieldOpFormMapConfig = {
-    debug: true // Set to false for production
+    debug: false // Set to false for production
 };
 
 let map;

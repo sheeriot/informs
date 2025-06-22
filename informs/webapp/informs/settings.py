@@ -151,6 +151,7 @@ TEMPLATES = [
                 'aidrequests.context_processors.fieldops_active',
                 'aidrequests.context_processors.basevars',
                 'aidrequests.context_processors.field_op_context',
+                'informs.context_processors.app_version',
             ],
             'builtins': [
                 'django.templatetags.static',
@@ -207,10 +208,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static')
-]
 STATIC_ROOT = '/opt/app/static_files/'
+
+STATICFILES_DIRS = [
+    BASE_DIR / 'static'
+]
+
+APP_VERSION = os.environ.get('STATIC_VERSION', '0.0.1')
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
@@ -391,7 +395,7 @@ icons_config.read(os.path.join(BASE_DIR, 'takserver/cot_icons.ini'))
 COT_ICONS = {key: value for key, value in icons_config.items('Icons')}
 # ic(COT_ICONS)
 
-# Version information
-VERSION = '0.3.2'
+# Static Version information
+STATIC_VERSION = os.environ.get('STATIC_VERSION', '0.0.1')
 
 # PYTAK_FLUSH_TIMEOUT = 40 # seconds

@@ -31,7 +31,7 @@ def get_azure_geocode(aid_request):
         client = MapsSearchClient(credential=cred)
         query_results = client.get_geocoding(query=query_address, coordinates=field_op_coords)
     except Exception as e:
-        ic(e)
+        # ic(e)
         results['status'] = "Error"
         results['note'] = f"Azure Maps API call failed: {e}"
         return results
@@ -104,5 +104,5 @@ def geocode_save(aid_request, geocode_results):
         aid_location.save()
         return aid_location
     except Exception as e:
-        ic(e)
+        # ic(e)
         raise AidLocationError(f"Could NOT Save Geocoded location!\n{e}")

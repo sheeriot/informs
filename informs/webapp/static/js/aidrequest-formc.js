@@ -7,7 +7,7 @@ window.addEventListener('pageshow', function(event) {
 });
 
 const aidRequestFormCConfig = {
-    debug: true // Set to false for production
+    debug: false // Set to false for production
 };
 
 function formatAzureMapsNote(data, type) {
@@ -173,18 +173,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const dots = document.querySelectorAll('.progress-dots .dot');
     let currentStep = window.INFORMS_INITIAL_STEP || 0;
     const confirmAndNextBtn = document.getElementById('confirm-and-next-btn');
+    const resetLocationBtn = document.getElementById('reset-location-btn');
     const nextStep1Btn = document.getElementById('next-step-1');
     const prevStep2Btn = document.getElementById('prev-step-2');
     const prevStep3Btn = document.getElementById('prev-step-3');
 
+    if (aidRequestFormCConfig.debug) {
+        console.log('Reset button found in DOM:', resetLocationBtn);
+    }
+
+    // After restoring form data, check if location was already set
+    const locationModifiedInput = document.getElementById('id_location_modified');
+
     document.addEventListener('locationUpdated', (e) => {
-        const { source, position, geocodeData, geocodeType } = e.detail;
+        const { source, position, geocodeData, geocodeType, log } = e.detail;
         if (aidRequestFormCConfig.debug) {
             console.log('form-c.js: locationUpdated event received with detail:', e.detail);
         }
 
         let locationLog = [];
-        if (geocodeData) {
+        if (source === 'restored_from_session' && log) {
+            locationLog = log;
+        } else if (geocodeData) {
             locationLog.push(formatAzureMapsNote(geocodeData, geocodeType));
         } else if (source === 'device_location') {
             locationLog.push('User requested device location.');
@@ -215,6 +225,32 @@ document.addEventListener('DOMContentLoaded', function() {
             confirmAndNextBtn.textContent = 'Confirm & Next';
         }
     });
+
+    if (resetLocationBtn) {
+        resetLocationBtn.addEventListener('click', () => {
+            const fieldsToClear = [
+                'id_street_address', 'id_city', 'id_state', 'id_zip_code',
+                'id_coordinates', 'id_latitude', 'id_longitude',
+                'id_location_note', 'id_location_source'
+            ];
+            fieldsToClear.forEach(id => {
+                const field = document.getElementById(id);
+                if (field) field.value = '';
+            });
+            document.getElementById('id_location_modified').value = 'False';
+
+            if (confirmAndNextBtn) {
+                confirmAndNextBtn.disabled = true;
+                confirmAndNextBtn.classList.add('opacity-25');
+                confirmAndNextBtn.textContent = 'Provide Location';
+            }
+
+            saveFormData(); // Persist changes
+
+            // Dispatch a custom event to notify the map to reset its view
+            document.dispatchEvent(new CustomEvent('resetLocationView'));
+        });
+    }
 
     if (nextStep1Btn) {
         nextStep1Btn.addEventListener('click', () => { if (validateStep(0)) { currentStep = 1; showStep(currentStep); } });
@@ -416,19 +452,6 @@ document.addEventListener('DOMContentLoaded', function() {
             fieldToFocus.focus();
             fieldToFocus.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-    }
-
-    // After restoring data, check if location is set and enable button
-    if (document.getElementById('id_latitude')?.value && document.getElementById('id_longitude')?.value) {
-        const eventDetail = {
-            source: document.getElementById('id_location_source').value || 'restored_from_session',
-            position: [
-                parseFloat(document.getElementById('id_longitude').value),
-                parseFloat(document.getElementById('id_latitude').value)
-            ],
-            log: document.getElementById('id_location_note').value.split('\\n')
-        };
-        document.dispatchEvent(new CustomEvent('locationUpdated', { detail: eventDetail }));
     }
 
     window.addEventListener('resize', adjustMapHeight);

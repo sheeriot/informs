@@ -116,7 +116,7 @@ class CotMaker:
                 field_op_msg = await self.build_field_op_message(field_op, full_client_uid_for_cot_maker, field_op_icon)
                 if field_op_msg:
                     messages.append(field_op_msg)
-                    ic(f"Built field op marker for {self.field_op_slug} with client UID {full_client_uid_for_cot_maker}")
+                    # ic(f"Built field op marker for {self.field_op_slug} with client UID {full_client_uid_for_cot_maker}")
 
             # Build aid request messages if needed
             if self.mark_type == 'aid' and self.aid_request_ids:
@@ -140,7 +140,7 @@ class CotMaker:
                         aid_msg = await self.build_aid_request_message(aid_request, field_op, full_client_uid_for_cot_maker, field_op_cot_type, location_obj)
                         if aid_msg:
                             messages.append(aid_msg)
-                            ic(f"Built aid request marker for ID {aid_id}, linked to client {full_client_uid_for_cot_maker}")
+                            # ic(f"Built aid request marker for ID {aid_id}, linked to client {full_client_uid_for_cot_maker}")
                     except AidRequest.DoesNotExist:
                         logger.warning(f"Aid request {aid_id} not found for field_op {self.field_op_slug}. Skipping.")
                         continue
@@ -152,11 +152,11 @@ class CotMaker:
 
         except FieldOp.DoesNotExist:
             logger.error(f"FieldOp {self.field_op_slug} not found. Cannot build CoT messages.")
-            ic(f"Debug context for FieldOp {self.field_op_slug} not found.")
+            # ic(f"Debug context for FieldOp {self.field_op_slug} not found.")
             raise
         except Exception as e:
             logger.error(f"Error building CoT messages for {self.field_op_slug}: {e}")
-            ic(f"Debug context for error building messages for {self.field_op_slug}: {e}")
+            # ic(f"Debug context for error building messages for {self.field_op_slug}: {e}")
             raise
 
     async def build_field_op_message(self, field_op, full_client_uid, field_op_icon):
@@ -252,5 +252,5 @@ class CotMaker:
             return None
         except Exception as e:
             logger.error(f"Error building detailed aid request message for {aid_request.pk}: {e}")
-            ic(f"Debug context for error building detailed aid request message {aid_request.pk}: {e}")
+            # ic(f"Debug context for error building detailed aid request message {aid_request.pk}: {e}")
             raise

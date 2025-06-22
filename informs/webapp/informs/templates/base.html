@@ -1,5 +1,5 @@
 {% load static %}
-
+{% load custom_tags %}
 {% load tz_detect %}
 
 <!doctype html>
@@ -47,6 +47,8 @@
         </div>
 
         {% if user.is_authenticated %}
+          {# Hiding auth items based on hide_auth_header_items context variable #}
+          {% if not hide_auth_header_items %}
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup"
             aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -125,6 +127,7 @@
             </form>
             </div>
           </div>
+          {% endif %}
         {% else %}
           {% if request.resolver_match.url_name == 'home' %}
             <div class="col-4"></div>

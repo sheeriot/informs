@@ -1,0 +1,83 @@
+{% load bootstrap_icons %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Aid Locations</h5>
+    </div>
+    <div class="card-body">
+        {% if locations %}
+            <div class="list-group list-group-flush">
+                {% for location in locations %}
+                    <div class="list-group-item px-0 border-bottom" id="ar{{ aid_request.pk }}-al{{ location.pk }}-loc">
+
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <h6 class="mb-0">Location: {{ location.pk }}</h6>
+                            {% if location.status != 'archived' %}
+                                <button type="button" class="btn btn-sm btn-outline-danger delete-location-btn" title="Delete Location" data-location-id="{{ location.pk }}" data-action="delete">
+                                    {% bs_icon 'trash-fill' %}
+                                </button>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted d-block">Created: {{ location.created_at|date:"Y-m-d H:i" }}</small>
+
+                        <div class="input-group input-group-sm mt-1">
+                            <input type="text" class="form-control font-monospace bg-light" value="{{ location.latitude|floatformat:5 }}, {{ location.longitude|floatformat:5 }}" readonly>
+                            <button class="btn btn-outline-secondary btn-copy-coords" type="button" data-copy-text="{{ location.latitude }},{{ location.longitude }}" onclick="copyCoordinates(this)">
+                                {% bs_icon 'clipboard' %}
+                            </button>
+                        </div>
+
+                        <div class="mt-2">
+                            <small class="text-muted d-block">Source</small>
+                            <span class="mb-1">{{ location.source }}</span>
+                        </div>
+
+                        <div class="mt-2">
+                            <small class="text-muted d-block">Status</small>
+                            <div class="d-flex align-items-center">
+                                <span class="location-status-badge mb-1 fw-bold {% if location.status == 'confirmed' %}text-success{% elif location.status == 'rejected' %}text-danger{% endif %}">{{ location.get_status_display }}</span>
+
+                                {% if location.status == 'new' and aid_request.location_status != 'confirmed' %}
+                                    <button type="button" class="btn btn-sm btn-success confirm-location-btn ms-2" title="Confirm this as the primary location" data-location-id="{{ location.pk }}" data-action="confirm">
+                                        {% bs_icon 'check-circle' %} Confirm
+                                    </button>
+                                {% endif %}
+                                {% if location.status == 'confirmed' %}
+                                    <button type="button" class="btn btn-sm btn-warning reject-location-btn ms-2" title="Reject this location" data-location-id="{{ location.pk }}" data-action="reject">
+                                        {% bs_icon 'x-octagon' %} Reject
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if location.address_found %}
+                        <div class="mb-2 mt-2">
+                            <small class="text-muted d-block">Address Lookup</small>
+                            <span class="mb-1">{{ location.address_found }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if location.note %}
+                        <div class="mb-2">
+                            <small class="text-muted">Notes:</small>
+                            <pre class="mb-0 font-monospace bg-light p-1" style="white-space: pre-wrap; font-size: 0.8em;">{{ location.note }}</pre>
+                        </div>
+                        {% endif %}
+
+                        <div class="mt-3 position-relative" id="map-area-{{ location.pk }}">
+                           {% include 'aidrequests/partials/_location_map_area.html' %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted">No locations have been added yet.</p>
+        {% endif %}
+    </div>
+    {% if not hide_add_location_button %}
+    <div class="card-footer text-muted">
+        <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#addLocationModal">
+            <i class="bi bi-plus-circle-fill"></i> Add Location
+        </button>
+    </div>
+    {% endif %}
+</div>

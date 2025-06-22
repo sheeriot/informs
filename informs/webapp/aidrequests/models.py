@@ -161,16 +161,55 @@ class AidRequest(TimeStampedModel):
 
     requestor_email = models.EmailField(blank=True)
     requestor_phone = models.CharField(blank=True, max_length=12)  # Format: 555-555-5555
+    use_whatsapp = models.BooleanField(default=False)
 
     # 2. Contact details for party needing assistance
     aid_first_name = models.CharField(max_length=20, blank=True)
     aid_last_name = models.CharField(max_length=30, blank=True)
     aid_email = models.EmailField(blank=True)
     aid_phone = models.CharField(max_length=12, blank=True)
+    use_whatsapp_aid = models.BooleanField(default=False)
 
     @property
     def aid_contact(self):
         return bool(self.aid_first_name or self.aid_last_name or self.aid_email or self.aid_phone)
+
+    @property
+    def location_status(self):
+        """
+        Calculates the primary location status from prefetched locations.
+        This avoids N+1 queries by operating on the prefetched `locations` queryset.
+        Order of precedence: 'confirmed', then 'new'.
+        """
+        all_locs = self.locations.all()
+        has_confirmed = any(loc.status == 'confirmed' for loc in all_locs)
+        if has_confirmed:
+            return 'confirmed'
+
+        has_new = any(loc.status == 'new' for loc in all_locs)
+        if has_new:
+            return 'new'
+
+        return None
+
+    @property
+    def location(self):
+        """
+        Finds the primary location object from prefetched locations.
+        This avoids N+1 queries by operating on the prefetched `locations` queryset.
+        Order of precedence: 'confirmed', then 'new'.
+        """
+        all_locs = list(self.locations.all())
+
+        for loc in all_locs:
+            if loc.status == 'confirmed':
+                return loc
+
+        for loc in all_locs:
+            if loc.status == 'new':
+                return loc
+
+        return None
 
     # 3. Location of assistance request
     street_address = models.CharField(max_length=50, blank=True)
@@ -259,65 +298,36 @@ class AidRequest(TimeStampedModel):
 
     @property
     def is_active(self):
-        """Return whether the aid request is in an active state"""
+        """
+        Checks if the request status is one of the active statuses.
+        """
         return self.status in self.ACTIVE_STATUSES
-
-    @property
-    def location_status(self):
-        """
-        Calculates the primary location status from prefetched locations.
-        This avoids N+1 queries by operating on the prefetched `locations` queryset.
-        Order of precedence: 'confirmed', then 'new'.
-        """
-        # self.locations.all() will use the prefetched queryset if available
-        all_locs = self.locations.all()
-        has_confirmed = any(loc.status == 'confirmed' for loc in all_locs)
-        if has_confirmed:
-            return 'confirmed'
-
-        has_new = any(loc.status == 'new' for loc in all_locs)
-        if has_new:
-            return 'new'
-
-        return None
-
-    @property
-    def location(self):
-        """
-        Finds the primary location object from prefetched locations.
-        This avoids N+1 queries by operating on the prefetched `locations` queryset.
-        Order of precedence: 'confirmed', then 'new'.
-        """
-        # self.locations.all() will use the prefetched queryset if available
-        all_locs = list(self.locations.all()) # Convert to list to iterate multiple times
-
-        # Find the first 'confirmed' location
-        for loc in all_locs:
-            if loc.status == 'confirmed':
-                return loc
-
-        # If no 'confirmed', find the first 'new' location
-        for loc in all_locs:
-            if loc.status == 'new':
-                return loc
-
-        return None
 
     class Meta:
         verbose_name = 'Aid Request'
         verbose_name_plural = 'Aid Requests'
 
     def __str__(self):
-        return f"{self.pk} - {self.requester_name}"
+        return str(self.id)
 
     def save(self, *args, **kwargs):
-        is_new = self.pk is None
-        if is_new and not self.priority:
-            self.priority = 'medium'
+        """
+        Custom save method to trigger CoT updates on status or priority change.
+        """
+        is_update = self.pk is not None
+        if is_update:
+            original = AidRequest.objects.get(pk=self.pk)
+            status_changed = original.status != self.status
+            priority_changed = original.priority != self.priority
 
-        # Set default status if it's a new request and no status is provided
-        if is_new and not self.status:
-            self.status = 'new'
+            if (status_changed or priority_changed) and not self.field_op.disable_cot:
+                async_task(
+                    'aidrequests.tasks.send_cot_task',
+                    field_op_slug=self.field_op.slug,
+                    mark_type='aid',
+                    aidrequest=self.pk,
+                    task_name=f"Update_CoT_AR_{self.pk}"
+                )
 
         super(AidRequest, self).save(*args, **kwargs)
 

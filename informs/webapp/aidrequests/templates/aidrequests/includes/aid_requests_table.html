@@ -26,6 +26,7 @@
                     <th scope="col" class="py-1">Type</th>
                     <th scope="col" class="py-1">Status</th>
                     <th scope="col" class="py-1">Priority</th>
+                    <th scope="col" class="py-1">Size</th>
                     <th scope="col" class="py-1"><i class="bi bi-geo-alt"></i></th>
                     <th scope="col" class="py-1">Address</th>
                     <th scope="col" class="py-1">Last Update</th>
@@ -38,7 +39,7 @@
                     {% include "aidrequests/partials/aid_request_row.html" %}
                 {% empty %}
                 <tr id="aid-request-empty-row" {% if aid_requests %}class="d-none"{% endif %}>
-                    <td colspan="9" class="text-center py-4 text-muted">No aid requests found</td>
+                    <td colspan="11" class="text-center py-4 text-muted">No aid requests found</td>
                 </tr>
                 {% endfor %}
             </tbody>
