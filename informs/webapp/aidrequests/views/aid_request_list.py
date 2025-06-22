@@ -11,9 +11,21 @@ from decimal import Decimal
 import pandas as pd
 from django.views.generic import ListView
 import logging
+from ..context_processors import get_field_op_from_kwargs
+from icecream import ic
+# from django_q.tasks import async_task
+# from .aid_request_forms_a import RequestStatusForm
+# from ..forms import AidRequestStatusUpdateForm, AidRequestPriorityUpdateForm
 
 from ..models import FieldOp, AidRequest, AidType
 from .utils import prepare_aid_locations_for_map, locations_to_bounds
+from ..views.aid_request_forms_a import (
+    RequestorInformationForm,
+    AidContactInformationForm,
+    LocationInformationForm,
+    RequestDetailsForm,
+    RequestStatusForm,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -191,44 +203,3 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         })
 
         return context
-
-# Add new view for AJAX updates
-@login_required
-@permission_required('aidrequests.change_aidrequest')
-@require_http_methods(["POST"])
-def update_aid_request(request, field_op, pk):
-    try:
-        # Get the aid request
-        aid_request = get_object_or_404(AidRequest, pk=pk, field_op__slug=field_op)
-
-        # Parse the JSON data
-        data = json.loads(request.body)
-
-        # Update status if provided
-        if 'status' in data:
-            aid_request.status = data['status']
-
-        # Update priority if provided
-        if 'priority' in data:
-            aid_request.priority = data['priority']
-
-        # Save the changes
-        aid_request.save()
-
-        # Return updated data
-        response_data = {
-            'success': True,
-            'status': aid_request.status,
-            'status_display': aid_request.get_status_display(),
-            'priority': aid_request.priority,
-            'priority_display': aid_request.get_priority_display()
-        }
-
-        return JsonResponse(response_data)
-
-    except Exception as e:
-        logger.error(f"Error updating aid request: {e}")
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=400)

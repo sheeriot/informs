@@ -1,181 +1,122 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 {% load static %}
+{% load bootstrap_icons %}
+{% load custom_tags %}
+
+{% block title %}
+Aid Request {{ aid_request.pk }} for {{ field_op.name }}
+{% endblock %}
 
 {% block content %}
-<div class="container m-4">
+<div id="aid-request-config"
+    data-csrf-token="{{ csrf_token }}"
+    data-field-op="{{ field_op.slug }}"
+    data-aid-request-id="{{ aid_request.pk }}"
+    data-url-partial-update="{{ url_partial_update }}"
+    data-url-regenerate-map="{{ url_regenerate_map }}"
+    data-url-delete-location="{{ url_delete_location }}"
+    data-url-update-location-status="{{ url_update_location_status }}"
+    data-url-check-map-status="{{ url_check_map_status }}"
+    >
+</div>
+<div class="container-fluid">
     {% include 'aidrequests/partials/aid_request_header.html' %}
     <hr class="m-0" />
-    <div class="container font-monospace mt-1">
-        <div class="d-flex flex-column flex-lg-row">
+    <div class="row mt-3">
+        {# Left Column #}
+        <div class="col-lg-7">
             {% include 'aidrequests/includes/aid_request_summary.html' %}
             {% include 'aidrequests/includes/aid_request_contact.html' %}
-        </div>
-        <hr class="m-1">
-        <div class="d-inline-flex align-items-center w-100">
-            <a href="{% url 'aid_request_notify' pk=aid_request.pk field_op=field_op.slug %}" class="btn btn-info btn-sm mx-1 p-1">
-                <i class="bi bi-send-fill"></i> Email
-            </a>
-            |
-            <div id="aid-request-config"
-                data-csrf-token="{{ csrf_token }}"
-                data-field-op="{{ field_op.slug }}"
-                data-url-send-cot="{% url 'send_cot' field_op=field_op.slug %}"
-                data-url-check-status="{% url 'sendcot_checkstatus' field_op=field_op.slug %}">
-            </div>
-            <input type="hidden" id="aidrequest_id" value="{{ aid_request.pk }}">
 
-            <!-- TAK Alert button with responsive width -->
-            <div class="d-inline-flex align-items-center">
-                <button id="tak-alert-button" class="btn btn-danger btn-sm mx-1 p-1 px-2">
-                    <span class="d-inline-flex align-items-center justify-content-center">
-                        <i class="bi bi-bullseye me-1"></i>
-                        <span>Alert TAK</span>
-                    </span>
-                </button>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Request Details</h5>
+                </div>
+                <div class="card-body">
+                    <h2>Emergency Medical Needs</h2>
+                    <p>{{ object.medical_needs|default:"None" }}</p>
+
+                    <h2>Supplies Needed</h2>
+                    <p>{{ object.supplies_needed|default:"None" }}</p>
+
+                    <h2>Welfare Check Information</h2>
+                    <p>{{ object.welfare_check_info|default:"None" }}</p>
+
+                    <h2>Additional Information</h2>
+                    <p>{{ object.additional_info|default:"None" }}</p>
+                </div>
             </div>
 
-            <!-- SINGLE TAK status container that gets updated -->
-            <div id="tak-status-wrapper" class="d-flex align-items-center ms-2 py-1">
-                <!-- Only this single element should be updated -->
-                <div id="send-cot-status" class="small text-nowrap rounded px-2 py-1 transition-opacity"></div>
-            </div>
-
-            <!-- Hidden popup status container (kept for backward compatibility) -->
-            <div class="sendcot-statuscontainer d-none">
-                <div class="alert alert-info py-1 px-2 mb-0 small d-none">
-                    <span class="status-message"></span>
+             <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Request Logs</h5>
+                </div>
+                <div class="card-body">
+                    {% if log_form %}
+                        {% crispy log_form %}
+                    {% endif %}
+                    <hr class="m-1">
+                    <div class="container font-monospace">
+                        <table class="table table-sm table-warning table-striped table-bordered table-font-small">
+                            <thead>
+                                <tr>
+                                    <th class="col-auto">Updated</th>
+                                    <th class="col-auto">Log</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in logs %}
+                                <tr>
+                                    <td class="col-auto">
+                                        {{ log.updated_at|date:"Y-m-d H:i" }}
+                                        ({{ log.updated_by }})
+                                    </td>
+                                    <td class="col-auto">
+                                        <div class="text-wrap">
+                                            {{ log.log_entry }}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
+
+        {# Right Column #}
+        <div class="col-lg-5">
+            <!-- Status Card -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Request Status</h5>
+                </div>
+                <div class="card-body">
+                    {{ status_form.status|as_crispy_field }}
+                    {{ status_form.priority|as_crispy_field }}
+                </div>
+            </div>
+            <div id="locations-list-container">
+                {% include 'aidrequests/partials/_aid_locations_list.html' %}
+            </div>
+        </div>
     </div>
-    <hr class="m-1">
-    <div class="row flex-row align-items-center my-1">
-        {% include 'aidrequests/includes/aid_request_map.html' %}
-    </div>
-
-    <div class="container font-monospace">
-        <table class="table table-sm table-data table-success table-striped">
-            <thead>
-                <tr>
-                    <th scope="col-auto">Location</th>
-                    <th scope="col-auto">Notes</th>
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for loc in locations %}
-                <tr>
-                    <td class="ps-2">
-                        <div class="d-inline-flex">
-                            <div class=" px-1 mx-1">
-                                {{ loc.latitude }},{{ loc.longitude }}
-                            </div>
-                            <a href="https://google.com/maps/place/{{ loc.latitude }},{{ loc.longitude }}/@{{ loc.latitude }},{{ loc.longitude }},13z"
-                                                                target="_blank" class="btn btn-outline-success btn-sm">
-                                <i class="bi bi-globe2"></i>
-                            </a>
-                        </div>
-                        <div>
-                            Status: {{ loc.status }}<br>
-                        </div>
-                        <div>
-                            <small>Updated: {{ loc.updated_at|date:"Y-m-d H:i" }}</small>
-                        </div>
-                        <div>
-                            Distance: {{ loc.distance }} km<br>
-                        </div>
-                        <div>
-                            Location ID: {{ loc.pk }}<br>
-                        </div>
-                        <div>
-                            Created By: {{ loc.created_by }}<br>
-                        </div>
-                        <div class="d-inline-flex border bg-warning-subtle border-warning border-2 rounded align-items-center p-1">
-                            <small class="me-2">{{ loc.source }}</small>
-                            <a href="{% url 'aid_location_delete' field_op=field_op.slug aid_request=object.pk pk=loc.pk  %}" class="btn btn-danger btn-sm w-auto">
-                                <i class="bi bi-trash"></i>
-                            </a>
-                        </div>
-                    <td>
-                        <pre>{{ loc.note }}</pre>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <hr>
-    <h2>Emergency Medical Needs</h2>
-    <p>{{ object.medical_needs|default:"None" }}</p>
-
-    <h2>Supplies Needed</h2>
-    <p>{{ object.supplies_needed|default:"None" }}</p>
-
-    <h2>Welfare Check Information</h2>
-    <p>{{ object.welfare_check_info|default:"None" }}</p>
-
-    <h2>Additional Information</h2>
-    <p>{{ object.additional_info|default:"None" }}</p>
-    <hr class="m-0">
-    <h2>Activity Logs</h2>
-    <div class="container font-monospace">
-        {% if log_form %}
-            {% crispy log_form %}
-        {% endif %}
-    </div>
-    <hr class="m-1">
-    <div class="container font-monospace">
-        <table class="table table-sm table-warning table-striped table-bordered table-font-small">
-            <thead>
-                <tr>
-                    <th class="col-auto">Updated</th>
-                    <th class="col-auto">Log</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for log in logs %}
-                <tr>
-                    <td class="col-auto">
-                            {{ log.updated_at|date:"Y-m-d H:i" }}
-                            ({{ log.updated_by }})
-                    </td>
-                    <td class="col-auto">
-                        <div class="text-wrap">
-                            {{ log.log_entry }}
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <hr class="m-0">
-    <table class="table table-bordered table-data w-auto caption-top border border-3 border-primary font-monospace"
-                    style="font-size: 0.75rem;">
-        <caption>Ticket Info</caption>
-        <tr>
-            <th class="col-auto">Created At</th>
-            <th class="col-auto">Updated At</th>
-            <th class="col-auto">Locations</th>
-        </tr>
-        <tr>
-            <td class="col-auto">{{ object.created_at|date:"Y-m-d H:i" }}</td>
-            <td class="col-auto">{{ object.updated_at|date:"Y-m-d H:i" }}</td>
-            <td class="col-auto">{{ locations|length }}
-                {% if confirmed %}
-                <span class="text-success"><i class="bi bi-check" color="green"></i> ok</span>
-            {% else %}
-                <span class="text-danger"><i class="bi bi-exclamation" color="red"></i>NOT CONFIRMED</span>
-            {% endif %}
-            </td>
-        </tr>
-    </table>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/tak-alert.js' %}"></script>
-{% endblock %}
+<script src="{% static 'js/aidrequests-detail.js' %}"></script>
+<script src="{% static 'js/aidrequest-update-actions.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function() {
+            if (window.initializeModalMap) {
+                window.initializeModalMap();
+            }
+        }, 200);
+    });
+</script>
+{% endblock extra_js %}

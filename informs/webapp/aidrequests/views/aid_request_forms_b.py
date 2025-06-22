@@ -10,7 +10,7 @@ from crispy_forms.bootstrap import InlineRadios
 from ..models import AidRequest, AidType
 from ..context_processors import get_field_op_for_form
 import re
-from icecream import ic
+# from icecream import ic
 
 class AidRequestCreateFormB(forms.ModelForm):
     """ Simplified Aid Request Form """
@@ -139,7 +139,7 @@ class AidRequestCreateFormB(forms.ModelForm):
         field_op_ring_size = self.field_op.ring_size or ""
 
         aid_types = self.field_op.aid_types.all().order_by('weight', 'name')
-        ic(f"Available aid types for {self.field_op.slug}: {[t.name for t in aid_types]}")
+        # ic(f"Available aid types for {self.field_op.slug}: {[t.name for t in aid_types]}")
 
         self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in aid_types]
         self.fields['aid_type'].label = False
@@ -148,8 +148,10 @@ class AidRequestCreateFormB(forms.ModelForm):
             if aid_types.exists():
                 default_aid_type = aid_types.first()
                 self.initial['aid_type'] = default_aid_type.pk
-                ic(f"Defaulting to '{default_aid_type.name}' (Weight: {default_aid_type.weight}) with pk: {default_aid_type.pk}")
+                # ic(f"Defaulting to '{default_aid_type.name}' (Weight: {default_aid_type.weight}) with pk: {default_aid_type.pk}")
 
+        self.fields['country'].widget.attrs['readonly'] = True
+        self.fields['country'].widget.attrs['class'] = 'form-control-plaintext'
         self.fields['aid_description'].widget.attrs['rows'] = 2
         self.initial['group_size'] = 10
 

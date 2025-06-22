@@ -95,24 +95,26 @@ class TestViews(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'aidrequests/aid_request_detail.html')
-        self.assertContains(response, 'Test Aid Request')
+        self.assertContains(response, 'John Doe')
 
     def test_aid_request_create_POST_authenticated(self):
         """Test authenticated creation of aid request."""
         self.client.force_login(self.user)
+        self.field_op.aid_types.add(self.aid_type)
         response = self.client.post(
             reverse('aid_request_create', kwargs={'field_op': self.field_op.slug}),
             {
-                'title': 'New Aid Request',
-                'description': 'New Description',
-                'latitude': 34.2,
-                'longitude': -118.2,
-                'status': 'NEW'
+                'aid_type': self.aid_type.pk,
+                'full_name': 'Jane Doe',
+                'contact_info': 'jane@example.com',
+                'street_address': '123 Main St',
+                'city': 'Anytown',
+                'state': 'CA'
             }
         )
-        self.assertEqual(response.status_code, 302)  # Redirect after successful creation
+        self.assertEqual(response.status_code, 302)
         self.assertTrue(
-            AidRequest.objects.filter(title='New Aid Request').exists()
+            AidRequest.objects.filter(aid_first_name='Jane').exists()
         )
 
     def test_aid_request_create_POST_invalid_data(self):
@@ -121,16 +123,12 @@ class TestViews(TestCase):
         response = self.client.post(
             reverse('aid_request_create', kwargs={'field_op': self.field_op.slug}),
             {
-                'title': '',  # Invalid: empty title
-                'description': 'New Description',
-                'latitude': 34.2,
-                'longitude': -118.2,
-                'status': 'NEW'
+                'full_name': '',  # Invalid: empty name
             }
         )
-        self.assertEqual(response.status_code, 200)  # Returns to form
+        self.assertEqual(response.status_code, 200)
         self.assertFalse(
-            AidRequest.objects.filter(description='New Description').exists()
+            AidRequest.objects.filter(aid_last_name='Invalid').exists()
         )
         self.assertContains(response, 'This field is required')
 
@@ -140,30 +138,29 @@ class TestViews(TestCase):
         response = self.client.post(
             reverse('aid_request_update', kwargs={
                 'field_op': self.field_op.slug,
-                'aid_request_id': self.aid_request.id
+                'pk': self.aid_request.pk
             }),
             {
-                'title': 'Updated Aid Request',
-                'description': 'Updated Description',
-                'latitude': self.aid_request.latitude,
-                'longitude': self.aid_request.longitude,
-                'status': 'IN_PROGRESS'
+                'aid_type': self.aid_type.pk,
+                'aid_first_name': 'John',
+                'aid_last_name': 'Smith',
+                'status': 'assigned'
             }
         )
-        self.assertEqual(response.status_code, 302)  # Redirect after successful update
+        self.assertEqual(response.status_code, 302)
         updated_request = AidRequest.objects.get(id=self.aid_request.id)
-        self.assertEqual(updated_request.title, 'Updated Aid Request')
-        self.assertEqual(updated_request.status, 'IN_PROGRESS')
+        self.assertEqual(updated_request.aid_last_name, 'Smith')
+        self.assertEqual(updated_request.status, 'assigned')
 
     def test_ajax_filter_aid_requests(self):
         """Test AJAX filtering of aid requests."""
         self.client.force_login(self.user)
         response = self.client.get(
             reverse('aid_request_list', kwargs={'field_op': self.field_op.slug}),
-            {'status': 'NEW'},
+            {'status': 'new'},
             HTTP_X_REQUESTED_WITH='XMLHttpRequest'
         )
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
-        self.assertTrue(len(data['aid_requests']) > 0)
-        self.assertEqual(data['aid_requests'][0]['status'], 'NEW')
+        self.assertTrue(len(data) > 0)
+        self.assertEqual(data[0]['status'], 'new')

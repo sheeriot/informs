@@ -8,7 +8,7 @@ services:
     env_file:
       - env/django.env
     entrypoint: /opt/app/docker-entrypoint.sh
-    command: bash -c "cd /opt/app/informs && coverage run --source='.' manage.py test webapp.aidrequests.tests --verbosity=2"
+    command: bash -c "cd /opt/app/informs && coverage run --source='.' manage.py test $(find . -path ./tests -prune -o -name 'test*.py' -print | sed 's|^\./||; s|\.py$||; s|/|.|g')"
     volumes:
       - ./run_tests.sh:/opt/app/run_tests.sh
       - informs_test_staticfiles:/opt/app/static_files
@@ -23,7 +23,7 @@ services:
     env_file:
       - env/django.env
     entrypoint: /opt/app/docker-entrypoint.sh
-    command: bash -c "cd /opt/app/informs && coverage run --source='.' manage.py test --settings=informs.settings && coverage report -m && coverage html"
+    command: bash -c "cd /opt/app/informs && coverage run --source='.' manage.py test $(find . -path ./tests -prune -o -name 'test*.py' -print | sed 's|^\./||; s|\.py$||; s|/|.|g') --settings=informs.settings && coverage report -m && coverage html"
     volumes:
       - informs_test_staticfiles:/opt/app/static_files
       - informs_test_db:/opt/app/db

@@ -7,10 +7,10 @@ from django_q.tasks import async_task
 import logging
 
 from ..models import AidRequest, FieldOp, AidRequestLog
-from .aid_request_forms_a import AidRequestLogForm
+from .aid_request_forms_a import AidRequestLogForm, RequestStatusForm
 from .aid_location_forms import AidLocationStatusForm, AidLocationCreateForm
 from .aid_request import has_location_status, format_aid_location_note
-from .maps import staticmap_aid, calculate_zoom
+from .maps import staticmap_aid
 from ..geocoder import get_azure_geocode, geocode_save
 from ..tasks import send_cot_task
 
@@ -28,6 +28,13 @@ class AidRequestSubmittedView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['field_op'] = get_object_or_404(FieldOp, slug=self.kwargs['field_op'])
+        context['azure_maps_key'] = settings.AZURE_MAPS_KEY
+        context['hide_auth_header_items'] = True
+
+        # Get the most recent location, which should have been created by the post_save task.
+        aid_location = self.object.locations.order_by('-created_at').first()
+        context['aid_location'] = aid_location
+
         return context
 
 
@@ -62,9 +69,8 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
         # Ensure the location has a map
         if self.aid_location and not self.aid_location.map_filename:
             logger.info(f"AR-{self.aid_request.pk}: Location {self.aid_location.pk} is missing a map. Generating one now.")
-            zoom = calculate_zoom(self.aid_location.distance) if self.aid_location.distance is not None else 10
             staticmap_data = staticmap_aid(
-                width=600, height=600, zoom=zoom,
+                width=600, height=600,
                 fieldop_lat=self.aid_request.field_op.latitude,
                 fieldop_lon=self.aid_request.field_op.longitude,
                 aid1_lat=self.aid_location.latitude,
@@ -86,44 +92,45 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
 
             context['field_op'] = self.field_op
             context['aid_request'] = self.aid_request
-            if hasattr(self, 'aid_location_confirmed'):
-                context['confirmed'] = True
-                context['location'] = self.aid_location_confirmed
-                context['map_filename'] = self.aid_location_confirmed.map_filename
-                context['location_note'] = format_aid_location_note(self.aid_location_confirmed)
-                found_pk = self.aid_location_confirmed.pk
-            elif hasattr(self, 'aid_location_new'):
-                context['new'] = True
-                context['location'] = self.aid_location_new
-                context['map_filename'] = self.aid_location_new.map_filename
-                context['location_note'] = format_aid_location_note(self.aid_location_new)
-                found_pk = self.aid_location_new.pk
+
+            if self.aid_location:
+                if hasattr(self, 'aid_location_confirmed'):
+                    context['confirmed'] = True
+                elif hasattr(self, 'aid_location_new'):
+                    context['new'] = True
+
+                context['location'] = self.aid_location
+                context['map_filename'] = self.aid_location.map_filename
+                context['location_note'] = format_aid_location_note(self.aid_location)
+
+                aid_location_status_init = {
+                    'field_op': self.field_op.slug,
+                    'aid_request': self.aid_request.pk,
+                    'location_pk': self.aid_location.pk,
+                }
+                aid_location_status_form = AidLocationStatusForm(initial=aid_location_status_init)
+                context['aid_location_status_form'] = aid_location_status_form
 
             context['MAPS_PATH'] = settings.MAPS_PATH
             context['locations'] = self.aid_request.locations.all()
             context['logs'] = self.aid_request.logs.all().order_by('-updated_at')
-            aid_location_status_init = {
-                'field_op': self.field_op.slug,
-                'aid_request': self.aid_request.pk,
-                'pk': found_pk,
-            }
-            aid_location_status_form = AidLocationStatusForm(initial=aid_location_status_init)
-            context['aid_location_status_form'] = aid_location_status_form
-
-            # show the static map. Current, it runs in every context.
-            # should be saved locally and updated as needed
 
             log_init = {
                 'field_op': self.field_op.slug,
                 'aid_request': self.aid_request.pk,
                 }
             context['log_form'] = AidRequestLogForm(initial=log_init)
-            # Manual Location Form
-            aid_location_manual_init = {
-                'field_op': self.field_op.slug,
-                'aid_request': self.aid_request.pk,
-            }
-            context['aid_location_manual_form'] = AidLocationCreateForm(initial=aid_location_manual_init)
+            context['AZURE_MAPS_KEY'] = settings.AZURE_MAPS_KEY
+            context['MEDIA_URL'] = settings.MEDIA_URL
+            context['status_form'] = RequestStatusForm(instance=self.aid_request)
+            context['hide_add_location_button'] = True
+
+            # URLs for javascript actions
+            context['url_partial_update'] = reverse('aid_request_ajax_update', kwargs={'field_op': self.field_op.slug, 'pk': self.aid_request.pk})
+            context['url_regenerate_map'] = reverse('static_map_regenerate', kwargs={'field_op': self.field_op.slug, 'location_pk': 0})
+            context['url_delete_location'] = reverse('api_aid_location_delete', kwargs={'field_op': self.field_op.slug, 'location_pk': 0})
+            context['url_update_location_status'] = reverse('aid_location_status_update', kwargs={'field_op': self.field_op.slug, 'location_pk': 0})
+            context['url_check_map_status'] = reverse('check_map_status', kwargs={'field_op': self.field_op.slug, 'location_pk': 0})
 
             return context
         except Exception as e:

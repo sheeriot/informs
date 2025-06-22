@@ -1,0 +1,17 @@
+{% load bootstrap_icons %}
+
+{% if location.map_filename %}
+    {# Map Thumbnail Preview #}
+    <a href="#" class="preview-map-btn" data-map-url="{{ MEDIA_URL }}maps/{{ location.map_filename }}" title="Click to enlarge map">
+        <img src="{{ MEDIA_URL }}maps/{{ location.map_filename }}" alt="Map of location {{ location.pk }}" class="img-fluid rounded" style="cursor: pointer;">
+    </a>
+    {# Refresh Button Overlay #}
+    <button type="button" class="btn btn-sm btn-light generate-map-btn" title="Regenerate Map" data-location-id="{{ location.pk }}" data-action="remap" style="position: absolute; bottom: 8px; right: 8px; z-index: 10;">
+        {% bs_icon 'arrow-repeat' %}
+    </button>
+{% else %}
+    {# Create Map Button #}
+    <button type="button" class="btn btn-outline-primary w-100 generate-map-btn" title="Create Map" data-location-id="{{ location.pk }}" data-action="remap">
+        {% bs_icon 'geo-alt' %} Create Map
+    </button>
+{% endif %}

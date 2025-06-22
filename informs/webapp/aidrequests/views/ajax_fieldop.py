@@ -8,7 +8,7 @@ from datetime import datetime
 
 from ..models import FieldOp
 from ..tasks import send_cot_task
-from icecream import ic
+# from icecream import ic
 
 
 @login_required
@@ -52,8 +52,7 @@ def toggle_cot(request, field_op):
             'message': 'Invalid JSON data'
         }, status=400)
     except Exception as e:
-        if fieldOpsConfig.debug:
-            ic(e)
+        # ic(e)
         return JsonResponse({
             'status': 'error',
             'message': str(e)

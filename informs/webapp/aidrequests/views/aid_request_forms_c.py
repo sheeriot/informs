@@ -4,6 +4,7 @@ from django.utils.html import format_html
 from django.conf import settings
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError
+from django.utils.safestring import mark_safe
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Field, Submit, Row, Column, Div, Hidden, HTML
@@ -12,7 +13,6 @@ from crispy_forms.bootstrap import InlineRadios
 from ..models import AidRequest, AidType
 from ..context_processors import get_field_op_for_form
 import re
-from icecream import ic
 
 class AidRequestCreateFormC(forms.ModelForm):
     """ Multi-step Aid Request Form """
@@ -41,6 +41,7 @@ class AidRequestCreateFormC(forms.ModelForm):
             'supplies_needed',
             'contact_methods',
             'additional_info',
+            'use_whatsapp',
         ]
         widgets = {
             'aid_type': forms.RadioSelect,
@@ -61,6 +62,10 @@ class AidRequestCreateFormC(forms.ModelForm):
 
     full_name = forms.CharField(label="Name", max_length=100, required=True)
     contact_info = forms.CharField(label="Phone or Email", max_length=100, required=True)
+    use_whatsapp = forms.BooleanField(
+        label="This will be replaced",
+        required=False
+    )
 
     latitude = forms.DecimalField(max_digits=8, decimal_places=5, widget=forms.HiddenInput(), required=False)
     longitude = forms.DecimalField(max_digits=9, decimal_places=5, widget=forms.HiddenInput(), required=False)
@@ -84,6 +89,7 @@ class AidRequestCreateFormC(forms.ModelForm):
         super(AidRequestCreateFormC, self).__init__(*args, **kwargs)
 
         self.fields['contact_info'].help_text = "A valid email (e.g., user@example.com) or<br>phone number (at least 10 digits)."
+        self.fields['use_whatsapp'].label = mark_safe("Contact me by WhatsApp<br><small class='text-danger'>(requires phone number)</small>")
         self.fields['requestor_first_name'].required = False
         self.fields['requestor_last_name'].required = False
         self.fields['requestor_email'].required = False
@@ -134,8 +140,8 @@ class AidRequestCreateFormC(forms.ModelForm):
 
         field_op_lat = f'{self.field_op.latitude:.5f}' if self.field_op.latitude is not None else ""
         field_op_lon = f'{self.field_op.longitude:.5f}' if self.field_op.longitude is not None else ""
-        initial_lat = field_op_lat
-        initial_lon = field_op_lon
+        initial_lat = ""
+        initial_lon = ""
 
         if self.is_bound:
             submitted_lat = self.data.get('latitude')
@@ -146,13 +152,12 @@ class AidRequestCreateFormC(forms.ModelForm):
             # Also restore the coordinates text field
             self.initial['coordinates'] = self.data.get('coordinates')
         else:
-            if self.field_op.latitude is not None and self.field_op.longitude is not None:
-                self.initial['coordinates'] = f"{field_op_lat},{field_op_lon}"
+            self.initial['coordinates'] = ""
 
         field_op_ring_size = self.field_op.ring_size or ""
 
         aid_types = self.field_op.aid_types.all().order_by('weight', 'name')
-        ic(f"Available aid types for {self.field_op.slug}: {[t.name for t in aid_types]}")
+        # ic(f"Available aid types for {self.field_op.slug}: {[t.name for t in aid_types]}")
 
         self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in aid_types]
         self.fields['aid_type'].label = False
@@ -161,7 +166,7 @@ class AidRequestCreateFormC(forms.ModelForm):
             if aid_types.exists():
                 default_aid_type = aid_types.first()
                 self.initial['aid_type'] = default_aid_type.pk
-                ic(f"Defaulting to '{default_aid_type.name}' (Weight: {default_aid_type.weight}) with pk: {default_aid_type.pk}")
+                # ic(f"Defaulting to '{default_aid_type.name}' (Weight: {default_aid_type.weight}) with pk: {default_aid_type.pk}")
 
         self.fields['country'].widget.attrs['readonly'] = True
         self.fields['country'].widget.attrs['class'] = 'form-control-plaintext'
@@ -191,8 +196,20 @@ class AidRequestCreateFormC(forms.ModelForm):
                     Row(
                         Column(
                             HTML("<h5 class='mt-4 mb-3'>Who needs aid?</h5>"),
-                            'full_name',
-                            'contact_info',
+                            Row(
+                                Column('full_name', css_class="col-md-8"),
+                                css_class="mb-3"
+                            ),
+                            Row(
+                                Column('contact_info', css_class='col-md-7'),
+                                Column(
+                                    Div(
+                                        Field('use_whatsapp', wrapper_class='form-check'),
+                                        css_class='pt-4'
+                                    ),
+                                    css_class='col-md-5'
+                                ),
+                            ),
                             css_class="col-lg-8 offset-lg-2"
                         )
                     )
@@ -204,22 +221,37 @@ class AidRequestCreateFormC(forms.ModelForm):
                     css_class="d-flex justify-content-between align-items-center mt-3"
                 ),
                 css_id="step-1",
-                css_class="form-step card shadow-sm p-3"
+                css_class="form-step card p-3 border-0"
             ),
 
             # Step 2: Location
             Div(
                 Fieldset(
                     "", # Empty legend, using HTML for layout
-                    HTML(f"""
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="mb-0">Aid Location ({country_name})</h5>
-                            <button type="button" id="get-location" class="btn btn-danger btn-sm text-nowrap">
-                                <i class="bi bi-phone"></i> My Location
-                            </button>
-                        </div>
-                    """),
-                    HTML("<p class='form-text text-muted mb-3'>Provide a location to continue.<br>City and State are required for location lookup.</p>"),
+                    HTML(f"<h5 class='mb-3'>Aid Location ({country_name})</h5>"),
+                    Row(
+                        Column(
+                            HTML("""
+                                <button type="button" id="get-location" class="btn btn-success btn-lg text-nowrap">
+                                    <i class="bi bi-phone"></i> Get My Location <i class="bi bi-bullseye"></i>
+                                </button>
+                            """),
+                            css_class="col-auto"
+                        ),
+                        Column(
+                                HTML("<p class='form-text text-muted mb-0 px-2'>City and State are required for address lookup (below)</p>"),
+                                css_class="col"
+                        ),
+                        Column(
+                            HTML("""
+                                <button type="button" id="reset-location-btn" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-geo-alt"></i> Reset Location
+                                </button>
+                            """),
+                            css_class="col-auto"
+                        ),
+                        css_class="mb-3 align-items-center"
+                    ),
                     HTML("<div id='location-error-msg' class='text-danger fw-bold'></div>"),
                     Row(
                         Column(Field('city', css_class='mb-2'), css_class='col-md-6'),
@@ -234,6 +266,7 @@ class AidRequestCreateFormC(forms.ModelForm):
                         Div(HTML('<button type="button" id="confirm-and-next-btn" class="btn btn-primary btn-lg opacity-25" disabled>Provide Location</button>'), css_class="w-25 d-flex justify-content-end"),
                         css_class="d-flex justify-content-between align-items-center my-3"
                     ),
+                    HTML("<p class='text-muted text-center small mb-1'>Click on the Map to select a Location</p>"),
                     HTML(f"""
                         <div class="row g-0 mt-2">
                             <div class="form-group col-md-12 p-1" style="position: relative;">
@@ -261,7 +294,7 @@ class AidRequestCreateFormC(forms.ModelForm):
                     """),
                 ),
                 css_id="step-2",
-                css_class="form-step card shadow-sm p-3 d-none"
+                css_class="form-step card p-3 pt-2 border-0 d-none"
             ),
 
             # Step 3: Details
@@ -295,50 +328,51 @@ class AidRequestCreateFormC(forms.ModelForm):
                     css_class="d-flex justify-content-between align-items-center mt-3"
                 ),
                 css_id="step-3",
-                css_class="form-step card shadow-sm p-3 d-none"
+                css_class="form-step card p-3 border-0 d-none"
             ),
         )
 
     def clean_full_name(self):
         full_name = self.cleaned_data.get('full_name', '').strip()
-        if ' ' in full_name:
-            first_name, last_name = full_name.split(' ', 1)
-        else:
-            first_name, last_name = full_name, ''
-        self.cleaned_data['requestor_first_name'] = first_name
-        self.cleaned_data['requestor_last_name'] = last_name
-        self.cleaned_data['aid_first_name'] = first_name
-        self.cleaned_data['aid_last_name'] = last_name
+        if full_name:
+            parts = full_name.split()
+            self.cleaned_data['requestor_first_name'] = parts[0]
+            self.cleaned_data['aid_first_name'] = parts[0]
+            if len(parts) > 1:
+                self.cleaned_data['requestor_last_name'] = ' '.join(parts[1:])
+                self.cleaned_data['aid_last_name'] = ' '.join(parts[1:])
         return full_name
 
     def clean_contact_info(self):
         contact_info = self.cleaned_data.get('contact_info', '').strip()
-
+        is_email = False
         try:
             EmailValidator()(contact_info)
-            # If it's a valid email, we're good.
-            self.cleaned_data['requestor_email'] = contact_info
-            self.cleaned_data['aid_email'] = contact_info
-            self.cleaned_data['requestor_phone'] = ''
-            self.cleaned_data['aid_phone'] = ''
-            return contact_info
+            is_email = True
+            # ic(f"'{contact_info}' is a valid email address.")
         except ValidationError:
-            # Not a valid email, check for phone.
+            # ic(f"'{contact_info}' is not a valid email, checking if it is a phone number.")
             pass
 
+        if is_email:
+            self.cleaned_data['requestor_email'] = contact_info
+            self.cleaned_data['aid_email'] = contact_info
+            return contact_info
+
+        # If not a valid email, treat as a potential phone number.
+        # Remove all non-digit characters.
         cleaned_phone = re.sub(r'\D', '', contact_info)
         if len(cleaned_phone) >= 10:
             self.cleaned_data['requestor_phone'] = cleaned_phone
             self.cleaned_data['aid_phone'] = cleaned_phone
-            self.cleaned_data['requestor_email'] = ''
-            self.cleaned_data['aid_email'] = ''
+            # ic(f"'{contact_info}' is a valid phone number.")
             return contact_info
-
-        # It's neither
-        raise forms.ValidationError(
-            "Enter a valid email address or a phone number with at least 10 digits.",
-            code='invalid_contact'
-        )
+        else:
+            # ic(f"'{contact_info}' is not a valid email or a phone number with at least 10 digits.")
+            raise ValidationError(
+                "Enter a valid email address or a phone number with at least 10 digits.",
+                code='invalid_contact'
+            )
 
     def clean(self):
         cleaned_data = super().clean()

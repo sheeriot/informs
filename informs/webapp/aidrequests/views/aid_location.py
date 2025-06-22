@@ -1,196 +1,90 @@
-from django.conf import settings
-from django.shortcuts import get_object_or_404
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib import messages
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse_lazy, reverse
 from django.views.generic import CreateView, UpdateView, DeleteView
-from django.urls import reverse_lazy
-from django_q import tasks
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+from django.template.loader import render_to_string
+import logging
 
-from geopy.distance import geodesic
-from datetime import datetime
+from ..models import AidLocation, AidRequest
+from .aid_location_forms import AidLocationCreateForm
+from .maps import create_static_map
 
-from ..models import FieldOp, AidRequest, AidLocation
-from ..tasks import send_cot_task
-from .aid_location_forms import AidLocationCreateForm, AidLocationStatusForm
-from .maps import staticmap_aid, calculate_zoom
+logger = logging.getLogger(__name__)
 
-from icecream import ic
-
-
-class AidLocationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
-    """
-    A Django class-based view for saving azure maps geocoded location
-    """
-    model = AidRequest
+class AidLocationCreateView(LoginRequiredMixin, CreateView):
+    model = AidLocation
     form_class = AidLocationCreateForm
-    permission_required = 'aidrequests.add_aidlocation'
-    template_name = 'aidrequests/aid_request_geocode.html'
+    template_name = 'aidrequests/aid_location_form.html'
 
     def get_success_url(self):
-        return reverse_lazy('aid_request_detail',
-                            kwargs={'field_op': self.field_op.slug,
-                                    'pk': self.aid_request.pk}
-                            )
-
-    def setup(self, request, *args, **kwargs):
-        """Initialize attributes shared by all view methods."""
-        super().setup(request, *args, **kwargs)
-        self.kwargs = kwargs
-        self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
-        self.aid_request = get_object_or_404(AidRequest, pk=kwargs['aid_request'])
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs.update({
-            'initial': {
-                'field_op': self.field_op.slug,
-                'aid_request': self.aid_request.pk,
-                'status': 'new',
-                'source': 'manual'
-            }
-        })
-        # ic(kwargs)
-        return kwargs
+        return reverse('aid_request_detail', kwargs={'pk': self.object.aid_request.pk, 'fieldop_slug': self.object.aid_request.field_op.slug})
 
     def form_valid(self, form):
-        ic('manual created aid_location')
-        try:
-            self.aid_location = form.save()
-        except Exception as e:
-            ic(e)
+        response = super().form_valid(form)
+        create_static_map(self.object)
+        return response
 
-        # augment location data and create log
-        # first user and distance
-        user = self.request.user
-        if user.is_authenticated:
-            self.aid_location.created_by = user
-            self.aid_location.updated_by = user
-        else:
-            self.aid_location.created_by = None
-            self.aid_location.updated_by = None
+class AidLocationUpdateView(LoginRequiredMixin, UpdateView):
+    model = AidLocation
+    fields = ['name', 'address', 'latitude', 'longitude', 'status']
+    template_name = 'aidrequests/aid_location_form.html'
+    success_url = reverse_lazy('aid_request_list')
 
-        self.aid_location.distance = round(geodesic(
-                (self.field_op.latitude, self.field_op.longitude),
-                (self.aid_location.latitude, self.aid_location.longitude)
-            ).km, 2)
-
-        self.aid_location.save()
-
-        # Build the map
-        zoom = calculate_zoom(self.aid_location.distance)
-        staticmap_data = staticmap_aid(
-                                width=600, height=600, zoom=zoom,
-                                fieldop_lat=self.aid_request.field_op.latitude,
-                                fieldop_lon=self.aid_request.field_op.longitude,
-                                aid1_lat=self.aid_location.latitude,
-                                aid1_lon=self.aid_location.longitude,)
-
-        if staticmap_data:
-            timestamp = datetime.now().strftime("%y%m%d%H%M%S")
-            map_filename = f"AR{self.aid_request.pk}-map_{timestamp}.png"
-            map_file = f"{settings.MAPS_PATH}/{map_filename}"
-            with open(map_file, 'wb') as file:
-                file.write(staticmap_data)
-            try:
-                self.aid_location.map_filename = map_filename
-                self.aid_location.save()
-            except Exception as e:
-                ic(e)
-
-        ic(vars(self.aid_location))
-        # ----- Send COT ------
-        updated_at_stamp = self.aid_location.updated_at.strftime('%Y%m%d%H%M%S')
-        tasks.async_task(send_cot_task,
-                        field_op_slug=self.field_op.slug,
-                        mark_type='aid',
-                        aidrequests=[self.aid_request.pk],
-                        task_name=f"AidLocation{self.aid_location.pk}-ManualCreate-SendCot-{updated_at_stamp}")
-
-        return super().form_valid(form)
-
-    def form_invalid(self, form):
-        ic(form.errors)
-        return self.render_to_response(self.get_context_data(form=form))
-
-
-class AidLocationDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
-    permission_required = 'aidrequests.delete_aidlocation'
+class AidLocationDeleteView(LoginRequiredMixin, DeleteView):
     model = AidLocation
     template_name = 'aidrequests/aid_location_confirm_delete.html'
-    context_object_name = 'aid_location'
+    success_url = reverse_lazy('aid_request_list')
 
-    def get_success_url(self):
-        return reverse_lazy(
-            'aid_request_detail',
-            kwargs={
-                'field_op': self.field_op.slug,
-                'pk': self.aid_request.pk
-                }
-            )
+@require_POST
+@login_required
+def aid_location_status_update(request, field_op, location_pk):
+    location = get_object_or_404(AidLocation, pk=location_pk)
+    aid_request = location.aid_request
+    action = request.POST.get('action')
 
-    def setup(self, request, *args, **kwargs):
-        """Initialize attributes shared by all view methods."""
-        super().setup(request, *args, **kwargs)
-        self.aid_request = get_object_or_404(AidRequest, pk=kwargs['aid_request'])
-        self.field_op = self.aid_request.field_op
+    try:
+        # Use the existing location property to check for a confirmed location
+        has_confirmed = aid_request.location and aid_request.location.status == 'confirmed'
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['field_op'] = self.field_op
-        context['aid_request'] = self.aid_request
-        # ic(context)
-        return context
-
-
-class AidLocationStatusUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
-    model = AidLocation
-    form_class = AidLocationStatusForm
-    permission_required = 'aidrequests.change_aidlocation'
-    # template_name = 'aidrequests/aid_location_update.html'
-    # context_object_name = 'aid_location'
-
-    def setup(self, request, *args, **kwargs):
-        super().setup(request, *args, **kwargs)
-        self.aid_request = get_object_or_404(AidRequest, pk=kwargs['aid_request'])
-        self.field_op = self.aid_request.field_op
-        self.aid_location = get_object_or_404(AidLocation, pk=kwargs['pk'])
-        # ic(vars(self))
-
-    def get_success_url(self):
-        return reverse_lazy('aid_request_detail',
-                            kwargs={'field_op': self.field_op.slug,
-                                    'pk': self.aid_request.pk}
-                            )
-
-    def form_valid(self, form):
-        user = self.request.user
-        if 'confirm' in self.request.POST:
-            form.instance.status = 'confirmed'
-            action = f'Location {self.object.pk} - Confirmed by {user}'
-            # ic(get_object_or_404(AidLocation, pk=self.aid_location.pk).status)
-        elif 'reject' in self.request.POST:
-            form.instance.status = 'rejected'
-            action = f'Location {self.object.pk} - Rejected by {user}'
-        if user.is_authenticated:
-            form.instance.updated_by = user
+        if action == 'confirm' and not has_confirmed:
+            location.status = 'confirmed'
+            location.save()
+        elif action == 'reject' and location.status == 'confirmed':
+            location.status = 'rejected'
+            location.save()
         else:
-            form.instance.updated_by = None
-        try:
-            self.aid_location = form.save()
-            # ic(get_object_or_404(AidLocation, pk=self.aid_location.pk).status)
-        except Exception as e:
-            ic(e)
-            # ic(self.aid_request)
-        try:
-            self.aid_request.logs.create(
-                log_entry=f'Location {self.aid_request.pk} - Action: {action}')
-        except Exception as e:
-            ic(f"Log Error: {e}")
-        # ----- Send COT ------
-        updated_at_stamp = self.aid_request.updated_at.strftime('%Y%m%d%H%M%S')
-        tasks.async_task(send_cot_task,
-                        field_op_slug=self.field_op.slug,
-                        mark_type='aid',
-                        aidrequests=[self.aid_request.pk],
-                        task_name=f"AidLocation{self.aid_location.pk}-StatusUpdate-SendCot-{updated_at_stamp}")
+            return JsonResponse({'status': 'error', 'message': 'Invalid action or state.'}, status=400)
 
-        return super().form_valid(form)
+        # Refresh the request object to get the latest state
+        aid_request.refresh_from_db()
+
+        # Check the confirmed status again after the potential change
+        has_confirmed_after_update = aid_request.location and aid_request.location.status == 'confirmed'
+
+        return JsonResponse({
+            'status': 'success',
+            'location_pk': location.pk,
+            'new_status': location.status,
+            'new_status_display': location.get_status_display(),
+            'aid_request_has_confirmed_location': has_confirmed_after_update
+        })
+
+    except Exception as e:
+        logger.error(f"Error updating location status for pk {location_pk}: {e}")
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@require_POST
+@login_required
+def regenerate_map_view(request, pk):
+    location = get_object_or_404(AidLocation, pk=pk)
+    try:
+        create_static_map(location)
+        messages.success(request, "Map image regenerated successfully.")
+        return JsonResponse({'success': True})
+    except Exception as e:
+        logger.error(f"Error regenerating map for location {pk}: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

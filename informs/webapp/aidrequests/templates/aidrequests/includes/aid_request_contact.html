@@ -7,7 +7,12 @@
     </tr>
     <tr>
         <td class="col-auto">{{ object.requestor_first_name }} {{ object.requestor_last_name }}</td>
-        <td class="col-auto">{{ object.requestor_phone }}</td>
+        <td class="col-auto">
+            {{ object.requestor_phone }}
+            {% if object.requestor_phone and object.use_whatsapp %}
+                <br><i class="bi bi-whatsapp"></i> WhatsApp
+            {% endif %}
+        </td>
         <td class="col-auto">{{ object.requestor_email }}</td>
     </tr>
     <tr>
@@ -17,7 +22,12 @@
     </tr>
     <tr>
         <td class="col-auto">{{ object.aid_first_name|default:"None" }} {{ object.aid_last_name }}</td>
-        <td class="col-auto">{{ object.aid_phone|default:"None" }}</td>
+        <td class="col-auto">
+            {{ object.aid_phone|default:"None" }}
+            {% if object.aid_phone and object.use_whatsapp_aid %}
+                <br><i class="bi bi-whatsapp"></i> WhatsApp
+            {% endif %}
+        </td>
         <td class="col-auto">{{ object.aid_email|default:"None" }}</td>
     </tr>
     <tr>

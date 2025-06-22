@@ -17,7 +17,12 @@
     </div>
     {% endif %}
 
-    {% crispy form %}
+    <div id="aid-request-form-wrapper"
+         data-azure-maps-key="{{ azure_maps_key }}"
+         data-geocode-url="{% url 'ajax_geocode_address' %}"
+         data-fieldop-slug="{{ fieldop_slug }}">
+        {% crispy form %}
+    </div>
 
     {% if form.action == "update" %}
     <hr />

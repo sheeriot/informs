@@ -20,6 +20,7 @@ from django.utils.html import strip_tags
 from django_q.tasks import async_task
 
 import logging
+import os
 
 # Get the main application logger
 logger = logging.getLogger(__name__)
@@ -27,7 +28,61 @@ logger = logging.getLogger(__name__)
 # Get a dedicated COT logger
 cot_logger = logging.getLogger('cot')
 
+def generate_static_map_for_location(location_pk):
+    """
+    Generates a static map for a given AidLocation and saves it.
+    This is a standalone task that can be called asynchronously or synchronously.
+    """
+    try:
+        location = AidLocation.objects.get(pk=location_pk)
+        aid_request = location.aid_request
+        logger.info(f"AR-{aid_request.pk}: Generating static map for Location-{location.pk}.")
+    except AidLocation.DoesNotExist:
+        logger.error(f"GenerateMapTask: AidLocation with pk={location_pk} not found.")
+        return {'status': 'error', 'message': 'Location not found.'}
+
+    staticmap_data = staticmap_aid(
+        width=600, height=600,
+        fieldop_lat=aid_request.field_op.latitude,
+        fieldop_lon=aid_request.field_op.longitude,
+        aid1_lat=location.latitude,
+        aid1_lon=location.longitude,
+    )
+
+    if staticmap_data:
+        timestamp = datetime.now().strftime("%y%m%d%H%M%S")
+        map_filename = f"AR{aid_request.pk}-L{location.pk}-map_{timestamp}.png"
+        map_file_path = f"{settings.MAPS_PATH}/{map_filename}"
+        with open(map_file_path, 'wb') as file:
+            file.write(staticmap_data)
+        logger.info(f"AR-{aid_request.pk}: Static map for Location-{location.pk} saved to {map_file_path}")
+
+        try:
+            # If a map already exists, delete the old one
+            if location.map_filename:
+                old_map_path = f"{settings.MAPS_PATH}/{location.map_filename}"
+                if os.path.exists(old_map_path):
+                    os.remove(old_map_path)
+                    logger.info(f"AR-{aid_request.pk}: Deleted old map file {location.map_filename}")
+
+            location.map_filename = map_filename
+            location.save(update_fields=['map_filename'])
+            logger.info(f"AR-{aid_request.pk}: Updated Location-{location.pk} with new map filename: {map_filename}")
+            return {'status': 'success', 'map_filename': map_filename}
+        except Exception as e:
+            logger.error(f"Error saving map filename to AidLocation {location.pk}: {e}")
+            return {'status': 'error', 'message': str(e)}
+    else:
+        logger.warning(f"AR-{aid_request.pk}: staticmap_aid call for Location-{location.pk} did not return PNG data.")
+        return {'status': 'warning', 'message': 'Map generation failed.'}
+
+
 def aid_request_postsave(aid_request, **kwargs):
+    # Guard against signal-based calls that lack necessary form data
+    if 'trigger' in kwargs:
+        logger.warning(f"AR-{aid_request.pk}: Post-save task called by a signal. Aborting to prevent duplicate/failed runs. KWargs: {kwargs}")
+        return "Task aborted: called by signal."
+
     logger.info(f"Staring aid_request_postsave for AR-{aid_request.pk} with kwargs: {kwargs}")
     is_new = kwargs.get('is_new')
 
@@ -74,39 +129,15 @@ def aid_request_postsave(aid_request, **kwargs):
     if aid_location:
         logger.info(f"AR-{aid_request.pk}: AidLocation created/found: {aid_location.pk}, distance: {aid_location.distance}km.")
 
-        zoom_distance = float(aid_location.distance) * 1.2 if aid_location.distance is not None and aid_location.distance > 0 else None
-        zoom = calculate_zoom(zoom_distance) if zoom_distance is not None else 10
-        logger.info(f"AR-{aid_request.pk}: Calculated zoom: {zoom}")
-
-        staticmap_data = staticmap_aid(
-            width=600, height=600, zoom=zoom,
-            fieldop_lat=aid_request.field_op.latitude,
-            fieldop_lon=aid_request.field_op.longitude,
-            aid1_lat=aid_location.latitude,
-            aid1_lon=aid_location.longitude,
-        )
-        logger.info(f"AR-{aid_request.pk}: Static map API call prepared.")
-
-        if staticmap_data:
-            timestamp = datetime.now().strftime("%y%m%d%H%M%S")
-            map_filename = f"AR{aid_request.pk}-map_{timestamp}.png"
-            map_file = f"{settings.MAPS_PATH}/{map_filename}"
-            with open(map_file, 'wb') as file:
-                file.write(staticmap_data)
-            logger.info(f"AR-{aid_request.pk}: Static map saved to {map_file}")
-
-            try:
-                aid_location.map_filename = map_filename
-                aid_location.save()
-            except Exception as e:
-                logger.error(f"Error saving map filename to AidLocation: {e}")
-        else:
-            logger.warning(f"AR-{aid_request.pk}: staticmap_aid call did not return PNG data.")
+        # Generate the map using the new standalone task
+        generate_static_map_for_location(aid_location.pk)
+        aid_location.refresh_from_db() # Refresh to get the map_filename
 
         logger.info(f"AR-{aid_request.pk}: Preparing to send notification emails.")
         notify_emails = aid_request.field_op.notify.filter(type__startswith='email')
         email_results = ""
         for notify in notify_emails:
+            map_file = f"{settings.MAPS_PATH}/{aid_location.map_filename}" if aid_location.map_filename else None
             message = email_creator_html(aid_request, aid_location, notify, map_file)
             try:
                 task_name = f"AR{aid_request.pk}_SendEmail_New_{notify.pk}"
@@ -124,11 +155,21 @@ def aid_request_postsave(aid_request, **kwargs):
         except Exception as e:
             logger.error(f"Error logging email results: {e}")
 
-        return email_results
+        return {
+            'location_created_pk': aid_location.pk,
+            'map_generated': True if aid_location.map_filename else False,
+            'map_filename': aid_location.map_filename,
+            'email_tasks_queued': [f"AR{aid_request.pk}_SendEmail_New_{n.pk}" for n in notify_emails]
+        }
 
     else:
         logger.warning(f"AR-{aid_request.pk}: No AidLocation was created. Skipping map and notifications.")
-        return "No location created, skipping post-save actions."
+        return {
+            'location_created_pk': None,
+            'map_generated': False,
+            'map_filename': None,
+            'email_tasks_queued': []
+        }
 
 
 def aid_request_notify(aid_request, **kwargs):

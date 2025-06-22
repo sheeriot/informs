@@ -1,0 +1,63 @@
+{% load crispy_forms_tags %}
+{% load static %}
+
+<form id="addLocationForm" method="post" action="{% url 'add_location' field_op.slug aid_request.pk %}" class="needs-validation" novalidate>
+    {% csrf_token %}
+    <div id="form-c-content-modal"
+        data-geocode-url="{% url 'geocode_address' field_op=field_op.slug %}"
+        data-azure-maps-key="{{ AZURE_MAPS_KEY }}"
+        data-fieldop-lat="{{ field_op.latitude|stringformat:'s' }}"
+        data-fieldop-lon="{{ field_op.longitude|stringformat:'s' }}"
+        data-fieldop-ringsize="{{ field_op.ring_size }}"
+        >
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Aid Request #{{ aid_request.pk }} ({{ field_op.country }})</h5>
+            <button type="button" id="reset-map-modal" class="btn btn-outline-secondary btn-sm text-nowrap">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset Pin to Address
+            </button>
+        </div>
+        <p class="form-text text-muted mb-3">
+            Use the map to confirm the exact location. To change the address itself, you must close this and edit the main aid request.
+        </p>
+
+        <div id="address-fields-container-modal"
+             data-latitude="{{ aid_request.latitude|stringformat:"s" }}"
+             data-longitude="{{ aid_request.longitude|stringformat:"s" }}"
+             data-country="{{ aid_request.country }}">
+            <div class="row">
+                <div class="col-md-6">{{ form.city|as_crispy_field }}</div>
+                <div class="col-md-6">{{ form.state|as_crispy_field }}</div>
+            </div>
+            <div class="row">
+                <div class="col-12">{{ form.address_line_1|as_crispy_field }}</div>
+            </div>
+        </div>
+
+        <div style="position: relative;">
+            <div id="map-container-modal" style="height: 300px; width: 100%;" class="mt-3"></div>
+            <div id="distance-display" class="form-text" style="position: absolute; bottom: 10px; left: 10px; z-index: 10; background-color: rgba(255,255,255,0.8); padding: 2px 5px; border-radius: 3px;"></div>
+            <div style="position: absolute; top: 20px; right: 10px; z-index: 10; background-color: rgba(255,255,255,0.7); padding: 5px; border-radius: 5px;">
+                <div class="input-group">
+                    {{ form.coordinates }}
+                    <button class="btn btn-outline-secondary" type="button" id="copy-coords-modal">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            {{ form.note|as_crispy_field }}
+        </div>
+
+        {{ form.latitude }}
+        {{ form.longitude }}
+        {{ form.source }}
+    </div>
+</form>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+    <button type="submit" class="btn btn-primary" form="addLocationForm" id="submit-location-form">Save Location</button>
+</div>

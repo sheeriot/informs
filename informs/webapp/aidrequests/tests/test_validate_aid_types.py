@@ -6,9 +6,9 @@ from aidrequests.models import FieldOp, AidType, AidRequest
 class ValidateAidTypesTest(TestCase):
     def setUp(self):
         # Create test aid types
-        self.evacuation = AidType.objects.create(name='Evacuation', slug='evacuation')
-        self.resupply = AidType.objects.create(name='Re-supply', slug='resupply')
-        self.welfare = AidType.objects.create(name='Welfare Check', slug='welfare')
+        self.evacuation, _ = AidType.objects.get_or_create(name='Evacuation', slug='evacuation')
+        self.resupply, _ = AidType.objects.get_or_create(name='Re-supply', slug='resupply')
+        self.welfare, _ = AidType.objects.get_or_create(name='Welfare Check', slug='welfare')
 
         # Create a test field operation
         self.field_op = FieldOp.objects.create(

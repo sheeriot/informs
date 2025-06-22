@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
 from .models import TakServer
-from .cot import CoTEvent
+# from .cot import CoTEvent
 
 
 class TakServerModelTests(TestCase):
