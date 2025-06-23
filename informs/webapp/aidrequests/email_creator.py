@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.urls import reverse
 from django.contrib.sites.models import Site
+from django.utils.html import strip_tags
 
 # from icecream import ic
 
@@ -169,6 +170,7 @@ def email_creator_html(aid_request, aid_location, notify, map_file):
         },
         'content': {
             "subject": subject,
+            "plainText": strip_tags(html),
             "html": html
         },
     }

@@ -10,8 +10,10 @@
         {% bs_icon 'arrow-repeat' %}
     </button>
 {% else %}
-    {# Create Map Button #}
-    <button type="button" class="btn btn-outline-primary w-100 generate-map-btn" title="Create Map" data-location-id="{{ location.pk }}" data-action="remap">
-        {% bs_icon 'geo-alt' %} Create Map
-    </button>
+    <div class="text-center p-3">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 mb-0 text-muted">Generating map...</p>
+    </div>
 {% endif %}

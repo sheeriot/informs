@@ -154,12 +154,11 @@ def update_location_map_filename(task):
 def check_map_status(request, field_op, location_pk):
     location = get_object_or_404(AidLocation, pk=location_pk)
     if location.map_filename:
-        map_file_path = os.path.join(settings.MAPS_PATH, location.map_filename)
+        map_file_path = os.path.join(settings.MEDIA_ROOT, 'maps', location.map_filename)
         if os.path.exists(map_file_path):
             context = {
                 'location': location,
                 'aid_request': location.aid_request,
-                'MEDIA_URL': settings.MEDIA_URL
             }
             map_html = render_to_string(
                 'aidrequests/partials/_location_map_area.html',

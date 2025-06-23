@@ -14,6 +14,13 @@ const aidRequestConfig = {
 // Initialize on document load
 document.addEventListener('DOMContentLoaded', function() {
     initializeAidRequestDetail();
+
+    // Set a timeout to ensure the modal is loaded, then initialize the map
+    setTimeout(function() {
+        if (window.initializeModalMap) {
+            window.initializeModalMap();
+        }
+    }, 200);
 });
 
 function initializeAidRequestDetail() {

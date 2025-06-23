@@ -1,5 +1,22 @@
-<table class="table table-bordered table-data caption-top me-2 border border-3 border-success">
-    <caption>Aid Summary</caption>
+<div class="d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Aid Summary</h5>
+    <div class="d-flex align-items-center">
+        <div class="me-2">
+            <button id="tak-alert-button" class="btn btn-danger btn-sm">
+                <i class="bi bi-bullseye"></i> Alert TAK
+            </button>
+            <div id="send-cot-status"></div>
+        </div>
+        <div>
+            <a href="{% url 'aid_request_notify' field_op=field_op.slug pk=aid_request.pk %}" id="send-email-button" class="btn btn-info btn-sm">
+                <i class="bi bi-send"></i> Send Email
+            </a>
+            <div id="send-email-status"></div>
+        </div>
+        <input type="hidden" id="aidrequest_id" value="{{ aid_request.pk }}">
+    </div>
+</div>
+<table class="table table-bordered table-data me-2 border border-3 border-success">
     <tr>
         <th class="col-auto">ID</th>
         <th class="col-auto">Field Op</th>

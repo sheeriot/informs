@@ -1,14 +1,14 @@
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.urls import reverse_lazy, reverse
-from django.views.generic import DetailView, CreateView
+from django.urls import reverse
+from django.views.generic import DetailView
 from django_q.tasks import async_task
 import logging
 
 from ..models import AidRequest, FieldOp, AidRequestLog
-from .aid_request_forms_a import AidRequestLogForm, RequestStatusForm
-from .aid_location_forms import AidLocationStatusForm, AidLocationCreateForm
+from ..forms import AidRequestLogForm, RequestStatusForm
+from .aid_location_forms import AidLocationStatusForm
 from .aid_request import has_location_status, format_aid_location_note
 from .maps import staticmap_aid
 from ..geocoder import get_azure_geocode, geocode_save

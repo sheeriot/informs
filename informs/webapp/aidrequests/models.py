@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django_q.tasks import async_task
+from geopy.distance import geodesic
 
 from .timestamped_model import TimeStampedModel
 from takserver.models import TakServer
@@ -379,29 +380,13 @@ class AidLocation(TimeStampedModel):
         return f"Location ({round(self.latitude, 5)}, {round(self.longitude, 5)}) - {self.status} - {self.source}"
 
     def save(self, *args, **kwargs):
-        is_new = self._state.adding
-        changed_fields = []
-        if not is_new:
-            old = AidLocation.objects.get(pk=self.pk)
-            for field in self._meta.fields:
-                if getattr(old, field.name) != getattr(self, field.name):
-                    changed_fields.append(field.name)
+        """ override save to send CoT """
+        if self.latitude and self.longitude and self.aid_request.field_op:
+            op_coords = (self.aid_request.field_op.latitude, self.aid_request.field_op.longitude)
+            loc_coords = (self.latitude, self.longitude)
+            self.distance = round(geodesic(op_coords, loc_coords).km, 2)
 
-        super().save(*args, **kwargs)
-
-        if is_new or 'latitude' in changed_fields or 'longitude' in changed_fields:
-            from .tasks import send_cot_task
-            updated_at_stamp = self.updated_at.strftime('%Y%m%d%H%M%S')
-            task_name = f"AidLocation{self.pk}-{'New' if is_new else 'Update'}-SendCot-{updated_at_stamp}"
-            async_task(
-                send_cot_task,
-                self.aid_request.field_op.slug,
-                mark_type='aid',
-                aidrequests=[self.aid_request.pk],
-                task_name=task_name,
-                trigger='AidLocation.save',
-                changed_fields=changed_fields
-            )
+        super(AidLocation, self).save(*args, **kwargs)
 
     def get_absolute_url(self):
         return reverse('aid_location_detail', kwargs={'pk': self.pk})

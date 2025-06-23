@@ -43,6 +43,7 @@ from aidrequests.views.ajax_fieldop import toggle_cot
 from aidrequests.views.location import geocode_address
 from aidrequests.views.aid_request_status import get_aid_request_status
 from aidrequests.views.maps import check_map_status
+from aidrequests.views.ajax_send_email import send_email_view
 
 from .views import home
 
@@ -128,6 +129,7 @@ urlpatterns = [
      path('api/<slug:field_op>/aidlocation/<int:location_pk>/delete-map/', delete_static_map, name='delete_static_map'),
      path('api/<slug:field_op>/aidlocation/<int:location_pk>/status-update/', aid_location_status_update, name='aid_location_status_update'),
      path('api/<slug:field_op>/aidlocation/<int:location_pk>/check-map-status/', check_map_status, name='check_map_status'),
+     path('api/<slug:field_op>/request/<int:pk>/send_email/', send_email_view, name='ajax_send_email'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

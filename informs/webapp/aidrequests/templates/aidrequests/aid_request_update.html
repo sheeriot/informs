@@ -45,7 +45,7 @@
                                 <div class="col-md-6 mb-3">{{ requestor_form.requestor_last_name|as_crispy_field }}</div>
                                 <div class="col-md-6 mb-3">{{ requestor_form.requestor_phone|as_crispy_field }}</div>
                                 <div class="col-md-6 mb-3">{{ requestor_form.requestor_email|as_crispy_field }}</div>
-                                <div class="col-md-12 mb-3">{{ requestor_form.use_whatsapp|as_crispy_field }}</div>
+                                <div class="col-md-12 mb-3 custom-checkbox-column">{{ requestor_form.use_whatsapp|as_crispy_field }}</div>
                             </div>
                             <div class="d-flex justify-content-end d-none mt-2">
                                 <button type="button" class="btn btn-secondary btn-sm me-2 btn-cancel-edit">Cancel</button>
@@ -73,7 +73,7 @@
                                 <div class="col-md-6 mb-3">{{ aid_contact_form.aid_last_name|as_crispy_field }}</div>
                                 <div class="col-md-6 mb-3">{{ aid_contact_form.aid_phone|as_crispy_field }}</div>
                                 <div class="col-md-6 mb-3">{{ aid_contact_form.aid_email|as_crispy_field }}</div>
-                                <div class="col-md-12 mb-3">{{ aid_contact_form.use_whatsapp_aid|as_crispy_field }}</div>
+                                <div class="col-md-12 mb-3 custom-checkbox-column">{{ aid_contact_form.use_whatsapp_aid|as_crispy_field }}</div>
                             </div>
                             <div class="d-flex justify-content-end d-none mt-2">
                                 <button type="button" class="btn btn-secondary btn-sm me-2 btn-cancel-edit">Cancel</button>
@@ -189,7 +189,11 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
+        <!-- Form for adding a new location -->
         {% crispy add_location_form %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
       </div>
     </div>
   </div>

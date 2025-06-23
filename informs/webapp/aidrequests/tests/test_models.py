@@ -32,12 +32,12 @@ class TestModels(TestCase):
 
     def test_field_op_coordinates_validation(self):
         """Test FieldOp coordinates validation."""
-        field_op = FieldOp(
-            name='Invalid Coordinates',
-            slug='invalid-coords',
-            latitude=91.0,  # Invalid
-            longitude=181.0  # Invalid
-        )
+            field_op = FieldOp(
+                name='Invalid Coordinates',
+                slug='invalid-coords',
+                latitude=91.0,  # Invalid
+                longitude=181.0  # Invalid
+            )
         with self.assertRaises(ValidationError):
             field_op.full_clean()
 

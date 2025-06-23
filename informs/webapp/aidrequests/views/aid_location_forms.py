@@ -72,21 +72,6 @@ class AidLocationCreateForm(forms.ModelForm):
         return instance
 
 
-class AidLocationInline(admin.TabularInline):
-    model = AidLocation
-    extra = 0
-    fields = ['pk', 'status', 'latitude', 'longitude', 'source', 'note', 'uid']
-    readonly_fields = ('pk', 'uid',)
-
-    def pk(self, obj):
-        """Display the primary key of the related object."""
-
-        url = reverse("admin:aidrequests_aidlocation_change", args=(obj.pk,))
-        # return format_html(f'<a href="{ url }">{ obj.pk }</a>', url)
-        # return obj.pk
-        return format_html('<a href="{}">{}</a>', url, obj.pk)
-
-
 class AidLocationStatusForm(forms.ModelForm):
     class Meta:
         model = AidLocation

@@ -9,8 +9,7 @@ from django.utils.html import format_html
 from django.urls import reverse
 
 from .models import FieldOp, FieldOpNotify, AidType, AidRequest, AidRequestLog, AidLocation
-from .views.aid_location_forms import AidLocationInline
-from .views.aid_request_forms_a import AidRequestInline
+from .forms import AidLocationInline, AidRequestInline
 
 
 def validate_aid_types(modeladmin, request, queryset):
