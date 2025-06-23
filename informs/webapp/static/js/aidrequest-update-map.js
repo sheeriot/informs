@@ -2,7 +2,7 @@
     'use strict';
 
     const modalMapConfig = {
-        debug: false,
+        debug: true,
     };
 
     window.initializeModalMap = function() {

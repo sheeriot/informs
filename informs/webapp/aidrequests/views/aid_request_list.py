@@ -19,13 +19,7 @@ from icecream import ic
 
 from ..models import FieldOp, AidRequest, AidType
 from .utils import prepare_aid_locations_for_map, locations_to_bounds
-from ..views.aid_request_forms_a import (
-    RequestorInformationForm,
-    AidContactInformationForm,
-    LocationInformationForm,
-    RequestDetailsForm,
-    RequestStatusForm,
-)
+
 
 logger = logging.getLogger(__name__)
 

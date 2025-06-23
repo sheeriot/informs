@@ -156,6 +156,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'django.template.context_processors.static',
+                'django.template.context_processors.media',
                 'informs.context_processors.server_hostname',
                 'aidrequests.context_processors.fieldops_active',
                 'aidrequests.context_processors.basevars',
@@ -250,7 +251,6 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB max upload size
 #     },
 # }
 
-# Authentication settings
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 LOGIN_URL = '/accounts/login/'
@@ -274,6 +274,14 @@ Q_CLUSTER = {
     'label': 'Default ORM Queue'
 }
 
+# Email Setup
+MAIL_FROM_DOMAIN = os.environ.get('MAIL_FROM_DOMAIN', 'example.com')
+MAIL_FROM_USER = os.environ.get('MAIL_FROM_USER', 'noreply')
+MAIL_FROM_KEY = os.environ.get('MAIL_FROM_KEY', '')
+MAIL_FROM = f'{MAIL_FROM_USER}@{MAIL_FROM_DOMAIN}'
+MAIL_TO_TEST = os.environ.get('MAIL_TO_TEST', '')
+MAIL_ENDPOINT = os.environ.get('MAIL_ENDPOINT', '')
+
 # Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.environ.get('EMAIL_HOST')
@@ -285,14 +293,6 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
 REPLY_TO_EMAIL = os.environ.get('REPLY_TO_EMAIL')
 
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
-
-# Cache
-# CACHES = {
-#     'default': {
-#         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-#         'LOCATION': 'unique-snowflake',
-#     }
-# }
 
 # Logging
 LOGGING = {
@@ -353,24 +353,25 @@ LOGGING = {
     },
 }
 
-# Custom Settings
-# Load the INI file
-# config = configparser.ConfigParser()
-# # config.read(os.path.join(BASE_DIR, 'settings.ini'))
-# config_file = os.environ.get('INFORMS_CONFIG_FILE')
-# if config_file:
-#     config.read(config_file)
-# else:
-#     print("INFORMS_CONFIG_FILE environment variable not set.")
-#     # Handle the absence of the config file, e.g., by setting default values or raising an error
-
 # Azure Maps API key
 AZURE_MAPS_KEY = os.environ.get('AZURE_MAPS_KEY', '')
 
+# Security settings
+X_FRAME_OPTIONS = 'SAMEORIGIN'  # Allow same origin framing (for maps, etc.)
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_SSL_REDIRECT = False if DEBUG else True  # Don't redirect to HTTPS in development
+SECURE_PROXY_SSL_HEADER = None
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
+
+# read in icons for TAK
 # CoT Icon settings
 icons_config = configparser.ConfigParser()
-# icons_config.read(os.path.join(BASE_DIR, 'takserver/cot_icons.ini'))
-# COT_ICON_ZIP_FILE = os.path.join(BASE_DIR, 'takserver/cot_icons.zip')
-# COT_ICONS = {key: value for key, value in icons_config.items('Icons')}
-# # ic(COT_ICONS)
-COT_ICONS = {}
+icons_config.read(os.path.join(BASE_DIR, 'takserver/cot_icons.ini'))
+COT_ICONS = {key: value for key, value in icons_config.items('Icons')}
+# ic(COT_ICONS)
+
+# Static Version information
+# STATIC_VERSION = os.environ.get('STATIC_VERSION', '0.0.1')
+
+# PYTAK_FLUSH_TIMEOUT = 40 # seconds

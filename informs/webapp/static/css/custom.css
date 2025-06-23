@@ -334,12 +334,11 @@ input.is-invalid ~ .form-text {
 }
 
 .custom-checkbox-column .form-check-input {
-    width: 1.25em;
-    height: 1.25em;
-    border: 2px solid #adb5bd;
-    cursor: pointer;
-    margin-top: 0.2em;
-    margin-left: -1.75em;
+    width: 1.75rem; /* Larger checkbox */
+    height: 1.75rem;
+    border-width: 2px;
+    margin-top: 0;
+    border: 2px solid #555 !important;
 }
 
 .custom-checkbox-column .form-check-input:checked {
@@ -362,10 +361,14 @@ input.is-invalid ~ .form-text {
 }
 
 .btn-flashing {
-    animation: flash-warning 0.5s 2;
+    animation: flash-warning 1s infinite;
 }
 
 /* Allow resizing on textareas that are not disabled */
 textarea:not([disabled]) {
     resize: vertical;
+}
+
+.location-card-divider {
+    border-bottom: 3px solid var(--bs-secondary-bg) !important;
 }

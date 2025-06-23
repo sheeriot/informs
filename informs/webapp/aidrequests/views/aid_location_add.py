@@ -26,7 +26,19 @@ def add_location(request, field_op, pk):
             location = form.save(commit=False)
             location.aid_request = aid_request
             location.save()
-            return JsonResponse({'success': True, 'location_id': location.id})
+
+            create_static_map(location)
+
+            new_location_html = render_to_string(
+                'aidrequests/partials/_aid_location_card.html',
+                {'aid_request': aid_request, 'location': location},
+                request=request
+            )
+            return JsonResponse({
+                'success': True,
+                'location_pk': location.pk,
+                'new_location_html': new_location_html
+            })
         else:
             return JsonResponse({'success': False, 'errors': form.errors.as_json()}, status=400)
     else: # GET request

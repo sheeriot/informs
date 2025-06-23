@@ -52,15 +52,20 @@ def generate_static_map_for_location(location_pk):
     if staticmap_data:
         timestamp = datetime.now().strftime("%y%m%d%H%M%S")
         map_filename = f"AR{aid_request.pk}-L{location.pk}-map_{timestamp}.png"
-        map_file_path = f"{settings.MAPS_PATH}/{map_filename}"
-        with open(map_file_path, 'wb') as file:
+
+        # We need the full path to save the file
+        map_directory = os.path.join(settings.BASE_DIR, 'media', 'maps')
+        os.makedirs(map_directory, exist_ok=True)
+        map_full_path = os.path.join(map_directory, map_filename)
+
+        with open(map_full_path, 'wb') as file:
             file.write(staticmap_data)
-        logger.info(f"AR-{aid_request.pk}: Static map for Location-{location.pk} saved to {map_file_path}")
+        logger.info(f"AR-{aid_request.pk}: Static map for Location-{location.pk} saved to {map_full_path}")
 
         try:
             # If a map already exists, delete the old one
             if location.map_filename:
-                old_map_path = f"{settings.MAPS_PATH}/{location.map_filename}"
+                old_map_path = os.path.join(map_directory, location.map_filename)
                 if os.path.exists(old_map_path):
                     os.remove(old_map_path)
                     logger.info(f"AR-{aid_request.pk}: Deleted old map file {location.map_filename}")
@@ -273,7 +278,6 @@ def send_email(message):
                 raise RuntimeError("Polling timed out.")
 
         if poller.result()["status"] == "Succeeded":
-            # ic(f"Successfully sent the email (operation id: {poller.result()['id']})")
             result = poller.result()
 
     except Exception as e:

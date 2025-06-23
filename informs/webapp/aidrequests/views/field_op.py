@@ -3,8 +3,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.urls import reverse_lazy
 from django.views.generic import DetailView, CreateView, UpdateView
 from django.http import HttpResponseRedirect
-from ..models import FieldOp, AidRequest, AidType
-from .forms import FieldOpForm
+from ..models import FieldOp, AidRequest
+from ..forms import FieldOpForm
 from .utils import prepare_aid_locations_for_map, locations_to_bounds
 from icecream import ic
 import json

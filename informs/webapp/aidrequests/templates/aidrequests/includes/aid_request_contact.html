@@ -1,4 +1,4 @@
-<table class="table table-bordered table-data border border-3 border-info w-auto caption-top mx-1">
+<table class="table table-bordered table-data border border-3 border-info caption-top mx-1">
     <caption>Contact Information</caption>
     <tr>
         <th class="col-auto">Requestor Name</th>
@@ -10,7 +10,7 @@
         <td class="col-auto">
             {{ object.requestor_phone }}
             {% if object.requestor_phone and object.use_whatsapp %}
-                <br><i class="bi bi-whatsapp"></i> WhatsApp
+                <i class="bi bi-whatsapp"></i> WhatsApp
             {% endif %}
         </td>
         <td class="col-auto">{{ object.requestor_email }}</td>
@@ -25,7 +25,7 @@
         <td class="col-auto">
             {{ object.aid_phone|default:"None" }}
             {% if object.aid_phone and object.use_whatsapp_aid %}
-                <br><i class="bi bi-whatsapp"></i> WhatsApp
+                <i class="bi bi-whatsapp"></i> WhatsApp
             {% endif %}
         </td>
         <td class="col-auto">{{ object.aid_email|default:"None" }}</td>

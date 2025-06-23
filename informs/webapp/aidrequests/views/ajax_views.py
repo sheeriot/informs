@@ -6,7 +6,7 @@ import json
 import logging
 
 from ..models import AidRequest
-from .aid_request_forms_a import (
+from ..forms import (
     RequestorInformationForm,
     AidContactInformationForm,
     LocationInformationForm,

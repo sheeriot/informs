@@ -22,36 +22,9 @@ from .aid_location_add import (
 from .aid_request_status import get_aid_request_status
 from .field_op import FieldOpCreateView, FieldOpUpdateView, FieldOpDetailView
 from .field_op_list import FieldOpListView
-from .aid_request_notify import *
-# from .curator import *
-from .export_csv import *
-from .location import *
-from .maps import *
-from .utils import *
-from .ajax_fieldop import *
-from .ajax_sendcot import *
-from .aid_location import *
-from .aid_location_add import *
-from .aid_location_forms import *
-
-
-__all__ = [
-    'AidRequestCreateView',
-    'AidRequestUpdateView',
-    'AidRequestDetailView',
-    'AidRequestSubmittedView',
-    'AidRequestListView',
-    'AidLocationCreateView',
-    'AidLocationUpdateView',
-    'AidLocationDeleteView',
-    'regenerate_map_view',
-    'add_location',
-    'regenerate_static_map',
-    'delete_static_map',
-    'delete_aid_location',
-    'get_aid_request_status',
-    'FieldOpCreateView',
-    'FieldOpUpdateView',
-    'FieldOpDetailView',
-    'FieldOpListView',
-]
+from .aid_request_notify import AidRequestNotifyView
+from .export_csv import AidRequestCsvView
+from .ajax_views import update_aid_request
+from .ajax_send_email import send_email_view as send_email
+from .ajax_sendcot import send_cot, sendcot_checkstatus
+from .ajax_fieldop import toggle_cot

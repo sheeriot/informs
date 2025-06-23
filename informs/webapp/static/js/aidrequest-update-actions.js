@@ -2,6 +2,8 @@ const aidRequestUpdateConfig = {
     debug: true // Set to true for console logging
 };
 
+let alertTimeoutId;
+
 document.addEventListener('DOMContentLoaded', function () {
     if (aidRequestUpdateConfig.debug) {
         console.log('aidrequest-update-actions.js loaded');
@@ -85,6 +87,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const container = document.getElementById('action-alert-container');
         if (!container) return;
 
+        // Clear any existing timeout to prevent race conditions
+        if (alertTimeoutId) {
+            clearTimeout(alertTimeoutId);
+        }
+
         const alertHtml = `
             <div class="alert alert-${type} alert-dismissible fade show" role="alert">
                 ${message}
@@ -94,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         container.innerHTML = alertHtml;
 
-        setTimeout(() => {
+        alertTimeoutId = setTimeout(() => {
             const alertElement = container.querySelector('.alert');
             if (alertElement) {
                 const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
@@ -191,45 +198,53 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updateAllLocationCards(data) {
         const { location_pk, new_status, new_status_display, aid_request_has_confirmed_location } = data;
-        const allLocationCards = document.querySelectorAll('.list-group-item[id^="ar"]');
+        const allLocationCards = document.querySelectorAll('.list-group-item[id*="-loc"]');
 
         allLocationCards.forEach(card => {
             const cardLocationId = card.id.split('-al')[1].split('-loc')[0];
-            const isUpdatedCard = cardLocationId == location_pk;
+            const statusBadge = card.querySelector('.location-status-badge');
+            let currentCardStatus;
 
-            if (isUpdatedCard) {
-                const statusBadge = card.querySelector('.location-status-badge');
+            // Determine the true status of this card. For the one just updated,
+            // use the status from the server response. For others, use their current text.
+            if (cardLocationId == location_pk) {
+                currentCardStatus = new_status;
                 if (statusBadge) {
                     statusBadge.textContent = new_status_display;
                     statusBadge.className = 'location-status-badge mb-1 fw-bold'; // Reset classes
-                    if (new_status === 'confirmed') {
-                        statusBadge.classList.add('text-success');
-                    } else if (new_status === 'rejected') {
-                        statusBadge.classList.add('text-danger');
-                    }
+                    if (new_status === 'confirmed') statusBadge.classList.add('text-success');
+                    else if (new_status === 'rejected') statusBadge.classList.add('text-danger');
                 }
-                const confirmBtnContainer = card.querySelector('.confirm-location-btn')?.parentElement;
-                const rejectBtnContainer = card.querySelector('.reject-location-btn')?.parentElement;
-
-                if (confirmBtnContainer) confirmBtnContainer.classList.add('d-none');
-
-                if (new_status === 'confirmed') {
-                    if(rejectBtnContainer) rejectBtnContainer.classList.remove('d-none');
-                } else {
-                    if(rejectBtnContainer) rejectBtnContainer.classList.add('d-none');
-                }
+            } else {
+                currentCardStatus = statusBadge ? statusBadge.textContent.trim().toLowerCase() : '';
             }
 
-            const confirmBtn = card.querySelector('.confirm-location-btn');
-            if (confirmBtn) {
-                const statusText = card.querySelector('.location-status-badge')?.textContent || '';
-                const isNew = statusText.toLowerCase().includes('new');
+            // Now, rebuild the buttons based on the card's status and the overall confirmed state
+            const actionsContainer = card.querySelector('.d-flex.align-items-center');
+            if (!actionsContainer) return;
 
-                if (aid_request_has_confirmed_location || !isNew) {
-                    confirmBtn.parentElement.classList.add('d-none');
-                } else {
-                    confirmBtn.parentElement.classList.remove('d-none');
-                }
+            // Remove existing buttons
+            card.querySelector('.confirm-location-btn')?.remove();
+            card.querySelector('.reject-location-btn')?.remove();
+
+            if (currentCardStatus === 'new' && !aid_request_has_confirmed_location) {
+                const confirmButton = document.createElement('button');
+                confirmButton.type = 'button';
+                confirmButton.className = 'btn btn-sm btn-success confirm-location-btn ms-2';
+                confirmButton.title = 'Confirm this as the primary location';
+                confirmButton.dataset.locationId = cardLocationId;
+                confirmButton.dataset.action = 'confirm';
+                confirmButton.innerHTML = '<i class="bi bi-check-circle"></i> Confirm';
+                actionsContainer.appendChild(confirmButton);
+            } else if (currentCardStatus === 'confirmed') {
+                const rejectButton = document.createElement('button');
+                rejectButton.type = 'button';
+                rejectButton.className = 'btn btn-sm btn-warning reject-location-btn ms-2';
+                rejectButton.title = 'Reject this location';
+                rejectButton.dataset.locationId = cardLocationId;
+                rejectButton.dataset.action = 'reject';
+                rejectButton.innerHTML = '<i class="bi bi-x-octagon"></i> Reject';
+                actionsContainer.appendChild(rejectButton);
             }
         });
     }
@@ -311,24 +326,44 @@ document.addEventListener('DOMContentLoaded', function () {
                 'X-Requested-With': 'XMLHttpRequest',
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => { throw new Error(text); });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
+                if (aidRequestUpdateConfig.debug) console.log('Location form submission successful. Data:', data);
                 showActionAlert('Location added successfully.', 'success');
                 const modal = bootstrap.Modal.getInstance(addLocationModal);
                 modal.hide();
-                // Optionally, refresh the locations list on the page
-                // For now, we just close the modal. A page reload might be simplest.
-                window.location.reload();
+
+                if (data.new_location_html) {
+                    const locationsContainer = document.querySelector('#locations-list-container .list-group');
+                    if (aidRequestUpdateConfig.debug) console.log('Attempting to find #locations-list-container .list-group. Found:', locationsContainer);
+                    if (locationsContainer) {
+                        const noLocationsMessage = locationsContainer.querySelector('#no-locations-message');
+                        if (noLocationsMessage) {
+                            noLocationsMessage.remove();
+                        }
+                        locationsContainer.insertAdjacentHTML('beforeend', data.new_location_html);
+                    }
+                }
+
+                if (data.location_pk) {
+                    pollForMap(data.location_pk, config);
+                }
+
             } else {
-                // Display errors
                 console.error('Form submission failed:', data.errors);
                 // Simple error display for now
                 alert('Error saving location: ' + JSON.stringify(data.errors));
             }
         })
         .catch(error => {
-            console.error('Error submitting location form:', error);
+            console.error('Error submitting location form. Server response below:');
+            console.error(error.message);
             alert('An unexpected error occurred. Please check the console.');
         })
         .finally(() => {

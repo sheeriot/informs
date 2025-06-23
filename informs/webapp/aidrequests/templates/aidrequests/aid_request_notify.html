@@ -6,7 +6,14 @@
 <div class="container m-4">
     <h2>{{ object.field_op.name}}: Aid Request Notify</h2>
     <hr class="m-1">
-    <h3>{{ object }}</h3>
+    <div class="row align-items-center">
+        <div class="col-auto">
+            <h1 class="display-5 fw-bold">Aid Request: {{ object.pk }}</h1>
+        </div>
+        <div class="col">
+            <h3 class="text-danger">{{ object.aid_type }}</h3>
+        </div>
+    </div>
     {% crispy form %}
 </div>
 {% endblock %}

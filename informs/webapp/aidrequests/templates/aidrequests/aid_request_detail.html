@@ -18,6 +18,9 @@ Aid Request {{ aid_request.pk }} for {{ field_op.name }}
     data-url-delete-location="{{ url_delete_location }}"
     data-url-update-location-status="{{ url_update_location_status }}"
     data-url-check-map-status="{{ url_check_map_status }}"
+    data-url-send-cot="{% url 'send_cot' field_op=field_op.slug %}"
+    data-url-check-status="{% url 'sendcot_checkstatus' field_op=field_op.slug %}"
+    data-url-send-email="{% url 'ajax_send_email' field_op=field_op.slug pk=aid_request.pk %}"
     >
 </div>
 <div class="container-fluid">
@@ -87,7 +90,7 @@ Aid Request {{ aid_request.pk }} for {{ field_op.name }}
         </div>
 
         {# Right Column #}
-        <div class="col-lg-5">
+        <div class="col-lg-4 ms-auto">
             <!-- Status Card -->
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -98,6 +101,8 @@ Aid Request {{ aid_request.pk }} for {{ field_op.name }}
                     {{ status_form.priority|as_crispy_field }}
                 </div>
             </div>
+            <!-- Actions Card -->
+
             <div id="locations-list-container">
                 {% include 'aidrequests/partials/_aid_locations_list.html' %}
             </div>
@@ -108,8 +113,9 @@ Aid Request {{ aid_request.pk }} for {{ field_op.name }}
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/aidrequests-detail.js' %}"></script>
-<script src="{% static 'js/aidrequest-update-actions.js' %}"></script>
+<script src="{% static 'js/tak-alert.js' %}?v={{ STATIC_VERSION }}"></script>
+<script src="{% static 'js/aidrequests-detail.js' %}?v={{ STATIC_VERSION }}"></script>
+<script src="{% static 'js/aidrequest-update-actions.js' %}?v={{ STATIC_VERSION }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         setTimeout(function() {

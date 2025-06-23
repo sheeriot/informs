@@ -207,7 +207,7 @@ class AidRequestCreateFormC(forms.ModelForm):
                                         Field('use_whatsapp', wrapper_class='form-check'),
                                         css_class='pt-4'
                                     ),
-                                    css_class='col-md-5'
+                                    css_class='col-md-5 custom-checkbox-column'
                                 ),
                             ),
                             css_class="col-lg-8 offset-lg-2"
