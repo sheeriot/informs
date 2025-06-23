@@ -2,7 +2,7 @@
  * Azure Maps location picker for AidRequest form
  */
 const aidRequestFormMapConfig = {
-    debug: false,
+    debug: true,
 };
 
 function initAidRequestLocationPicker(wrapper) {
@@ -357,20 +357,31 @@ function initAidRequestLocationPicker(wrapper) {
 
         locationSource = 'user_typed';
 
-        const query = `${street}, ${city}, ${state}`;
-        const geocodeRequestUrl = `${geocodeUrl}?query=${encodeURIComponent(query)}`;
-
         try {
-            const response = await fetch(geocodeRequestUrl);
+            const response = await fetch(geocodeUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // The CSRF token is not needed because the view is decorated with @csrf_exempt
+                },
+                body: JSON.stringify({
+                    street_address: street,
+                    city: city,
+                    state: state
+                })
+            });
             const data = await response.json();
 
-            if (data.status === 'Success' && data.latitude && data.longitude) {
+            if (response.ok && data.status === 'Success' && data.latitude && data.longitude) {
                 const position = [data.longitude, data.latitude];
-                marker.setOptions({ position: position, visible: true });
+                marker.setOptions({
+                    position: position,
+                    visible: true
+                });
                 updateMapViewAndDistance(position);
                 updateFormFields(position, data, 'geocoded');
             } else {
-                 if (aidRequestFormMapConfig.debug) console.warn('Geocoding was not successful for the address:', query);
+                if (aidRequestFormMapConfig.debug) console.warn('Geocoding was not successful for the address:', `${street}, ${city}, ${state}`);
             }
         } catch (error) {
             console.error('Error during geocoding request:', error);

@@ -43,7 +43,16 @@ SERVERNAME2 = os.environ.get('SERVERNAME2', 'localhost')
 ALLOWED_HOSTS = ["127.0.0.1", "localhost", SERVERNAME1, SERVERNAME2]
 
 SITE_ID = 1
-STATIC_VERSION = os.environ.get('STATIC_VERSION', '1.0')
+
+# Read version from file
+# try:
+#     # Corrected path for within the Docker container
+#     with open(os.path.join(BASE_DIR, 'app_version.txt'), 'r') as f:
+#         APP_VERSION = f.read().strip()
+# except FileNotFoundError:
+#     APP_VERSION = '1.0'
+STATIC_VERSION = "1.2"
+APP_VERSION = STATIC_VERSION
 
 # CSRF settings
 CSRF_TRUSTED_ORIGINS = []
@@ -214,8 +223,6 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static'
 ]
 
-APP_VERSION = os.environ.get('STATIC_VERSION', '0.0.1')
-
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
@@ -248,9 +255,46 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 LOGIN_URL = '/accounts/login/'
 
-# Message settings
+# MAPS
+AZURE_MAPS_STATIC_URL = 'https://atlas.microsoft.com/map/static'
+MAPS_PATH = 'media/maps'
+
+# django-q configuration
+Q_CLUSTER = {
+    'name': 'ORM',
+    'workers': 1,
+    'timeout': 180,
+    'retry': 300,
+    'queue_limit': 500,
+    'bulk': 10,
+    'orm': 'default',
+    # 'sync': DEBUG,
+    'scheduler': True,
+    'catch_up': False,
+    'label': 'Default ORM Queue'
+}
+
+# Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.environ.get('EMAIL_HOST')
+EMAIL_PORT = os.environ.get('EMAIL_PORT')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ['true', '1']
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
+REPLY_TO_EMAIL = os.environ.get('REPLY_TO_EMAIL')
+
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
+# Cache
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+#         'LOCATION': 'unique-snowflake',
+#     }
+# }
+
+# Logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -309,93 +353,24 @@ LOGGING = {
     },
 }
 
-# Email Setup
-MAIL_FROM_DOMAIN = os.environ.get('MAIL_FROM_DOMAIN', 'example.com')
-MAIL_FROM_USER = os.environ.get('MAIL_FROM_USER', 'noreply')
-MAIL_FROM_KEY = os.environ.get('MAIL_FROM_KEY', '')
-MAIL_FROM = f'{MAIL_FROM_USER}@{MAIL_FROM_DOMAIN}'
-MAIL_TO_TEST = os.environ.get('MAIL_TO_TEST', '')
-MAIL_ENDPOINT = os.environ.get('MAIL_ENDPOINT', '')
+# Custom Settings
+# Load the INI file
+# config = configparser.ConfigParser()
+# # config.read(os.path.join(BASE_DIR, 'settings.ini'))
+# config_file = os.environ.get('INFORMS_CONFIG_FILE')
+# if config_file:
+#     config.read(config_file)
+# else:
+#     print("INFORMS_CONFIG_FILE environment variable not set.")
+#     # Handle the absence of the config file, e.g., by setting default values or raising an error
 
-# MAPS
+# Azure Maps API key
 AZURE_MAPS_KEY = os.environ.get('AZURE_MAPS_KEY', '')
-AZURE_MAPS_STATIC_URL = 'https://atlas.microsoft.com/map/static'
-MAPS_PATH = 'media/maps'
 
-Q_CLUSTER = {
-    'name': 'ORM',
-    'workers': 1,
-    'timeout': 180,
-    'retry': 300,
-    'queue_limit': 500,
-    'bulk': 10,
-    'orm': 'default',
-    # 'sync': DEBUG,
-    'scheduler': True,
-    'catch_up': False,
-    'label': 'Default ORM Queue'
-}
-
-# Q_CLUSTERS can be removed or commented out if only Q_CLUSTER is used
-# Q_CLUSTERS = {
-#     'default': {
-#         'workers': 2,  # General purpose workers
-#         'timeout': 60,
-#         'retry': 120,
-#         'recycle': 500,
-#         'orm': 'default',
-#         'scheduler': True,  # Enable scheduler on the default queue
-#         'label': 'Default Queue'
-#     },
-#     'cot_messaging': {
-#         'workers': 1,  # Single-threaded for CoT operations
-#         'timeout': 180, # Potentially longer timeout for network ops
-#         'retry': 300,   # Retry for longer if CoT server is down
-#         'recycle': 500,
-#         'orm': 'default',
-#         'label': 'CoT Messaging Queue'
-#     },
-#     'email_sending': {
-#         'workers': 2,  # Can be adjusted based on email volume
-#         'timeout': 120,
-#         'retry': 180,
-#         'recycle': 500,
-#         'orm': 'default',
-#         'label': 'Email Sending Queue'
-#     }
-# }
-
-# DEBUG_TOOLBAR_CONFIG = {
-#     'SHOW_TOOLBAR_CALLBACK': lambda request: os.environ.get('DEBUG_TOOLBAR', 'False') == 'True',  # Show the django-debug-toolbar?
-#     'INTERCEPT_REDIRECTS': False,  # Prevent toolbar from intercepting redirects
-#     'DISABLE_PANELS': {'debug_toolbar.panels.redirects.RedirectsPanel',
-#                       'debug_toolbar.panels.profiling.ProfilingPanel'},  # Disable noisy panels
-#     'RESULTS_CACHE_SIZE': 5,  # Reduce cache size to minimize overhead
-#     'RENDER_PANELS': False,  # Only render panels when requested (reduces initial load)
-#     'SHOW_TEMPLATE_CONTEXT': False,  # Don't show template context by default
-#     'ENABLE_STACKTRACES': False,  # Disable stack traces for SQL queries
-#     'SQL_WARNING_THRESHOLD': 500,  # Only warn for slow queries
-#     'SHOW_COLLAPSED': True,  # Start with toolbar collapsed
-#     # Minimize JavaScript console output
-#     'JAVASCRIPT_CONSOLE_OUTPUT_DISABLED': True,
-# }
-
-# Security settings
-X_FRAME_OPTIONS = 'SAMEORIGIN'  # Allow same origin framing (for maps, etc.)
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_SSL_REDIRECT = False if DEBUG else True  # Don't redirect to HTTPS in development
-SECURE_PROXY_SSL_HEADER = None
-SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
-
-# read in icons for TAK
+# CoT Icon settings
 icons_config = configparser.ConfigParser()
-icons_config.read(os.path.join(BASE_DIR, 'takserver/cot_icons.ini'))
-
-COT_ICONS = {key: value for key, value in icons_config.items('Icons')}
-# ic(COT_ICONS)
-
-# Static Version information
-STATIC_VERSION = os.environ.get('STATIC_VERSION', '0.0.1')
-
-# PYTAK_FLUSH_TIMEOUT = 40 # seconds
+# icons_config.read(os.path.join(BASE_DIR, 'takserver/cot_icons.ini'))
+# COT_ICON_ZIP_FILE = os.path.join(BASE_DIR, 'takserver/cot_icons.zip')
+# COT_ICONS = {key: value for key, value in icons_config.items('Icons')}
+# # ic(COT_ICONS)
+COT_ICONS = {}
