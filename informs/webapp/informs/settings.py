@@ -51,8 +51,7 @@ SITE_ID = 1
 #         APP_VERSION = f.read().strip()
 # except FileNotFoundError:
 #     APP_VERSION = '1.0'
-STATIC_VERSION = "1.2"
-APP_VERSION = STATIC_VERSION
+APP_VERSION = os.environ.get('STATIC_VERSION', '1.0.0')
 
 # CSRF settings
 CSRF_TRUSTED_ORIGINS = []
@@ -372,6 +371,6 @@ COT_ICONS = {key: value for key, value in icons_config.items('Icons')}
 # ic(COT_ICONS)
 
 # Static Version information
-# STATIC_VERSION = os.environ.get('STATIC_VERSION', '0.0.1')
+STATIC_VERSION = os.environ.get('STATIC_VERSION', '0.0.1')
 
 # PYTAK_FLUSH_TIMEOUT = 40 # seconds

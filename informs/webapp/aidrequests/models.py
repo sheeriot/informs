@@ -161,14 +161,14 @@ class AidRequest(TimeStampedModel):
         return f"{self.requestor_first_name} {self.requestor_last_name}".strip()
 
     requestor_email = models.EmailField(blank=True)
-    requestor_phone = models.CharField(blank=True, max_length=12)  # Format: 555-555-5555
+    requestor_phone = models.CharField(blank=True, max_length=25)
     use_whatsapp = models.BooleanField(default=False)
 
     # 2. Contact details for party needing assistance
     aid_first_name = models.CharField(max_length=20, blank=True)
     aid_last_name = models.CharField(max_length=30, blank=True)
     aid_email = models.EmailField(blank=True)
-    aid_phone = models.CharField(max_length=12, blank=True)
+    aid_phone = models.CharField(max_length=25, blank=True)
     use_whatsapp_aid = models.BooleanField(default=False)
 
     @property

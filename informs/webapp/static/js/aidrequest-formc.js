@@ -362,6 +362,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!step) return true;
 
         const requiredInputs = step.querySelectorAll('.is-required');
+        let firstInvalidInput = null;
 
         const isLocationStep = (stepIndex === 1);
 
@@ -370,8 +371,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const errorDiv = document.getElementById('location-error-msg');
 
             if (!locationNote) {
-                if(errorDiv) errorDiv.textContent = "Please confirm your location on the map before proceeding.";
-                return false;
+                if(errorDiv) {
+                    errorDiv.textContent = "Please confirm your location on the map before proceeding.";
+                    if (!firstInvalidInput) {
+                        firstInvalidInput = errorDiv;
+                    }
+                }
+                isValid = false;
             } else {
                 if(errorDiv) errorDiv.textContent = "";
             }
@@ -402,25 +408,44 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (input.id === 'id_contact_info') {
+                const value = input.value;
+                const errorDiv = input.parentElement.querySelector('.invalid-feedback');
+
                 // Check for a valid email format with a multi-part domain.
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-                const isEmail = emailRegex.test(input.value);
+                const isEmail = emailRegex.test(value);
 
-                const justDigits = input.value.replace(/\D/g, "");
+                const justDigits = value.replace(/\D/g, "");
                 const isPhone = justDigits.length >= 10;
 
                 if (!isEmail && !isPhone) {
                     inputValid = false;
+                    if (errorDiv) errorDiv.textContent = 'Please enter a valid phone number (at least 10 digits) or email address.';
+                } else if (!isEmail && value.length > 25) { // It's a phone number, check length
+                    inputValid = false;
+                    if (errorDiv) errorDiv.textContent = 'Phone number cannot exceed 25 characters.';
+                } else {
+                    if (errorDiv) errorDiv.textContent = ''; // Clear error message if valid
                 }
             }
 
             if (!inputValid) {
                 isValid = false;
                 input.classList.add('is-invalid');
+                 if (!firstInvalidInput) {
+                    firstInvalidInput = input;
+                }
             } else {
                 input.classList.remove('is-invalid');
             }
         });
+
+        if (!isValid && firstInvalidInput) {
+            firstInvalidInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (firstInvalidInput.focus) {
+                 firstInvalidInput.focus();
+            }
+        }
 
         return isValid;
     }
@@ -445,6 +470,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     showStep(currentStep);
+
+    // After page load, check for any fields with server-side validation errors
+    const firstInvalidField = form ? form.querySelector('.is-invalid') : null;
+    if (firstInvalidField) {
+        // Find the parent step of the invalid field and show it
+        const invalidStep = firstInvalidField.closest('.form-step');
+        if (invalidStep) {
+            const stepIndex = Array.from(steps).indexOf(invalidStep);
+            if (stepIndex !== -1) {
+                currentStep = stepIndex;
+                showStep(currentStep);
+            }
+        }
+
+        // Scroll to the invalid field
+        firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstInvalidField.focus();
+    }
 
     if (window.INFORMS_FOCUS_FIELD_ID) {
         const fieldToFocus = document.getElementById(window.INFORMS_FOCUS_FIELD_ID);
