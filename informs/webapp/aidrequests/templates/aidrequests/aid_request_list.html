@@ -6,12 +6,18 @@
 {% block content %}
 <div class="container-fluid px-4 py-3">
     <!-- Field Op Header -->
-    <div class="d-flex align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center">
             <h2 class="mb-0 me-2">Aid Requests List</h2>
             <a class="btn btn-info" href="{% url 'field_op_detail' slug=field_op.slug %}">
                 <i class="bi bi-truck"></i>
                 {{ field_op.name }}
+            </a>
+        </div>
+        <div class="d-flex align-items-center font-monospace text-muted small">
+            <span class="me-2">Refresh in <span id="countdown-timer">300</span>s</span>
+            <a href="javascript:location.reload();" class="text-reset" title="Refresh Now">
+                <i class="bi bi-arrow-clockwise"></i>
             </a>
         </div>
     </div>
@@ -75,4 +81,20 @@
 <script src="{% static 'js/aidrequests-ajax.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/tak-alert.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/utils-copy-coordinates.js' %}?v={{static_version}}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    let countdown = 300;
+    const timerElement = document.getElementById('countdown-timer');
+
+    function updateCountdown() {
+        timerElement.textContent = countdown;
+        countdown--;
+        if (countdown < 0) {
+            location.reload();
+        }
+    }
+
+    setInterval(updateCountdown, 1000);
+});
+</script>
 {% endblock %}

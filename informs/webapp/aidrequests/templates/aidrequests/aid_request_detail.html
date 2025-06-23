@@ -113,9 +113,9 @@ Aid Request {{ aid_request.pk }} for {{ field_op.name }}
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/tak-alert.js' %}?v={{ STATIC_VERSION }}"></script>
-<script src="{% static 'js/aidrequests-detail.js' %}?v={{ STATIC_VERSION }}"></script>
-<script src="{% static 'js/aidrequest-update-actions.js' %}?v={{ STATIC_VERSION }}"></script>
+<script src="{% static 'js/tak-alert.js' %}?v={{ static_version }}"></script>
+<script src="{% static 'js/aidrequests-detail.js' %}?v={{ static_version }}"></script>
+<script src="{% static 'js/aidrequest-update-actions.js' %}?v={{ static_version }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         setTimeout(function() {

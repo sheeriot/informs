@@ -86,7 +86,7 @@
 
 {% block extra_js %}
 <!-- Application JavaScript -->
-<script src="{% static 'js/utils-copy-coordinates.js' %}?v={{STATIC_VERSION}}"></script>
+<script src="{% static 'js/utils-copy-coordinates.js' %}?v={{ static_version }}"></script>
 <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
-<script src="{% static 'js/map_aidrequests.js' %}"></script>
+<script src="{% static 'js/map_aidrequests.js' %}?v={{ static_version }}"></script>
 {% endblock %}
