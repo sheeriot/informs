@@ -64,7 +64,11 @@
             </ul>
         </div>
     </td>
-    <td class="py-1 text-center">{{ aid_request.group_size|default:"" }}</td>
+    <td class="py-1 text-center">
+        {% if aid_request.group_size %}
+            <span class="badge fs-6 border border-primary text-primary">{{ aid_request.group_size }}</span>
+        {% endif %}
+    </td>
     <td class="py-1 text-center">
         {% with primary_location=aid_request.location %}
             {% if primary_location %}
