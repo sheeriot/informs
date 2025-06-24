@@ -116,10 +116,13 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
             context['logs'] = self.aid_request.logs.all().order_by('-updated_at')
 
             log_init = {
-                'field_op': self.field_op.slug,
                 'aid_request': self.aid_request.pk,
                 }
-            context['log_form'] = AidRequestLogForm(initial=log_init)
+            context['log_form'] = AidRequestLogForm(
+                initial=log_init,
+                field_op_slug=self.field_op.slug,
+                aid_request_pk=self.aid_request.pk
+            )
             context['AZURE_MAPS_KEY'] = settings.AZURE_MAPS_KEY
             context['MEDIA_URL'] = settings.MEDIA_URL
             context['status_form'] = RequestStatusForm(instance=self.aid_request)

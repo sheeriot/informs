@@ -203,20 +203,30 @@ class AidRequestLogForm(forms.ModelForm):
         fields = ('log_entry', 'aid_request')
 
     def __init__(self, *args, **kwargs):
+        field_op_slug = kwargs.pop('field_op_slug', None)
+        aid_request_pk = kwargs.pop('aid_request_pk', None)
         super().__init__(*args, **kwargs)
         self.fields['log_entry'].widget = forms.Textarea(
-            attrs={'rows': 2, 'placeholder': 'Log an update or note...'}
+            attrs={'rows': 4, 'placeholder': 'Log an update or note...'}
         )
         self.fields['log_entry'].label = ""
         self.fields['aid_request'].widget = forms.HiddenInput()
 
         self.helper = FormHelper()
+        if field_op_slug and aid_request_pk:
+            self.helper.form_action = reverse(
+                'aid_request_addlog',
+                kwargs={'field_op': field_op_slug, 'pk': aid_request_pk}
+            )
         self.helper.form_method = 'post'
-        self.helper.form_class = 'd-flex align-items-start'
 
         self.helper.layout = Layout(
-            Field('log_entry', css_class='me-2 flex-grow-1'),
-            Submit('submit', 'Add Log', css_class='btn btn-primary btn-sm')
+            'log_entry',
+            'aid_request',
+            Div(
+                Submit('submit', 'Add Log', css_class='btn btn-primary'),
+                css_class='d-flex justify-content-end'
+            )
         )
 
 
