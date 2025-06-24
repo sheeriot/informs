@@ -3,12 +3,13 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.urls import reverse_lazy, reverse
 from django.views.generic import CreateView, UpdateView, DetailView, DeleteView, ListView
 from django.conf import settings
-from django.http import Http404
+from django.http import Http404, HttpResponseRedirect
 from django.template import Template
 from django.template.context import Context
 
 from django_q.tasks import async_chain, async_task
 
+import logging
 from geopy.distance import geodesic
 
 from ..models import AidRequest, FieldOp, AidRequestLog, AidLocation
@@ -27,6 +28,8 @@ from .aid_request_forms_c import AidRequestCreateFormC
 from .aid_location_forms import AidLocationCreateForm
 from ..context_processors import get_field_op_from_kwargs
 from ..geocoder import get_azure_geocode
+
+logger = logging.getLogger(__name__)
 
 # Create View for AidRequest
 class AidRequestCreateView(CreateView):
@@ -226,9 +229,7 @@ class AidRequestLogCreateView(LoginRequiredMixin, CreateView):
                        )
 
     def form_valid(self, form):
-        self.object = form.save()
-        self.object.field_op = self.field_op
-
+        self.object = form.save(commit=False)
         user = self.request.user
         if user.is_authenticated:
             self.object.created_by = user
@@ -237,7 +238,7 @@ class AidRequestLogCreateView(LoginRequiredMixin, CreateView):
             self.object.created_by = None
             self.object.updated_by = None
         self.object.save()
-        return super().form_valid(form)
+        return HttpResponseRedirect(self.get_success_url())
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
