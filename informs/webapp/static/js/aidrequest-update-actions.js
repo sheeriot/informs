@@ -1,5 +1,5 @@
 const aidRequestUpdateConfig = {
-    debug: true // Set to true for console logging
+    debug: false // Set to true for console logging
 };
 
 let alertTimeoutId;

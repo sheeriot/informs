@@ -21,14 +21,6 @@ class AidRequestCreateFormC(forms.ModelForm):
         model = AidRequest
         fields = [
             'field_op',
-            'requestor_first_name',
-            'requestor_last_name',
-            'requestor_email',
-            'requestor_phone',
-            'aid_first_name',
-            'aid_last_name',
-            'aid_email',
-            'aid_phone',
             'street_address',
             'city',
             'state',
@@ -45,14 +37,6 @@ class AidRequestCreateFormC(forms.ModelForm):
         ]
         widgets = {
             'aid_type': forms.RadioSelect,
-            'requestor_first_name': forms.HiddenInput(),
-            'requestor_last_name': forms.HiddenInput(),
-            'requestor_email': forms.HiddenInput(),
-            'requestor_phone': forms.HiddenInput(),
-            'aid_first_name': forms.HiddenInput(),
-            'aid_last_name': forms.HiddenInput(),
-            'aid_email': forms.HiddenInput(),
-            'aid_phone': forms.HiddenInput(),
             'medical_needs': forms.Textarea(attrs={'rows': 2}),
             'welfare_check_info': forms.Textarea(attrs={'rows': 2}),
             'supplies_needed': forms.Textarea(attrs={'rows': 2}),
@@ -90,14 +74,6 @@ class AidRequestCreateFormC(forms.ModelForm):
 
         self.fields['contact_info'].help_text = "A valid email (e.g., user@example.com) or<br>phone number (at least 10 digits)."
         self.fields['use_whatsapp'].label = mark_safe("Contact me by WhatsApp<br><small class='text-danger'>(requires phone number)</small>")
-        self.fields['requestor_first_name'].required = False
-        self.fields['requestor_last_name'].required = False
-        self.fields['requestor_email'].required = False
-        self.fields['requestor_phone'].required = False
-        self.fields['aid_first_name'].required = False
-        self.fields['aid_last_name'].required = False
-        self.fields['aid_email'].required = False
-        self.fields['aid_phone'].required = False
 
         self.helper = FormHelper()
         self.helper.form_method = 'post'
@@ -336,11 +312,12 @@ class AidRequestCreateFormC(forms.ModelForm):
         full_name = self.cleaned_data.get('full_name', '').strip()
         if full_name:
             parts = full_name.split()
-            self.cleaned_data['requestor_first_name'] = parts[0]
-            self.cleaned_data['aid_first_name'] = parts[0]
-            if len(parts) > 1:
-                self.cleaned_data['requestor_last_name'] = ' '.join(parts[1:])
-                self.cleaned_data['aid_last_name'] = ' '.join(parts[1:])
+            first_name = parts[0]
+            last_name = ' '.join(parts[1:]) if len(parts) > 1 else ''
+            self.cleaned_data['requestor_first_name'] = first_name
+            self.cleaned_data['requestor_last_name'] = last_name
+            self.cleaned_data['aid_first_name'] = ''
+            self.cleaned_data['aid_last_name'] = ''
         return full_name
 
     def clean_contact_info(self):
@@ -349,14 +326,14 @@ class AidRequestCreateFormC(forms.ModelForm):
         try:
             EmailValidator()(contact_info)
             is_email = True
-            # ic(f"'{contact_info}' is a valid email address.")
         except ValidationError:
-            # ic(f"'{contact_info}' is not a valid email, checking if it is a phone number.")
             pass
 
         if is_email:
             self.cleaned_data['requestor_email'] = contact_info
-            self.cleaned_data['aid_email'] = contact_info
+            self.cleaned_data['requestor_phone'] = ''
+            self.cleaned_data['aid_email'] = ''
+            self.cleaned_data['aid_phone'] = ''
             return contact_info
 
         # If not a valid email, treat as a potential phone number.
@@ -364,15 +341,35 @@ class AidRequestCreateFormC(forms.ModelForm):
         cleaned_phone = re.sub(r'\D', '', contact_info)
         if len(cleaned_phone) >= 10:
             self.cleaned_data['requestor_phone'] = cleaned_phone
-            self.cleaned_data['aid_phone'] = cleaned_phone
-            # ic(f"'{contact_info}' is a valid phone number.")
+            self.cleaned_data['requestor_email'] = ''
+            self.cleaned_data['aid_email'] = ''
+            self.cleaned_data['aid_phone'] = ''
             return contact_info
         else:
-            # ic(f"'{contact_info}' is not a valid email or a phone number with at least 10 digits.")
             raise ValidationError(
                 "Enter a valid email address or a phone number with at least 10 digits.",
                 code='invalid_contact'
             )
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+
+        # Manually assign cleaned data to the instance
+        instance.requestor_first_name = self.cleaned_data.get('requestor_first_name', '')
+        instance.requestor_last_name = self.cleaned_data.get('requestor_last_name', '')
+        instance.requestor_email = self.cleaned_data.get('requestor_email', '')
+        instance.requestor_phone = self.cleaned_data.get('requestor_phone', '')
+
+        # Ensure 'aid' fields are always blank
+        instance.aid_first_name = ''
+        instance.aid_last_name = ''
+        instance.aid_email = ''
+        instance.aid_phone = ''
+
+        if commit:
+            instance.save()
+
+        return instance
 
     def clean(self):
         cleaned_data = super().clean()

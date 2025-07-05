@@ -282,6 +282,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (form && submitBtn) {
         form.addEventListener('submit', function(event) {
             if (validateStep(2)) {
+                if(aidRequestFormCConfig.debug) {
+                    const fullName = document.getElementById('id_full_name').value;
+                    console.log("Submitting form. Requestor full name:", fullName);
+                }
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...';
                 sessionStorage.removeItem('informsFormCData');
