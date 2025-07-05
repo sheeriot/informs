@@ -2,7 +2,7 @@
  * Azure Maps location picker for AidRequest form
  */
 const aidRequestFormMapConfig = {
-    debug: true,
+    debug: false,
 };
 
 function initAidRequestLocationPicker(wrapper) {

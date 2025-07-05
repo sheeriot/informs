@@ -153,8 +153,8 @@ class AidRequest(TimeStampedModel):
     field_op = models.ForeignKey(FieldOp, on_delete=models.CASCADE,
                                  null=True, related_name='aid_requests')
     # 1. Requestor details
-    requestor_first_name = models.CharField(max_length=20)
-    requestor_last_name = models.CharField(max_length=30)
+    requestor_first_name = models.CharField(max_length=20, blank=True)
+    requestor_last_name = models.CharField(max_length=30, blank=True)
 
     @property
     def requester_name(self):
