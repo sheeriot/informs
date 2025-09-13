@@ -44,6 +44,9 @@ ALLOWED_HOSTS = ["127.0.0.1", "localhost", SERVERNAME1, SERVERNAME2]
 
 SITE_ID = 1
 
+ORGANIZATION_URL = os.environ.get('ORGANIZATION_URL', 'https://example.com')
+SITE_IMAGE_URL = os.environ.get('SITE_IMAGE_URL', '')
+
 # Read version from file
 # try:
 #     # Corrected path for within the Docker container
@@ -157,10 +160,9 @@ TEMPLATES = [
                 'django.template.context_processors.static',
                 'django.template.context_processors.media',
                 'informs.context_processors.server_hostname',
+                'informs.context_processors.global_template_variables',
                 'aidrequests.context_processors.fieldops_active',
-                'aidrequests.context_processors.basevars',
                 'aidrequests.context_processors.field_op_context',
-                'informs.context_processors.app_version',
             ],
             'builtins': [
                 'django.templatetags.static',
@@ -360,7 +362,7 @@ X_FRAME_OPTIONS = 'SAMEORIGIN'  # Allow same origin framing (for maps, etc.)
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_SSL_REDIRECT = False if DEBUG else True  # Don't redirect to HTTPS in development
-SECURE_PROXY_SSL_HEADER = None
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
 
 # read in icons for TAK

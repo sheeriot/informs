@@ -304,6 +304,37 @@ class AidRequest(TimeStampedModel):
         """
         return self.status in self.ACTIVE_STATUSES
 
+    def to_dict(self):
+        """
+        Serializes the AidRequest object to a dictionary for JSON embedding.
+        """
+        location_data = None
+        if self.locations.exists():
+            latest_location = self.locations.latest('created_at')
+            location_data = {
+                'latitude': latest_location.latitude,
+                'longitude': latest_location.longitude,
+            }
+
+        aid_type_data = None
+        if self.aid_type:
+            aid_type_data = {
+                'name': self.aid_type.name,
+                'slug': self.aid_type.slug,
+            }
+
+        return {
+            'id': self.pk,
+            'status': self.status,
+            'status_display': self.get_status_display(),
+            'priority': self.priority,
+            'priority_display': self.get_priority_display(),
+            'aid_type': aid_type_data,
+            'location': location_data,
+            'address': {'full': self.full_address},
+            'requester_name': self.requester_name,
+        }
+
     class Meta:
         verbose_name = 'Aid Request'
         verbose_name_plural = 'Aid Requests'

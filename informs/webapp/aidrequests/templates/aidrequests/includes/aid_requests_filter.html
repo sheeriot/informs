@@ -11,7 +11,7 @@
                             <i class="bi bi-arrow-counterclockwise"></i> Reset
                         </button>
                         <span id="results-counter" class="badge bg-light text-dark rounded-pill">
-                            {% if current_status_group == 'inactive' %}{{ inactive_count }}{% else %}{{ active_count }}{% endif %} of {{ total_count }} requests
+                            {{ active_total_count }} of {{ total_count }} requests
                         </span>
                     </div>
                 </div>
@@ -31,7 +31,7 @@
                                            data-filter-value="all"
                                            checked>
                                     <label class="form-check-label fw-bold" for="aid-type-filter-all">
-                                        All ({% if current_status_group == 'inactive' %}{{ inactive_count }}{% else %}{{ active_count }}{% endif %})
+                                        All ({{ active_total_count }})
                                     </label>
                                 </div>
                             </div>
@@ -70,7 +70,7 @@
                                                        data-filter-value="active"
                                                        {% if current_status_group != 'inactive' %}checked{% endif %}>
                                                 <label class="form-check-label fw-bold" for="status-group-filter-active">
-                                                    Active <span class="text-muted" id="status-group-filter-active-total">({{ status_counts|active_status_count:status_groups.active }})</span>
+                                                    Active <span class="text-muted" id="status-group-filter-active-total">({{ active_total_count }})</span>
                                                 </label>
                                             </div>
                                         </div>
@@ -108,7 +108,7 @@
                                                        data-filter-value="inactive"
                                                        {% if current_status_group == 'inactive' %}checked{% endif %}>
                                                 <label class="form-check-label fw-bold" for="status-group-filter-inactive">
-                                                    Inactive <span class="text-muted" id="status-group-filter-inactive-total">({{ inactive_count }})</span>
+                                                    Inactive <span class="text-muted" id="status-group-filter-inactive-total">({{ inactive_total_count }})</span>
                                                 </label>
                                             </div>
                                         </div>
@@ -148,7 +148,7 @@
                                            data-filter-value="all"
                                            checked>
                                     <label class="form-check-label fw-bold" for="priority-filter-all">
-                                        All ({% if current_status_group == 'inactive' %}{{ inactive_count }}{% else %}{{ active_count }}{% endif %})
+                                        All ({{ active_total_count }})
                                     </label>
                                 </div>
                             </div>

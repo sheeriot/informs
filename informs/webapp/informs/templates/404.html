@@ -8,14 +8,17 @@
         <p />
         <h2 class="d-flex align-items-center">
             <div class="d-flex justify-content-center align-items-center p-0 me-2">
-                <i class="bi bi-life-preserver text-danger"></i>
+                <i class="bi bi-compass text-warning"></i>
             </div>
-            Sorry, you don't have access to this page.<br />
-            Please contact your system support team.
-            <div class="d-flex justify-content-center align-items-center p-0 me-2">
-                <i class="bi bi-person-raised-hand text-success"></i>
+            Sorry, the page you are looking for does not exist.<br />
+            Please check the URL and try again.
+            <div class="d-flex justify-content-center align-items-center p-0 ms-2">
+                <i class="bi bi-search text-info"></i>
             </div>
         </h2>
+        {% if exception %}
+            <p class="text-muted mt-2">Details: {{ exception }}</p>
+        {% endif %}
     </div>
     {% if user.is_authenticated %}
     <hr>

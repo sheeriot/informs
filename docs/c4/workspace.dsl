@@ -5,16 +5,22 @@ workspace "Intaker" "A Django (python) web application for form data collection 
 
     model {
 
+        components_title = element "Informs Components" "" "" componentstitletag
+
         groundops = element "GroundOps" "" "" groundopstag {
             # intaker -> groundops
         }
 
         email_service = softwareSystem "Email" "Azure Communications Service" emailservice_tag {
-            -> groundops "email" "" email2groundopstag
+            -> groundops notify "" email2groundopstag
         }
         takserver = softwareSystem "TAK Server" "Team Awareness Kit" takservertag {
             events = container "events"
-            -> groundops ATAK "" send2ataktag
+        }
+
+        tak_client = softwareSystem "TAK Client" "Mobile" takclienttag {
+             groundops -> this "uses"
+             this -> takserver "sends/receives CoT"
         }
 
         azure_maps = softwareSystem "Azure Maps" "" azuremapstag
@@ -24,16 +30,15 @@ workspace "Intaker" "A Django (python) web application for form data collection 
                 groundops -> this "updates" "" groundops2forms
             }
             db = container "Informs Database" "" "" informsdbtag
+
             curate = container "Curation" "" "Business Logic" informscuratetag {
+                -> forms
             }
-            dispatch = container "Dispatch" "" "" informsdispatchtag {
-            }
+
             tasks = container "Tasks" "" "" informstaskstag {
-                dispatch -> this notify (email/sms)
-                dispatch -> this alert (TAK)
                 this -> email_service SMTP
-                this -> azure_maps geocode "save map"
-                curate -> this mapit
+                this -> azure_maps geocode "maps"
+                forms -> this
             }
             pytak = container "PyTAK" "" "" informspytaktag {
                 -> takserver "COT" "" pytak2takservertag
@@ -44,14 +49,16 @@ workspace "Intaker" "A Django (python) web application for form data collection 
         dispatchops = element "DispatchOps" "" "" dispatchopstag {
             -> informs.forms "admin" "" dispatch2intakeformstag
             -> informs.curate "curate" "" dispatch2intakecuratetag
-            -> informs.dispatch "dispatch" "" dispatch2intakedispatchtag
+            email_service -> this notify
         }
     }
     views {
 
-        systemContext informs "InFormsCustomApp" {
+        systemContext informs "InFormsCustomApp" "" {
             include *
             include groundops
+            title "XXX"
+
         }
 
         # container <software system identifier> [key] [description] {
@@ -61,6 +68,8 @@ workspace "Intaker" "A Django (python) web application for form data collection 
             include *
             include groundops
             include dispatchops
+            include tak_client
+            include components_title
             # autolayout lr
         }
 
@@ -132,9 +141,9 @@ workspace "Intaker" "A Django (python) web application for form data collection 
                 background lightgreen
                 color black
                 shape Cylinder
-                width 200
-                height 133
-                fontSize 14
+                width 300
+                height 200
+                fontSize 16
             }
             element informscuratetag {
                 background yellow
@@ -163,6 +172,17 @@ workspace "Intaker" "A Django (python) web application for form data collection 
                 height 100
                 width 150
                 fontSize 14
+            }
+            element takclienttag {
+                shape Box
+                background #438dd5
+                #icon "icons/atak.png"
+                color white
+            }
+            element componentstitletag {
+                shape RoundedBox
+                height 100
+                width 600
             }
         }
     }

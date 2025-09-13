@@ -1,9 +1,13 @@
-function copyToClipboard(event, inputId) {
+function copyToClipboard(event, elementId) {
     const button = event.currentTarget;
-    const inputElement = document.getElementById(inputId);
+    const element = document.getElementById(elementId);
 
-    if (inputElement) {
-        navigator.clipboard.writeText(inputElement.value).then(() => {
+    if (element) {
+        const textToCopy = (element.tagName.toUpperCase() === 'INPUT' || element.tagName.toUpperCase() === 'TEXTAREA')
+            ? element.value
+            : element.textContent || element.innerText;
+
+        navigator.clipboard.writeText(textToCopy).then(() => {
             const originalIcon = button.innerHTML;
             button.innerHTML = '<i class="bi bi-check-lg"></i>'; // Change icon to a checkmark
 
@@ -14,7 +18,7 @@ function copyToClipboard(event, inputId) {
             console.error('Failed to copy text: ', err);
         });
     } else {
-        console.error(`Element with id '${inputId}' not found.`);
+        console.error(`Element with id '${elementId}' not found.`);
     }
 }
 

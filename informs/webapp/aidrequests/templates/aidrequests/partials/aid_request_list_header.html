@@ -5,16 +5,15 @@
             <div class="card-body p-2">
                 <div class="row align-items-center">
                     <!-- Left Column: Field Op Name, Slug and Coordinates -->
-                    <div class="col-md-4">
-                        <div class="d-flex flex-column">
-                            <div class="mb-2">
+                    <div class="col-lg-auto">
+                        <div class="d-flex flex-column flex-md-row align-items-md-center">
+                            <div class="mb-2 mb-md-0 me-md-3">
                                 <strong>{{ field_op.name }}</strong>
                                 <span class="font-monospace ms-2">({{ field_op.slug }})</span>
                             </div>
-                            <div class="input-group">
-                                <input type="text" class="form-control text-dark font-monospace" id="coordinates"
-                                    value="{{ field_op.latitude }},{{ field_op.longitude }}" readonly>
-                                <button class="btn btn-outline-secondary" type="button" onclick="copyCoordinates()">
+                            <div class="d-flex align-items-center border rounded p-1 bg-light">
+                                <span class="font-monospace text-dark px-2" id="coordinates">{{ field_op.latitude }},{{ field_op.longitude }}</span>
+                                <button class="btn btn-sm btn-secondary" type="button" onclick="copyToClipboard(event, 'coordinates')">
                                     <i class="bi bi-clipboard"></i>
                                 </button>
                             </div>
@@ -22,7 +21,7 @@
                     </div>
 
                     <!-- Right Column: TAK Server, Button and Status - All left aligned -->
-                    <div class="col-md-8">
+                    <div class="col-lg">
                         <div class="card border border-light">
                             <div class="card-body p-2">
                                 <div class="d-flex align-items-center flex-wrap">

@@ -5,6 +5,8 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.conf.urls import handler404, handler500
+from django.shortcuts import render
 # from debug_toolbar.toolbar import debug_toolbar_urls
 
 from aidrequests.views.aid_request import (
@@ -13,7 +15,7 @@ from aidrequests.views.aid_request import (
      AidRequestLogCreateView
      )
 from aidrequests.views.aid_request_list import AidRequestListView
-from aidrequests.views.ajax_views import update_aid_request
+from aidrequests.views.ajax_views import update_aid_request, get_aid_requests_json
 from aidrequests.views.aid_request_detail import AidRequestDetailView, AidRequestSubmittedView
 from aidrequests.views.aid_request_notify import AidRequestNotifyView
 
@@ -62,7 +64,6 @@ urlpatterns = [
      # path('fieldop/map/', FieldOpMapView.as_view(), name='field_op_map'),
      # path('field_op/<int:pk>/delete/', FieldOpDeleteView.as_view(), name='field_op_delete'),
      path('tz_detect/', include('tz_detect.urls')),
-     path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aid_request_new'),
      path('<slug:field_op>/aidrequest/', AidRequestCreateView.as_view(), name='aid_request_create'),
      path('<slug:field_op>/aidrequest/list/', AidRequestListView.as_view(), name='aid_request_list'),
      path('<slug:field_op>/aidrequest/list/<str:status_group>/', AidRequestListView.as_view(), name='aid_request_list'),
@@ -117,6 +118,7 @@ urlpatterns = [
           AidRequestLogCreateView.as_view(),
           name='aid_request_addlog'
           ),
+     path('api/<slug:field_op>/requests/', get_aid_requests_json, name='get_aid_requests_json'),
      path('api/<slug:field_op>/request/<int:pk>/update/', update_aid_request, name='aid_request_ajax_update'),
      path('api/<slug:field_op>/toggle-cot/', toggle_cot, name='toggle_cot'),
      path('api/<slug:field_op>/send-cot/', send_cot, name='send_cot'),
@@ -130,8 +132,13 @@ urlpatterns = [
      path('api/<slug:field_op>/aidlocation/<int:location_pk>/status-update/', aid_location_status_update, name='aid_location_status_update'),
      path('api/<slug:field_op>/aidlocation/<int:location_pk>/check-map-status/', check_map_status, name='check_map_status'),
      path('api/<slug:field_op>/request/<int:pk>/send_email/', send_email_view, name='ajax_send_email'),
+
+     path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aid_request_new'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+handler404 = 'informs.views.custom_404'
+handler500 = 'informs.views.custom_500'
 
 # urlpatterns += debug_toolbar_urls()

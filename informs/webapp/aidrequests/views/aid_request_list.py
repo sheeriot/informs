@@ -101,6 +101,10 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         aid_locations = prepare_aid_locations_for_map(all_aid_requests)
         context['aid_requests_json'] = json.dumps(aid_locations, cls=DecimalEncoder)
 
+        # Create a new unfiltered JSON object for the filter and list
+        all_aid_requests_data = [req.to_dict() for req in all_aid_requests]
+        context['all_aid_requests_json'] = json.dumps(all_aid_requests_data, cls=DecimalEncoder)
+
         bounds = locations_to_bounds(aid_locations)
         if bounds != [0,0,0,0]:
              context['min_lon'], context['min_lat'], context['max_lon'], context['max_lat'] = bounds
@@ -130,9 +134,12 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
             active_mask = df['status'].isin(AidRequest.ACTIVE_STATUSES)
             inactive_mask = df['status'].isin(AidRequest.INACTIVE_STATUSES)
 
+            active_total_count = int(active_mask.sum())
+            inactive_total_count = int(inactive_mask.sum())
+
             context.update({
-                'active_count': int(active_mask.sum()),
-                'inactive_count': int(inactive_mask.sum()),
+                'active_total_count': active_total_count,
+                'inactive_total_count': inactive_total_count,
                 'total_count': len(df),
             })
 
@@ -140,17 +147,17 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
             df_active = df[active_mask]
 
             # Determine which dataframe to use for current counts
-            if self.status_group == 'inactive':
-                df_current = df[inactive_mask]
-            else:
-                df_current = df_active
+            # On initial load, we only care about the active requests for counts per type/priority
+            df_current = df_active
 
             # --- Calculate Counts ---
             status_counts = {}
             for code, name in AidRequest.STATUS_CHOICES:
+                is_active = code in AidRequest.ACTIVE_STATUSES
                 status_counts[name] = {
                     'value': code,
-                    'count': (df_active['status'] == code).sum() if not df_active.empty else 0,
+                    # On initial load, only active statuses have a count > 0
+                    'count': (df_active['status'] == code).sum() if is_active and not df_active.empty else 0,
                     'total': (df['status'] == code).sum()
                 }
             context['status_counts'] = status_counts
@@ -183,7 +190,7 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
         else:
              context.update({
-                'active_count': 0, 'inactive_count': 0, 'total_count': 0,
+                'active_total_count': 0, 'inactive_total_count': 0, 'total_count': 0,
                 'status_counts': {s[1]: {'value': s[0], 'count': 0, 'total': 0} for s in AidRequest.STATUS_CHOICES},
                 'priority_counts': {p[1]: {'value': p[0], 'count': 0} for p in AidRequest.PRIORITY_CHOICES},
                 'aid_type_counts': {at['name']: {'value': at['slug'], 'count': 0} for at in aid_types_data},
@@ -191,9 +198,21 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
         context['initial_filter_state'] = json.dumps({
             'statusGroup': self.status_group,
-            'activeCount': context.get('active_count', 0),
-            'inactiveCount': context.get('inactive_count', 0),
+            'activeCount': context.get('active_total_count', 0),
+            'inactiveCount': context.get('inactive_total_count', 0),
             'totalCount': context.get('total_count', 0)
         })
+
+        # Prepare initial summary for the list view
+        status_dict = dict(AidRequest.STATUS_CHOICES)
+        active_status_labels = [status_dict.get(s, s.capitalize()) for s in AidRequest.ACTIVE_STATUSES]
+        status_summary = f"Status: {', '.join(active_status_labels)}"
+        initial_summary_html = f"""
+<div class="small text-muted lh-1">
+    <div class="mb-1">{context['active_total_count']} of {context['total_count']} requests</div>
+    <div class="mb-1">{status_summary}</div>
+</div>
+"""
+        context['initial_list_summary_html'] = initial_summary_html
 
         return context

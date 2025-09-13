@@ -114,7 +114,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Update the store with new data
                 if (window.aidRequestsStore?.initialized) {
-                    window.aidRequestsStore.updateAidRequest(requestId, data);
+                    const updates = {};
+                    if (isStatusUpdate) {
+                        updates.status = data.status;
+                        updates.status_display = data.status_display;
+                    }
+                    if (isPriorityUpdate) {
+                        updates.priority = data.priority;
+                        updates.priority_display = data.priority_display;
+                    }
+                    window.aidRequestsStore.updateAidRequest(requestId, updates);
                 } else {
                     console.warn('Store not initialized, skipping store update');
                 }
