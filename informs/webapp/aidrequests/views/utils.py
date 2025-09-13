@@ -19,6 +19,7 @@ def prepare_aid_locations_for_map(aid_requests_queryset):
                 'id': ar.pk,
                 'status': ar.status,
                 'priority': ar.priority or 'none',
+                'group_size': ar.group_size or 0,
                 'location': {
                     'latitude': loc.latitude,
                     'longitude': loc.longitude,

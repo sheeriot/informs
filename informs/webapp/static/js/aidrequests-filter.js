@@ -100,22 +100,27 @@ window.aidRequestsStore = {
         }
 
         if (this.debug) {
-            console.log('[Store] Updated request:', request);
+            console.log('[Store] Updated request in local store:', JSON.parse(JSON.stringify(request)));
         }
 
         // Recalculate counts and update display
         const filterState = getFilterState();
         const counts = getFilteredCounts(this.data.aidRequests, filterState);
+
+        if (this.debug) {
+            console.log('[Store] Recalculated counts after update:', JSON.parse(JSON.stringify(counts)));
+        }
+
         updateCountsDisplay(counts);
 
-        // Update row visibility if needed
+        // Dispatch an event so other components (like the list) can react if needed
         const filterChangeEvent = new CustomEvent('aidRequestsFiltered', {
-            detail: { filterState, counts }
+            detail: { filterState, counts, source: 'ajaxUpdate' }
         });
         document.dispatchEvent(filterChangeEvent);
 
         if (this.debug) {
-            console.log('[Store] Aid request update complete');
+            console.log('[Store] Aid request update complete and events dispatched');
         }
     }
 };
@@ -145,6 +150,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Store current state
         aidRequestsStore.currentState = { filterState, counts };
         aidRequestsStore.initialized = true;
+        // Expose functions for external use
+        aidRequestsStore.getFilteredCounts = getFilteredCounts;
+        aidRequestsStore.updateCountsDisplay = updateCountsDisplay;
 
         // Validate initial state if debug is enabled
         if (aidRequestsStore.debug) {
@@ -1084,6 +1092,9 @@ function updateCountsDisplay(counts) {
     const resultsCounter = filterCard.querySelector('#results-counter');
     if (resultsCounter) {
         resultsCounter.textContent = `${counts.matched} of ${counts.total} requests`;
+        if (aidRequestsStore.debug) {
+            console.log(`[Display] Updated results counter to: ${resultsCounter.textContent}`);
+        }
 
         // Update badge classes based on count
         resultsCounter.classList.remove('badge-success', 'badge-warning', 'badge-danger');
@@ -1102,7 +1113,7 @@ function updateCountsDisplay(counts) {
         if (groupTotal) {
             const total = counts.groups[group].filtered;
             groupTotal.textContent = `(${total})`;
-            if (aidRequestsStore.debug) console.log(`[Filter] Updated ${group} group total:`, total);
+            if (aidRequestsStore.debug) console.log(`[Display] Updated ${group} group total to: ${total}`);
         }
 
         // Update individual status counts

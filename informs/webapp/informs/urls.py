@@ -15,7 +15,7 @@ from aidrequests.views.aid_request import (
      AidRequestLogCreateView
      )
 from aidrequests.views.aid_request_list import AidRequestListView
-from aidrequests.views.ajax_views import update_aid_request
+from aidrequests.views.ajax_views import update_aid_request, get_aid_requests_json
 from aidrequests.views.aid_request_detail import AidRequestDetailView, AidRequestSubmittedView
 from aidrequests.views.aid_request_notify import AidRequestNotifyView
 
@@ -118,6 +118,7 @@ urlpatterns = [
           AidRequestLogCreateView.as_view(),
           name='aid_request_addlog'
           ),
+     path('api/<slug:field_op>/requests/', get_aid_requests_json, name='get_aid_requests_json'),
      path('api/<slug:field_op>/request/<int:pk>/update/', update_aid_request, name='aid_request_ajax_update'),
      path('api/<slug:field_op>/toggle-cot/', toggle_cot, name='toggle_cot'),
      path('api/<slug:field_op>/send-cot/', send_cot, name='send_cot'),

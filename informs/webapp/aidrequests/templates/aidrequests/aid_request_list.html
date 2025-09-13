@@ -16,7 +16,7 @@
         </div>
         <div class="d-flex align-items-center font-monospace text-muted small">
             <span class="me-2">Refresh in <span id="countdown-timer">300</span>s</span>
-            <a href="javascript:location.reload();" class="text-reset" title="Refresh Now">
+            <a href="#" id="manual-refresh-link" class="text-reset" title="Refresh Now">
                 <i class="bi bi-arrow-clockwise"></i>
             </a>
         </div>
@@ -84,22 +84,10 @@
 <script src="{% static 'js/aidrequests-list.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/map_aidrequests.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/aidrequests-ajax.js' %}?v={{static_version}}"></script>
+<script src="{% static 'js/aidrequests-refresh.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/tak-alert.js' %}?v={{static_version}}"></script>
-<script src="{% static 'js/utils-copy-coordinates.js' %}?v={{static_version}}"></script>
+<script src="{% static 'js/utils-copy-to-clipboard.js' %}?v={{static_version}}"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    let countdown = 300;
-    const timerElement = document.getElementById('countdown-timer');
-
-    function updateCountdown() {
-        timerElement.textContent = countdown;
-        countdown--;
-        if (countdown < 0) {
-            location.reload();
-        }
-    }
-
-    setInterval(updateCountdown, 1000);
-});
+    document.body.dataset.fieldOpSlug = "{{ field_op.slug }}";
 </script>
 {% endblock %}

@@ -475,11 +475,15 @@ function initializeMap(config) {
 
                 try {
                     // Set the camera to the configured bounds once map is ready
-                    map.setCamera({
-                        bounds: config.bounds,
-                        padding: config.padding,
-                        maxZoom: 18
-                    });
+                    try {
+                        map.setCamera({
+                            bounds: config.bounds,
+                            padding: config.padding,
+                            maxZoom: 18
+                        });
+                    } catch (cameraError) {
+                        console.warn('[Map] A non-critical error occurred while setting the camera. This is likely due to a known issue in the Azure Maps SDK and can be safely ignored.', cameraError);
+                    }
 
                     // Add map controls
                     map.controls.add(new atlas.control.ZoomControl(), { position: 'top-left' });
@@ -557,17 +561,6 @@ function updateLayerVisibility(filterState, counts) {
             // Match exactly how aidrequests-filter.js checks aid types
             const showLayer = filterState.aid_types === 'all' ||
                             (filterState.aid_types && filterState.aid_types.includes(aidType));
-            /*
-            if (mapRequestsConfig.debug) {
-                console.log(`Layer ${aidType} visibility check:`, {
-                    showLayer,
-                    aidType,
-                    filterAidTypes: filterState.aid_types,
-                    isAll: filterState.aid_types === 'all',
-                    included: Array.isArray(filterState.aid_types) ? filterState.aid_types.includes(aidType) : 'n/a'
-                });
-            }
-            */
             // Build filter expression for other filters (status, priority)
             const statusFilter = filterState.statuses === 'all' ?
                 ['boolean', true] :
@@ -584,22 +577,11 @@ function updateLayerVisibility(filterState, counts) {
                 priorityFilter = ['any', ...priorityChecks];
             }
 
-            if (mapRequestsConfig.debug) {
-                console.log(`[Map Debug] For Layer '${aidType}':`, {
-                    'Received filterState.priorities': JSON.parse(JSON.stringify(filterState.priorities)),
-                    'Generated priorityFilter': JSON.stringify(priorityFilter)
-                });
-            }
-
             let filterExpr = ['all',
                 ['boolean', showLayer],  // Layer visibility based on aid type
                 statusFilter,
                 priorityFilter
             ];
-
-            if (mapRequestsConfig.debug) {
-                console.log(`[Map Debug] Final generated filter expression for layer '${aidType}':`, JSON.stringify(filterExpr));
-            }
 
             // Set both the filter and visibility
             layer.setOptions({
@@ -791,6 +773,7 @@ function initializeFieldOpLayer() {
         });
     }
     */
+    // Temporarily disable the field op center marker for debugging
     fieldOpCenterSource.add(foCenter);
 
     // Add Symbol Layer for the Field Op Center Marker
@@ -902,20 +885,6 @@ async function initializeAidRequestLayer() {
     if (mapRequestsConfig.debug) {
         console.log('Aid Types Config:', mapRequestsConfig.aidTypesConfig);
         console.log('Aid Locations:', mapRequestsConfig.aidLocations);
-
-        // Add console.table for marker positions
-        /*
-        const markerPositions = mapRequestsConfig.aidLocations.map(request => ({
-            id: request.id,
-            type: request.aid_type.slug,
-            status: request.status,
-            priority: request.priority || 'none',
-            lat: request.location?.latitude,
-            lon: request.location?.longitude,
-            address: request.address.full
-        }));
-        console.table(markerPositions, ['id', 'type', 'status', 'priority', 'lat', 'lon']);
-        */
     }
 
     // Create icons first
@@ -955,8 +924,7 @@ async function initializeAidRequestLayer() {
                 aid_type: slug,
                 status: request.status,
                 priority: request.priority, // Already transformed to 'none_priority_value'
-                latitude: request.location.latitude,
-                longitude: request.location.longitude,
+                group_size: request.group_size,
                 address: request.address.full,
                 requester_name: request.requester_name
             });
@@ -1159,7 +1127,8 @@ function addAidRequestPopup(aidRequestsLayer) {
         if (e.shapes && e.shapes[0] && e.shapes[0].properties) {
             const prop = e.shapes[0].properties;
             const aidTypeConfig = mapRequestsConfig.aidTypesConfig[prop.aid_type];
-            const priorityLabel = window.aidRequestsStore.data.priorityChoices[prop.priority === null ? 'null' : prop.priority] || 'None';
+            const priorityKey = prop.priority === 'none_priority_value' ? 'null' : prop.priority;
+            const priorityLabel = window.aidRequestsStore.data.priorityChoices[priorityKey] || 'None';
             const content = `
                 <div style="padding: 10px;">
                     <strong>Status:</strong> ${prop.status || 'None'}<br>

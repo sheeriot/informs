@@ -4,8 +4,9 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST
 import json
 import logging
+from decimal import Decimal
 
-from ..models import AidRequest
+from ..models import AidRequest, FieldOp
 from ..forms import (
     RequestorInformationForm,
     AidContactInformationForm,
@@ -15,6 +16,22 @@ from ..forms import (
 )
 
 logger = logging.getLogger(__name__)
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super(DecimalEncoder, self).default(obj)
+
+@login_required
+def get_aid_requests_json(request, field_op):
+    """
+    API endpoint to get all aid requests for a field operation as JSON.
+    """
+    field_op = get_object_or_404(FieldOp, slug=field_op)
+    aid_requests = field_op.aid_requests.all().select_related('aid_type').prefetch_related('locations')
+    all_aid_requests_data = [req.to_dict() for req in aid_requests]
+    return JsonResponse(all_aid_requests_data, safe=False, encoder=DecimalEncoder)
 
 @require_POST
 @login_required
