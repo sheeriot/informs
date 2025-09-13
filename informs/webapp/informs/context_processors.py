@@ -10,9 +10,7 @@ def global_template_variables(request):
     Adds global variables to the context for all templates.
     """
     org_url = getattr(settings, 'ORGANIZATION_URL', '')
-
-    # The display text for the organization URL is based on the existing template.
-    org_url_text = 'SaveOurAllies.org'
+    org_url_text = getattr(settings, 'ORGANIZATION_NAME', 'Org Name')
     site_image_url = getattr(settings, 'SITE_IMAGE_URL', '')
 
     return {

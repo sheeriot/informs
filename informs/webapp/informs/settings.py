@@ -45,6 +45,7 @@ ALLOWED_HOSTS = ["127.0.0.1", "localhost", SERVERNAME1, SERVERNAME2]
 SITE_ID = 1
 
 ORGANIZATION_URL = os.environ.get('ORGANIZATION_URL', 'https://example.com')
+ORGANIZATION_NAME = os.environ.get('ORGANIZATION_NAME', 'Informs @ SheerIoT')
 SITE_IMAGE_URL = os.environ.get('SITE_IMAGE_URL', '')
 
 # Read version from file
