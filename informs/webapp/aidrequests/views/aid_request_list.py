@@ -101,6 +101,10 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         aid_locations = prepare_aid_locations_for_map(all_aid_requests)
         context['aid_requests_json'] = json.dumps(aid_locations, cls=DecimalEncoder)
 
+        # Create a new unfiltered JSON object for the filter and list
+        all_aid_requests_data = [req.to_dict() for req in all_aid_requests]
+        context['all_aid_requests_json'] = json.dumps(all_aid_requests_data, cls=DecimalEncoder)
+
         bounds = locations_to_bounds(aid_locations)
         if bounds != [0,0,0,0]:
              context['min_lon'], context['min_lat'], context['max_lon'], context['max_lat'] = bounds
@@ -195,5 +199,17 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
             'inactiveCount': context.get('inactive_count', 0),
             'totalCount': context.get('total_count', 0)
         })
+
+        # Prepare initial summary for the list view
+        status_dict = dict(AidRequest.STATUS_CHOICES)
+        active_status_labels = [status_dict.get(s, s.capitalize()) for s in AidRequest.ACTIVE_STATUSES]
+        status_summary = f"Status: {', '.join(active_status_labels)}"
+        initial_summary_html = f"""
+<div class="small text-muted lh-1">
+    <div class="mb-1">{context['active_count']} of {context['total_count']} requests</div>
+    <div class="mb-1">{status_summary}</div>
+</div>
+"""
+        context['initial_list_summary_html'] = initial_summary_html
 
         return context

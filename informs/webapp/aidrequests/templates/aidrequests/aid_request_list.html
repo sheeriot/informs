@@ -29,7 +29,7 @@
     {% include "aidrequests/includes/aid_requests_filter.html" %}
 
     <!-- Aid Requests Map and List sections -->
-    <div class="row">
+    <div class="row g-0">
         <!-- Aid Requests Map Section -->
         {% include "aidrequests/includes/aid_requests_map.html" %}
 
@@ -44,6 +44,11 @@
     <!-- Aid requests data - Combined format for both map and list -->
     <script id="aid-locations-data" type="application/json">
         {{ aid_requests_json|safe }}
+    </script>
+
+    <!-- All aid requests data for filter/list -->
+    <script id="all-aid-requests-data" type="application/json">
+        {{ all_aid_requests_json|safe }}
     </script>
 
     <!-- Initial filter state -->

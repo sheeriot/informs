@@ -92,6 +92,12 @@ function loadMapConfiguration() {
     if (aidLocationsElement && aidLocationsElement.textContent.trim()) {
         try {
             mapRequestsConfig.aidLocations = JSON.parse(aidLocationsElement.textContent);
+            // Standardize the priority value for 'None'/'null' right after loading
+            mapRequestsConfig.aidLocations.forEach(loc => {
+                if (loc.priority === null || loc.priority === 'none') {
+                    loc.priority = 'none_priority_value';
+                }
+            });
             if (mapRequestsConfig.debug) {
                 console.log('[Map] Aid Locations loaded early:', {
                     count: mapRequestsConfig.aidLocations.length,
@@ -563,17 +569,37 @@ function updateLayerVisibility(filterState, counts) {
             }
             */
             // Build filter expression for other filters (status, priority)
+            const statusFilter = filterState.statuses === 'all' ?
+                ['boolean', true] :
+                ['in', ['get', 'status'], ['literal', filterState.statuses || []]];
+
+            let priorityFilter;
+            if (filterState.priorities === 'all') {
+                priorityFilter = ['boolean', true];
+            } else {
+                const priorityChecks = (filterState.priorities || []).map(p => {
+                    const valueToCompare = (p === null) ? 'none_priority_value' : p;
+                    return ['==', ['get', 'priority'], valueToCompare];
+                });
+                priorityFilter = ['any', ...priorityChecks];
+            }
+
+            if (mapRequestsConfig.debug) {
+                console.log(`[Map Debug] For Layer '${aidType}':`, {
+                    'Received filterState.priorities': JSON.parse(JSON.stringify(filterState.priorities)),
+                    'Generated priorityFilter': JSON.stringify(priorityFilter)
+                });
+            }
+
             let filterExpr = ['all',
                 ['boolean', showLayer],  // Layer visibility based on aid type
-                // Status filter - match filter.js logic
-                filterState.statuses === 'all' ?
-                    ['boolean', true] :
-                    ['in', ['get', 'status'], ['literal', filterState.statuses || []]],
-                // Priority filter - match filter.js logic
-                filterState.priorities === 'all' ?
-                    ['boolean', true] :
-                    ['in', ['get', 'priority'], ['literal', filterState.priorities || []]]
+                statusFilter,
+                priorityFilter
             ];
+
+            if (mapRequestsConfig.debug) {
+                console.log(`[Map Debug] Final generated filter expression for layer '${aidType}':`, JSON.stringify(filterExpr));
+            }
 
             // Set both the filter and visibility
             layer.setOptions({
@@ -640,8 +666,8 @@ function updateMapSummary(filterState, counts) {
 
     // Build summary text
     const parts = [];
-    let visibleCount = counts ? counts.matched : 0;
-    let totalCount = counts ? counts.total : 0;
+    const totalCount = mapRequestsConfig.aidLocations.length;
+    const visibleCount = mapRequestsConfig.aidLocations.filter(loc => locationMatchesFilterState(loc, filterState)).length;
 
     // Create count element
     const countText = `${visibleCount} of ${totalCount} locations`;
@@ -707,6 +733,27 @@ function updateMapSummary(filterState, counts) {
 }
 
 // Helper Functions
+
+function locationMatchesFilterState(request, filterState) {
+    const status = request.status;
+    const aidType = request.aid_type.slug;
+    const priority = request.priority; // This will be 'none_priority_value' for nulls from the data
+
+    const matchesStatus = filterState.statuses === 'all' ||
+                         (Array.isArray(filterState.statuses) && filterState.statuses.includes(status));
+
+    const matchesAidType = filterState.aid_types === 'all' ||
+                          (Array.isArray(filterState.aid_types) && filterState.aid_types.includes(aidType));
+
+    const matchesPriority = filterState.priorities === 'all' ||
+                           (Array.isArray(filterState.priorities) && filterState.priorities.some(p => {
+                               const filterPriority = (p === 'none' || p === 'null' || !p) ? 'none_priority_value' : p;
+                               // Direct comparison now works
+                               return priority === filterPriority;
+                           }));
+
+    return matchesStatus && matchesAidType && matchesPriority;
+}
 
 // Initialize the field operation layer and ring
 function initializeFieldOpLayer() {
@@ -907,7 +954,7 @@ async function initializeAidRequestLayer() {
                 id: request.id,
                 aid_type: slug,
                 status: request.status,
-                priority: request.priority || null,
+                priority: request.priority, // Already transformed to 'none_priority_value'
                 latitude: request.location.latitude,
                 longitude: request.location.longitude,
                 address: request.address.full,

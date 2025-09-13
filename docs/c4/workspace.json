@@ -3,83 +3,95 @@
   "description" : "A Django (python) web application for form data collection and curation",
   "documentation" : { },
   "id" : 1,
-  "lastModifiedAgent" : "structurizr-ui",
-  "lastModifiedDate" : "2025-02-24T17:25:47Z",
+  "lastModifiedDate" : "2025-09-09T12:13:12Z",
   "model" : {
     "customElements" : [ {
-      "id" : "1",
-      "name" : "GroundOps",
-      "properties" : {
-        "structurizr.dsl.identifier" : "groundops"
-      },
-      "relationships" : [ {
-        "description" : "updates",
-        "destinationId" : "9",
-        "id" : "10",
-        "sourceId" : "1",
-        "tags" : "Relationship,groundops2forms"
-      }, {
-        "description" : "updates",
-        "destinationId" : "8",
-        "id" : "11",
-        "linkedRelationshipId" : "10",
-        "sourceId" : "1"
-      } ],
-      "tags" : "Element,groundopstag"
-    }, {
-      "id" : "27",
+      "id" : "28",
       "name" : "DispatchOps",
       "properties" : {
         "structurizr.dsl.identifier" : "dispatchops"
       },
       "relationships" : [ {
         "description" : "admin",
-        "destinationId" : "9",
-        "id" : "28",
-        "sourceId" : "27",
+        "destinationId" : "12",
+        "id" : "29",
+        "sourceId" : "28",
         "tags" : "Relationship,dispatch2intakeformstag"
       }, {
         "description" : "admin",
-        "destinationId" : "8",
-        "id" : "29",
-        "linkedRelationshipId" : "28",
-        "sourceId" : "27"
+        "destinationId" : "11",
+        "id" : "30",
+        "linkedRelationshipId" : "29",
+        "sourceId" : "28"
       }, {
         "description" : "curate",
-        "destinationId" : "13",
-        "id" : "30",
-        "sourceId" : "27",
-        "tags" : "Relationship,dispatch2intakecuratetag"
-      }, {
-        "description" : "dispatch",
-        "destinationId" : "14",
+        "destinationId" : "16",
         "id" : "31",
-        "sourceId" : "27",
-        "tags" : "Relationship,dispatch2intakedispatchtag"
+        "sourceId" : "28",
+        "tags" : "Relationship,dispatch2intakecuratetag"
       } ],
       "tags" : "Element,dispatchopstag"
+    }, {
+      "id" : "2",
+      "name" : "GroundOps",
+      "properties" : {
+        "structurizr.dsl.identifier" : "groundops"
+      },
+      "relationships" : [ {
+        "description" : "uses",
+        "destinationId" : "7",
+        "id" : "8",
+        "sourceId" : "2",
+        "tags" : "Relationship"
+      }, {
+        "description" : "updates",
+        "destinationId" : "12",
+        "id" : "13",
+        "sourceId" : "2",
+        "tags" : "Relationship,groundops2forms"
+      }, {
+        "description" : "updates",
+        "destinationId" : "11",
+        "id" : "14",
+        "linkedRelationshipId" : "13",
+        "sourceId" : "2"
+      } ],
+      "tags" : "Element,groundopstag"
+    }, {
+      "id" : "1",
+      "name" : "Informs Components",
+      "properties" : {
+        "structurizr.dsl.identifier" : "components_title"
+      },
+      "tags" : "Element,componentstitletag"
     } ],
     "softwareSystems" : [ {
       "description" : "Azure Communications Service",
       "documentation" : { },
-      "id" : "2",
+      "id" : "3",
       "location" : "Unspecified",
       "name" : "Email",
       "properties" : {
         "structurizr.dsl.identifier" : "email_service"
       },
       "relationships" : [ {
-        "description" : "email",
-        "destinationId" : "1",
-        "id" : "3",
-        "sourceId" : "2",
+        "description" : "notify",
+        "destinationId" : "2",
+        "id" : "4",
+        "sourceId" : "3",
         "tags" : "Relationship,email2groundopstag"
+      }, {
+        "description" : "notify",
+        "destinationId" : "28",
+        "id" : "32",
+        "sourceId" : "3",
+        "tags" : "Relationship"
       } ],
       "tags" : "Element,Software System,emailservice_tag"
     }, {
       "containers" : [ {
         "documentation" : { },
-        "id" : "5",
+        "id" : "6",
         "name" : "events",
         "properties" : {
           "structurizr.dsl.identifier" : "takserver.events"
@@ -88,23 +100,33 @@
       } ],
       "description" : "Team Awareness Kit",
       "documentation" : { },
-      "id" : "4",
+      "id" : "5",
       "location" : "Unspecified",
       "name" : "TAK Server",
       "properties" : {
         "structurizr.dsl.identifier" : "takserver"
       },
-      "relationships" : [ {
-        "description" : "ATAK",
-        "destinationId" : "1",
-        "id" : "6",
-        "sourceId" : "4",
-        "tags" : "Relationship,send2ataktag"
-      } ],
       "tags" : "Element,Software System,takservertag"
     }, {
+      "description" : "Mobile",
       "documentation" : { },
       "id" : "7",
+      "location" : "Unspecified",
+      "name" : "TAK Client",
+      "properties" : {
+        "structurizr.dsl.identifier" : "tak_client"
+      },
+      "relationships" : [ {
+        "description" : "sends/receives CoT",
+        "destinationId" : "5",
+        "id" : "9",
+        "sourceId" : "7",
+        "tags" : "Relationship"
+      } ],
+      "tags" : "Element,Software System,takclienttag"
+    }, {
+      "documentation" : { },
+      "id" : "10",
       "location" : "Unspecified",
       "name" : "Azure Maps",
       "properties" : {
@@ -114,16 +136,22 @@
     }, {
       "containers" : [ {
         "documentation" : { },
-        "id" : "9",
+        "id" : "12",
         "name" : "Aid Requests",
         "properties" : {
           "structurizr.dsl.identifier" : "informs.forms"
         },
+        "relationships" : [ {
+          "destinationId" : "18",
+          "id" : "23",
+          "sourceId" : "12",
+          "tags" : "Relationship"
+        } ],
         "tags" : "Element,Container,intakeformstag",
         "technology" : "intake forms"
       }, {
         "documentation" : { },
-        "id" : "12",
+        "id" : "15",
         "name" : "Informs Database",
         "properties" : {
           "structurizr.dsl.identifier" : "informs.db"
@@ -131,90 +159,66 @@
         "tags" : "Element,Container,informsdbtag"
       }, {
         "documentation" : { },
-        "id" : "13",
+        "id" : "16",
         "name" : "Curation",
         "properties" : {
           "structurizr.dsl.identifier" : "informs.curate"
         },
         "relationships" : [ {
-          "description" : "mapit",
-          "destinationId" : "15",
-          "id" : "22",
-          "sourceId" : "13",
+          "destinationId" : "12",
+          "id" : "17",
+          "sourceId" : "16",
           "tags" : "Relationship"
         } ],
         "tags" : "Element,Container,informscuratetag",
         "technology" : "Business Logic"
       }, {
         "documentation" : { },
-        "id" : "14",
-        "name" : "Dispatch",
-        "properties" : {
-          "structurizr.dsl.identifier" : "informs.dispatch"
-        },
-        "relationships" : [ {
-          "description" : "notify",
-          "destinationId" : "15",
-          "id" : "16",
-          "sourceId" : "14",
-          "tags" : "Relationship",
-          "technology" : "(email/sms)"
-        }, {
-          "description" : "alert",
-          "destinationId" : "15",
-          "id" : "17",
-          "sourceId" : "14",
-          "tags" : "Relationship",
-          "technology" : "(TAK)"
-        } ],
-        "tags" : "Element,Container,informsdispatchtag"
-      }, {
-        "documentation" : { },
-        "id" : "15",
+        "id" : "18",
         "name" : "Tasks",
         "properties" : {
           "structurizr.dsl.identifier" : "informs.tasks"
         },
         "relationships" : [ {
           "description" : "SMTP",
-          "destinationId" : "2",
-          "id" : "18",
-          "sourceId" : "15",
+          "destinationId" : "3",
+          "id" : "19",
+          "sourceId" : "18",
           "tags" : "Relationship"
         }, {
           "description" : "geocode",
-          "destinationId" : "7",
-          "id" : "20",
-          "sourceId" : "15",
+          "destinationId" : "10",
+          "id" : "21",
+          "sourceId" : "18",
           "tags" : "Relationship",
-          "technology" : "save map"
+          "technology" : "maps"
         }, {
           "description" : "SendCOT",
-          "destinationId" : "23",
-          "id" : "26",
-          "sourceId" : "15",
+          "destinationId" : "24",
+          "id" : "27",
+          "sourceId" : "18",
           "tags" : "Relationship"
         } ],
         "tags" : "Element,Container,informstaskstag"
       }, {
         "documentation" : { },
-        "id" : "23",
+        "id" : "24",
         "name" : "PyTAK",
         "properties" : {
           "structurizr.dsl.identifier" : "informs.pytak"
         },
         "relationships" : [ {
           "description" : "COT",
-          "destinationId" : "4",
-          "id" : "24",
-          "sourceId" : "23",
+          "destinationId" : "5",
+          "id" : "25",
+          "sourceId" : "24",
           "tags" : "Relationship,pytak2takservertag"
         } ],
         "tags" : "Element,Container,informspytaktag"
       } ],
       "description" : "Web App",
       "documentation" : { },
-      "id" : "8",
+      "id" : "11",
       "location" : "Unspecified",
       "name" : "InForms",
       "properties" : {
@@ -222,36 +226,35 @@
       },
       "relationships" : [ {
         "description" : "SMTP",
-        "destinationId" : "2",
-        "id" : "19",
-        "linkedRelationshipId" : "18",
-        "sourceId" : "8"
+        "destinationId" : "3",
+        "id" : "20",
+        "linkedRelationshipId" : "19",
+        "sourceId" : "11"
       }, {
         "description" : "geocode",
-        "destinationId" : "7",
-        "id" : "21",
-        "linkedRelationshipId" : "20",
-        "sourceId" : "8",
-        "technology" : "save map"
+        "destinationId" : "10",
+        "id" : "22",
+        "linkedRelationshipId" : "21",
+        "sourceId" : "11",
+        "technology" : "maps"
       }, {
         "description" : "COT",
-        "destinationId" : "4",
-        "id" : "25",
-        "linkedRelationshipId" : "24",
-        "sourceId" : "8"
+        "destinationId" : "5",
+        "id" : "26",
+        "linkedRelationshipId" : "25",
+        "sourceId" : "11"
       } ],
       "tags" : "Element,Software System,informstag"
     } ]
   },
   "name" : "Intaker",
   "properties" : {
-    "structurizr.dsl" : "d29ya3NwYWNlICJJbnRha2VyIiAiQSBEamFuZ28gKHB5dGhvbikgd2ViIGFwcGxpY2F0aW9uIGZvciBmb3JtIGRhdGEgY29sbGVjdGlvbiBhbmQgY3VyYXRpb24gIiB7CgogICAgIWlkZW50aWZpZXJzIGhpZXJhcmNoaWNhbAogICAgIyAhZG9jcyByZWFkbWUKCiAgICBtb2RlbCB7CgogICAgICAgIGdyb3VuZG9wcyA9IGVsZW1lbnQgIkdyb3VuZE9wcyIgIiIgIiIgZ3JvdW5kb3BzdGFnIHsKICAgICAgICAgICAgIyBpbnRha2VyIC0+IGdyb3VuZG9wcwogICAgICAgIH0KCiAgICAgICAgZW1haWxfc2VydmljZSA9IHNvZnR3YXJlU3lzdGVtICJFbWFpbCIgIkF6dXJlIENvbW11bmljYXRpb25zIFNlcnZpY2UiIGVtYWlsc2VydmljZV90YWcgewogICAgICAgICAgICAtPiBncm91bmRvcHMgImVtYWlsIiAiIiBlbWFpbDJncm91bmRvcHN0YWcKICAgICAgICB9CiAgICAgICAgdGFrc2VydmVyID0gc29mdHdhcmVTeXN0ZW0gIlRBSyBTZXJ2ZXIiICJUZWFtIEF3YXJlbmVzcyBLaXQiIHRha3NlcnZlcnRhZyB7CiAgICAgICAgICAgIGV2ZW50cyA9IGNvbnRhaW5lciAiZXZlbnRzIgogICAgICAgICAgICAtPiBncm91bmRvcHMgQVRBSyAiIiBzZW5kMmF0YWt0YWcKICAgICAgICB9CgogICAgICAgIGF6dXJlX21hcHMgPSBzb2Z0d2FyZVN5c3RlbSAiQXp1cmUgTWFwcyIgIiIgYXp1cmVtYXBzdGFnCgogICAgICAgIGluZm9ybXMgPSBzb2Z0d2FyZVN5c3RlbSAiSW5Gb3JtcyIgIldlYiBBcHAiIGluZm9ybXN0YWcgewogICAgICAgICAgICBmb3JtcyA9IGNvbnRhaW5lciAiQWlkIFJlcXVlc3RzIiAiIiAiaW50YWtlIGZvcm1zIiBpbnRha2Vmb3Jtc3RhZyB7CiAgICAgICAgICAgICAgICBncm91bmRvcHMgLT4gdGhpcyAidXBkYXRlcyIgIiIgZ3JvdW5kb3BzMmZvcm1zCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZGIgPSBjb250YWluZXIgIkluZm9ybXMgRGF0YWJhc2UiICIiICIiIGluZm9ybXNkYnRhZwogICAgICAgICAgICBjdXJhdGUgPSBjb250YWluZXIgIkN1cmF0aW9uIiAiIiAiQnVzaW5lc3MgTG9naWMiIGluZm9ybXNjdXJhdGV0YWcgewogICAgICAgICAgICB9CiAgICAgICAgICAgIGRpc3BhdGNoID0gY29udGFpbmVyICJEaXNwYXRjaCIgIiIgIiIgaW5mb3Jtc2Rpc3BhdGNodGFnIHsKICAgICAgICAgICAgfQogICAgICAgICAgICB0YXNrcyA9IGNvbnRhaW5lciAiVGFza3MiICIiICIiIGluZm9ybXN0YXNrc3RhZyB7CiAgICAgICAgICAgICAgICBkaXNwYXRjaCAtPiB0aGlzIG5vdGlmeSAoZW1haWwvc21zKQogICAgICAgICAgICAgICAgZGlzcGF0Y2ggLT4gdGhpcyBhbGVydCAoVEFLKQogICAgICAgICAgICAgICAgdGhpcyAtPiBlbWFpbF9zZXJ2aWNlIFNNVFAKICAgICAgICAgICAgICAgIHRoaXMgLT4gYXp1cmVfbWFwcyBnZW9jb2RlICJzYXZlIG1hcCIKICAgICAgICAgICAgICAgIGN1cmF0ZSAtPiB0aGlzIG1hcGl0CiAgICAgICAgICAgIH0KICAgICAgICAgICAgcHl0YWsgPSBjb250YWluZXIgIlB5VEFLIiAiIiAiIiBpbmZvcm1zcHl0YWt0YWcgewogICAgICAgICAgICAgICAgLT4gdGFrc2VydmVyICJDT1QiICIiIHB5dGFrMnRha3NlcnZlcnRhZwogICAgICAgICAgICAgICAgdGFza3MgLT4gdGhpcyAiU2VuZENPVCIKICAgICAgICAgICAgfQogICAgICAgIH0KCiAgICAgICAgZGlzcGF0Y2hvcHMgPSBlbGVtZW50ICJEaXNwYXRjaE9wcyIgIiIgIiIgZGlzcGF0Y2hvcHN0YWcgewogICAgICAgICAgICAtPiBpbmZvcm1zLmZvcm1zICJhZG1pbiIgIiIgZGlzcGF0Y2gyaW50YWtlZm9ybXN0YWcKICAgICAgICAgICAgLT4gaW5mb3Jtcy5jdXJhdGUgImN1cmF0ZSIgIiIgZGlzcGF0Y2gyaW50YWtlY3VyYXRldGFnCiAgICAgICAgICAgIC0+IGluZm9ybXMuZGlzcGF0Y2ggImRpc3BhdGNoIiAiIiBkaXNwYXRjaDJpbnRha2VkaXNwYXRjaHRhZwogICAgICAgIH0KICAgIH0KICAgIHZpZXdzIHsKCiAgICAgICAgc3lzdGVtQ29udGV4dCBpbmZvcm1zICJJbkZvcm1zQ3VzdG9tQXBwIiB7CiAgICAgICAgICAgIGluY2x1ZGUgKgogICAgICAgICAgICBpbmNsdWRlIGdyb3VuZG9wcwogICAgICAgIH0KCiAgICAgICAgIyBjb250YWluZXIgPHNvZnR3YXJlIHN5c3RlbSBpZGVudGlmaWVyPiBba2V5XSBbZGVzY3JpcHRpb25dIHsKICAgICAgICAjICAgICAuLi4KICAgICAgICAjIH0KICAgICAgICBjb250YWluZXIgaW5mb3JtcyBpbmZvcm1zdmlldyAiSW5Gb3JtcyAtIEN1c3RvbSBXZWIgQXBwIiB7CiAgICAgICAgICAgIGluY2x1ZGUgKgogICAgICAgICAgICBpbmNsdWRlIGdyb3VuZG9wcwogICAgICAgICAgICBpbmNsdWRlIGRpc3BhdGNob3BzCiAgICAgICAgICAgICMgYXV0b2xheW91dCBscgogICAgICAgIH0KCiAgICAgICAgc3R5bGVzIHsKICAgICAgICAgICAgcmVsYXRpb25zaGlwICJSZWxhdGlvbnNoaXAiIHsKICAgICAgICAgICAgICAgICMgY29sb3IgZ3JlZW4KICAgICAgICAgICAgICAgIGRhc2hlZCBmYWxzZQogICAgICAgICAgICAgICAgZm9udFNpemUgMzYKICAgICAgICAgICAgICAgIHRoaWNrbmVzcyAzCiAgICAgICAgICAgIH0KCiAgICAgICAgICAgIGVsZW1lbnQgYXp1cmVtYXBzdGFnIHsKICAgICAgICAgICAgICAgIHNoYXBlIGVsbGlwc2UKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgbGlnaHRibHVlCiAgICAgICAgICAgICAgICBjb2xvciBibGFjawogICAgICAgICAgICAgICAgZm9udFNpemUgMTgKICAgICAgICAgICAgICAgIGljb24gaWNvbnMvbWFwX2ljb24ucG5nCiAgICAgICAgICAgICAgICBoZWlnaHQgMjAwCiAgICAgICAgICAgICAgICB3aWR0aCAzMDAKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50IHRha3NlcnZlcnRhZyB7CiAgICAgICAgICAgICAgICBzaGFwZSBlbGxpcHNlCiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICNlNzllYTYKICAgICAgICAgICAgICAgIGNvbG9yIGJsYWNrCiAgICAgICAgICAgICAgICBmb250U2l6ZSAxOAogICAgICAgICAgICAgICAgaWNvbiBpY29ucy90YWtfZ292LnBuZwogICAgICAgICAgICAgICAgaGVpZ2h0IDIwMAogICAgICAgICAgICAgICAgd2lkdGggMzAwCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCBlbWFpbHNlcnZpY2VfdGFnIHsKICAgICAgICAgICAgICAgIHNoYXBlIGVsbGlwc2UKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgIzg3Q0VGQQogICAgICAgICAgICAgICAgY29sb3IgYmxhY2sKICAgICAgICAgICAgICAgIGZvbnRTaXplIDE4CiAgICAgICAgICAgICAgICBpY29uIGljb25zL2VtYWlsX2ljb24ucG5nCiAgICAgICAgICAgICAgICBoZWlnaHQgMjAwCiAgICAgICAgICAgICAgICB3aWR0aCAzMDAKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50IGRpc3BhdGNob3BzdGFnIHsKICAgICAgICAgICAgICAgIHNoYXBlIHBlcnNvbgogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjOEZCQzhGCiAgICAgICAgICAgICAgICBpY29uIGljb25zL21pYy1maWxsLXJlZC5wbmcKICAgICAgICAgICAgICAgIGhlaWdodCAyMDAKICAgICAgICAgICAgICAgIHdpZHRoIDMwMAogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsZW1lbnQgZ3JvdW5kb3BzdGFnIHsKICAgICAgICAgICAgICAgIHNoYXBlIHBlcnNvbgogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjREFBNTIwCiAgICAgICAgICAgICAgICBpY29uIGljb25zL2xpZmUtcHJlc2VydmVyX3JlZC5wbmcKICAgICAgICAgICAgICAgIGhlaWdodCAyMDAKICAgICAgICAgICAgICAgIHdpZHRoIDMwMAogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsZW1lbnQgaW5mb3Jtc3RhZyB7CiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICMwYTE4NTYKICAgICAgICAgICAgICAgICMgYmFja2dyb3VuZCBibHVlCiAgICAgICAgICAgICAgICBjb2xvciB3aGl0ZQogICAgICAgICAgICAgICAgc2hhcGUgUm91bmRlZEJveAogICAgICAgICAgICAgICAgaWNvbiBpY29ucy9pbmZvcm1zX2ljb24ucG5nCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCBpbnRha2Vmb3Jtc3RhZyB7CiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICMwYTE4NTYKICAgICAgICAgICAgICAgIGNvbG9yIHdoaXRlCiAgICAgICAgICAgICAgICBzaGFwZSBQaXBlCiAgICAgICAgICAgICAgICBpY29uIGljb25zL2luZm9ybXNfaWNvbi5wbmcKICAgICAgICAgICAgICAgIHdpZHRoIDMwMAogICAgICAgICAgICAgICAgaGVpZ2h0IDIwMAogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsZW1lbnQgaW5mb3Jtc2RidGFnIHsKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgbGlnaHRncmVlbgogICAgICAgICAgICAgICAgY29sb3IgYmxhY2sKICAgICAgICAgICAgICAgIHNoYXBlIEN5bGluZGVyCiAgICAgICAgICAgICAgICB3aWR0aCAyMDAKICAgICAgICAgICAgICAgIGhlaWdodCAxMzMKICAgICAgICAgICAgICAgIGZvbnRTaXplIDE0CiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCBpbmZvcm1zY3VyYXRldGFnIHsKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgeWVsbG93CiAgICAgICAgICAgICAgICBjb2xvciBibGFjawogICAgICAgICAgICAgICAgc2hhcGUgaGV4YWdvbgogICAgICAgICAgICAgICAgd2lkdGggMzAwCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCBpbmZvcm1zZGlzcGF0Y2h0YWcgewogICAgICAgICAgICAgICAgYmFja2dyb3VuZCBsaWdodGNvcmFsCiAgICAgICAgICAgICAgICBjb2xvciBibGFjawogICAgICAgICAgICAgICAgc2hhcGUgcm91bmRlZGJveAogICAgICAgICAgICAgICAgaGVpZ2h0IDIwMAogICAgICAgICAgICAgICAgd2lkdGggMzAwCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCBpbmZvcm1zdGFza3N0YWcgewogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjYjBjNGRlCiAgICAgICAgICAgICAgICBjb2xvciBibGFjawogICAgICAgICAgICAgICAgc2hhcGUgcGlwZQogICAgICAgICAgICAgICAgaGVpZ2h0IDIwMAogICAgICAgICAgICAgICAgd2lkdGggMzAwCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCBpbmZvcm1zcHl0YWt0YWcgewogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjRDQ5MUFECiAgICAgICAgICAgICAgICBjb2xvciBibGFjawogICAgICAgICAgICAgICAgc2hhcGUgY29tcG9uZW50CiAgICAgICAgICAgICAgICBoZWlnaHQgMTAwCiAgICAgICAgICAgICAgICB3aWR0aCAxNTAKICAgICAgICAgICAgICAgIGZvbnRTaXplIDE0CiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICB9Cn0="
+    "structurizr.dsl" : "d29ya3NwYWNlICJJbnRha2VyIiAiQSBEamFuZ28gKHB5dGhvbikgd2ViIGFwcGxpY2F0aW9uIGZvciBmb3JtIGRhdGEgY29sbGVjdGlvbiBhbmQgY3VyYXRpb24gIiB7CgogICAgIWlkZW50aWZpZXJzIGhpZXJhcmNoaWNhbAogICAgIyAhZG9jcyByZWFkbWUKCiAgICBtb2RlbCB7CgogICAgICAgIGNvbXBvbmVudHNfdGl0bGUgPSBlbGVtZW50ICJJbmZvcm1zIENvbXBvbmVudHMiICIiICIiIGNvbXBvbmVudHN0aXRsZXRhZwoKICAgICAgICBncm91bmRvcHMgPSBlbGVtZW50ICJHcm91bmRPcHMiICIiICIiIGdyb3VuZG9wc3RhZyB7CiAgICAgICAgICAgICMgaW50YWtlciAtPiBncm91bmRvcHMKICAgICAgICB9CgogICAgICAgIGVtYWlsX3NlcnZpY2UgPSBzb2Z0d2FyZVN5c3RlbSAiRW1haWwiICJBenVyZSBDb21tdW5pY2F0aW9ucyBTZXJ2aWNlIiBlbWFpbHNlcnZpY2VfdGFnIHsKICAgICAgICAgICAgLT4gZ3JvdW5kb3BzIG5vdGlmeSAiIiBlbWFpbDJncm91bmRvcHN0YWcKICAgICAgICB9CiAgICAgICAgdGFrc2VydmVyID0gc29mdHdhcmVTeXN0ZW0gIlRBSyBTZXJ2ZXIiICJUZWFtIEF3YXJlbmVzcyBLaXQiIHRha3NlcnZlcnRhZyB7CiAgICAgICAgICAgIGV2ZW50cyA9IGNvbnRhaW5lciAiZXZlbnRzIgogICAgICAgIH0KCiAgICAgICAgdGFrX2NsaWVudCA9IHNvZnR3YXJlU3lzdGVtICJUQUsgQ2xpZW50IiAiTW9iaWxlIiB0YWtjbGllbnR0YWcgewogICAgICAgICAgICAgZ3JvdW5kb3BzIC0+IHRoaXMgInVzZXMiCiAgICAgICAgICAgICB0aGlzIC0+IHRha3NlcnZlciAic2VuZHMvcmVjZWl2ZXMgQ29UIgogICAgICAgIH0KCiAgICAgICAgYXp1cmVfbWFwcyA9IHNvZnR3YXJlU3lzdGVtICJBenVyZSBNYXBzIiAiIiBhenVyZW1hcHN0YWcKCiAgICAgICAgaW5mb3JtcyA9IHNvZnR3YXJlU3lzdGVtICJJbkZvcm1zIiAiV2ViIEFwcCIgaW5mb3Jtc3RhZyB7CiAgICAgICAgICAgIGZvcm1zID0gY29udGFpbmVyICJBaWQgUmVxdWVzdHMiICIiICJpbnRha2UgZm9ybXMiIGludGFrZWZvcm1zdGFnIHsKICAgICAgICAgICAgICAgIGdyb3VuZG9wcyAtPiB0aGlzICJ1cGRhdGVzIiAiIiBncm91bmRvcHMyZm9ybXMKICAgICAgICAgICAgfQogICAgICAgICAgICBkYiA9IGNvbnRhaW5lciAiSW5mb3JtcyBEYXRhYmFzZSIgIiIgIiIgaW5mb3Jtc2RidGFnCgogICAgICAgICAgICBjdXJhdGUgPSBjb250YWluZXIgIkN1cmF0aW9uIiAiIiAiQnVzaW5lc3MgTG9naWMiIGluZm9ybXNjdXJhdGV0YWcgewogICAgICAgICAgICAgICAgLT4gZm9ybXMKICAgICAgICAgICAgfQoKICAgICAgICAgICAgdGFza3MgPSBjb250YWluZXIgIlRhc2tzIiAiIiAiIiBpbmZvcm1zdGFza3N0YWcgewogICAgICAgICAgICAgICAgdGhpcyAtPiBlbWFpbF9zZXJ2aWNlIFNNVFAKICAgICAgICAgICAgICAgIHRoaXMgLT4gYXp1cmVfbWFwcyBnZW9jb2RlICJtYXBzIgogICAgICAgICAgICAgICAgZm9ybXMgLT4gdGhpcwogICAgICAgICAgICB9CiAgICAgICAgICAgIHB5dGFrID0gY29udGFpbmVyICJQeVRBSyIgIiIgIiIgaW5mb3Jtc3B5dGFrdGFnIHsKICAgICAgICAgICAgICAgIC0+IHRha3NlcnZlciAiQ09UIiAiIiBweXRhazJ0YWtzZXJ2ZXJ0YWcKICAgICAgICAgICAgICAgIHRhc2tzIC0+IHRoaXMgIlNlbmRDT1QiCiAgICAgICAgICAgIH0KICAgICAgICB9CgogICAgICAgIGRpc3BhdGNob3BzID0gZWxlbWVudCAiRGlzcGF0Y2hPcHMiICIiICIiIGRpc3BhdGNob3BzdGFnIHsKICAgICAgICAgICAgLT4gaW5mb3Jtcy5mb3JtcyAiYWRtaW4iICIiIGRpc3BhdGNoMmludGFrZWZvcm1zdGFnCiAgICAgICAgICAgIC0+IGluZm9ybXMuY3VyYXRlICJjdXJhdGUiICIiIGRpc3BhdGNoMmludGFrZWN1cmF0ZXRhZwogICAgICAgICAgICBlbWFpbF9zZXJ2aWNlIC0+IHRoaXMgbm90aWZ5CiAgICAgICAgfQogICAgfQogICAgdmlld3MgewoKICAgICAgICBzeXN0ZW1Db250ZXh0IGluZm9ybXMgIkluRm9ybXNDdXN0b21BcHAiICIiIHsKICAgICAgICAgICAgaW5jbHVkZSAqCiAgICAgICAgICAgIGluY2x1ZGUgZ3JvdW5kb3BzCiAgICAgICAgICAgIHRpdGxlICJYWFgiCgogICAgICAgIH0KCiAgICAgICAgIyBjb250YWluZXIgPHNvZnR3YXJlIHN5c3RlbSBpZGVudGlmaWVyPiBba2V5XSBbZGVzY3JpcHRpb25dIHsKICAgICAgICAjICAgICAuLi4KICAgICAgICAjIH0KICAgICAgICBjb250YWluZXIgaW5mb3JtcyBpbmZvcm1zdmlldyAiSW5Gb3JtcyAtIEN1c3RvbSBXZWIgQXBwIiB7CiAgICAgICAgICAgIGluY2x1ZGUgKgogICAgICAgICAgICBpbmNsdWRlIGdyb3VuZG9wcwogICAgICAgICAgICBpbmNsdWRlIGRpc3BhdGNob3BzCiAgICAgICAgICAgIGluY2x1ZGUgdGFrX2NsaWVudAogICAgICAgICAgICBpbmNsdWRlIGNvbXBvbmVudHNfdGl0bGUKICAgICAgICAgICAgIyBhdXRvbGF5b3V0IGxyCiAgICAgICAgfQoKICAgICAgICBzdHlsZXMgewogICAgICAgICAgICByZWxhdGlvbnNoaXAgIlJlbGF0aW9uc2hpcCIgewogICAgICAgICAgICAgICAgIyBjb2xvciBncmVlbgogICAgICAgICAgICAgICAgZGFzaGVkIGZhbHNlCiAgICAgICAgICAgICAgICBmb250U2l6ZSAzNgogICAgICAgICAgICAgICAgdGhpY2tuZXNzIDMKICAgICAgICAgICAgfQoKICAgICAgICAgICAgZWxlbWVudCBhenVyZW1hcHN0YWcgewogICAgICAgICAgICAgICAgc2hhcGUgZWxsaXBzZQogICAgICAgICAgICAgICAgYmFja2dyb3VuZCBsaWdodGJsdWUKICAgICAgICAgICAgICAgIGNvbG9yIGJsYWNrCiAgICAgICAgICAgICAgICBmb250U2l6ZSAxOAogICAgICAgICAgICAgICAgaWNvbiBpY29ucy9tYXBfaWNvbi5wbmcKICAgICAgICAgICAgICAgIGhlaWdodCAyMDAKICAgICAgICAgICAgICAgIHdpZHRoIDMwMAogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsZW1lbnQgdGFrc2VydmVydGFnIHsKICAgICAgICAgICAgICAgIHNoYXBlIGVsbGlwc2UKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgI2U3OWVhNgogICAgICAgICAgICAgICAgY29sb3IgYmxhY2sKICAgICAgICAgICAgICAgIGZvbnRTaXplIDE4CiAgICAgICAgICAgICAgICBpY29uIGljb25zL3Rha19nb3YucG5nCiAgICAgICAgICAgICAgICBoZWlnaHQgMjAwCiAgICAgICAgICAgICAgICB3aWR0aCAzMDAKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50IGVtYWlsc2VydmljZV90YWcgewogICAgICAgICAgICAgICAgc2hhcGUgZWxsaXBzZQogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjODdDRUZBCiAgICAgICAgICAgICAgICBjb2xvciBibGFjawogICAgICAgICAgICAgICAgZm9udFNpemUgMTgKICAgICAgICAgICAgICAgIGljb24gaWNvbnMvZW1haWxfaWNvbi5wbmcKICAgICAgICAgICAgICAgIGhlaWdodCAyMDAKICAgICAgICAgICAgICAgIHdpZHRoIDMwMAogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsZW1lbnQgZGlzcGF0Y2hvcHN0YWcgewogICAgICAgICAgICAgICAgc2hhcGUgcGVyc29uCiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICM4RkJDOEYKICAgICAgICAgICAgICAgIGljb24gaWNvbnMvbWljLWZpbGwtcmVkLnBuZwogICAgICAgICAgICAgICAgaGVpZ2h0IDIwMAogICAgICAgICAgICAgICAgd2lkdGggMzAwCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCBncm91bmRvcHN0YWcgewogICAgICAgICAgICAgICAgc2hhcGUgcGVyc29uCiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICNEQUE1MjAKICAgICAgICAgICAgICAgIGljb24gaWNvbnMvbGlmZS1wcmVzZXJ2ZXJfcmVkLnBuZwogICAgICAgICAgICAgICAgaGVpZ2h0IDIwMAogICAgICAgICAgICAgICAgd2lkdGggMzAwCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCBpbmZvcm1zdGFnIHsKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgIzBhMTg1NgogICAgICAgICAgICAgICAgIyBiYWNrZ3JvdW5kIGJsdWUKICAgICAgICAgICAgICAgIGNvbG9yIHdoaXRlCiAgICAgICAgICAgICAgICBzaGFwZSBSb3VuZGVkQm94CiAgICAgICAgICAgICAgICBpY29uIGljb25zL2luZm9ybXNfaWNvbi5wbmcKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50IGludGFrZWZvcm1zdGFnIHsKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgIzBhMTg1NgogICAgICAgICAgICAgICAgY29sb3Igd2hpdGUKICAgICAgICAgICAgICAgIHNoYXBlIFBpcGUKICAgICAgICAgICAgICAgIGljb24gaWNvbnMvaW5mb3Jtc19pY29uLnBuZwogICAgICAgICAgICAgICAgd2lkdGggMzAwCiAgICAgICAgICAgICAgICBoZWlnaHQgMjAwCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCBpbmZvcm1zZGJ0YWcgewogICAgICAgICAgICAgICAgYmFja2dyb3VuZCBsaWdodGdyZWVuCiAgICAgICAgICAgICAgICBjb2xvciBibGFjawogICAgICAgICAgICAgICAgc2hhcGUgQ3lsaW5kZXIKICAgICAgICAgICAgICAgIHdpZHRoIDMwMAogICAgICAgICAgICAgICAgaGVpZ2h0IDIwMAogICAgICAgICAgICAgICAgZm9udFNpemUgMTYKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50IGluZm9ybXNjdXJhdGV0YWcgewogICAgICAgICAgICAgICAgYmFja2dyb3VuZCB5ZWxsb3cKICAgICAgICAgICAgICAgIGNvbG9yIGJsYWNrCiAgICAgICAgICAgICAgICBzaGFwZSBoZXhhZ29uCiAgICAgICAgICAgICAgICB3aWR0aCAzMDAKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50IGluZm9ybXNkaXNwYXRjaHRhZyB7CiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kIGxpZ2h0Y29yYWwKICAgICAgICAgICAgICAgIGNvbG9yIGJsYWNrCiAgICAgICAgICAgICAgICBzaGFwZSByb3VuZGVkYm94CiAgICAgICAgICAgICAgICBoZWlnaHQgMjAwCiAgICAgICAgICAgICAgICB3aWR0aCAzMDAKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50IGluZm9ybXN0YXNrc3RhZyB7CiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICNiMGM0ZGUKICAgICAgICAgICAgICAgIGNvbG9yIGJsYWNrCiAgICAgICAgICAgICAgICBzaGFwZSBwaXBlCiAgICAgICAgICAgICAgICBoZWlnaHQgMjAwCiAgICAgICAgICAgICAgICB3aWR0aCAzMDAKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50IGluZm9ybXNweXRha3RhZyB7CiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICNENDkxQUQKICAgICAgICAgICAgICAgIGNvbG9yIGJsYWNrCiAgICAgICAgICAgICAgICBzaGFwZSBjb21wb25lbnQKICAgICAgICAgICAgICAgIGhlaWdodCAxMDAKICAgICAgICAgICAgICAgIHdpZHRoIDE1MAogICAgICAgICAgICAgICAgZm9udFNpemUgMTQKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50IHRha2NsaWVudHRhZyB7CiAgICAgICAgICAgICAgICBzaGFwZSBCb3gKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgIzQzOGRkNQogICAgICAgICAgICAgICAgI2ljb24gImljb25zL2F0YWsucG5nIgogICAgICAgICAgICAgICAgY29sb3Igd2hpdGUKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50IGNvbXBvbmVudHN0aXRsZXRhZyB7CiAgICAgICAgICAgICAgICBzaGFwZSBSb3VuZGVkQm94CiAgICAgICAgICAgICAgICBoZWlnaHQgMTAwCiAgICAgICAgICAgICAgICB3aWR0aCA2MDAKICAgICAgICAgICAgfQogICAgICAgIH0KICAgIH0KfQ=="
   },
   "views" : {
     "configuration" : {
       "branding" : { },
       "lastSavedView" : "informsview",
-      "metadataSymbols" : "SquareBrackets",
       "styles" : {
         "elements" : [ {
           "background" : "#add8e6",
@@ -311,11 +314,11 @@
         }, {
           "background" : "#90ee90",
           "color" : "#000000",
-          "fontSize" : 14,
-          "height" : 133,
+          "fontSize" : 16,
+          "height" : 200,
           "shape" : "Cylinder",
           "tag" : "informsdbtag",
-          "width" : 200
+          "width" : 300
         }, {
           "background" : "#ffff00",
           "color" : "#000000",
@@ -344,6 +347,16 @@
           "shape" : "Component",
           "tag" : "informspytaktag",
           "width" : 150
+        }, {
+          "background" : "#438dd5",
+          "color" : "#ffffff",
+          "shape" : "Box",
+          "tag" : "takclienttag"
+        }, {
+          "height" : 100,
+          "shape" : "RoundedBox",
+          "tag" : "componentstitletag",
+          "width" : 600
         } ],
         "relationships" : [ {
           "dashed" : false,
@@ -357,155 +370,160 @@
     "containerViews" : [ {
       "description" : "InForms - Custom Web App",
       "dimensions" : {
-        "height" : 1675,
-        "width" : 2125
+        "height" : 2143,
+        "width" : 2035
       },
       "elements" : [ {
         "id" : "1",
-        "x" : 199,
-        "y" : 956
+        "x" : 450,
+        "y" : 1795
       }, {
         "id" : "2",
-        "x" : 954,
-        "y" : 1106
+        "x" : 1225,
+        "y" : 1490
       }, {
-        "id" : "4",
-        "x" : 1269,
-        "y" : 1226
+        "id" : "3",
+        "x" : 1250,
+        "y" : 688
+      }, {
+        "id" : "5",
+        "x" : 1250,
+        "y" : 309
       }, {
         "id" : "7",
-        "x" : 1624,
-        "y" : 151
+        "x" : 1560,
+        "y" : 975
       }, {
-        "id" : "9",
-        "x" : 744,
-        "y" : 781
+        "id" : "10",
+        "x" : 581,
+        "y" : 152
       }, {
         "id" : "12",
-        "x" : 1029,
-        "y" : 661
-      }, {
-        "id" : "13",
-        "x" : 744,
-        "y" : 456
-      }, {
-        "id" : "14",
-        "x" : 744,
-        "y" : 186
+        "x" : 701,
+        "y" : 1002
       }, {
         "id" : "15",
-        "x" : 1284,
-        "y" : 516
+        "x" : 341,
+        "y" : 632
       }, {
-        "id" : "23",
-        "x" : 1349,
-        "y" : 866
+        "id" : "16",
+        "x" : 276,
+        "y" : 962
       }, {
-        "id" : "27",
-        "x" : 214,
-        "y" : 431
+        "id" : "18",
+        "x" : 711,
+        "y" : 667
+      }, {
+        "id" : "24",
+        "x" : 936,
+        "y" : 467
+      }, {
+        "id" : "28",
+        "x" : 200,
+        "y" : 1404
       } ],
       "externalSoftwareSystemBoundariesVisible" : false,
       "key" : "informsview",
       "order" : 2,
       "relationships" : [ {
-        "id" : "10"
+        "id" : "13"
       }, {
-        "id" : "16",
+        "id" : "17"
+      }, {
+        "id" : "19"
+      }, {
+        "id" : "21",
         "vertices" : [ {
-          "x" : 1094,
-          "y" : 436
+          "x" : 725,
+          "y" : 369
         } ]
       }, {
-        "id" : "17",
+        "id" : "23"
+      }, {
+        "id" : "25"
+      }, {
+        "id" : "27"
+      }, {
+        "id" : "29"
+      }, {
+        "id" : "31"
+      }, {
+        "id" : "32",
         "vertices" : [ {
-          "x" : 1189,
-          "y" : 331
+          "x" : 1130,
+          "y" : 1540
         } ]
       }, {
-        "id" : "18",
+        "id" : "4"
+      }, {
+        "id" : "8"
+      }, {
+        "id" : "9",
         "vertices" : [ {
-          "x" : 1179,
-          "y" : 891
+          "x" : 1715,
+          "y" : 710
+        } ]
+      } ],
+      "softwareSystemId" : "11"
+    } ],
+    "systemContextViews" : [ {
+      "dimensions" : {
+        "height" : 1710,
+        "width" : 1599
+      },
+      "elements" : [ {
+        "id" : "2",
+        "x" : 1010,
+        "y" : 1200
+      }, {
+        "id" : "3",
+        "x" : 584,
+        "y" : 910
+      }, {
+        "id" : "5",
+        "x" : 1099,
+        "y" : 565
+      }, {
+        "id" : "10",
+        "x" : 584,
+        "y" : 165
+      }, {
+        "id" : "11",
+        "x" : 510,
+        "y" : 495
+      }, {
+        "id" : "28",
+        "x" : 155,
+        "y" : 1195
+      } ],
+      "enterpriseBoundaryVisible" : true,
+      "key" : "InFormsCustomApp",
+      "order" : 1,
+      "relationships" : [ {
+        "id" : "14",
+        "vertices" : [ {
+          "x" : 1029,
+          "y" : 995
         } ]
       }, {
         "id" : "20"
       }, {
         "id" : "22"
       }, {
-        "id" : "24"
-      }, {
         "id" : "26"
       }, {
-        "id" : "28"
-      }, {
-        "id" : "3",
+        "id" : "30",
         "vertices" : [ {
-          "x" : 774,
-          "y" : 1206
+          "x" : 399,
+          "y" : 990
         } ]
       }, {
-        "id" : "30"
+        "id" : "32"
       }, {
-        "id" : "31"
-      }, {
-        "id" : "6",
-        "vertices" : [ {
-          "x" : 854,
-          "y" : 1326
-        } ]
+        "id" : "4"
       } ],
-      "softwareSystemId" : "8"
-    } ],
-    "systemContextViews" : [ {
-      "dimensions" : {
-        "height" : 1695,
-        "width" : 1735
-      },
-      "elements" : [ {
-        "id" : "1",
-        "x" : 240,
-        "y" : 1160
-      }, {
-        "id" : "2",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "4",
-        "x" : 820,
-        "y" : 1015
-      }, {
-        "id" : "7",
-        "x" : 820,
-        "y" : 165
-      }, {
-        "id" : "8",
-        "x" : 745,
-        "y" : 525
-      }, {
-        "id" : "27",
-        "x" : 200,
-        "y" : 515
-      } ],
-      "enterpriseBoundaryVisible" : true,
-      "key" : "InFormsCustomApp",
-      "order" : 1,
-      "relationships" : [ {
-        "id" : "11"
-      }, {
-        "id" : "19"
-      }, {
-        "id" : "21"
-      }, {
-        "id" : "25"
-      }, {
-        "id" : "29"
-      }, {
-        "id" : "3"
-      }, {
-        "id" : "6"
-      } ],
-      "softwareSystemId" : "8"
+      "softwareSystemId" : "11",
+      "title" : "XXX"
     } ]
   }
 }

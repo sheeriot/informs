@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="alert alert-warning" role="alert">
+        <h4 class="alert-heading">Field Operation Not Found</h4>
+        <p>The Field Operation with the identifier <strong>{{ field_op_slug }}</strong> could not be found.</p>
+        <hr>
+        <p class="mb-0">Please check the URL or contact an administrator if you believe this is an error.</p>
+    </div>
+    <a href="{{org_url}}" class="btn btn-primary">{{org_url_text}}</a>
+</div>
+{% endblock %}

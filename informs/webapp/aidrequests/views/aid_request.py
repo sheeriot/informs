@@ -1,4 +1,4 @@
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.urls import reverse_lazy, reverse
 from django.views.generic import CreateView, UpdateView, DetailView, DeleteView, ListView
@@ -9,7 +9,6 @@ from django.template.context import Context
 
 from django_q.tasks import async_chain, async_task
 
-import logging
 from geopy.distance import geodesic
 
 from ..models import AidRequest, FieldOp, AidRequestLog, AidLocation
@@ -29,7 +28,6 @@ from .aid_location_forms import AidLocationCreateForm
 from ..context_processors import get_field_op_from_kwargs
 from ..geocoder import get_azure_geocode
 
-logger = logging.getLogger(__name__)
 
 # Create View for AidRequest
 class AidRequestCreateView(CreateView):
@@ -49,18 +47,19 @@ class AidRequestCreateView(CreateView):
         form_key = self.request.GET.get('form', self.DEFAULT_FORM).upper()
         return self.FORM_CLASSES.get(form_key, self.FORM_CLASSES[self.DEFAULT_FORM])
 
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            self.field_op = FieldOp.objects.get(slug=kwargs.get('field_op'))
+            self.fieldop_slug = self.field_op.slug
+        except FieldOp.DoesNotExist:
+            return render(request, 'aidrequests/field_op_not_found.html', {'field_op_slug': kwargs.get('field_op')})
+        return super().dispatch(request, *args, **kwargs)
+
     def get_template_names(self):
         form_key = self.request.GET.get('form', self.DEFAULT_FORM).upper()
         if form_key == 'C':
             return ['aidrequests/aid_request_form_c.html']
         return super().get_template_names()
-
-    def setup(self, request, *args, **kwargs):
-        super().setup(request, *args, **kwargs)
-        self.field_op, self.fieldop_slug = get_field_op_from_kwargs(kwargs)
-        if not self.field_op:
-            raise Http404("Field operation not found")
-        # ic(f"Setup AidRequestCreateView for field_op: {self.fieldop_slug}")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -83,12 +82,6 @@ class AidRequestCreateView(CreateView):
         }
         return kwargs
 
-    def get(self, request, *args, **kwargs):
-        self.field_op = get_object_or_404(FieldOp, slug=self.kwargs.get('field_op'))
-        self.fieldop_slug = self.field_op.slug
-        # ic(f"Setup AidRequestCreateView for field_op: {self.fieldop_slug}")
-        return super().get(request, *args, **kwargs)
-
     def get_initial(self):
         initial = super().get_initial()
         initial['field_op'] = self.field_op.pk
@@ -98,8 +91,6 @@ class AidRequestCreateView(CreateView):
     def form_valid(self, form):
         self.object = form.save(commit=False)
         self.object.field_op = get_object_or_404(FieldOp, slug=self.kwargs['field_op'])
-
-        # ic(form.cleaned_data)
 
         if self.request.user.is_authenticated:
             self.object.requestor_first_name = self.request.user.first_name

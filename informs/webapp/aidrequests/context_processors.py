@@ -20,10 +20,6 @@ def fieldops_active(request):
     return {}
 
 
-def basevars(request):
-    return {
-        'static_version': settings.STATIC_VERSION
-    }
 
 
 def field_op_context(request):

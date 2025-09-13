@@ -312,9 +312,15 @@ async function initializeAidRequests() {
         console.time('aid-requests-load');
     }
 
-    const element = document.getElementById('aid-locations-data');
+    const element = document.getElementById('all-aid-requests-data');
     if (!element?.textContent.trim()) {
-        throw new Error('Aid requests data not found');
+        const fallbackElement = document.getElementById('aid-locations-data');
+        if(fallbackElement?.textContent.trim()){
+            console.warn('[Filter] Falling back to aid-locations-data for aid requests data');
+            element = fallbackElement;
+        } else {
+            throw new Error('Aid requests data not found');
+        }
     }
 
     try {
@@ -1077,7 +1083,7 @@ function updateCountsDisplay(counts) {
     // Update results counter
     const resultsCounter = filterCard.querySelector('#results-counter');
     if (resultsCounter) {
-        resultsCounter.textContent = `${counts.matched} of ${counts.total} locations`;
+        resultsCounter.textContent = `${counts.matched} of ${counts.total} requests`;
 
         // Update badge classes based on count
         resultsCounter.classList.remove('badge-success', 'badge-warning', 'badge-danger');
@@ -1368,10 +1374,23 @@ function getFilteredCounts(aidRequests, filterState) {
             return acc;
         }, {}),
         byPriority: Object.keys(aidRequestsStore.data.priorityChoices).reduce((acc, value) => {
-            acc[value === 'null' ? null : value] = { filtered: 0, total: 0 };
+            const key = value === 'null' ? null : value;
+            acc[key] = { filtered: 0, total: 0 };
             return acc;
         }, {})
     };
+
+    // Pre-calculate total counts for each aid type and priority
+    aidRequests.forEach(request => {
+        const aidTypeKey = request.aid_type.slug;
+        if (counts.byAidType[aidTypeKey]) {
+            counts.byAidType[aidTypeKey].total++;
+        }
+        const priorityKey = request.priority; // This can be null
+        if (counts.byPriority.hasOwnProperty(priorityKey)) {
+            counts.byPriority[priorityKey].total++;
+        }
+    });
 
     // Calculate all counts in a single pass
     aidRequests.forEach(request => {
@@ -1402,7 +1421,6 @@ function getFilteredCounts(aidRequests, filterState) {
         // Update aid type counts
         const aidTypeKey = request.aid_type.slug;
         if (counts.byAidType[aidTypeKey]) {
-            counts.byAidType[aidTypeKey].total++;
             // For aid types, we want to show potential matches with selected statuses
             if (matchesStatus && matchesPriority) {
                 counts.byAidType[aidTypeKey].filtered++;
@@ -1410,9 +1428,8 @@ function getFilteredCounts(aidRequests, filterState) {
         }
 
         // Update priority counts
-        const priorityKey = request.priority === null ? 'null' : request.priority;
-        if (counts.byPriority[priorityKey]) {
-            counts.byPriority[priorityKey].total++;
+        const priorityKey = request.priority; // This can be null
+        if (counts.byPriority.hasOwnProperty(priorityKey)) {
             // For priorities, we want to show potential matches with selected statuses
             if (matchesStatus && matchesAidType) {
                 counts.byPriority[priorityKey].filtered++;
