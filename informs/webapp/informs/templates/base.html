@@ -6,7 +6,7 @@
 <html lang="en">
 
 <head>
-  <title>{{ server_hostname }} - InForms - Intake Forms</title>
+  <title>{% block title_prefix %}{% endblock %}{{ org_url_text }} on {{ server_hostname }}</title>
 
   {% block open_graph_tags %}
     <!-- Open Graph meta tags -->
@@ -33,28 +33,33 @@
   <link rel="stylesheet" href="{% static 'css/base.css' %}?v={{ static_version }}" type="text/css">
   <!-- more customizations? -->
   <link rel="stylesheet" href="{% static 'css/custom.css' %}?v={{ static_version }}" type="text/css">
+  <style>
+    :root {
+      {% if banner_color %}
+      --banner-color: {{ banner_color }};
+      {% endif %}
+    }
+  </style>
   {% block extra_css %}
   <!-- Page-specific CSS will be inserted here -->
   {% endblock %}
 </head>
 
 <body {{ body_data_attributes|safe }}>
-
-
   <header>
-    <nav class="navbar navbar-expand-md navbar-dark">
+    <nav class="navbar navbar-expand-sm {{ navbar_theme }}">
       <div class="container mx-1">
         <div class="col-3 text-center d-inline fw-bold lh-1 navbar-brand">
           <div class="d-inline" id="logo">
             <img src="{% static site_image_url %}" alt="site image logo" class="me-1">
           </div>
-          <div class="d-inline" id="banner-title">
-             InForms
-          </div>
         </div>
 
-        <div class="navbar-text mx-auto text-light">
-            <h4 class="mb-0">{% block header_title %}{% endblock %}</h4>
+        <div class="navbar-text mx-auto {% if navbar_theme == 'navbar-dark' %}text-light{% else %}text-dark{% endif %}">
+            <h4 class="mb-0">
+              {% block header_title %}
+              {% endblock %}
+            </h4>
         </div>
 
         {% if user.is_authenticated %}
@@ -69,9 +74,8 @@
               <div>
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                   <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
+                    <a class="nav-link dropdown-toggle {% if navbar_theme == 'navbar-light' %}text-dark{% endif %}" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
                       aria-expanded="false">
-                      <img src="{% static 'images/informs-icon1.webp' %}" alt="FormsIcon" height="60px" width="60px">
                       <div class="d-inline-block float-left">Field Ops</div>
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
@@ -125,11 +129,11 @@
           {% endif %}
           <div class="col-1"></div>
           <div class="col-2">
-            <div class="nav-item nav-link link-secondary d-flex align-items-center" aria-current="page">
+            <div class="nav-item nav-link d-flex align-items-center" aria-current="page">
               <i class="bi bi-person-fill text-success"></i>
               {{ user.username }}
             </div>
-            <a class="nav-item nav-link link-secondary d-flex align-items-center"
+            <a class="nav-item nav-link d-flex align-items-center"
               href="javascript:{document.getElementById('logout').submit()}" onclick="">
               <i class="bi bi-box-arrow-right text-danger"></i>
               Logout
