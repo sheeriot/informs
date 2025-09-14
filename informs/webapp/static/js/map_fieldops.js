@@ -12,7 +12,7 @@ function initFieldOpsMap(fieldOpsData) {
     }
 
     // Calculate and set bounds
-    const mapElement = document.getElementById('field-ops-map');
+    const mapElement = document.getElementById('fieldops-map');
     if (!mapElement) {
         console.error('Map container not found');
         return;
@@ -25,7 +25,7 @@ function initFieldOpsMap(fieldOpsData) {
     mapElement.dataset.boundsNorth = Math.max(...fieldOpsData.map(fo => fo.latitude));
 
     // Initialize map using shared initialization
-    map = initializeMap('field-ops-map');
+    map = initializeMap('fieldops-map');
     if (!map) {
         console.error('Failed to initialize map');
         return;

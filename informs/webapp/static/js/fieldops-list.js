@@ -19,7 +19,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize map if data is available
     const fieldOpsDataElement = document.getElementById('field-ops-data');
-    if (fieldOpsDataElement) {
+    const mapElement = document.getElementById('fieldops-map');
+    if (fieldOpsDataElement && mapElement) {
         const fieldOpsData = JSON.parse(fieldOpsDataElement.textContent);
         initFieldOpsMap(fieldOpsData);
     }
