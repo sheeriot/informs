@@ -74,3 +74,12 @@ Use the link to the Aid Requests list page to access the Aid Requests list page.
 ![Field Op Aid Requests](images/fieldop_aidrequests.png)
 
 Notice the link to the Field Op Details page.
+
+## Next
+Learn about managing Aid Requests.
+
++ [Aid Requests](aidrequests.md)
+
+Return to the Table of Contents
+
++ [Table of Contents](toc.md)!

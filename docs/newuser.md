@@ -1,6 +1,6 @@
-# Getting Started with Informs
+# Create an Informs User
 
-## Create an Informs User
++ [Table of Contents](toc.md)!
 
 You can register your own user. Look for the Join button (top-right).
 
@@ -18,7 +18,9 @@ If not using admin (aka `staff`), or `superuser`, you can also set individual pe
 
 ![permissions](images/informs-perms.png)
 
-Next, you can create a new Field Op.
+## Next
+
+You can create a new Field Op.
 
 + [Field Operations](fieldop.md)
 

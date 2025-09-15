@@ -1,17 +1,9 @@
 # InForms Application Overview
 
-<!--
-TODO: Add more details here about the new feature.
-Maybe include a screenshot?
--->
-TOC:
-1. [Overview](#informs-overview)
-2. [Create an Informs User](#create-an-informs-user)
-3. [Create a Field Op](#create-a-field-op)
++ [Table of Contents](toc.md)!
 
-## Informs Overview
-
-Informs is a custom Django (python) web application. It typically runs in a docker container (two actually), on an internet hosted linux server (virtual machine).
+Informs is a custom Django (python) web application. 
+Informs typically runs in a docker container (two actually), on an internet hosted linux server (virtual machine).
 
 Aid Requests are created by submitting a form that is publicly accessible to the public.
 
