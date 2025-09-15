@@ -12,6 +12,8 @@ def global_template_variables(request):
     org_url = getattr(settings, 'ORGANIZATION_URL', '')
     org_url_text = getattr(settings, 'ORGANIZATION_NAME', 'Org Name')
     site_image_url = getattr(settings, 'SITE_IMAGE_URL', '')
+    banner_color = getattr(settings, 'BANNER_COLOR', '#0a1856')
+    navbar_theme = getattr(settings, 'NAVBAR_THEME', 'navbar-light')
 
     return {
         'APP_VERSION': settings.STATIC_VERSION,
@@ -19,4 +21,6 @@ def global_template_variables(request):
         'org_url': org_url,
         'org_url_text': org_url_text,
         'site_image_url': site_image_url,
+        'banner_color': banner_color,
+        'navbar_theme': navbar_theme,
     }

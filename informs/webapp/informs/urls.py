@@ -57,7 +57,7 @@ urlpatterns = [
      path('', home, name='home'),
      path('admin/', admin.site.urls),
      path('accounts/', include('accounts.urls')),
-     path('fieldop/', FieldOpListView.as_view(), name='field_op_list'),
+     path('fieldops/', FieldOpListView.as_view(), name='field_op_list'),
      path('fieldop/create/', FieldOpCreateView.as_view(), name='field_op_create'),
      path('fieldop/<slug:slug>/', FieldOpDetailView.as_view(), name='field_op_detail'),
      path('fieldop/<slug:slug>/update/', FieldOpUpdateView.as_view(), name='field_op_update'),

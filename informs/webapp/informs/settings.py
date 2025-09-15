@@ -46,7 +46,20 @@ SITE_ID = 1
 
 ORGANIZATION_URL = os.environ.get('ORGANIZATION_URL', 'https://example.com')
 ORGANIZATION_NAME = os.environ.get('ORGANIZATION_NAME', 'Informs @ SheerIoT')
+
 SITE_IMAGE_URL = os.environ.get('SITE_IMAGE_URL', '')
+# BANNER_COLOR = os.environ.get('BANNER_COLOR', '#0a1856')
+COLOR_MODE = os.environ.get('COLOR_MODE', 'light')
+BANNER_COLOR_LIGHT = os.environ.get('BANNER_COLOR_LIGHT', '#f8f9fa')
+BANNER_COLOR_DARK = os.environ.get('BANNER_COLOR_DARK', '#212529')
+
+if COLOR_MODE == 'dark':
+    BANNER_COLOR = BANNER_COLOR_DARK
+    NAVBAR_THEME = 'navbar-dark'
+else:
+    BANNER_COLOR = BANNER_COLOR_LIGHT
+    NAVBAR_THEME = 'navbar-light'
+
 
 # Read version from file
 # try:
