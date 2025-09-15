@@ -6,3 +6,5 @@ Informs implements a custom Django (python) web application as a LogicLayer to s
 2. [New User](newuser.md)
 3. [Field Operations](fieldop.md)
 4. [Aid Requests](aidrequests.md)
+
+![LogicLayer](images/logiclayer-logo.png)

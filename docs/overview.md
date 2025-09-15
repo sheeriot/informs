@@ -1,6 +1,6 @@
-# InForms Application Overview
-
 + [Table of Contents](toc.md)
+
+# InForms Application Overview
 
 Informs is a custom Django (python) web application. 
 Informs typically runs in a docker container (two actually), on an internet hosted linux server (virtual machine).
@@ -24,9 +24,9 @@ The Informs application uses the following components:
 - Azure Email service
   - notify
 - Azure Maps service
-  - geocoding
-  - mapping
-  - static map images
+  - geocoding between address and coordinates
+  - dynamic maps
+  - static maps
 
 ![Informs System Overview](c4/output/Informs_AppView.png)
 
