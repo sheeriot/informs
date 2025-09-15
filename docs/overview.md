@@ -39,3 +39,5 @@ The Informs application uses the following components:
 ![Informs System Overview](c4/output/Informs_AppView.png)
 
 Each Aid Requests is associated to a predefined Field Operation.
+
++ [Table of Contents](toc.md)!

@@ -1,4 +1,4 @@
-# Getting Started
+# Getting Started with Informs
 
 ## Create an Informs User
 
@@ -17,3 +17,9 @@ Note the distinct checkbox to provide access to the `/admin` pages.
 If not using admin (aka `staff`), or `superuser`, you can also set individual permissions to support distinct roles.
 
 ![permissions](images/informs-perms.png)
+
+Next, you can create a new Field Op.
+
++ [Field Operations](fieldop.md)
+
+or return to the [Table of Contents](toc.md)!
