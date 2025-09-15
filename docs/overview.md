@@ -1,6 +1,6 @@
 # InForms Application Overview
 
-+ [Table of Contents](toc.md)!
++ [Table of Contents](toc.md)
 
 Informs is a custom Django (python) web application. 
 Informs typically runs in a docker container (two actually), on an internet hosted linux server (virtual machine).
@@ -32,4 +32,4 @@ The Informs application uses the following components:
 
 Each Aid Requests is associated to a predefined Field Operation.
 
-+ [Table of Contents](toc.md)!
++ [Table of Contents](toc.md)

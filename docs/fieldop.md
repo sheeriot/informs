@@ -1,6 +1,6 @@
-# Field Operations
++ [Table of Contents](toc.md)
 
-## Overview
+## Field Operations Overview
 
 Each Field Operations is defined by its attributes:
 - name (title)
@@ -82,4 +82,4 @@ Learn about managing Aid Requests.
 
 Return to the Table of Contents
 
-+ [Table of Contents](toc.md)!
++ [Table of Contents](toc.md)

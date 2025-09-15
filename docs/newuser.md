@@ -1,7 +1,6 @@
++ [Table of Contents](toc.md)
+
 # Create an Informs User
-
-+ [Table of Contents](toc.md)!
-
 You can register your own user. Look for the Join button (top-right).
 
 ![Join](images/informs-join.png)
@@ -24,4 +23,4 @@ You can create a new Field Op.
 
 + [Field Operations](fieldop.md)
 
-or return to the [Table of Contents](toc.md)!
+or return to the [Table of Contents](toc.md)
