@@ -11,7 +11,7 @@ let layersByType = {};  // Store layers by aid type
 
 // Configuration
 const mapRequestsConfig = {
-    debug: false,  // Set to false in production
+    debug: true,  // Set to false in production
     initialized: false,
     config: null,
     aidLocations: [],
@@ -118,68 +118,67 @@ function loadMapConfiguration() {
         mapRequestsConfig.aidLocations = []; // Default to empty list if element not found or empty
     }
 
-    // Fallback bounds logic:
-    // If original bounds from dataset are invalid, or if there are too few aid locations,
-    // calculate new bounds based on field op center and ring size.
-    let originalBoundsFromDataset = [...config.bounds]; // Keep a copy for logging
-    let useFallbackBounds = false;
-    const areOriginalDatasetBoundsInvalid = originalBoundsFromDataset.some(isNaN) || originalBoundsFromDataset.every(val => val === 0);
+    // New bounds calculation logic:
+    // Always ensure the Field Op center and ring are included in the map view.
+    const originalDatasetBounds = [...config.bounds];
+    const areOriginalDatasetBoundsInvalid = originalDatasetBounds.some(isNaN) || originalDatasetBounds.every(val => val === 0);
 
-    if (areOriginalDatasetBoundsInvalid || mapRequestsConfig.aidLocations.length <= 1) {
-        useFallbackBounds = true;
-        /*
-        if (mapRequestsConfig.debug) {
-            console.log('[Map] Using fallback bounds calculation.', {
-                reason: areOriginalDatasetBoundsInvalid ? "Original dataset bounds invalid" : "Not enough aid locations (<=1)",
-                originalDatasetBounds: originalBoundsFromDataset,
-                aidLocationCount: mapRequestsConfig.aidLocations.length,
-                fieldOpCenter: config.center,
-                fieldOpRingSizeKm: config.ringSize
-            });
-        }
-        */
-        // Validate center and ringSize before using them for fallback
-        if (isNaN(config.center[0]) || isNaN(config.center[1])) {
-            console.error('[Map] CRITICAL: Cannot calculate fallback bounds because center coordinates are invalid.', config.center);
-            throw new Error('Invalid map center coordinates, cannot calculate fallback bounds.');
-        }
-        // config.ringSize is already ensured to be positive by `finalRingSize` logic
-
+    // 1. Calculate the desired viewing bounds for the Field Op center and ring.
+    let fieldOpViewBounds = null;
+    if (!isNaN(config.center[0]) && !isNaN(config.center[1])) {
         const centerLon = config.center[0];
         const centerLat = config.center[1];
-        const ringRadiusKm = config.ringSize; // This is already validated to be positive
+        const ringRadiusKm = config.ringSize;
 
-        // Define a viewable area that includes the ring with some padding
-        const viewDiameterPaddingFactor = 2.5; // Makes the view ~2.5x the ring diameter
+        // Use a padding factor to ensure the ring is comfortably in view.
+        const viewDiameterPaddingFactor = 2.5;
         const viewRadiusKm = ringRadiusKm * (viewDiameterPaddingFactor / 2);
 
-        const LAT_DEG_PER_KM = 1 / 111.32; // Approximate degrees latitude per km
-        const lonDegPerKmAtCenterLat = 1 / (111.32 * Math.cos(centerLat * Math.PI / 180)); // Degrees longitude per km
+        const LAT_DEG_PER_KM = 1 / 111.32;
+        const lonDegPerKmAtCenterLat = 1 / (111.32 * Math.cos(centerLat * Math.PI / 180));
 
         const deltaLat = viewRadiusKm * LAT_DEG_PER_KM;
         let deltaLon = viewRadiusKm * lonDegPerKmAtCenterLat;
 
-        // Safety for extreme latitudes where Math.cos approaches 0
-        if (Math.abs(centerLat) >= 89) { // Very close to poles
-            // For extreme latitudes, longitude span can become excessively large or small.
-            // Use a fallback based on latitude delta, assuming roughly square area.
+        if (Math.abs(centerLat) >= 89) { // Safety for extreme latitudes
             deltaLon = deltaLat;
-            /*
-            if (mapRequestsConfig.debug) {
-                console.warn(`[Map] Center latitude ${centerLat} is very near a pole. Adjusted deltaLon for fallback bounds to ${deltaLon} (approx ${viewRadiusKm}km).`);
-            }
-            */
         }
 
-        config.bounds = [
+        fieldOpViewBounds = [
             centerLon - deltaLon, // minLon
             centerLat - deltaLat, // minLat
             centerLon + deltaLon, // maxLon
             centerLat + deltaLat  // maxLat
         ];
+    }
 
+    // 2. Determine the final bounds for the map view.
+    if (areOriginalDatasetBoundsInvalid || mapRequestsConfig.aidLocations.length <= 1) {
+        // If dataset bounds are bad or there are no points, fall back to the Field Op view.
+        if (fieldOpViewBounds) {
+            config.bounds = fieldOpViewBounds;
+            if (mapRequestsConfig.debug) {
+                console.log('[Map] Using fallback bounds based on Field Op.', {
+                    reason: areOriginalDatasetBoundsInvalid ? "Original dataset bounds invalid" : "Not enough aid locations (<=1)",
+                    finalBounds: config.bounds
+                });
+            }
+        }
+        // If both are invalid, an error will be thrown later by the validation logic.
+    } else if (fieldOpViewBounds) {
+        // If both dataset and Field Op bounds are valid, create a union of the two.
+        config.bounds = [
+            Math.min(originalDatasetBounds[0], fieldOpViewBounds[0]), // minLon
+            Math.min(originalDatasetBounds[1], fieldOpViewBounds[1]), // minLat
+            Math.max(originalDatasetBounds[2], fieldOpViewBounds[2]), // maxLon
+            Math.max(originalDatasetBounds[3], fieldOpViewBounds[3])  // maxLat
+        ];
         if (mapRequestsConfig.debug) {
-            console.log('[Map] Calculated new fallback bounds:', JSON.parse(JSON.stringify(config.bounds)));
+            console.log('[Map] Combined dataset bounds with Field Op bounds.', {
+                datasetBounds: originalDatasetBounds,
+                fieldOpViewBounds: fieldOpViewBounds,
+                finalBounds: config.bounds
+            });
         }
     }
 
@@ -192,9 +191,9 @@ function loadMapConfiguration() {
             east: mapContainer.dataset.boundsEast,
             north: mapContainer.dataset.boundsNorth
         },
-        initiallyParsedFromDataset: originalBoundsFromDataset, // Bounds as parsed from dataset before fallback
+        initiallyParsedFromDataset: originalDatasetBounds, // Bounds as parsed from dataset before fallback
         finalBoundsUsed: config.bounds, // The bounds that will actually be used (dataset or fallback)
-        source: useFallbackBounds ? "fallback_calculation" : "dataset"
+        source: areOriginalDatasetBoundsInvalid || mapRequestsConfig.aidLocations.length <= 1 ? "fallback_calculation" : "dataset"
     };
     /*
     if (mapRequestsConfig.debug) {
@@ -396,6 +395,33 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Modal Map Handling
+    const mapModal = document.getElementById('mapModal');
+    if (mapModal) {
+        const mapContainer = document.getElementById('aid-request-map');
+        const modalMapContainer = document.getElementById('aid-request-map-modal-container');
+        const originalMapParent = mapContainer.parentElement;
+
+        mapModal.addEventListener('shown.bs.modal', () => {
+            // Move map to modal
+            modalMapContainer.appendChild(mapContainer);
+            // Resize map
+            if (map) {
+                map.resize();
+            }
+        });
+
+        mapModal.addEventListener('hidden.bs.modal', () => {
+            // Move map back to original container
+            originalMapParent.appendChild(mapContainer);
+            // Resize map
+            if (map) {
+                map.resize();
+            }
+        });
+    }
+
+
     // Check if filter is already initialized (applies to aid_request_list page)
     if (window.aidRequestsStore?.initialized) {
         if (mapRequestsConfig.debug) {
@@ -502,6 +528,12 @@ function initializeMap(config) {
                     // Set up a listener for filter changes
                     document.addEventListener('aidRequestsFiltered', function(event) {
                         if (mapRequestsConfig.debug) console.log('Map View: Filter event received:', event.detail);
+
+                        // If the event is from an AJAX update, update the point's data first
+                        if (event.detail && event.detail.source === 'ajaxUpdate' && event.detail.updatedRequest) {
+                            handleAjaxPointUpdate(event.detail.updatedRequest);
+                        }
+
                         if (event.detail && event.detail.filterState) {
                             updateLayerVisibility(event.detail.filterState, event.detail.counts);
                         }
@@ -629,6 +661,57 @@ function updateLayerVisibility(filterState, counts) {
 
     // Update map summary card with both filter state and counts
     updateMapSummary(filterState, counts);
+}
+
+// New function to handle AJAX updates to a specific point on the map
+function handleAjaxPointUpdate(updatedRequest) {
+    if (!map || !layersByType) {
+        console.warn('[Map] Map or layers not ready for AJAX update.');
+        return;
+    }
+
+    const { id, updates } = updatedRequest;
+    if (mapRequestsConfig.debug) {
+        console.log(`[Map] Handling AJAX update for request ID: ${id}`, updates);
+    }
+
+    // Find the shape in any of the layers by its 'id' property
+    for (const aidType in layersByType) {
+        const layer = layersByType[aidType];
+        const source = layer.getSource();
+        if (source) {
+            const shape = source.getShapes().find(s => String(s.getProperties().id) === String(id));
+
+            if (shape) {
+                const properties = shape.getProperties();
+
+                // Apply updates
+                if (updates.status) {
+                    properties.status = updates.status;
+                }
+                if (updates.priority) {
+                    // Standardize 'none' or null to the value the map expects
+                    properties.priority = (updates.priority === null || updates.priority === 'none')
+                        ? 'none_priority_value'
+                        : updates.priority;
+                }
+
+                // Set the updated properties back on the shape
+                shape.setProperties(properties);
+
+                if (mapRequestsConfig.debug) {
+                    console.log(`[Map] Updated properties for shape with id ${id}:`, shape.getProperties());
+                }
+
+                // Found and updated the shape, no need to look further
+                return;
+            }
+        }
+    }
+
+    if (mapRequestsConfig.debug) {
+        console.warn(`[Map] Could not find a shape with property id ${id} to update.`);
+    }
 }
 
 // Update the map card header with filter summary and counts

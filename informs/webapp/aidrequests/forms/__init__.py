@@ -4,16 +4,19 @@ Forms
 
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Submit, Row, Column, Div, HTML, Fieldset, Field
+from crispy_forms.layout import Layout, Fieldset, Row, Column, Submit, Hidden, HTML, Div, Field
 from crispy_forms.bootstrap import FormActions, InlineCheckboxes
 from icecream import ic
 from django.urls import reverse
 from django.utils.html import format_html
 from django.contrib import admin
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.template.loader import render_to_string
 
 from ..models import AidRequest, AidRequestLog, FieldOp, AidLocation
 from ..context_processors import get_field_op_for_form
+from .layout import MapLayoutObject
 
 # from icecream import ic
 
@@ -114,27 +117,33 @@ class FieldOpForm(forms.ModelForm):
         )
 
 
-class RequestorInformationForm(forms.ModelForm):
+class RequesterInformationForm(forms.ModelForm):
     class Meta:
         model = AidRequest
-        fields = ['requestor_first_name', 'requestor_last_name', 'requestor_phone', 'requestor_email', 'use_whatsapp']
+        fields = ['requester_first_name', 'requester_last_name', 'requester_phone', 'requester_email', 'use_whatsapp']
         labels = {
-            'use_whatsapp': 'Requestor phone can be contacted via WhatsApp'
+            'use_whatsapp': 'Requester phone can be contacted via WhatsApp'
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['requestor_last_name'].required = False
-        self.fields['requestor_phone'].widget.attrs['placeholder'] = 'Phone'
-        self.fields['requestor_email'].widget.attrs['placeholder'] = 'Email'
+        self.fields['requester_last_name'].required = False
+        self.fields['requester_phone'].widget.attrs['placeholder'] = 'Phone'
+        self.fields['requester_email'].widget.attrs['placeholder'] = 'Email'
         self.helper = FormHelper()
         self.helper.layout = Layout(
-            'requestor_first_name',
-            'requestor_last_name',
-            'requestor_phone',
-            'requestor_email',
+            'requester_first_name',
+            'requester_last_name',
+            'requester_phone',
+            'requester_email',
             Field('use_whatsapp', css_class="custom-checkbox-column"),
         )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if not cleaned_data.get('requester_phone') and not cleaned_data.get('requester_email'):
+            raise ValidationError("At least one of phone or email is required.")
+        return cleaned_data
 
 
 class AidContactInformationForm(forms.ModelForm):
@@ -233,8 +242,8 @@ class AidRequestLogForm(forms.ModelForm):
 class AidRequestInline(admin.TabularInline):
     model = AidRequest
     extra = 0
-    readonly_fields = ('requestor_first_name', 'requestor_last_name', 'street_address')
-    fields = ('status', 'priority', 'requestor_first_name', 'requestor_last_name', 'street_address')
+    readonly_fields = ('requester_first_name', 'requester_last_name', 'street_address')
+    fields = ('status', 'priority', 'requester_first_name', 'requester_last_name', 'street_address')
 
 
 class AidLocationInline(admin.TabularInline):
@@ -260,10 +269,10 @@ class AidRequestCreateFormA(forms.ModelForm):
         model = AidRequest
         fields = [
             'field_op',
-            'requestor_first_name',
-            'requestor_last_name',
-            'requestor_email',
-            'requestor_phone',
+            'requester_first_name',
+            'requester_last_name',
+            'requester_email',
+            'requester_phone',
             'aid_first_name',
             'aid_last_name',
             'aid_email',
@@ -355,11 +364,28 @@ class AidRequestCreateFormA(forms.ModelForm):
         self.fields['welfare_check_info'].widget.attrs['rows'] = 2
         self.fields['additional_info'].widget.attrs['rows'] = 2
 
+        map_context = {
+            'azure_maps_key': azure_maps_key,
+            'geocode_url': geocode_url,
+            'initial_lat': initial_lat,
+            'initial_lon': initial_lon,
+            'field_op_lat': field_op_lat,
+            'field_op_lon': field_op_lon,
+            'field_op_ring_size': field_op_ring_size,
+            'lat_input_id': 'id_latitude',
+            'lon_input_id': 'id_longitude',
+            'coordinates_input_id': 'id_coordinates',
+            'source_input_id': 'id_source',
+            'note_input_id': 'id_location_note'
+        }
+
         self.helper.layout = Layout(
             Hidden('field_op', self.field_op.id),
             'location_modified',
             'latitude',
             'longitude',
+            'source',
+            'coordinates',
             'location_note',
             Fieldset(
                 format_html('<i class="bi bi-life-preserver"></i> 1. Select Type of Aid'),
@@ -369,37 +395,21 @@ class AidRequestCreateFormA(forms.ModelForm):
                 css_class="fieldset-box p-2 border rounded mb-2 mx-2"
             ),
             Fieldset(
-                format_html('<i class="bi bi-person-raised-hand"></i> 2. Requestor Details'),
+                format_html('<i class="bi bi-person-raised-hand"></i> 2. Requester Details'),
                 Row(
-                    Column(Field('requestor_first_name', css_class='mb-2'), css_class='col-md-6'),
-                    Column(Field('requestor_last_name', css_class='mb-2'), css_class='col-md-6'),
+                    Column(Field('requester_first_name', css_class='mb-2'), css_class='col-md-6'),
+                    Column(Field('requester_last_name', css_class='mb-2'), css_class='col-md-6'),
                 ),
-                HTML('<small class="form-text text-muted">Phone or Email required</small>'),
                 Row(
-                    Column(Field('requestor_phone', css_class='mt-1'), css_class='col-md-6'),
-                    Column(Field('requestor_email', css_class='mt-1'), css_class='col-md-6'),
+                    Column(Field('use_whatsapp', css_class='mt-1'), css_class='col-md-12'),
                 ),
-                Field('different_contact', css_class="form-check-input mt-2", id="different_contact"),
-                Div(
-                    Fieldset(
-                        "",
-                        Row(
-                            Column('aid_first_name', css_class='col-md-6 mb-1'),
-                            Column('aid_last_name', css_class='col-md-6 mb-1'),
-                        ),
-                        Row(
-                            Column('aid_phone', css_class='col-md-6 mb-1'),
-                            Column('aid_email', css_class='col-md-6 mb-1'),
-                        ),
-                        css_class="fieldset-box p-2 border rounded"
-                    ),
-                    css_id="different_contact_fieldset",
-                    css_class="d-none mb-2"
-                ),
-                css_class="fieldset-box p-2 border rounded mb-2 mx-2"
+                Row(
+                    Column(Field('requester_phone', css_class='mt-1'), css_class='col-md-6'),
+                    Column(Field('requester_email', css_class='mt-1'), css_class='col-md-6'),
+                )
             ),
             Fieldset(
-                format_html('<i class="bi bi-geo-alt"></i> Location Details'),
+                format_html('<i class="bi bi-geo-alt"></i> 3. Location Details'),
                 Row(
                     Column(Field('street_address', css_class='mb-2'), css_class='col-12'),
                 ),
@@ -437,61 +447,37 @@ class AidRequestCreateFormA(forms.ModelForm):
                     ),
                     css_class='row g-2 mb-2 align-items-center'
                 ),
-                HTML(f"""
-                    <div class="row g-0 mt-2">
-                        <div class="form-group col-md-12 p-1">
-                            <div id="aid-request-location-picker-map"
-                                 style="height: 450px; border: 1px solid #ced4da; border-radius: .25rem;"
-                                 data-azure-maps-key="{azure_maps_key}"
-                                 data-geocode-url="{geocode_url}"
-                                 data-initial-lat="{initial_lat}"
-                                 data-initial-lon="{initial_lon}"
-                                 data-fieldop-lat="{field_op_lat}"
-                                 data-fieldop-lon="{field_op_lon}"
-                                 data-fieldop-ringsize="{field_op_ring_size}"></div>
-                        </div>
-                    </div>
-                """),
+                MapLayoutObject(map_id='aid-request-location-picker-map', **map_context),
                 css_class="fieldset-box p-2 border rounded mb-2 mx-2"
             ),
             Fieldset(
-                format_html('<i class="bi bi-card-list"></i> 4. Aid Request Details'),
+                format_html('<i class="bi bi-info-circle"></i> 4. Request Details'),
+                'aid_type',
+                'aid_description',
+                HTML('<hr class="my-2">'),
                 Row(
                     Column('group_size', css_class='col-2 mb-1'),
                 ),
-                'aid_description',
-                HTML('<hr class="my-2">'),
-                Field('show_additional_info', css_class="form-check-input", id="show_additional_info"),
-                Div(
-                    Fieldset(
-                        "",
-                        'contact_methods',
-                        'medical_needs',
-                        'supplies_needed',
-                        'welfare_check_info',
-                        'additional_info',
-                        css_class="fieldset-box p-2 border rounded mt-2"
-                    ),
-                    css_id="additional_info_fieldset",
-                    css_class="d-none"
-                ),
+                'welfare_check_info',
+                'additional_info',
+                'internal_notes',
                 css_class="fieldset-box p-2 border rounded mb-2 mx-2"
             ),
-            Div(
-                Submit('submit', f'Create Aid Request for {self.field_op.name}', css_class='btn btn-primary mt-2'),
-                css_class="mx-4"
+            FormActions(
+                Submit('submit', 'Submit', css_class='btn-lg'),
+                css_class="mt-3"
             )
         )
 
     def clean(self):
         cleaned_data = super().clean()
 
-        phone = cleaned_data.get('requestor_phone')
-        email = cleaned_data.get('requestor_email')
+        phone = cleaned_data.get('requester_phone')
+        email = cleaned_data.get('requester_email')
 
         if not phone and not email:
-            self.add_error('requestor_phone', "At least one of phone or email is required.")
-            self.add_error('requestor_email', "")
+            self.add_error('requester_phone', "At least one of phone or email is required.")
+            self.add_error('requester_email', "")
 
         coordinates = cleaned_data.get("coordinates")
         if coordinates:

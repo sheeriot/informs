@@ -1,0 +1,12 @@
+{% load crispy_forms_tags %}
+<div class="input-group input-group-sm coordinates-input-group">
+    {% if latitude_field %}
+        {{ latitude_field }}
+    {% endif %}
+
+    <span class="input-group-text">,</span>
+
+    {% if longitude_field %}
+        {{ longitude_field }}
+    {% endif %}
+</div>

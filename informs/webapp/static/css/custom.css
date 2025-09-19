@@ -403,3 +403,68 @@ textarea:not([disabled]) {
 .navbar-light .navbar-toggler {
   border-color: rgba(255, 255, 255, 0.1);
 }
+
+/* Coordinates Input Group on Map Overlay */
+.coordinates-input-group {
+    width: auto;
+}
+
+.coordinates-input-group .form-control {
+    flex: 1 1 auto; /* Allow shrinking but prefer max-width */
+    min-width: 10ch;
+    padding: 4px;
+}
+
+.coordinates-input-group .input-group-text {
+    background-color: #fff;
+    border-left: none;
+    border-right: none;
+    padding-left: 0.1rem;
+    padding-right: 0.1rem;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    border-top: 1px solid #888;
+    border-bottom: 1px solid #888;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.coordinates-input-group #id_latitude {
+    border-right: none;
+    max-width: 10ch;
+}
+
+.coordinates-input-group #id_longitude {
+    border-left: none;
+    max-width: 12ch;
+}
+
+/* Hide number input spinners */
+.coordinates-input-group input[type=number]::-webkit-outer-spin-button,
+.coordinates-input-group input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.coordinates-input-group input[type=number] {
+    -moz-appearance: textfield;
+}
+
+.coordinates-input-group .form-control::placeholder {
+    font-size: 0.8rem;
+    color: #999;
+    opacity: 1; /* Override Bootstrap's default */
+}
+
+.coordinates-title {
+    font-family: var(--bs-font-monospace);
+    font-size: 0.65rem;
+    font-weight: bold;
+    line-height: 1.2;
+    margin-top: 2px;
+}
+
+.field-highlight {
+    transition: background-color 0.5s ease-out;
+    background-color: #d1ecf1 !important; /* A light blue highlight */
+}

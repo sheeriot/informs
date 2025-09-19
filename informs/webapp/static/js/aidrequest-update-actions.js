@@ -539,4 +539,49 @@ document.addEventListener('DOMContentLoaded', function () {
             showActionAlert(`Error: ${error.message}`, 'danger');
         });
     }
+
+    // Handle Change Aid Type form submission
+    const changeAidTypeForm = document.getElementById('change-aid-type-form');
+    if (changeAidTypeForm) {
+        changeAidTypeForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const confirmationInput = document.getElementById('confirmation-text');
+            const requestorName = document.getElementById('requestor-name-confirm').textContent.trim();
+            const alertContainer = document.getElementById('change-aid-type-alert');
+
+            if (confirmationInput.value.trim() !== requestorName) {
+                showActionAlert('Confirmation text does not match. Please type the requestor\'s full name exactly.', 'danger');
+                return;
+            }
+
+            const formData = new FormData(changeAidTypeForm);
+            const url = changeAidTypeForm.action;
+
+            fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showActionAlert(data.message, 'success');
+                    document.getElementById('aid-type-name-display').textContent = data.new_aid_type_name;
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('changeAidTypeModal'));
+                    modal.hide();
+                    confirmationInput.value = '';
+                    alertContainer.innerHTML = '';
+                } else {
+                    showActionAlert(data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                showActionAlert('An unexpected error occurred. Please try again.', 'danger');
+                console.error('Error:', error);
+            });
+        });
+    }
 });

@@ -54,19 +54,23 @@ def validate_aid_types(modeladmin, request, queryset):
 validate_aid_types.short_description = "Validate aid type configurations"
 
 
+@admin.register(AidRequest)
 class AidRequestAdmin(admin.ModelAdmin):
     """aid request admin"""
 
     list_display = (
-        'pk', 'field_op', 'aid_type',
-        'requestor_first_name', 'requestor_last_name',
+        'id',
+        'field_op',
+        'requester_first_name', 'requester_last_name',
+        'aid_type',
+        'status',
         'group_size', 'street_address', 'city', 'created_at')
 
-    list_filter = ('field_op', 'aid_type',)
+    list_filter = ('field_op', 'status', 'priority', 'aid_type')
 
     search_fields = (
-        'requestor_first_name',
-        'requestor_last_name',
+        'requester_first_name',
+        'requester_last_name',
         'street_address',
         'city',
         'aid_description'
@@ -196,7 +200,6 @@ class AidTypeAdmin(admin.ModelAdmin):
 
 admin.site.register(FieldOp, FieldOpAdmin)
 admin.site.register(FieldOpNotify, FieldOpNotifyAdmin)
-admin.site.register(AidRequest, AidRequestAdmin)
 admin.site.register(AidRequestLog, AidRequestLogAdmin)
 admin.site.register(AidLocation, AidLocationAdmin)
 admin.site.register(AidType, AidTypeAdmin)

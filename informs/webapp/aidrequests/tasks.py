@@ -98,6 +98,8 @@ def aid_request_postsave(aid_request, **kwargs):
     longitude = kwargs.get('longitude')
     location_note = kwargs.get('location_note')
     location_source = kwargs.get('location_source')
+    geocode_json = kwargs.get('geocode_json')
+    free_form_address = kwargs.get('free_form_address')
     aid_location = None
     map_file = None
 
@@ -109,7 +111,9 @@ def aid_request_postsave(aid_request, **kwargs):
             longitude=longitude,
             source=location_source or 'user_picked',
             status='confirmed',
-            note=location_note
+            note=location_note,
+            geocode_json=geocode_json,
+            free_form_address=free_form_address
         )
 
         logger.info(f"AR-{aid_request.pk}: Calculating distance from FieldOp.")

@@ -22,6 +22,7 @@
         </div>
         <div class="w-25"></div>
     </div>
+
 </div>
 {% endblock %}
 
@@ -35,7 +36,14 @@
         window.INFORMS_FOCUS_FIELD_ID = "{{ focus_field_id|default:'' }}";
     </script>
     <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
-    <script src="{% static 'js/aidrequest-form-map.js' %}?v={{ static_version }}"></script>
+    <script src="{% static 'js/location-picker-map.js' %}?v={{ static_version }}"></script>
     <script src="{% static 'js/utils-copy-to-clipboard.js' %}?v={{ static_version }}"></script>
     <script src="{% static 'js/aidrequest-formc.js' %}?v={{ static_version }}"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (window.initializeLocationPicker) {
+            window.initializeLocationPicker('aid-request-location-picker-map');
+        }
+    });
+    </script>
 {% endblock %}

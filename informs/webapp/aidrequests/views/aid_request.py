@@ -1,21 +1,26 @@
+import json
 from django.shortcuts import get_object_or_404, render
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.urls import reverse_lazy, reverse
 from django.views.generic import CreateView, UpdateView, DetailView, DeleteView, ListView
 from django.conf import settings
-from django.http import Http404, HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.template import Template
 from django.template.context import Context
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import user_passes_test
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
 from django_q.tasks import async_chain, async_task
 
 from geopy.distance import geodesic
 
-from ..models import AidRequest, FieldOp, AidRequestLog, AidLocation
+from ..models import AidRequest, FieldOp, AidRequestLog, AidLocation, AidType
 from ..tasks import aid_request_postsave, send_cot_task
 from ..forms import (
     AidRequestCreateFormA,
-    RequestorInformationForm,
+    RequesterInformationForm,
     AidContactInformationForm,
     LocationInformationForm,
     RequestDetailsForm,
@@ -27,6 +32,7 @@ from .aid_request_forms_c import AidRequestCreateFormC
 from .aid_location_forms import AidLocationCreateForm
 from ..context_processors import get_field_op_from_kwargs
 from ..geocoder import get_azure_geocode
+from meta.views import Meta
 
 
 # Create View for AidRequest
@@ -93,8 +99,8 @@ class AidRequestCreateView(CreateView):
         self.object.field_op = get_object_or_404(FieldOp, slug=self.kwargs['field_op'])
 
         if self.request.user.is_authenticated:
-            self.object.requestor_first_name = self.request.user.first_name
-            self.object.requestor_last_name = self.request.user.last_name
+            self.object.requester_first_name = self.request.user.first_name
+            self.object.requester_last_name = self.request.user.last_name
         else:
             self.object.created_by = None
             self.object.updated_by = None
@@ -105,6 +111,15 @@ class AidRequestCreateView(CreateView):
         longitude = form.cleaned_data.get('longitude')
         location_note = form.cleaned_data.get('location_note')
         location_source = form.cleaned_data.get('location_source')
+        location_freeform_address = form.cleaned_data.get('location_freeform_address')
+
+        geocode_json = None
+        if location_note:
+            try:
+                geocode_json = json.loads(location_note)
+            except json.JSONDecodeError:
+                # Keep location_note as a string if it's not valid JSON
+                pass
 
         task_name = f"AR{self.object.pk}_postsave"
         async_task('aidrequests.tasks.aid_request_postsave',
@@ -114,6 +129,8 @@ class AidRequestCreateView(CreateView):
             longitude=longitude,
             location_note=location_note,
             location_source=location_source,
+            geocode_json=geocode_json,
+            free_form_address=location_freeform_address,
             task_name=task_name,
         )
 
@@ -130,7 +147,7 @@ class AidRequestCreateView(CreateView):
 # Update View for AidRequest
 class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = AidRequest
-    form_class = RequestorInformationForm  # Default form, though we use multiple
+    form_class = RequesterInformationForm  # Default form, though we use multiple
     permission_required = 'aidrequests.change_aidrequest'
     template_name = 'aidrequests/aid_request_update.html'
 
@@ -172,12 +189,15 @@ class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVi
         })
 
         instance = self.object
-        context['requestor_form'] = RequestorInformationForm(instance=instance)
+        context['requester_form'] = RequesterInformationForm(instance=instance)
         context['location_form'] = LocationInformationForm(instance=instance)
         context['details_form'] = RequestDetailsForm(instance=instance)
         context['aid_contact_form'] = AidContactInformationForm(instance=instance)
         context['status_form'] = RequestStatusForm(instance=instance)
         context['log_form'] = AidRequestLogForm(initial={'aid_request': self.object.pk})
+
+        if self.request.user.is_superuser:
+            context['aid_types'] = self.field_op.aid_types.all()
 
         return context
 
@@ -282,3 +302,37 @@ def format_aid_location_note(aid_location):
     template = Template(template_string)
     context = {'aid_location': aid_location}
     return template.render(Context(context))
+
+
+@require_POST
+@user_passes_test(lambda u: u.is_superuser)
+def change_aid_request_type(request, field_op, pk):
+    try:
+        aid_request = get_object_or_404(AidRequest, pk=pk, field_op__slug=field_op)
+        new_aid_type_id = request.POST.get('aid_type')
+
+        if not new_aid_type_id:
+            return JsonResponse({'status': 'error', 'message': 'Aid Type not provided.'}, status=400)
+
+        new_aid_type = get_object_or_404(AidType, pk=new_aid_type_id)
+
+        original_aid_type_name = aid_request.aid_type.name
+        aid_request.aid_type = new_aid_type
+        aid_request.save()
+
+        # Add a log entry for this change
+        AidRequestLog.objects.create(
+            aid_request=aid_request,
+            created_by=request.user,
+            updated_by=request.user,
+            entry=f"Aid Type changed from '{original_aid_type_name}' to '{new_aid_type.name}' by {request.user.username}."
+        )
+
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Aid Type updated successfully.',
+            'new_aid_type_name': new_aid_type.name
+        })
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

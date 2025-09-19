@@ -20,7 +20,7 @@ def email_creator_html(aid_request, aid_location, notify, map_file):
         f"SOA:{aid_request.field_op.slug}:"
         f"{aid_request.status} Aid Request #{aid_request.pk}:"
         f"{aid_request.aid_type}:"
-        f"{aid_request.requestor_first_name} {aid_request.requestor_last_name}"
+        f"{aid_request.requester_first_name} {aid_request.requester_last_name}"
     )
 
     html = f"""
@@ -87,9 +87,9 @@ def email_creator_html(aid_request, aid_location, notify, map_file):
             <th style="font-weight: normal;">Requestor Email</th>
         </tr>
         <tr>
-            <td style="font-weight: bold;">{aid_request.requestor_first_name} {aid_request.requestor_last_name}</td>
-            <td style="font-weight: bold;">{aid_request.requestor_phone}</td>
-            <td style="font-weight: bold;">{aid_request.requestor_email}</td>
+            <td style="font-weight: bold;">{aid_request.requester_first_name} {aid_request.requester_last_name}</td>
+            <td style="font-weight: bold;">{aid_request.requester_phone}</td>
+            <td style="font-weight: bold;">{aid_request.requester_email}</td>
         </tr>
         <tr>
             <th style="font-weight: normal;">Contact Name</th>

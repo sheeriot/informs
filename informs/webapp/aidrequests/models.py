@@ -9,6 +9,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from django_q.tasks import async_task
 from geopy.distance import geodesic
+from django_countries.fields import CountryField
 
 from .timestamped_model import TimeStampedModel
 from takserver.models import TakServer
@@ -112,7 +113,7 @@ class FieldOp(TimeStampedModel):
     """Field Ops"""
     slug = models.SlugField(unique=True)
     name = models.CharField(max_length=50)
-    country = models.CharField(max_length=30, blank=True, default='USA', help_text="Default country for new aid requests.")
+    country = CountryField(default='US', help_text="Default country for new aid requests.")
     latitude = models.DecimalField(max_digits=7, decimal_places=5)
     longitude = models.DecimalField(max_digits=8, decimal_places=5)
     ring_size = models.PositiveIntegerField(
@@ -152,16 +153,16 @@ class AidRequest(TimeStampedModel):
     """ scope to a field operation object"""
     field_op = models.ForeignKey(FieldOp, on_delete=models.CASCADE,
                                  null=True, related_name='aid_requests')
-    # 1. Requestor details
-    requestor_first_name = models.CharField(max_length=20, blank=True)
-    requestor_last_name = models.CharField(max_length=30, blank=True)
+    # 1. Requester details
+    requester_first_name = models.CharField(max_length=20, blank=True)
+    requester_last_name = models.CharField(max_length=30, blank=True)
 
     @property
     def requester_name(self):
-        return f"{self.requestor_first_name} {self.requestor_last_name}".strip()
+        return f"{self.requester_first_name} {self.requester_last_name}".strip()
 
-    requestor_email = models.EmailField(blank=True)
-    requestor_phone = models.CharField(blank=True, max_length=25)
+    requester_email = models.EmailField(blank=True)
+    requester_phone = models.CharField(blank=True, max_length=25)
     use_whatsapp = models.BooleanField(default=False)
 
     # 2. Contact details for party needing assistance
@@ -385,12 +386,15 @@ class AidLocation(TimeStampedModel):
         ('manual', 'Manual'),
         ('azure_maps', 'Azure Maps'),
         ('other', 'Other'),
+        ('user_picked', 'User Picked'),
     ]
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
     note = models.TextField(blank=True, null=True)
 
     address_searched = models.CharField(max_length=100, null=True, blank=True)
     address_found = models.CharField(max_length=100, null=True, blank=True)
+    free_form_address = models.CharField(max_length=255, blank=True, null=True)
+    geocode_json = models.JSONField(null=True, blank=True)
 
     distance = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
 

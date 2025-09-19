@@ -1,0 +1,34 @@
+<div class="row g-0 mt-2">
+    <div class="form-group col-md-12 p-1 position-relative">
+        <div id="{{ map_id }}"
+             style="height: 450px; border: 1px solid #ced4da; border-radius: .25rem;"
+             class="location-picker-map"
+             data-azure-maps-key="{{ azure_maps_key }}"
+             data-geocode-url="{{ geocode_url }}"
+             data-initial-lat="{{ initial_lat }}"
+             data-initial-lon="{{ initial_lon }}"
+             data-fieldop-lat="{{ field_op_lat }}"
+             data-fieldop-lon="{{ field_op_lon }}"
+             data-fieldop-ringsize="{{ field_op_ring_size }}"
+             data-country-code="{{ country_code }}"
+             data-lat-input-id="{{ lat_input_id }}"
+             data-lon-input-id="{{ lon_input_id }}"
+             data-source-input-id="{{ source_input_id }}"
+             data-note-input-id="{{ note_input_id }}"
+             ></div>
+
+        {% if latitude_field and longitude_field %}
+        <div class="position-absolute top-0 end-0 p-2" style="z-index: 1010;">
+            <div id="coordinates-card" class="card p-1" style="background-color: rgba(255, 255, 255, 0.6);">
+                {% include "aidrequests/partials/_coordinates_input_group.html" %}
+                <small class="text-muted text-end coordinates-title">coordinates</small>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% if coordinates_html %}
+<div class="mt-2">
+    {{ coordinates_html|safe }}
+</div>
+{% endif %}

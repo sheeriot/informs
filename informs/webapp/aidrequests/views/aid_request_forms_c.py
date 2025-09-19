@@ -5,17 +5,19 @@ from django.conf import settings
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError
 from django.utils.safestring import mark_safe
+from django.shortcuts import get_object_or_404
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Field, Submit, Row, Column, Div, Hidden, HTML
 from crispy_forms.bootstrap import InlineRadios
 
-from ..models import AidRequest, AidType
+from ..models import AidRequest, AidType, FieldOp
+from ..forms.layout import MapLayoutObject
 from ..context_processors import get_field_op_for_form
 import re
 
 class AidRequestCreateFormC(forms.ModelForm):
-    """ Multi-step Aid Request Form """
+    """ Aid Request - Create Form C """
 
     class Meta:
         model = AidRequest
@@ -51,16 +53,27 @@ class AidRequestCreateFormC(forms.ModelForm):
         required=False
     )
 
-    latitude = forms.DecimalField(max_digits=8, decimal_places=5, widget=forms.HiddenInput(), required=False)
-    longitude = forms.DecimalField(max_digits=9, decimal_places=5, widget=forms.HiddenInput(), required=False)
-    coordinates = forms.CharField(
-        label="Coordinates",
+    latitude = forms.DecimalField(
+        max_digits=8, decimal_places=6,
         required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control text-dark font-monospace w-auto'})
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'latitude'})
+    )
+    longitude = forms.DecimalField(
+        max_digits=9, decimal_places=6,
+        required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'longitude'})
     )
     location_modified = forms.BooleanField(widget=forms.HiddenInput(), required=False, initial=False)
     location_note = forms.CharField(widget=forms.HiddenInput(), required=False)
     location_source = forms.CharField(widget=forms.HiddenInput(), required=False)
+    location_freeform_address = forms.CharField(
+        label="", # Label is handled in the layout
+        required=False,
+        widget=forms.TextInput(attrs={
+            'readonly': True,
+            'class': 'form-control-plaintext bg-light border shadow-sm rounded-0 font-monospace p-2'
+        })
+    )
 
     has_medical_needs = forms.BooleanField(label="Medical Needs", required=False)
     has_welfare_check = forms.BooleanField(label="Welfare Check", required=False)
@@ -70,7 +83,13 @@ class AidRequestCreateFormC(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop('request', None)
-        super(AidRequestCreateFormC, self).__init__(*args, **kwargs)
+        fieldop_slug = kwargs.get('initial', {}).get('fieldop_slug')
+
+        self.field_op = None
+        if fieldop_slug:
+            self.field_op = get_object_or_404(FieldOp, slug=fieldop_slug)
+
+        super().__init__(*args, **kwargs)
 
         self.fields['contact_info'].help_text = "A valid email (e.g., user@example.com) or<br>phone number (at least 10 digits)."
         self.fields['use_whatsapp'].label = mark_safe("Contact me by WhatsApp<br><small class='text-danger'>(requires phone number)</small>")
@@ -80,14 +99,19 @@ class AidRequestCreateFormC(forms.ModelForm):
         self.helper.form_class = 'needs-validation no-asterisk'
         self.helper.attrs = {'novalidate': ''}
         self.helper.required_css_class = ''
+        self.helper.form_tag = False
 
-        self.field_op, self.fieldop_slug = get_field_op_for_form(kwargs['initial'])
+        self.fieldop_slug = kwargs.get('initial', {}).get('fieldop_slug')
+
+        # Set initial values for the form
+        if self.field_op:
+            self.fields['country'].initial = self.field_op.country
 
         if self.is_bound:
             country_name = self.data.get('country', 'USA')
         else:
-            country_name = self.field_op.country or 'USA'
-            self.initial['country'] = country_name
+            country_name = self.field_op.country.name or 'USA'
+            self.initial['country'] = self.field_op.country or 'USA'
 
         self.fields['country'].widget = forms.HiddenInput()
 
@@ -126,9 +150,33 @@ class AidRequestCreateFormC(forms.ModelForm):
                 initial_lat = submitted_lat
                 initial_lon = submitted_lon
             # Also restore the coordinates text field
-            self.initial['coordinates'] = self.data.get('coordinates')
         else:
-            self.initial['coordinates'] = ""
+            pass
+
+        field_op_ring_size = self.field_op.ring_size or ""
+
+        # Aid Types
+        if self.field_op:
+            self.fields['aid_type'].queryset = self.field_op.aid_types.all()
+            self.fields['aid_type'].initial = self.field_op.aid_types.first()
+
+        azure_maps_key = settings.AZURE_MAPS_KEY
+        geocode_url = reverse('geocode_address', kwargs={'field_op': self.fieldop_slug})
+
+        field_op_lat = f'{self.field_op.latitude:.5f}' if self.field_op.latitude is not None else ""
+        field_op_lon = f'{self.field_op.longitude:.5f}' if self.field_op.longitude is not None else ""
+        initial_lat = ""
+        initial_lon = ""
+
+        if self.is_bound:
+            submitted_lat = self.data.get('latitude')
+            submitted_lon = self.data.get('longitude')
+            if submitted_lat and submitted_lon:
+                initial_lat = submitted_lat
+                initial_lon = submitted_lon
+            # Also restore the coordinates text field
+        else:
+            pass
 
         field_op_ring_size = self.field_op.ring_size or ""
 
@@ -151,162 +199,195 @@ class AidRequestCreateFormC(forms.ModelForm):
 
         is_authenticated = self.request and self.request.user.is_authenticated
 
-        progress_dots_html = """
-            <div class="progress-dots d-flex justify-content-center gap-4">
-                <span class="dot"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
-            </div>
-        """
+        if self.field_op:
+            map_context = {
+                'azure_maps_key': azure_maps_key,
+                'geocode_url': geocode_url,
+                'initial_lat': initial_lat,
+                'initial_lon': initial_lon,
+                'field_op_lat': field_op_lat,
+                'field_op_lon': field_op_lon,
+                'field_op_ring_size': field_op_ring_size,
+                'country_code': self.field_op.country.code if self.field_op.country else None,
+                'lat_input_id': 'id_latitude',
+                'lon_input_id': 'id_longitude',
+                'source_input_id': 'id_location_source',
+                'note_input_id': 'id_location_note'
+            }
 
-        self.helper.layout = Layout(
-            Hidden('field_op', self.field_op.id),
-            'latitude', 'longitude', 'location_note', 'location_modified', 'country', 'location_source',
+            progress_dots_html = """
+                <div class="progress-dots d-flex justify-content-center gap-4">
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                </div>
+            """
 
-            # Step 1: Aid Type & Contact
-            Div(
-                Fieldset(
-                    "",
-                    HTML("<h5 class='mb-3'>What kind of aid is needed?</h5>"),
-                    InlineRadios('aid_type'),
-                    Row(
-                        Column(
-                            HTML("<h5 class='mt-4 mb-3'>Who needs aid?</h5>"),
-                            Row(
-                                Column('full_name', css_class="col-md-8"),
-                                css_class="mb-3"
-                            ),
-                            Row(
-                                Column('contact_info', css_class='col-md-7'),
-                                Column(
-                                    Div(
-                                        Field('use_whatsapp', wrapper_class='form-check'),
-                                        css_class='pt-4'
-                                    ),
-                                    css_class='col-md-5 custom-checkbox-column'
-                                ),
-                            ),
-                            css_class="col-lg-8 offset-lg-2"
-                        )
-                    )
-                ),
+            self.helper.layout = Layout(
+                Hidden('field_op', self.field_op.id),
+                Hidden('latitude', ''), Hidden('longitude', ''),
+                'location_note', 'location_modified', 'country', 'location_source',
+
+                # Step 1: Aid Type & Contact
                 Div(
-                    Div(css_class="w-25"),
-                    Div(HTML(progress_dots_html), css_class="w-50"),
-                    Div(HTML('<button type="button" id="next-step-1" class="btn btn-primary btn-lg">Next</button>'), css_class="w-25 d-flex justify-content-end"),
-                    css_class="d-flex justify-content-between align-items-center mt-3"
-                ),
-                css_id="step-1",
-                css_class="form-step card p-3 border-0"
-            ),
-
-            # Step 2: Location
-            Div(
-                Fieldset(
-                    "", # Empty legend, using HTML for layout
-                    HTML(f"<h5 class='mb-3'>Aid Location ({country_name})</h5>"),
-                    Row(
-                        Column(
-                            HTML("""
-                                <button type="button" id="get-location" class="btn btn-success btn-lg text-nowrap">
-                                    <i class="bi bi-phone"></i> Get My Location <i class="bi bi-bullseye"></i>
-                                </button>
-                            """),
-                            css_class="col-auto"
-                        ),
-                        Column(
-                                HTML("<p class='form-text text-muted mb-0 px-2'>City and State are required for address lookup (below)</p>"),
-                                css_class="col"
-                        ),
-                        Column(
-                            HTML("""
-                                <button type="button" id="reset-location-btn" class="btn btn-sm btn-outline-danger">
-                                    <i class="bi bi-geo-alt"></i> Reset Location
-                                </button>
-                            """),
-                            css_class="col-auto"
-                        ),
-                        css_class="mb-3 align-items-center"
-                    ),
-                    HTML("<div id='location-error-msg' class='text-danger fw-bold'></div>"),
-                    Row(
-                        Column(Field('city', css_class='mb-2'), css_class='col-md-6'),
-                        Column(Field('state', css_class='mb-2'), css_class='col-md-6'),
-                    ),
-                    Row(
-                        Column(Field('street_address', css_class='mb-2'), css_class='col-12'),
+                    Fieldset(
+                        "",
+                        HTML("<h5 class='mb-3'>What kind of aid is needed?</h5>"),
+                        InlineRadios('aid_type'),
+                        Row(
+                            Column(
+                                HTML("<h5 class='mt-4 mb-3'>Who needs aid?</h5>"),
+                                Row(
+                                    Column('full_name', css_class="col-md-8"),
+                                    css_class="mb-3"
+                                ),
+                                Row(
+                                    Column('contact_info', css_class='col-md-7'),
+                                    Column(
+                                        Div(
+                                            Field('use_whatsapp', wrapper_class='form-check'),
+                                            css_class='pt-4'
+                                        ),
+                                        css_class='col-md-5 custom-checkbox-column'
+                                    ),
+                                ),
+                                css_class="col-lg-8 offset-lg-2"
+                            )
+                        )
                     ),
                     Div(
-                        Div(HTML('<button type="button" id="prev-step-2" class="btn btn-secondary btn-lg">Back</button>'), css_class="w-25 d-flex justify-content-start"),
+                        Div(css_class="w-25"),
                         Div(HTML(progress_dots_html), css_class="w-50"),
-                        Div(HTML('<button type="button" id="confirm-and-next-btn" class="btn btn-primary btn-lg opacity-25" disabled>Provide Location</button>'), css_class="w-25 d-flex justify-content-end"),
-                        css_class="d-flex justify-content-between align-items-center my-3"
+                        Div(HTML('<button type="button" id="next-step-1" class="btn btn-primary btn-lg">Next</button>'), css_class="w-25 d-flex justify-content-end"),
+                        css_class="d-flex justify-content-between align-items-center mt-3"
                     ),
-                    HTML("<p class='text-muted text-center small mb-1'>Click on the Map to select a Location</p>"),
-                    HTML(f"""
-                        <div class="row g-0 mt-2">
-                            <div class="form-group col-md-12 p-1" style="position: relative;">
-                                <div id="aid-request-location-picker-map"
-                                     style="height: 300px; border: 1px solid #ced4da; border-radius: .25rem;"
-                                     data-azure-maps-key="{azure_maps_key}"
-                                     data-geocode-url="{geocode_url}"
-                                     data-initial-lat="{initial_lat}"
-                                     data-initial-lon="{initial_lon}"
-                                     data-fieldop-lat="{field_op_lat}"
-                                     data-fieldop-lon="{field_op_lon}"
-                                     data-fieldop-ringsize="{field_op_ring_size}">
-                                </div>
-                                <div class="{'d-block' if is_authenticated else 'd-none'}" style="position: absolute; top: 10px; right: 10px; z-index: 10; background-color: rgba(255,255,255,0.7); padding: 5px; border-radius: 5px;">
-                                    <div class="input-group">
-                                        { self.fields['coordinates'].widget.render('coordinates', self.data.get('coordinates') if self.is_bound else self.initial.get('coordinates', ''), attrs={'id': 'id_coordinates', 'class': 'form-control text-dark font-monospace w-auto'}) }
-                                        <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard(event, 'id_coordinates')">
-                                            <i class="bi bi-clipboard"></i>
-                                        </button>
+                    css_id="step-1",
+                    css_class="form-step card p-3 border-0"
+                ),
+
+                # Step 2: Location
+                Div(
+                    Fieldset(
+                        "", # Empty legend, using HTML for layout
+                        HTML(f"<h5 class='mb-3'>Aid Location ({country_name})</h5>"),
+                        Row(
+                            Column(
+                                    HTML("<p class='form-text text-muted mb-0 px-2'>Add location details and confirm location.</p>"),
+                                    css_class="col"
+                            ),
+                            Column(
+                                HTML("""
+                                    <button type="button" id="get-location" class="btn btn-warning btn-sm text-start">
+                                        <span class="d-block text-nowrap"><i class="bi bi-phone"></i> Device</span>
+                                        <span class="d-block text-nowrap"><i class="bi bi-geo-alt"></i> Location</span>
+                                    </button>
+                                """),
+                                css_class="col-auto"
+                            ),
+                            Column(
+                                HTML("""
+                                    <button type="button" id="reset-location-btn" class="btn btn-sm btn-outline-danger text-start">
+                                        <span class="d-block text-nowrap"><i class="bi bi-x-circle"></i> Reset</span>
+                                        <span class="d-block text-nowrap"><i class="bi bi-geo-alt"></i> Location</span>
+                                    </button>
+                                """),
+                                css_class="col-auto"
+                            ),
+                            css_class="mb-3 align-items-center"
+                        ),
+                        HTML("<div id='location-error-msg' class='text-danger fw-bold'></div>"),
+                        Row(
+                            Column(Field('city', css_class='mb-2'), css_class='col-md-6'),
+                            Column(Field('state', css_class='mb-2'), css_class='col-md-6'),
+                        ),
+                        Row(
+                            Column(Field('street_address', css_class='mb-2'), css_class='col-12'),
+                        ),
+                        Div(
+                            Row(
+                                Column(HTML('<label for="id_location_freeform_address" class="form-label h6 mb-0">Geocoded Address</label>'), css_class="col-auto"),
+                                Column(
+                                    HTML("""
+                                        {% if request.user.is_authenticated %}
+                                            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#locationNoteCollapse" aria-expanded="false" aria-controls="locationNoteCollapse">
+                                                <span class="text-nowrap"><i class="bi bi-card-text"></i> Details</span>
+                                            </button>
+                                        {% endif %}
+                                    """),
+                                    css_class="col-auto"
+                                ),
+                                css_class="align-items-center"
+                            ),
+                             Field('location_freeform_address'),
+                             HTML("""
+                                {% if request.user.is_authenticated %}
+                                <div class="collapse" id="locationNoteCollapse">
+                                    <div class="card card-body p-1 mt-1">
+                                        <pre id="geocode-raw-results-pre" class="p-2 border rounded" style="max-height: 200px; overflow-y: auto; white-space: pre-wrap; margin-bottom: 0;"></pre>
                                     </div>
                                 </div>
-                                <div id="distance-display" class="mt-2 text-end"></div>
-                            </div>
-                        </div>
-                    """),
-                ),
-                css_id="step-2",
-                css_class="form-step card p-3 pt-2 border-0 d-none"
-            ),
-
-            # Step 3: Details
-            Div(
-                Fieldset(
-                    "",
-                    HTML("<h5 class='mb-3'>How can we help?</h5>"),
-                    Row(Column('group_size', css_class='col-2 mb-1')),
-                    'aid_description',
-                    HTML('<p class="mt-4 mb-3">Check all that apply:</p>'),
-                    Row(
-                        Column('has_medical_needs', css_class='col-auto custom-checkbox-column'),
-                        Column('has_welfare_check', css_class='col-auto custom-checkbox-column'),
-                        Column('has_supplies_needed', css_class='col-auto custom-checkbox-column'),
-                        Column('has_contact_methods', css_class='col-auto custom-checkbox-column'),
-                        Column('has_additional_info', css_class='col-auto custom-checkbox-column'),
-                        css_class="mb-2 g-2"
+                                {% endif %}
+                            """),
+                             css_id="geocode-details-container",
+                             css_class="mt-2 w-75 mx-auto"
+                        ),
+                        Div(
+                            Div(HTML('<button type="button" id="prev-step-2" class="btn btn-secondary btn-lg"><i class="bi bi-arrow-left-circle"></i> Back</button>'), css_class="w-25 d-flex justify-content-start"),
+                            Div(HTML(progress_dots_html), css_class="w-50"),
+                            Div(HTML("""
+                                <button type="button" id="confirm-and-next-btn" class="btn btn-success btn-lg opacity-25 text-start" disabled>
+                                    <span class="d-block text-nowrap"><i class="bi bi-check-lg"></i> Confirm</span>
+                                    <span class="d-block text-nowrap"><i class="bi bi-geo-alt-fill"></i> Location</span>
+                                </button>
+                            """), css_class="w-25 d-flex justify-content-end"),
+                            css_class="d-flex justify-content-between align-items-center my-3"
+                        ),
+                        HTML("<p class='text-muted text-center small mb-1'>Click on the Map to select a Location</p>"),
+                        MapLayoutObject(
+                            'aid-request-location-picker-map',
+                            map_context=map_context,
+                            latitude_field='latitude',
+                            longitude_field='longitude'
+                        ),
                     ),
-                    Div(Field('medical_needs'), css_class="d-none", css_id="div_id_medical_needs"),
-                    Div(Field('welfare_check_info'), css_class="d-none", css_id="div_id_welfare_check_info"),
-                    Div(Field('supplies_needed'), css_class="d-none", css_id="div_id_supplies_needed"),
-                    Div(Field('contact_methods'), css_class="d-none", css_id="div_id_contact_methods"),
-                    Div(Field('additional_info'), css_class="d-none", css_id="div_id_additional_info"),
+                    css_id="step-2",
+                    css_class="form-step card p-1 border-0 d-none"
                 ),
+
+                # Step 3: Details
                 Div(
-                    Div(HTML('<button type="button" id="prev-step-3" class="btn btn-secondary btn-lg">Back</button>'), css_class="w-25 d-flex justify-content-start"),
-                    Div(HTML(progress_dots_html), css_class="w-50"),
-                    Div(HTML(f"""<button type="submit" id="submit-button" class="btn btn-primary btn-lg">
-                            Create Aid Request
-                        </button>"""), css_class="w-25 d-flex justify-content-end"),
-                    css_class="d-flex justify-content-between align-items-center mt-3"
+                    Fieldset(
+                        "",
+                        HTML("<h5 class='mb-3'>How can we help?</h5>"),
+                        Row(Column('group_size', css_class='col-2 mb-1')),
+                        'aid_description',
+                        HTML('<p class="mt-4 mb-3">Check all that apply:</p>'),
+                        Row(
+                            Column('has_medical_needs', css_class='col-auto custom-checkbox-column'),
+                            Column('has_welfare_check', css_class='col-auto custom-checkbox-column'),
+                            Column('has_supplies_needed', css_class='col-auto custom-checkbox-column'),
+                            Column('has_contact_methods', css_class='col-auto custom-checkbox-column'),
+                            Column('has_additional_info', css_class='col-auto custom-checkbox-column'),
+                            css_class="mb-2 g-2"
+                        ),
+                        Div(Field('medical_needs'), css_class="d-none", css_id="div_id_medical_needs"),
+                        Div(Field('welfare_check_info'), css_class="d-none", css_id="div_id_welfare_check_info"),
+                        Div(Field('supplies_needed'), css_class="d-none", css_id="div_id_supplies_needed"),
+                        Div(Field('contact_methods'), css_class="d-none", css_id="div_id_contact_methods"),
+                        Div(Field('additional_info'), css_class="d-none", css_id="div_id_additional_info"),
+                    ),
+                    Div(
+                        Div(HTML('<button type="button" id="prev-step-3" class="btn btn-secondary btn-lg"><i class="bi bi-arrow-left-circle"></i> Back</button>'), css_class="w-25 d-flex justify-content-start"),
+                        Div(HTML(progress_dots_html), css_class="w-50"),
+                        Div(HTML(f"""<button type="submit" id="submit-button" class="btn btn-primary btn-lg">
+                                Create Aid Request
+                            </button>"""), css_class="w-25 d-flex justify-content-end"),
+                        css_class="d-flex justify-content-between align-items-center mt-3"
+                    ),
+                    css_id="step-3",
+                    css_class="form-step card p-3 border-0 d-none"
                 ),
-                css_id="step-3",
-                css_class="form-step card p-3 border-0 d-none"
-            ),
-        )
+            )
 
     def clean_full_name(self):
         full_name = self.cleaned_data.get('full_name', '').strip()
@@ -314,8 +395,8 @@ class AidRequestCreateFormC(forms.ModelForm):
             parts = full_name.split()
             first_name = parts[0]
             last_name = ' '.join(parts[1:]) if len(parts) > 1 else ''
-            self.cleaned_data['requestor_first_name'] = first_name
-            self.cleaned_data['requestor_last_name'] = last_name
+            self.cleaned_data['requester_first_name'] = first_name
+            self.cleaned_data['requester_last_name'] = last_name
             self.cleaned_data['aid_first_name'] = ''
             self.cleaned_data['aid_last_name'] = ''
         return full_name
@@ -330,8 +411,8 @@ class AidRequestCreateFormC(forms.ModelForm):
             pass
 
         if is_email:
-            self.cleaned_data['requestor_email'] = contact_info
-            self.cleaned_data['requestor_phone'] = ''
+            self.cleaned_data['requester_email'] = contact_info
+            self.cleaned_data['requester_phone'] = ''
             self.cleaned_data['aid_email'] = ''
             self.cleaned_data['aid_phone'] = ''
             return contact_info
@@ -340,8 +421,8 @@ class AidRequestCreateFormC(forms.ModelForm):
         # Remove all non-digit characters.
         cleaned_phone = re.sub(r'\D', '', contact_info)
         if len(cleaned_phone) >= 10:
-            self.cleaned_data['requestor_phone'] = cleaned_phone
-            self.cleaned_data['requestor_email'] = ''
+            self.cleaned_data['requester_phone'] = cleaned_phone
+            self.cleaned_data['requester_email'] = ''
             self.cleaned_data['aid_email'] = ''
             self.cleaned_data['aid_phone'] = ''
             return contact_info
@@ -355,10 +436,10 @@ class AidRequestCreateFormC(forms.ModelForm):
         instance = super().save(commit=False)
 
         # Manually assign cleaned data to the instance
-        instance.requestor_first_name = self.cleaned_data.get('requestor_first_name', '')
-        instance.requestor_last_name = self.cleaned_data.get('requestor_last_name', '')
-        instance.requestor_email = self.cleaned_data.get('requestor_email', '')
-        instance.requestor_phone = self.cleaned_data.get('requestor_phone', '')
+        instance.requester_first_name = self.cleaned_data.get('requester_first_name', '')
+        instance.requester_last_name = self.cleaned_data.get('requester_last_name', '')
+        instance.requester_email = self.cleaned_data.get('requester_email', '')
+        instance.requester_phone = self.cleaned_data.get('requester_phone', '')
 
         # Ensure 'aid' fields are always blank
         instance.aid_first_name = ''
@@ -374,19 +455,8 @@ class AidRequestCreateFormC(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
 
-        coordinates = cleaned_data.get("coordinates")
         latitude = cleaned_data.get("latitude")
         longitude = cleaned_data.get("longitude")
-
-        if coordinates:
-            try:
-                lat_str, lon_str = coordinates.split(',')
-                latitude = float(lat_str.strip())
-                longitude = float(lon_str.strip())
-                cleaned_data['latitude'] = latitude
-                cleaned_data['longitude'] = longitude
-            except (ValueError, TypeError):
-                pass
 
         # If a location is provided via map, address is not required.
         if latitude and longitude:

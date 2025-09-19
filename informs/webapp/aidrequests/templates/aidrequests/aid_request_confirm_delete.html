@@ -2,60 +2,50 @@
 {% load bootstrap_icons %}
 
 {% block content %}
-    <h1>Confirm Deletion</h1>
+    <h1>Confirm Delete</h1>
     <p>Are you sure you want to delete this aid request?</p>
 
-    <h2>{{ object }}</h2>
+    <h2>Requester Details</h2>
+    <p>First Name: {{ object.requester_first_name }}</p>
+    <p>Last Name: {{ object.requester_last_name }}</p>
+    <p>Email Address: {{ object.requester_email }}</p>
+    <p>Phone Number: {{ object.requester_phone }}</p>
 
-    <form method="post" action="">
-        {% csrf_token %}
-        <p>Are you sure you want to delete this aid request?</p>
-        <p>This action cannot be undone.</p>
-        <button type="submit" class="d-none" id="confirm-delete-btn"></button>
-        <a href="#" onclick="document.getElementById('confirm-delete-btn').click(); return false;" class="btn btn-danger btn-danger-no-underline">Yes, delete</a>
-        <a href="{% url 'aid_request_detail' field_op=object.field_op.slug pk=object.pk %}" class="btn btn-secondary">Cancel</a>
-    </form>
+    <h2>Assistance Details</h2>
+    <p>Type: {{ object.get_assistance_type_display }}</p>
 
-<hr>
+    <h2>Contact Details for Party Needing Assistance</h2>
+    <p>First Name: {{ object.aid_first_name }}</p>
+    <p>Last Name: {{ object.aid_last_name }}</p>
+    <p>Email Address: {{ object.aid_email }}</p>
+    <p>Phone Number: {{ object.aid_phone }}</p>
 
-<h2>Requestor Details</h2>
-<p>First Name: {{ object.requestor_first_name }}</p>
-<p>Last Name: {{ object.requestor_last_name }}</p>
-<p>Email Address: {{ object.requestor_email }}</p>
-<p>Phone Number: {{ object.requestor_phone }}</p>
+    <h2>Location of Assistance Request</h2>
+    <p>Street Address: {{ object.street_address }}</p>
+    <p>City: {{ object.city }}</p>
+    <p>State: {{ object.state }}</p>
+    <p>Zip Code: {{ object.zip_code }}</p>
 
-<h2>Contact Details for Party Needing Assistance</h2>
-<p>First Name: {{ object.aid_first_name }}</p>
-<p>Last Name: {{ object.aid_last_name }}</p>
-<p>Email Address: {{ object.aid_email }}</p>
-<p>Phone Number: {{ object.aid_phone }}</p>
+    <h2>Type of Assistance Requested</h2>
+    <p>Type: {{ object.get_aid_type_display }}</p>
+    <p>Description: {{ object.aid_description }}</p>
 
-<h2>Location of Assistance Request</h2>
-<p>Street Address: {{ object.street_address }}</p>
-<p>City: {{ object.city }}</p>
-<p>State: {{ object.state }}</p>
-<p>Zip Code: {{ object.zip_code }}</p>
+    <h2>Group Size</h2>
+    <p>{{ object.group_size }}</p>
 
-<h2>Type of Assistance Requested</h2>
-<p>Type: {{ object.get_aid_type_display }}</p>
-<p>Description: {{ object.aid_description }}</p>
+    <h2>Preferred Contact Methods</h2>
+    <p>{{ object.contact_methods }}</p>
 
-<h2>Group Size</h2>
-<p>{{ object.group_size }}</p>
+    <h2>Emergency Medical Needs</h2>
+    <p>{{ object.medical_needs }}</p>
 
-<h2>Preferred Contact Methods</h2>
-<p>{{ object.contact_methods }}</p>
+    <h2>Supplies Needed</h2>
+    <p>{{ object.supplies_needed }}</p>
 
-<h2>Emergency Medical Needs</h2>
-<p>{{ object.medical_needs }}</p>
+    <h2>Welfare Check Information</h2>
+    <p>{{ object.welfare_check_info }}</p>
 
-<h2>Supplies Needed</h2>
-<p>{{ object.supplies_needed }}</p>
-
-<h2>Welfare Check Information</h2>
-<p>{{ object.welfare_check_info }}</p>
-
-<h2>Additional Information</h2>
-<p>{{ object.additional_info }}</p>
+    <h2>Additional Information</h2>
+    <p>{{ object.additional_info }}</p>
 
 {% endblock %}

@@ -38,42 +38,103 @@ function formatAzureMapsNote(data, type) {
 
 document.addEventListener('DOMContentLoaded', function() {
     const formContainer = document.getElementById('form-c-container');
+    if (!formContainer) return;
+
     const isAuthenticated = formContainer.dataset.isAuthenticated === 'true';
     const fieldOpSlug = formContainer.dataset.fieldopSlug;
     const lastSubmittedPk = sessionStorage.getItem('informsFormLastSubmittedPk');
 
-    if (lastSubmittedPk && fieldOpSlug) {
-        if(formContainer) {
-            let viewRequestsLink = '';
-            if (isAuthenticated) {
-                viewRequestsLink = `<a href="/${fieldOpSlug}/list/" class="btn btn-secondary ms-2">View All Requests</a>`;
-            }
+    if (lastSubmittedPk && fieldOpSlug && isAuthenticated) { // Only show for authenticated users
+        let viewRequestsLink = `<a href="/${fieldOpSlug}/list/" class="btn btn-secondary ms-2">View All Requests</a>`;
+        const submittedURL = `/${fieldOpSlug}/aidrequest/${lastSubmittedPk}/submitted/`;
 
-            const submittedURL = `/${fieldOpSlug}/aidrequest/${lastSubmittedPk}/submitted/`;
+        formContainer.innerHTML = `
+            <div class="alert alert-info" role="alert">
+              <h4 class="alert-heading">Form Previously Submitted</h4>
+              <p>It looks like you have already submitted this form. To prevent duplicates, please review your last submission before creating a new one.</p>
+              <hr>
+              <p class="mb-0">You can view your last submission or start a new request.</p>
+            </div>
+            <a href="${submittedURL}" class="btn btn-success">View My Submission</a>
+            <button id="submit-another-request-btn" class="btn btn-primary ms-2">Submit Another Request</button>
+            ${viewRequestsLink}
+        `;
 
-            formContainer.innerHTML = `
-                <div class="alert alert-info" role="alert">
-                  <h4 class="alert-heading">Form Previously Submitted</h4>
-                  <p>It looks like you have already submitted this form. If you used the back button, your submission has likely already been recorded.</p>
-                  <hr>
-                  <p class="mb-0">
-                    You can view your submission, or submit another request.
-                  </p>
-                </div>
-                <a href="${submittedURL}" class="btn btn-success">View My Submission</a>
-                <button id="submit-another-request-btn" class="btn btn-primary ms-2">Submit Another Request</button>
-                ${viewRequestsLink}
-            `;
-
-            document.getElementById('submit-another-request-btn').addEventListener('click', function(e) {
-                e.preventDefault();
-                sessionStorage.removeItem('informsFormCSubmitted');
-                sessionStorage.removeItem('informsFormLastSubmittedPk');
-                sessionStorage.removeItem('informsFormCData');
-                window.location.reload();
-            });
-        }
+        document.getElementById('submit-another-request-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            sessionStorage.removeItem('informsFormLastSubmittedPk');
+            sessionStorage.removeItem('informsFormCData');
+            window.location.reload();
+        });
         return;
+    }
+
+    const cityInput = document.getElementById('id_city');
+    const stateInput = document.getElementById('id_state');
+    const streetInput = document.getElementById('id_street_address');
+    const confirmLocationBtn = document.getElementById('confirm-and-next-btn');
+
+    // Function to perform forward geocoding
+    async function performGeocode() {
+        const city = cityInput.value.trim();
+        const state = stateInput.value.trim();
+        const street = streetInput.value.trim();
+
+        if (city) {
+            if (aidRequestFormCConfig.debug) console.log(`[FormC] Performing geocode for: ${street}, ${city}, ${state}`);
+
+            const mapContainer = document.getElementById('aid-request-location-picker-map');
+            const subscriptionKey = mapContainer.dataset.azureMapsKey;
+            let queryParts = [street, city, state].filter(Boolean); // Filter out empty parts
+            let query = queryParts.join(', ');
+
+            const url = `https://atlas.microsoft.com/search/address/json?api-version=1.0&query=${encodeURIComponent(query)}&countrySet=${mapContainer.dataset.countryCode || ''}&limit=1&subscription-key=${subscriptionKey}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.results && data.results.length > 0) {
+                    const result = data.results[0];
+                    const { lat, lon } = result.position;
+
+                    if (aidRequestFormCConfig.debug) {
+                        console.log('[FormC] Geocode successful:', result);
+                    }
+
+                    // Dispatch a custom event to update the map in location-picker-map.js
+                    const event = new CustomEvent('updateMapFromGeocode', {
+                        detail: {
+                            position: [lon, lat],
+                            address: result.address
+                        }
+                    });
+                    document.dispatchEvent(event);
+
+                    if(confirmLocationBtn) {
+                        confirmLocationBtn.disabled = false;
+                        confirmLocationBtn.classList.remove('opacity-25');
+                    }
+
+                } else {
+                    if (aidRequestFormCConfig.debug) console.warn('[FormC] Geocode returned no results.');
+                }
+            } catch (error) {
+                if (aidRequestFormCConfig.debug) console.error('[FormC] Geocode error:', error);
+            }
+        } else {
+            if (aidRequestFormCConfig.debug) console.log('[FormC] City is required for geocoding.');
+        }
+    }
+
+    // Add event listeners for address fields to trigger geocoding
+    let geocodeTimeout;
+    if (cityInput && stateInput && streetInput) {
+        [cityInput, stateInput, streetInput].forEach(input => {
+            input.addEventListener('input', () => {
+                clearTimeout(geocodeTimeout);
+                geocodeTimeout = setTimeout(performGeocode, 1000); // Debounce for 1s
+            });
+        });
     }
 
     const form = document.querySelector('form.needs-validation');
@@ -198,31 +259,25 @@ document.addEventListener('DOMContentLoaded', function() {
             locationLog.push(formatAzureMapsNote(geocodeData, geocodeType));
         } else if (source === 'device_location') {
             locationLog.push('User requested device location.');
-        } else if (source === 'user_picked') {
-            const coords = document.getElementById('id_coordinates').value;
-            locationLog.push(`User manually entered coordinates: ${coords}`);
+        } else if (source === 'user_picked' && position) {
+            locationLog.push(`User picked coordinates from map: ${position[1].toFixed(5)},${position[0].toFixed(5)}`);
         }
 
         // Update form fields
         document.getElementById('id_latitude').value = position[1].toFixed(5);
         document.getElementById('id_longitude').value = position[0].toFixed(5);
-        document.getElementById('id_coordinates').value = `${position[1].toFixed(5)},${position[0].toFixed(5)}`;
         document.getElementById('id_location_modified').value = 'True';
         document.getElementById('id_location_source').value = source;
         document.getElementById('id_location_note').value = locationLog.join('\n');
 
         saveFormData(); // Persist the new state to session storage
 
-        if (aidRequestFormCConfig.debug) {
-            console.log('form-c.js: Updated form fields and saved to session storage.');
-            console.log('form-c.js: Final location_note:', locationLog.join('\n'));
-        }
-
-        // Enable the 'Confirm & Next' button
-        if (confirmAndNextBtn) {
-            confirmAndNextBtn.disabled = false;
-            confirmAndNextBtn.classList.remove('opacity-25');
-            confirmAndNextBtn.textContent = 'Confirm & Next';
+        // Re-select the button here to ensure it's available
+        const confirmBtn = document.getElementById('confirm-and-next-btn');
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.classList.remove('opacity-25');
+            if (aidRequestFormCConfig.debug) console.log('[FormC] Confirm Location button enabled.');
         }
     });
 
@@ -230,19 +285,36 @@ document.addEventListener('DOMContentLoaded', function() {
         resetLocationBtn.addEventListener('click', () => {
             const fieldsToClear = [
                 'id_street_address', 'id_city', 'id_state', 'id_zip_code',
-                'id_coordinates', 'id_latitude', 'id_longitude',
-                'id_location_note', 'id_location_source'
+                'id_latitude', 'id_longitude',
+                'id_location_note', 'id_location_source', 'id_location_freeform_address'
             ];
             fieldsToClear.forEach(id => {
                 const field = document.getElementById(id);
-                if (field) field.value = '';
+                if (field) {
+                    field.value = '';
+                    field.classList.remove('field-highlight');
+                }
             });
             document.getElementById('id_location_modified').value = 'False';
+
+            // Clear the geocode details panel, but don't hide it
+            const geocodeRawResultsPre = document.getElementById('geocode-raw-results-pre');
+            if (geocodeRawResultsPre) {
+                geocodeRawResultsPre.textContent = '';
+            }
+            const locationNoteCollapse = document.getElementById('locationNoteCollapse');
+            if (locationNoteCollapse && locationNoteCollapse.classList.contains('show')) {
+                // If the details are open, close them.
+                const bsCollapse = new bootstrap.Collapse(locationNoteCollapse, {
+                    toggle: false
+                });
+                bsCollapse.hide();
+            }
 
             if (confirmAndNextBtn) {
                 confirmAndNextBtn.disabled = true;
                 confirmAndNextBtn.classList.add('opacity-25');
-                confirmAndNextBtn.textContent = 'Provide Location';
+                confirmAndNextBtn.textContent = 'Confirm Location';
             }
 
             saveFormData(); // Persist changes

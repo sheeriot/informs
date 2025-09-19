@@ -8,7 +8,7 @@ from decimal import Decimal
 
 from ..models import AidRequest, FieldOp
 from ..forms import (
-    RequestorInformationForm,
+    RequesterInformationForm,
     AidContactInformationForm,
     LocationInformationForm,
     RequestDetailsForm,
@@ -42,7 +42,7 @@ def update_aid_request(request, field_op, pk):
         form_name = data.get('form_name')
 
         FORM_MAP = {
-            'requestor': RequestorInformationForm,
+            'requester': RequesterInformationForm,
             'aid_contact': AidContactInformationForm,
             'location': LocationInformationForm,
             'details': RequestDetailsForm,

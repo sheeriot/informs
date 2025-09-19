@@ -151,3 +151,23 @@ def get_priority_badge(priority):
 
     color_class = priority_bootstrap_color(priority_val) # Use the existing filter
     return f'<span class="badge bg-{color_class}">{priority_display}</span>'
+
+
+@register.filter
+def hyperbolic_font_size(group_size):
+    """
+    Calculates a font size in 'rem' using a hyperbolic curve.
+    The font size increases with group_size but at a decreasing rate,
+    approaching a maximum value.
+    """
+    if not isinstance(group_size, (int, float)) or group_size <= 0:
+        return "1rem"
+
+    s_min = 1.0  # The font size for group_size = 1
+    s_max = 2.5  # The maximum font size to approach
+    k = 0.1      # Controls how quickly the font size increases
+
+    # Hyperbolic function: s_max - (s_max - s_min) / (1 + k * (group_size - 1))
+    font_size = s_max - (s_max - s_min) / (1 + k * (group_size - 1))
+
+    return f"{font_size:.2f}rem"

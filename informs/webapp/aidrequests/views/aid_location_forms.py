@@ -3,6 +3,7 @@ from django import forms
 from django.urls import reverse
 from django.utils.html import format_html
 from django.conf import settings
+from django.template.loader import render_to_string
 # from icecream import ic
 
 from crispy_forms.helper import FormHelper
@@ -60,7 +61,36 @@ class AidLocationCreateForm(forms.ModelForm):
             if field_name in self.fields:
                 self.fields[field_name].widget.attrs['readonly'] = True
 
-        self.helper.layout = Layout()
+        azure_maps_key = settings.AZURE_MAPS_KEY or ""
+        geocode_url = reverse('geocode_address', kwargs={'field_op': self.field_op_obj.slug})
+
+        field_op_lat = f'{self.field_op_obj.latitude:.5f}' if self.field_op_obj.latitude is not None else ""
+        field_op_lon = f'{self.field_op_obj.longitude:.5f}' if self.field_op_obj.longitude is not None else ""
+        field_op_ring_size = self.field_op_obj.ring_size or ""
+
+        map_html = render_to_string('aidrequests/partials/_location_picker_map.html', {
+            'map_id': 'add-location-map',
+            'azure_maps_key': azure_maps_key,
+            'geocode_url': geocode_url,
+            'initial_lat': self.initial.get('latitude', field_op_lat),
+            'initial_lon': self.initial.get('longitude', field_op_lon),
+            'field_op_lat': field_op_lat,
+            'field_op_lon': field_op_lon,
+            'field_op_ring_size': field_op_ring_size,
+            # These IDs match the fields in AidLocationCreateForm
+            'lat_input_id': 'id_latitude_modal',
+            'lon_input_id': 'id_longitude_modal',
+            'coordinates_input_id': 'id_coordinates', # This is from the non-model field
+            'source_input_id': 'id_location_source_modal',
+            'note_input_id': 'id_note_modal'
+        })
+
+        self.helper.layout = Layout(
+            HTML(map_html),
+            'note',
+            # Hidden fields are already in Meta
+            Submit('submit', 'Add Location', css_class='btn-primary mt-2')
+        )
 
     def save(self, commit=True):
         instance = super().save(commit=False)

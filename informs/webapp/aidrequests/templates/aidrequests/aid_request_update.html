@@ -19,7 +19,12 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="mb-0">
-            Update Aid Request <a href="{% url 'aid_request_detail' pk=object.pk field_op=object.field_op.slug %}">#{{ object.pk }}</a>: <span class="fw-normal">{{ object.aid_type.name }}</span>
+            Update Aid Request <a href="{% url 'aid_request_detail' pk=object.pk field_op=object.field_op.slug %}">#{{ object.pk }}</a>: <span class="fw-normal" id="aid-type-name-display">{{ object.aid_type.name }}</span>
+            {% if request.user.is_superuser %}
+                <button class="btn btn-sm btn-outline-warning ms-2" data-bs-toggle="modal" data-bs-target="#changeAidTypeModal" title="Change Aid Type">
+                    <i class="bi bi-wrench"></i>
+                </button>
+            {% endif %}
         </h2>
         <a href="{% url 'field_op_detail' slug=field_op.slug %}" class="btn btn-outline-secondary btn-sm">
             {% bs_icon 'truck' %} {{ field_op.name }} ({{ field_op.slug }})
@@ -28,24 +33,24 @@
 
     <div class="row">
         <div class="col-lg-8">
-            <!-- Requestor Information -->
+            <!-- Requester Information -->
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Requestor Information</h5>
-                    <button type="button" class="btn btn-sm btn-outline-danger btn-edit-section" data-target="#requestor-fieldset">
+                    <h5 class="mb-0">Requester Information</h5>
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-edit-section" data-target="#requester-fieldset">
                         <i class="bi bi-lock-fill"></i>
                     </button>
                 </div>
                 <div class="card-body">
-                    <form id="requestor-form" class="partial-update-form" data-form-name="requestor">
+                    <form id="requester-form" class="partial-update-form" data-form-name="requester">
                         {% csrf_token %}
-                        <fieldset id="requestor-fieldset" disabled>
+                        <fieldset id="requester-fieldset" disabled>
                             <div class="row">
-                                <div class="col-md-6 mb-3">{{ requestor_form.requestor_first_name|as_crispy_field }}</div>
-                                <div class="col-md-6 mb-3">{{ requestor_form.requestor_last_name|as_crispy_field }}</div>
-                                <div class="col-md-6 mb-3">{{ requestor_form.requestor_phone|as_crispy_field }}</div>
-                                <div class="col-md-6 mb-3">{{ requestor_form.requestor_email|as_crispy_field }}</div>
-                                <div class="col-md-12 mb-3 custom-checkbox-column">{{ requestor_form.use_whatsapp|as_crispy_field }}</div>
+                                <div class="col-md-6 mb-3">{{ requester_form.requester_first_name|as_crispy_field }}</div>
+                                <div class="col-md-6 mb-3">{{ requester_form.requester_last_name|as_crispy_field }}</div>
+                                <div class="col-md-6 mb-3">{{ requester_form.requester_phone|as_crispy_field }}</div>
+                                <div class="col-md-6 mb-3">{{ requester_form.requester_email|as_crispy_field }}</div>
+                                <div class="col-md-12 mb-3 custom-checkbox-column">{{ requester_form.use_whatsapp|as_crispy_field }}</div>
                             </div>
                             <div class="d-flex justify-content-end d-none mt-2">
                                 <button type="button" class="btn btn-secondary btn-sm me-2 btn-cancel-edit">Cancel</button>
@@ -198,6 +203,61 @@
     </div>
   </div>
 </div>
+
+{% if request.user.is_superuser %}
+<!-- Change Aid Type Modal -->
+<div class="modal fade" id="changeAidTypeModal" tabindex="-1" aria-labelledby="changeAidTypeModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="changeAidTypeModalLabel">Change Aid Type for Request #{{ object.pk }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="change-aid-type-form" action="{% url 'change_aid_request_type' field_op=object.field_op.slug pk=object.pk %}" method="POST">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div id="change-aid-type-alert"></div>
+          <div class="mb-3">
+              <div class="row">
+                  <div class="col-md-6">
+                      <label class="form-label">Current Aid Type:</label>
+                      <div class="form-control bg-light">{{ object.aid_type.name }}</div>
+                  </div>
+                  <div class="col-md-6">
+                      <label for="id_aid_type" class="form-label">New Aid Type:</label>
+                      <select name="aid_type" id="id_aid_type" class="form-select">
+                        {% for type in aid_types %}
+                          {% if type.pk != object.aid_type.pk %}
+                            <option value="{{ type.pk }}">{{ type.name }}</option>
+                          {% endif %}
+                        {% endfor %}
+                      </select>
+                  </div>
+              </div>
+          </div>
+          <div class="mb-3">
+            <label for="confirmation-text" class="form-label">To confirm, type the full name of the requester:</label>
+            <div class="ms-3 mb-1">
+                <code id="requester-name-confirm" style="font-size: 1.1rem;">{{ object.requester_name }}</code>
+            </div>
+            <div class="input-group">
+                <input type="text" id="confirmation-text" class="form-control" autocomplete="off" placeholder="Type name to confirm">
+                <div class="btn-group btn-group-sm ms-2" role="group">
+                    <button type="button" class="btn btn-secondary text-nowrap" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-warning text-nowrap" id="confirm-aid-type-change">
+                        <i class="bi bi-wrench"></i> Change
+                    </button>
+                </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_css %}
@@ -207,6 +267,21 @@
 <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
 <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
 <script src="{% static 'js/utils-copy-to-clipboard.js' %}?v={{ static_version }}"></script>
-<script src="{% static 'js/aidrequest-update-map.js' %}?v={{ static_version }}"></script>
+<script src="{% static 'js/location-picker-map.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/aidrequest-update-actions.js' %}?v={{ static_version }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addLocationModal = document.getElementById('addLocationModal');
+    if (addLocationModal) {
+        addLocationModal.addEventListener('shown.bs.modal', function () {
+            if (window.initializeLocationPicker) {
+                // A slight delay to ensure the modal is fully rendered before map initialization
+                setTimeout(() => {
+                    window.initializeLocationPicker('add-location-map');
+                }, 150);
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

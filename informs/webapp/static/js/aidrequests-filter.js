@@ -7,7 +7,7 @@
 
 // Configuration and Data Store
 window.aidRequestsStore = {
-    debug: false,  // Set to false in production
+    debug: true,  // Set to false in production
 
     // Status group lookup table - matches Django model's ACTIVE_STATUSES and INACTIVE_STATUSES
     statusGroups: {
@@ -115,7 +115,12 @@ window.aidRequestsStore = {
 
         // Dispatch an event so other components (like the list) can react if needed
         const filterChangeEvent = new CustomEvent('aidRequestsFiltered', {
-            detail: { filterState, counts, source: 'ajaxUpdate' }
+            detail: {
+                filterState,
+                counts,
+                source: 'ajaxUpdate',
+                updatedRequest: { id: requestId, updates: updates }
+            }
         });
         document.dispatchEvent(filterChangeEvent);
 

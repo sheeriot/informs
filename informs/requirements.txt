@@ -11,6 +11,8 @@ django-picklefield
 django-filter
 django-cors-headers
 django-widget-tweaks
+django-countries
+django-meta
 
 pandas
 

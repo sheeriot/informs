@@ -122,7 +122,7 @@ INSTALLED_APPS = [
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sites',
-    # 'django.contrib.sessions',
+    'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_bootstrap_icons',
@@ -136,9 +136,11 @@ INSTALLED_APPS = [
     'mathfilters',
     'corsheaders',
     'widget_tweaks',
+    'meta',
     'accounts.apps.AccountsConfig',
     'aidrequests.apps.AidRequestsConfig',
-    'takserver.apps.TakServerConfig'
+    'takserver.apps.TakServerConfig',
+    'django_countries',
 ]
 
 MIDDLEWARE = [

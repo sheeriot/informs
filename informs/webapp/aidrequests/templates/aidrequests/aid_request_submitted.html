@@ -79,16 +79,23 @@ Aid Request for {{ object.field_op.name }}
             </table>
             <table class="table table-bordered table-data border border-3 border-info w-auto caption-top mx-1">
                 <caption>Contact Information</caption>
-                <tr>
-                    <th class="col-auto">Requestor Name</th>
-                    <th class="col-auto">Requestor Phone</th>
-                    <th class="col-auto">Requestor Email</th>
-                </tr>
-                <tr>
-                    <td class="col-auto">{{ object.requestor_first_name }} {{ object.requestor_last_name }}</td>
-                    <td class="col-auto">{{ object.requestor_phone }}</td>
-                    <td class="col-auto">{{ object.requestor_email }}</td>
-                </tr>
+                <table class="table table-bordered table-striped">
+                    <caption>Requester Information</caption>
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col" class="col-auto">Requester Name</th>
+                            <th scope="col" class="col-auto">Requester Phone</th>
+                            <th scope="col" class="col-auto">Requester Email</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="col-auto">{{ object.requester_first_name }} {{ object.requester_last_name }}</td>
+                            <td class="col-auto">{{ object.requester_phone }}</td>
+                            <td class="col-auto">{{ object.requester_email }}</td>
+                        </tr>
+                    </tbody>
+                </table>
                 <tr>
                     <th class="col-auto">Contact Name</th>
                     <th class="col-auto">Contact Phone</th>
