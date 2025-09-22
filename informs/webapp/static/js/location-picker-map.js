@@ -274,7 +274,7 @@
                             geocodeJsonPre.textContent = geocodeJsonInput.value;
                         }
                     } else {
-                         if (locationPickerConfig.debug) console.warn(`[LocationPicker] Restore failed for PRE. One or more elements/values missing.`);
+                         if (locationPickerConfig.debug) console.log(`[LocationPicker] No geocode JSON in session to restore for PRE display.`);
                     }
 
                     // 2. Restore the map state (marker, zoom, distance, etc.) from the form fields
@@ -302,7 +302,7 @@
                         updateDistance(position);
                         updateCoordinatesDisplay(position);
                     } else {
-                         if(locationPickerConfig.debug) console.warn(`[LocationPicker] Restore failed for MAP. Lat/Lon inputs are empty or invalid.`);
+                         if(locationPickerConfig.debug) console.log(`[LocationPicker] No coordinates in session to restore on map.`);
                     }
                 });
 
@@ -327,8 +327,11 @@
 
                 function updateForm(position, source, geocodeData = {}, formattedAddress = '') {
 
-                    updateFieldValue(latInput, position[1]);
-                    updateFieldValue(lonInput, position[0]);
+                    const roundedLat = parseFloat(position[1].toFixed(5));
+                    const roundedLon = parseFloat(position[0].toFixed(5));
+
+                    updateFieldValue(latInput, roundedLat);
+                    updateFieldValue(lonInput, roundedLon);
 
                     if (sourceInput) {
                         updateFieldValue(sourceInput, source);
@@ -379,9 +382,9 @@
                     const container = formContainer.querySelector('#coordinates-display-modal-container');
                     if (!container) return;
 
-                    const lat = position[1].toFixed(5);
-                    const lon = position[0].toFixed(5);
-                    const coordsText = `${lat}, ${lon}`;
+                    const lat = position[1];
+                    const lon = position[0];
+                    const coordsText = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
 
                     container.innerHTML = `
                         <label class="form-label">Coordinates</label>
@@ -481,7 +484,7 @@
                     return ((lon + 180) % 360) - 180;
                 }
 
-                function handleManualCoordinateUpdate() {
+                async function handleManualCoordinateUpdate() {
                     const lat = parseFloat(latInput.value);
                     const lon = parseFloat(lonInput.value);
 
@@ -490,10 +493,12 @@
                             const newPosition = [lon, lat];
                             requestMarker.setOptions({ position: newPosition, visible: true });
                             map.setCamera({ center: newPosition, zoom: 12 });
-                            reverseGeocode(newPosition); // Update address fields
-                            // When updating from manual input, don't pass geocode data
-                            // to prevent overwriting the reverse geocode result.
-                            updateForm(newPosition, 'user_entered');
+
+                            const address = await reverseGeocode(newPosition, true);
+                            const formattedAddr = address ? address.freeformAddress : `No address found at ${lat.toFixed(5)}, ${lon.toFixed(5)}.`;
+
+                            updateForm(newPosition, 'user_entered', address, formattedAddr);
+
                             if (locationPickerConfig.debug) console.log(`[LocationPicker] Updated map to manually entered coordinates: ${lat}, ${lon}`);
                         } else {
                             if (locationPickerConfig.debug) console.warn(`[LocationPicker] Invalid lat/lon values provided.`);
@@ -501,10 +506,9 @@
                     }
                 }
 
-                ['input', 'change', 'blur'].forEach(eventName => {
-                    latInput.addEventListener(eventName, handleManualCoordinateUpdate);
-                    lonInput.addEventListener(eventName, handleManualCoordinateUpdate);
-                });
+                // Only trigger the geocode when the user is done editing the field
+                latInput.addEventListener('blur', handleManualCoordinateUpdate);
+                lonInput.addEventListener('blur', handleManualCoordinateUpdate);
 
                 // Round to a max of 5 decimal places on blur (when user clicks away)
                 function roundCoordinateOnBlur(event) {

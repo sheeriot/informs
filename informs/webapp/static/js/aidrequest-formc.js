@@ -11,10 +11,29 @@ const aidRequestFormCConfig = {
 };
 
 document.addEventListener('DOMContentLoaded', function() {
+    // On page load, always remove the 'submitted' flag if it exists.
+    // This ensures that refreshing the page or navigating back allows for a new submission.
+    sessionStorage.removeItem('informsFormCSubmitted');
+
+    // First, check if there's any data to restore.
+    const storedData = sessionStorage.getItem('informsFormCData');
+    if (!storedData) {
+        // If there is no stored data, restore-related functionality will be skipped.
+        // The form will be presented as a clean, empty form.
+        if (aidRequestFormCConfig.debug) console.log('[FormC] No form data found in sessionStorage. Presenting a clean form.');
+    }
+
     const form = document.getElementById('aid-request-form-c');
     if (!form) {
         if (aidRequestFormCConfig.debug) console.error('[FormC] The main form with ID "aid-request-form-c" was not found.');
         return;
+    }
+
+    // First, restore any existing form data. This ensures the form is in the correct state
+    // before we attach any event listeners that might save data.
+    if (storedData) {
+        if (aidRequestFormCConfig.debug) console.log('[FormC] Restoring form data from sessionStorage.');
+        restoreFormData();
     }
 
     const formContainer = form.parentElement;
@@ -125,7 +144,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    const storedData = sessionStorage.getItem('informsFormCData');
 
     if (storedData) {
         const resetButtonHTML = `
@@ -153,16 +171,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function saveFormData() {
         if (!form) return;
-        if (aidRequestFormCConfig.debug) {
-            const geocodeJsonInput = form.querySelector('#id_geocode_json');
-            console.log('[FormC] Inside saveFormData. Hidden geocode_json input value is:', geocodeJsonInput ? `"${geocodeJsonInput.value.substring(0, 100)}..."` : 'Not Found');
-        }
 
         const formData = new FormData(form);
         const data = {};
+        let hasMeaningfulData = false;
 
+        // First, populate the data object from the form
         for (const [key, value] of formData.entries()) {
-            // This handles cases where a field name might appear multiple times (like checkboxes)
             if (data[key]) {
                 if (!Array.isArray(data[key])) {
                     data[key] = [data[key]];
@@ -173,20 +188,37 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        sessionStorage.setItem('informsFormCData', JSON.stringify(data));
-        if (aidRequestFormCConfig.debug) {
-            console.log('[FormC] Saved form data to sessionStorage.');
-            // For debugging the issue of lost fields:
-            console.log(`  - City: ${data.city}`);
-            console.log(`  - Street Address: ${data.street_address}`);
-            console.log(`  - Geocoded Address: ${data.location_freeform_address}`);
-            console.log(`  - Geocode JSON stored: ${!!data.geocode_json}`);
+        // Now, check if there's any data worth saving.
+        // We iterate over the *built* data object, not the raw form data.
+        for(const key in data) {
+            // We ignore the CSRF token and check if the value is not empty/null.
+            if (key !== 'csrfmiddlewaretoken' && data[key] && data[key].toString().trim() !== '') {
+                hasMeaningfulData = true;
+                break; // Found meaningful data, no need to check further
+            }
+        }
+
+        if (hasMeaningfulData) {
+            sessionStorage.setItem('informsFormCData', JSON.stringify(data));
+            if (aidRequestFormCConfig.debug) {
+                console.log('[FormC] Meaningful data found. Saved to sessionStorage.');
+            }
+        } else {
+            // If no meaningful data, clear session storage to avoid confusion on reload.
+            sessionStorage.removeItem('informsFormCData');
+            if (aidRequestFormCConfig.debug) {
+                console.log('[FormC] No meaningful data to save. Cleared sessionStorage.');
+            }
         }
     }
 
     function restoreFormData() {
-        const data = JSON.parse(sessionStorage.getItem('informsFormCData'));
+        const storedData = sessionStorage.getItem('informsFormCData');
+        if (!storedData) return; // Extra safety check
+
+        const data = JSON.parse(storedData);
         if (!data || !form) return;
+
         if (aidRequestFormCConfig.debug) {
             console.log('[FormC] Restoring form data from sessionStorage.');
              // For debugging the issue of lost fields:
@@ -230,8 +262,78 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    restoreFormData();
+    // Now that the form is restored (if applicable), set up all event listeners.
+    if (form) {
+        // Save the form data whenever a user finishes editing a field (on "blur").
+        const fieldsToMonitor = form.querySelectorAll('input, textarea, select');
+        fieldsToMonitor.forEach(field => {
+            field.addEventListener('blur', saveFormData);
+        });
 
+        if (form.querySelector('#submit-button')) {
+            form.addEventListener('submit', function(event) {
+                // On final submit, we no longer need the session data, so remove the listener
+                window.removeEventListener('beforeunload', saveFormData);
+
+                // Always prevent default and manage submission manually
+                event.preventDefault();
+                if (aidRequestFormCConfig.debug) console.log('[FormC] Submit event triggered. Starting validation...');
+
+                let allStepsValid = true;
+                for (let i = 0; i < steps.length; i++) {
+                    if (aidRequestFormCConfig.debug) console.log(`[FormC] Validating step ${i}...`);
+                    if (!validateStep(i)) {
+                        allStepsValid = false;
+                        if (aidRequestFormCConfig.debug) console.log(`[FormC] Validation failed on step ${i}.`);
+                        // validateStep function now handles showing the correct step and focusing.
+                        break; // Stop on first invalid step
+                    }
+                }
+
+                if (allStepsValid) {
+                    if(aidRequestFormCConfig.debug) {
+                        const fullName = form.querySelector('#id_full_name').value;
+                        console.log("[FormC] All steps are valid. Submitting form. Requestor full name:", fullName);
+                    }
+                    form.querySelector('#submit-button').disabled = true;
+                    form.querySelector('#submit-button').innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...';
+                    sessionStorage.removeItem('informsFormCData');
+                    form.submit(); // Manually submit the form
+                } else {
+                    if (aidRequestFormCConfig.debug) console.log('[FormC] Validation failed. Form will not be submitted.');
+                }
+            });
+        }
+
+        form.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && event.target.tagName.toLowerCase() !== 'textarea') {
+                const activeStep = document.querySelector('.form-step:not(.d-none)');
+                if (activeStep && activeStep.id !== 'step-3') {
+                     event.preventDefault();
+                     const nextBtn = activeStep.querySelector('[id^=next-step-], #confirm-and-next-btn');
+                     if(nextBtn && !nextBtn.disabled) {
+                        nextBtn.click();
+                     }
+                }
+            }
+        });
+    }
+
+    document.addEventListener('locationUpdated', (e) => {
+        // This event signifies the map has updated the location fields.
+        // Save the entire form state now to capture all map-derived values.
+        saveFormData();
+
+        // Re-select the button here to ensure it's available
+        const confirmBtn = form.querySelector('#confirm-and-next-btn');
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.classList.remove('opacity-25');
+            if (aidRequestFormCConfig.debug) console.log('[FormC] Confirm Location button enabled after location update.');
+        }
+    });
+
+    // Setup for multi-step form navigation
     const steps = [
         form.querySelector('#step-1'),
         form.querySelector('#step-2'),
@@ -252,20 +354,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // After restoring form data, check if was already set
     const locationModifiedInput = form.querySelector('#id_location_modified');
-
-    document.addEventListener('locationUpdated', (e) => {
-        // This event signifies the map has updated the location fields.
-        // Save the entire form state now to capture all map-derived values.
-        saveFormData();
-
-        // Re-select the button here to ensure it's available
-        const confirmBtn = form.querySelector('#confirm-and-next-btn');
-        if (confirmBtn) {
-            confirmBtn.disabled = false;
-            confirmBtn.classList.remove('opacity-25');
-            if (aidRequestFormCConfig.debug) console.log('[FormC] Confirm Location button enabled after location update.');
-        }
-    });
 
     if (resetLocationBtn) {
         resetLocationBtn.addEventListener('click', () => {
@@ -331,58 +419,8 @@ document.addEventListener('DOMContentLoaded', function() {
         prevStep3Btn.addEventListener('click', () => { currentStep = 1; showStep(currentStep); });
     }
 
-    const submitBtn = form.querySelector('#submit-button');
-
-    if (form) {
-        form.addEventListener('input', saveFormData);
-    }
-
-    if (form && submitBtn) {
-        form.addEventListener('submit', function(event) {
-            // Always prevent default and manage submission manually
-            event.preventDefault();
-            if (aidRequestFormCConfig.debug) console.log('[FormC] Submit event triggered. Starting validation...');
-
-            let allStepsValid = true;
-            for (let i = 0; i < steps.length; i++) {
-                if (aidRequestFormCConfig.debug) console.log(`[FormC] Validating step ${i}...`);
-                if (!validateStep(i)) {
-                    allStepsValid = false;
-                    if (aidRequestFormCConfig.debug) console.log(`[FormC] Validation failed on step ${i}.`);
-                    // validateStep function now handles showing the correct step and focusing.
-                    break; // Stop on first invalid step
-                }
-            }
-
-            if (allStepsValid) {
-                if(aidRequestFormCConfig.debug) {
-                    const fullName = form.querySelector('#id_full_name').value;
-                    console.log("[FormC] All steps are valid. Submitting form. Requestor full name:", fullName);
-                }
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...';
-                sessionStorage.removeItem('informsFormCData');
-                form.submit(); // Manually submit the form
-            } else {
-                if (aidRequestFormCConfig.debug) console.log('[FormC] Validation failed. Form will not be submitted.');
-            }
-        });
-    }
-
-    if (form) {
-        form.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter' && event.target.tagName.toLowerCase() !== 'textarea') {
-                const activeStep = document.querySelector('.form-step:not(.d-none)');
-                if (activeStep && activeStep.id !== 'step-3') {
-                     event.preventDefault();
-                     const nextBtn = activeStep.querySelector('[id^=next-step-], #confirm-and-next-btn');
-                     if(nextBtn && !nextBtn.disabled) {
-                        nextBtn.click();
-                     }
-                }
-            }
-        });
-    }
+    // All event listeners are now set up. The rest of the script handles showing steps and validation.
+    showStep(currentStep);
 
     function updateProgressDots() {
         const activeStep = steps[currentStep];

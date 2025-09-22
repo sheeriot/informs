@@ -11,10 +11,12 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Field, Submit, Row, Column, Div, Hidden, HTML
 from crispy_forms.bootstrap import InlineRadios
 
-from ..models import AidRequest, AidType, FieldOp
+from ..models import AidRequest, AidType, FieldOp, AidLocation
 from ..forms.layout import MapLayoutObject
 from ..context_processors import get_field_op_for_form
 import re
+import json
+from icecream import ic
 
 class AidRequestCreateFormC(forms.ModelForm):
     """ Aid Request - Create Form C """
@@ -56,13 +58,13 @@ class AidRequestCreateFormC(forms.ModelForm):
         max_digits=9,
         decimal_places=5,
         required=False,
-        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm font-monospace seamless-start', 'step': 'any'})
+        widget=forms.TextInput(attrs={'class': 'form-control form-control-sm font-monospace seamless-start'})
     )
     longitude = forms.DecimalField(
         max_digits=9,
         decimal_places=5,
         required=False,
-        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm font-monospace seamless-end', 'step': 'any'})
+        widget=forms.TextInput(attrs={'class': 'form-control form-control-sm font-monospace seamless-end'})
     )
     location_modified = forms.BooleanField(widget=forms.HiddenInput(), required=False, initial=False)
     geocode_json = forms.CharField(widget=forms.HiddenInput(), required=False)
@@ -423,6 +425,7 @@ class AidRequestCreateFormC(forms.ModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
+        ic("Cleaned form data:", self.cleaned_data)
 
         # Manually assign cleaned data to the instance
         instance.requester_first_name = self.cleaned_data.get('requester_first_name', '')
@@ -438,6 +441,38 @@ class AidRequestCreateFormC(forms.ModelForm):
 
         if commit:
             instance.save()
+
+            # After saving the AidRequest, create the AidLocation if location data exists
+            if self.cleaned_data.get('latitude') and self.cleaned_data.get('longitude'):
+
+                geocode_json_str = self.cleaned_data.get('geocode_json')
+                ic("Raw geocode_json from form:", geocode_json_str)
+
+                parsed_geocode_json = None
+                if geocode_json_str:
+                    try:
+                        parsed_geocode_json = json.loads(geocode_json_str)
+                        ic("Successfully parsed geocode_json.")
+                    except json.JSONDecodeError:
+                        ic("ERROR: Could not decode geocode_json string.")
+                        # Saving null seems safest.
+                        parsed_geocode_json = None
+                else:
+                    ic("geocode_json string is empty or None.")
+
+
+                location = AidLocation.objects.create(
+                    aid_request=instance,
+                    latitude=self.cleaned_data.get('latitude'),
+                    longitude=self.cleaned_data.get('longitude'),
+                    status='new', # Default status for a new location
+                    source=self.cleaned_data.get('location_source', 'user_picked'),
+                    note=self.cleaned_data.get('location_note'),
+                    free_form_address=self.cleaned_data.get('location_freeform_address'),
+                    geocode_json=parsed_geocode_json
+                )
+                ic("Created AidLocation object:", location)
+                ic("Saved geocode_json:", location.geocode_json)
 
         return instance
 
