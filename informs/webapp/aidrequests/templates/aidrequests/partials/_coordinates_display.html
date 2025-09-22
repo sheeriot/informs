@@ -1,0 +1,16 @@
+{% load bootstrap_icons %}
+
+<div class="input-group input-group-sm">
+    <span class="form-control font-monospace bg-light"
+           id="{{ element_id }}"
+           style="flex: 0 1 auto; width: auto; min-width: 0;">
+        {{ latitude|floatformat:5 }}, {{ longitude|floatformat:5 }}
+    </span>
+    <button class="btn btn-outline-secondary btn-copy-coords"
+            type="button"
+            data-copy-text="{{ latitude|floatformat:5 }}, {{ longitude|floatformat:5 }}"
+            onclick="copyCoordinates(this)"
+            title="Copy to clipboard">
+        {% bs_icon 'clipboard' %}
+    </button>
+</div>

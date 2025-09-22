@@ -32,6 +32,15 @@
       --banner-color: {{ banner_color }};
       {% endif %}
     }
+    /* Hide the spinners on number inputs */
+    .form-control-sm[type=number]::-webkit-inner-spin-button,
+    .form-control-sm[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    .form-control-sm[type=number] {
+        -moz-appearance: textfield;
+    }
   </style>
   {% block extra_css %}
   <!-- Page-specific CSS will be inserted here -->
@@ -208,6 +217,7 @@
 
   <!-- JavaScript files -->
   <script type="text/javascript" src="{% static 'js/time-helper.js' %}"></script>
+  <script type="text/javascript" src="{% static 'js/utils.js' %}?v={{ static_version }}"></script>
   <!-- Export tables to CSV -->
   <script type="text/javascript" src="{% static 'js/export_csv.js' %}"></script>
   <!-- JQuery Support -->

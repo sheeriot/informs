@@ -102,7 +102,6 @@
                         {% csrf_token %}
                         {{ location_form.latitude }}
                         {{ location_form.longitude }}
-                        {{ location_form.location_note }}
                         <fieldset id="location-fieldset" disabled>
                             <div class="row">
                                 <div class="col-md-12 mb-3">{{ location_form.street_address|as_crispy_field }}</div>
@@ -160,7 +159,7 @@
                 </div>
             </div>
             <div id="locations-list-container">
-                {% include 'aidrequests/partials/_aid_locations_list.html' %}
+                {% include 'aidrequests/includes/aid_locations_list.html' %}
             </div>
         </div>
     </div>
@@ -185,24 +184,7 @@
   </div>
 </div>
 
-<!-- Add Location Modal -->
-<div class="modal fade" id="addLocationModal" tabindex="-1" aria-labelledby="addLocationModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="addLocationModalLabel">Add New Location for {{ object.field_op.name }}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <!-- Form for adding a new location -->
-        {% crispy add_location_form %}
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-      </div>
-    </div>
-  </div>
-</div>
+{% include 'aidrequests/partials/_add_location_modal.html' %}
 
 {% if request.user.is_superuser %}
 <!-- Change Aid Type Modal -->
@@ -266,7 +248,6 @@
 {% block extra_js %}
 <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
 <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
-<script src="{% static 'js/utils-copy-to-clipboard.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/location-picker-map.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/aidrequest-update-actions.js' %}?v={{ static_version }}"></script>
 <script>

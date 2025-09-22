@@ -15,6 +15,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django_q.tasks import async_chain, async_task
 
 from geopy.distance import geodesic
+from icecream import ic
 
 from ..models import AidRequest, FieldOp, AidRequestLog, AidLocation, AidType
 from ..tasks import aid_request_postsave, send_cot_task
@@ -118,19 +119,26 @@ class AidRequestCreateView(CreateView):
             try:
                 geocode_json = json.loads(location_note)
             except json.JSONDecodeError:
-                # Keep location_note as a string if it's not valid JSON
-                pass
+                geocode_json = None
+
+        if latitude and longitude:
+            location_creator = self.request.user if self.request.user.is_authenticated else None
+            AidLocation.objects.create(
+                aid_request=self.object,
+                latitude=latitude,
+                longitude=longitude,
+                source=location_source,
+                geocode_json=geocode_json,
+                free_form_address=location_freeform_address,
+                status='confirmed',
+                created_by=location_creator,
+                updated_by=location_creator
+            )
 
         task_name = f"AR{self.object.pk}_postsave"
         async_task('aidrequests.tasks.aid_request_postsave',
-            self.object,
+            self.object.pk,
             is_new=True,
-            latitude=latitude,
-            longitude=longitude,
-            location_note=location_note,
-            location_source=location_source,
-            geocode_json=geocode_json,
-            free_form_address=location_freeform_address,
             task_name=task_name,
         )
 
@@ -160,6 +168,7 @@ class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVi
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['field_op'] = self.field_op
+        context['aid_request'] = self.object  # Add this for consistency with DetailView
         context['MEDIA_URL'] = settings.MEDIA_URL
         context['AZURE_MAPS_KEY'] = settings.AZURE_MAPS_KEY
 
@@ -180,13 +189,17 @@ class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVi
         context['locations'] = sorted_locations
 
         # Add Location Form
-        context['add_location_form'] = AidLocationCreateForm(field_op_obj=self.field_op, initial={
-            'field_op': self.fieldop_slug,
-            'aid_request': self.object.pk,
-            'country': self.field_op.country,
-            'status': 'new',
-            'source': 'manual'
-        })
+        context['add_location_form'] = AidLocationCreateForm(
+            field_op_obj=self.field_op,
+            aid_request_obj=self.object,
+            initial={
+                'field_op': self.fieldop_slug,
+                'aid_request': self.object.pk,
+                'country': self.field_op.country,
+                'status': 'new',
+                'source': 'manual'
+            }
+        )
 
         instance = self.object
         context['requester_form'] = RequesterInformationForm(instance=instance)
@@ -285,9 +298,9 @@ def geodist(aid_request):
             ).km, 1)
 
 
-def format_aid_location_note(aid_location):
+def format_aid_location_summary(aid_location):
     """
-    Renders an HTML-formatted note for a given AidLocation object.
+    Renders an HTML-formatted summary for a given AidLocation object.
     """
     if not aid_location:
         return ""

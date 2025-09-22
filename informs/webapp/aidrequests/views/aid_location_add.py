@@ -41,18 +41,9 @@ def add_location(request, field_op, pk):
             })
         else:
             return JsonResponse({'success': False, 'errors': form.errors.as_json()}, status=400)
-    else: # GET request
-        form = AidLocationCreateForm(field_op_obj=field_op_obj, aid_request_obj=aid_request, initial={
-            'aid_request': aid_request.pk,
-            'country': aid_request.country or field_op_obj.country,
-        })
-        context = {
-            'form': form,
-            'aid_request': aid_request,
-            'field_op': field_op_obj,
-            'AZURE_MAPS_KEY': settings.AZURE_MAPS_KEY
-        }
-        return render(request, 'aidrequests/partials/_aid_location_form.html', context)
+
+    # If not POST, we shouldn't be here. Redirect or raise an error.
+    return JsonResponse({'success': False, 'error': 'Invalid request method.'}, status=405)
 
 
 @require_POST

@@ -77,42 +77,26 @@ Aid Request for {{ object.field_op.name }}
                 </tr>
                 <tr><td colspan="4">created: {{ object.created_at|date:"Y-m-d H:i" }}</td></tr>
             </table>
-            <table class="table table-bordered table-data border border-3 border-info w-auto caption-top mx-1">
-                <caption>Contact Information</caption>
-                <table class="table table-bordered table-striped">
-                    <caption>Requester Information</caption>
-                    <thead class="table-light">
-                        <tr>
-                            <th scope="col" class="col-auto">Requester Name</th>
-                            <th scope="col" class="col-auto">Requester Phone</th>
-                            <th scope="col" class="col-auto">Requester Email</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="col-auto">{{ object.requester_first_name }} {{ object.requester_last_name }}</td>
-                            <td class="col-auto">{{ object.requester_phone }}</td>
-                            <td class="col-auto">{{ object.requester_email }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <tr>
-                    <th class="col-auto">Contact Name</th>
-                    <th class="col-auto">Contact Phone</th>
-                    <th class="col-auto">Contact Email</th>
-                </tr>
-                <tr>
-                    <td class="col-auto">{{ object.aid_first_name|default:"None" }} {{ object.aid_last_name }}</td>
-                    <td class="col-auto">{{ object.aid_phone|default:"None" }}</td>
-                    <td class="col-auto">{{ object.aid_email|default:"None" }}</td>
-                </tr>
-                <tr>
-                    <td colspan="3">
-                        <strong>Methods</strong>:<br>{{ object.contact_methods }}
-                    </td>
-                </tr>
+
+            <table class="table table-bordered table-striped caption-top w-auto">
+                <caption>Requester Information</caption>
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col" class="col-auto">Requester Name</th>
+                        <th scope="col" class="col-auto">Requester Phone</th>
+                        <th scope="col" class="col-auto">Requester Email</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="col-auto">{{ object.requester_first_name }} {{ object.requester_last_name }}</td>
+                        <td class="col-auto">{{ object.requester_phone }}</td>
+                        <td class="col-auto">{{ object.requester_email }}</td>
+                    </tr>
+                </tbody>
             </table>
         </div>
+        {% include 'aidrequests/includes/aid_location_summary.html' %}
     </div>
 </div>
 {% endblock content %}

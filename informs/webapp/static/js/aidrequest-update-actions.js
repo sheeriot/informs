@@ -275,32 +275,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const addLocationModal = document.getElementById('addLocationModal');
     if (addLocationModal) {
         addLocationModal.addEventListener('show.bs.modal', function (event) {
-            if (aidRequestUpdateConfig.debug) console.log('Add location modal is being shown');
-            const modalBody = addLocationModal.querySelector('.modal-body');
-            const addLocationUrl = configDiv.dataset.urlAddLocation;
-
-            fetch(addLocationUrl)
-                .then(response => {
-                    if (!response.ok) throw new Error(`Network response was not ok, status: ${response.status}`);
-                    return response.text();
-                })
-                .then(html => {
-                    modalBody.innerHTML = html;
-                    const form = modalBody.querySelector('#addLocationForm');
-                    if (form) {
-                        if (aidRequestUpdateConfig.debug) console.log('Attaching submit handler to addLocationForm');
-                        form.addEventListener('submit', (e) => handleLocationFormSubmit(e, config));
-                    }
-                    // Initialize map for the modal
-                    if (window.initializeModalMap) {
-                        window.initializeModalMap();
-                    }
-                })
-                .catch(error => {
-                    console.error('Failed to load location form:', error);
-                    modalBody.innerHTML = `<div class="alert alert-danger">Failed to load content: ${error.message}</div>`;
-                });
+            // No longer fetching content, it's already in the DOM.
+            // The map initialization is handled by a separate script in the main template
+            // listening for 'shown.bs.modal'.
+            if (aidRequestUpdateConfig.debug) console.log('Add location modal is being shown. Content is static.');
         });
+
+        // Handle the form submission via JavaScript to update the page dynamically
+        const form = addLocationModal.querySelector('#addLocationForm');
+        if (form) {
+             form.addEventListener('submit', (e) => handleLocationFormSubmit(e, config));
+        }
     }
 
     function handleLocationFormSubmit(e, config) {

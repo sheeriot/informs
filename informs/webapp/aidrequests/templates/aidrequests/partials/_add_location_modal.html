@@ -1,0 +1,22 @@
+{% load crispy_forms_tags %}
+<!-- Add Location Modal -->
+<div class="modal fade" id="addLocationModal" tabindex="-1" aria-labelledby="addLocationModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addLocationModalLabel">Add New Location for {{ object.field_op.name|default:aid_request.field_op.name }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+          <form id="addLocationForm" method="post" action="{% url 'add_location' field_op.slug aid_request.pk %}" class="needs-validation" novalidate>
+            {% csrf_token %}
+            {% crispy add_location_form %}
+          </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" form="addLocationForm" id="submit-location-form">Save Location</button>
+      </div>
+    </div>
+  </div>
+</div>

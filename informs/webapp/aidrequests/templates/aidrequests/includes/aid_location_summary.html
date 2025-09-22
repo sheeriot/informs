@@ -1,0 +1,31 @@
+{% if object.location %}
+<table class="table table-bordered table-data caption-top me-2 border border-3 border-primary">
+    <caption>Location Summary</caption>
+    <tr>
+        <th class="col-auto">Address</th>
+        <td class="col-auto">{{ object.location.free_form_address }}</td>
+    </tr>
+    <tr>
+        <th class="col-auto">Coordinates</th>
+        <td class="col-auto">{{ object.location.latitude }}, {{ object.location.longitude }}</td>
+    </tr>
+    <tr>
+        <th class="col-auto">Source</th>
+        <td class="col-auto">{{ object.location.source }}</td>
+    </tr>
+    <tr>
+        <th class="col-auto">Status</th>
+        <td class="col-auto">{{ object.location.status }}</td>
+    </tr>
+    <tr>
+        <th class="col-auto">Geocode JSON</th>
+        <td class="col-auto">
+            <pre class="bg-light p-2" style="max-height: 200px; overflow-y: auto;"><code>{{ object.location.geocode_json }}</code></pre>
+        </td>
+    </tr>
+</table>
+{% else %}
+<div class="alert alert-warning" role="alert">
+    No location information available for this aid request.
+</div>
+{% endif %}

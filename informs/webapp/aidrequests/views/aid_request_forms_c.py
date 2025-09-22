@@ -27,13 +27,13 @@ class AidRequestCreateFormC(forms.ModelForm):
             'city',
             'state',
             'country',
+            'geocode_json',
             'aid_type',
             'aid_description',
             'group_size',
             'medical_needs',
             'welfare_check_info',
             'supplies_needed',
-            'contact_methods',
             'additional_info',
             'use_whatsapp',
         ]
@@ -42,7 +42,6 @@ class AidRequestCreateFormC(forms.ModelForm):
             'medical_needs': forms.Textarea(attrs={'rows': 2}),
             'welfare_check_info': forms.Textarea(attrs={'rows': 2}),
             'supplies_needed': forms.Textarea(attrs={'rows': 2}),
-            'contact_methods': forms.Textarea(attrs={'rows': 2}),
             'additional_info': forms.Textarea(attrs={'rows': 2}),
         }
 
@@ -54,16 +53,19 @@ class AidRequestCreateFormC(forms.ModelForm):
     )
 
     latitude = forms.DecimalField(
-        max_digits=8, decimal_places=6,
+        max_digits=9,
+        decimal_places=5,
         required=False,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'latitude'})
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm font-monospace seamless-start', 'step': 'any'})
     )
     longitude = forms.DecimalField(
-        max_digits=9, decimal_places=6,
+        max_digits=9,
+        decimal_places=5,
         required=False,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'longitude'})
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm font-monospace seamless-end', 'step': 'any'})
     )
     location_modified = forms.BooleanField(widget=forms.HiddenInput(), required=False, initial=False)
+    geocode_json = forms.CharField(widget=forms.HiddenInput(), required=False)
     location_note = forms.CharField(widget=forms.HiddenInput(), required=False)
     location_source = forms.CharField(widget=forms.HiddenInput(), required=False)
     location_freeform_address = forms.CharField(
@@ -103,6 +105,47 @@ class AidRequestCreateFormC(forms.ModelForm):
 
         self.fieldop_slug = kwargs.get('initial', {}).get('fieldop_slug')
 
+        geocode_url = reverse('geocode_address', kwargs={'field_op': self.fieldop_slug})
+        field_op_lat = f'{self.field_op.latitude:.5f}' if self.field_op.latitude is not None else ""
+        field_op_lon = f'{self.field_op.longitude:.5f}' if self.field_op.longitude is not None else ""
+        initial_lat = ""
+        initial_lon = ""
+        if self.is_bound:
+            submitted_lat = self.data.get('latitude')
+            submitted_lon = self.data.get('longitude')
+            if submitted_lat and submitted_lon:
+                initial_lat = submitted_lat
+                initial_lon = submitted_lon
+        field_op_ring_size = self.field_op.ring_size or ""
+
+        self.map_context = {
+            'azure_maps_key': settings.AZURE_MAPS_KEY,
+            'field_op': self.field_op,
+            'geocode_url': geocode_url,
+            'initial_lat': initial_lat,
+            'initial_lon': initial_lon,
+            'field_op_lat': field_op_lat,
+            'field_op_lon': field_op_lon,
+            'field_op_ring_size': field_op_ring_size,
+            'country_code': self.field_op.country.code if self.field_op.country else None,
+            'latInputId': self.auto_id % 'latitude',
+            'lonInputId': self.auto_id % 'longitude',
+            'sourceInputId': self.auto_id % 'location_source',
+            'noteInputId': self.auto_id % 'location_note',
+            'freeformAddressInputId': self.auto_id % 'location_freeform_address',
+            'streetInputId': 'id_street_address',
+            'cityInputId': 'id_city',
+            'stateInputId': 'id_state',
+            'confirmBtnId': 'confirm-and-next-btn',
+            'geocodeJsonPreId': 'geocode-json-pre',
+            'formContainerId': 'form-c-container',
+            'geocodeDetailsContainerId': 'geocode-details-container',
+            'distanceContainerId': 'distance-from-fieldop',
+            'geocodeJsonInputId': 'id_geocode_json',
+            'getLocationButtonId': 'get-location',
+            'resetLocationButtonId': 'reset-location-btn'
+        }
+
         # Set initial values for the form
         if self.field_op:
             self.fields['country'].initial = self.field_op.country
@@ -128,69 +171,26 @@ class AidRequestCreateFormC(forms.ModelForm):
             if self.data.get('additional_info'):
                 self.data['has_additional_info'] = 'on'
 
+        self.fields['street_address'].widget.attrs.update({'id': 'id_street_address'})
+        self.fields['city'].widget.attrs.update({'id': 'id_city'})
+        self.fields['state'].widget.attrs.update({'id': 'id_state'})
+
         for field_name, field in self.fields.items():
-            if field.required:
-                if 'class' in field.widget.attrs:
-                    field.widget.attrs['class'] += ' is-required'
-                else:
-                    field.widget.attrs['class'] = 'is-required'
-
-        azure_maps_key = settings.AZURE_MAPS_KEY or ""
-        geocode_url = reverse('geocode_address', kwargs={'field_op': self.fieldop_slug})
-
-        field_op_lat = f'{self.field_op.latitude:.5f}' if self.field_op.latitude is not None else ""
-        field_op_lon = f'{self.field_op.longitude:.5f}' if self.field_op.longitude is not None else ""
-        initial_lat = ""
-        initial_lon = ""
-
-        if self.is_bound:
-            submitted_lat = self.data.get('latitude')
-            submitted_lon = self.data.get('longitude')
-            if submitted_lat and submitted_lon:
-                initial_lat = submitted_lat
-                initial_lon = submitted_lon
-            # Also restore the coordinates text field
-        else:
-            pass
-
-        field_op_ring_size = self.field_op.ring_size or ""
+            if field_name not in ['latitude', 'longitude', 'location_note', 'location_source', 'location_freeform_address', 'field_op', 'country', 'use_whatsapp']:
+                field.widget.attrs['class'] = f"{field.widget.attrs.get('class', '')} form-control-multistep"
 
         # Aid Types
         if self.field_op:
-            self.fields['aid_type'].queryset = self.field_op.aid_types.all()
-            self.fields['aid_type'].initial = self.field_op.aid_types.first()
+            self.fields['aid_type'].queryset = self.field_op.aid_types.all().order_by('weight', 'name')
+            self.fields['aid_type'].empty_label = None # No empty choice
+            self.fields['aid_type'].to_field_name = 'slug'
 
-        azure_maps_key = settings.AZURE_MAPS_KEY
-        geocode_url = reverse('geocode_address', kwargs={'field_op': self.fieldop_slug})
+            # Set initial/default value
+            if not self.is_bound and self.fields['aid_type'].queryset.exists():
+                default_aid_type = self.fields['aid_type'].queryset.first()
+                self.initial['aid_type'] = default_aid_type.slug
 
-        field_op_lat = f'{self.field_op.latitude:.5f}' if self.field_op.latitude is not None else ""
-        field_op_lon = f'{self.field_op.longitude:.5f}' if self.field_op.longitude is not None else ""
-        initial_lat = ""
-        initial_lon = ""
-
-        if self.is_bound:
-            submitted_lat = self.data.get('latitude')
-            submitted_lon = self.data.get('longitude')
-            if submitted_lat and submitted_lon:
-                initial_lat = submitted_lat
-                initial_lon = submitted_lon
-            # Also restore the coordinates text field
-        else:
-            pass
-
-        field_op_ring_size = self.field_op.ring_size or ""
-
-        aid_types = self.field_op.aid_types.all().order_by('weight', 'name')
-        # ic(f"Available aid types for {self.field_op.slug}: {[t.name for t in aid_types]}")
-
-        self.fields['aid_type'].choices = [(aid_type.id, aid_type.name) for aid_type in aid_types]
         self.fields['aid_type'].label = False
-
-        if not self.is_bound:
-            if aid_types.exists():
-                default_aid_type = aid_types.first()
-                self.initial['aid_type'] = default_aid_type.pk
-                # ic(f"Defaulting to '{default_aid_type.name}' (Weight: {default_aid_type.weight}) with pk: {default_aid_type.pk}")
 
         self.fields['country'].widget.attrs['readonly'] = True
         self.fields['country'].widget.attrs['class'] = 'form-control-plaintext'
@@ -200,20 +200,6 @@ class AidRequestCreateFormC(forms.ModelForm):
         is_authenticated = self.request and self.request.user.is_authenticated
 
         if self.field_op:
-            map_context = {
-                'azure_maps_key': azure_maps_key,
-                'geocode_url': geocode_url,
-                'initial_lat': initial_lat,
-                'initial_lon': initial_lon,
-                'field_op_lat': field_op_lat,
-                'field_op_lon': field_op_lon,
-                'field_op_ring_size': field_op_ring_size,
-                'country_code': self.field_op.country.code if self.field_op.country else None,
-                'lat_input_id': 'id_latitude',
-                'lon_input_id': 'id_longitude',
-                'source_input_id': 'id_location_source',
-                'note_input_id': 'id_location_note'
-            }
 
             progress_dots_html = """
                 <div class="progress-dots d-flex justify-content-center gap-4">
@@ -225,8 +211,7 @@ class AidRequestCreateFormC(forms.ModelForm):
 
             self.helper.layout = Layout(
                 Hidden('field_op', self.field_op.id),
-                Hidden('latitude', ''), Hidden('longitude', ''),
-                'location_note', 'location_modified', 'country', 'location_source',
+                'geocode_json', 'location_note', 'location_modified', 'country', 'location_source',
 
                 # Step 1: Aid Type & Contact
                 Div(
@@ -323,13 +308,19 @@ class AidRequestCreateFormC(forms.ModelForm):
                                 {% if request.user.is_authenticated %}
                                 <div class="collapse" id="locationNoteCollapse">
                                     <div class="card card-body p-1 mt-1">
-                                        <pre id="geocode-raw-results-pre" class="p-2 border rounded" style="max-height: 200px; overflow-y: auto; white-space: pre-wrap; margin-bottom: 0;"></pre>
+                                        <pre id="geocode-json-pre" class="p-2 pre-geocode-json"></pre>
                                     </div>
                                 </div>
                                 {% endif %}
                             """),
+                             HTML("""
+    <div class="mt-2">
+        <small class="text-muted">Distance from FieldOp:</small>
+        <span id="distance-from-fieldop" class="fw-bold ms-2"></span>
+    </div>
+"""),
                              css_id="geocode-details-container",
-                             css_class="mt-2 w-75 mx-auto"
+                             css_class="mt-2"
                         ),
                         Div(
                             Div(HTML('<button type="button" id="prev-step-2" class="btn btn-secondary btn-lg"><i class="bi bi-arrow-left-circle"></i> Back</button>'), css_class="w-25 d-flex justify-content-start"),
@@ -345,7 +336,7 @@ class AidRequestCreateFormC(forms.ModelForm):
                         HTML("<p class='text-muted text-center small mb-1'>Click on the Map to select a Location</p>"),
                         MapLayoutObject(
                             'aid-request-location-picker-map',
-                            map_context=map_context,
+                            map_context_name='map_context',
                             latitude_field='latitude',
                             longitude_field='longitude'
                         ),
@@ -366,14 +357,12 @@ class AidRequestCreateFormC(forms.ModelForm):
                             Column('has_medical_needs', css_class='col-auto custom-checkbox-column'),
                             Column('has_welfare_check', css_class='col-auto custom-checkbox-column'),
                             Column('has_supplies_needed', css_class='col-auto custom-checkbox-column'),
-                            Column('has_contact_methods', css_class='col-auto custom-checkbox-column'),
                             Column('has_additional_info', css_class='col-auto custom-checkbox-column'),
                             css_class="mb-2 g-2"
                         ),
                         Div(Field('medical_needs'), css_class="d-none", css_id="div_id_medical_needs"),
                         Div(Field('welfare_check_info'), css_class="d-none", css_id="div_id_welfare_check_info"),
                         Div(Field('supplies_needed'), css_class="d-none", css_id="div_id_supplies_needed"),
-                        Div(Field('contact_methods'), css_class="d-none", css_id="div_id_contact_methods"),
                         Div(Field('additional_info'), css_class="d-none", css_id="div_id_additional_info"),
                     ),
                     Div(

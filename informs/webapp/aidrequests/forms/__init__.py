@@ -169,7 +169,6 @@ class AidContactInformationForm(forms.ModelForm):
 class LocationInformationForm(forms.ModelForm):
     latitude = forms.DecimalField(max_digits=9, decimal_places=6, required=False, widget=forms.HiddenInput())
     longitude = forms.DecimalField(max_digits=9, decimal_places=6, required=False, widget=forms.HiddenInput())
-    location_note = forms.CharField(required=False, widget=forms.HiddenInput())
 
     class Meta:
         model = AidRequest

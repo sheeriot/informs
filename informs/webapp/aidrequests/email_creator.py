@@ -1,3 +1,4 @@
+import json
 from django.conf import settings
 from django.urls import reverse
 from django.contrib.sites.models import Site
@@ -110,6 +111,16 @@ def email_creator_html(aid_request, aid_location, notify, map_file):
     """
 
     map_url = f"{protocol}://{domain}/{map_file}"
+
+    geocode_json_html = ""
+    if aid_location.geocode_json:
+        pretty_json = json.dumps(aid_location.geocode_json, indent=4)
+        geocode_json_html = f"""
+        <hr class="my-1 py-0">
+        Geocode JSON:<br>
+        <pre>{pretty_json}</pre>
+        """
+
     location_html = f"""
         <hr>
         <div style="text-align: left;">
@@ -127,7 +138,7 @@ def email_creator_html(aid_request, aid_location, notify, map_file):
                         <strong>{aid_location.address_searched}</strong>
                         <hr class="my-1 py-0">
                         Address Found:<br>
-                        <strong>{aid_location.address_found}</strong>
+                        <strong>{aid_location.free_form_address}</strong>
                         <hr class="my-1 py-0">
                         Aid Location ID {aid_location.pk}<br>
                         <strong>{aid_location.latitude},{aid_location.longitude}</strong><br>
@@ -137,6 +148,7 @@ def email_creator_html(aid_request, aid_location, notify, map_file):
                         <hr class="my-1 py-0">
                         Location Notes:
                         <pre>{aid_location.note}</pre>
+                        {geocode_json_html}
                     </td>
                     <td class="col-auto">
                         <div>

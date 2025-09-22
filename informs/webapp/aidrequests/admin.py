@@ -141,7 +141,6 @@ class AidLocationAdmin(admin.ModelAdmin):
         'updated_by',
         'uid',
         'address_searched',
-        'address_found',
         'map_filename',
         'distance'
         )

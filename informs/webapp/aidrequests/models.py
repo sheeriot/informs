@@ -10,6 +10,7 @@ from django.urls import reverse
 from django_q.tasks import async_task
 from geopy.distance import geodesic
 from django_countries.fields import CountryField
+import json
 
 from .timestamped_model import TimeStampedModel
 from takserver.models import TakServer
@@ -392,7 +393,6 @@ class AidLocation(TimeStampedModel):
     note = models.TextField(blank=True, null=True)
 
     address_searched = models.CharField(max_length=100, null=True, blank=True)
-    address_found = models.CharField(max_length=100, null=True, blank=True)
     free_form_address = models.CharField(max_length=255, blank=True, null=True)
     geocode_json = models.JSONField(null=True, blank=True)
 
@@ -413,6 +413,13 @@ class AidLocation(TimeStampedModel):
 
     def __str__(self):
         return f"Location ({round(self.latitude, 5)}, {round(self.longitude, 5)}) - {self.status} - {self.source}"
+
+    @property
+    def pretty_geocode_json(self):
+        """Returns a pretty-printed JSON string of the geocode_json field."""
+        if self.geocode_json:
+            return json.dumps(self.geocode_json, indent=4)
+        return ""
 
     def save(self, *args, **kwargs):
         """ override save to send CoT """

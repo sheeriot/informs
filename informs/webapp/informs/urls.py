@@ -63,8 +63,8 @@ urlpatterns = [
      # path('field_op/<int:pk>/delete/', FieldOpDeleteView.as_view(), name='field_op_delete'),
      path('tz_detect/', include('tz_detect.urls')),
      path('<slug:field_op>/aidrequest/', AidRequestCreateView.as_view(), name='aid_request_create'),
-     path('<slug:field_op>/aidrequest/list/', AidRequestListView.as_view(), name='aid_request_list'),
-     path('<slug:field_op>/aidrequest/list/<str:status_group>/', AidRequestListView.as_view(), name='aid_request_list'),
+     path('<slug:field_op>/aidrequests/', AidRequestListView.as_view(), name='aid_request_list'),
+     path('<slug:field_op>/aidrequests/<str:status_group>/', AidRequestListView.as_view(), name='aid_request_list_by_status'),
      path(
           '<slug:field_op>/aidrequest/<int:pk>/update/',
           AidRequestUpdateView.as_view(),
@@ -131,7 +131,7 @@ urlpatterns = [
      path('api/<slug:field_op>/aidlocation/<int:location_pk>/check-map-status/', check_map_status, name='check_map_status'),
      path('api/<slug:field_op>/request/<int:pk>/send_email/', send_email_view, name='ajax_send_email'),
      path('<str:field_op>/<int:pk>/change_type/', change_aid_request_type, name='change_aid_request_type'),
-     path('<str:field_op>/aidrequests/', AidRequestListView.as_view(), name='aid_requests_by_field_op'),
+     # path('<str:field_op>/aidrequests/', AidRequestListView.as_view(), name='aid_requests_by_field_op'),
      path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aid_request_new'),
 ]
 

@@ -1,34 +1,46 @@
 <div class="row g-0 mt-2">
     <div class="form-group col-md-12 p-1 position-relative">
-        <div id="{{ map_id }}"
+        <div id="{{ map_data.map_id }}"
              style="height: 450px; border: 1px solid #ced4da; border-radius: .25rem;"
              class="location-picker-map"
-             data-azure-maps-key="{{ azure_maps_key }}"
-             data-geocode-url="{{ geocode_url }}"
-             data-initial-lat="{{ initial_lat }}"
-             data-initial-lon="{{ initial_lon }}"
-             data-fieldop-lat="{{ field_op_lat }}"
-             data-fieldop-lon="{{ field_op_lon }}"
-             data-fieldop-ringsize="{{ field_op_ring_size }}"
-             data-country-code="{{ country_code }}"
-             data-lat-input-id="{{ lat_input_id }}"
-             data-lon-input-id="{{ lon_input_id }}"
-             data-source-input-id="{{ source_input_id }}"
-             data-note-input-id="{{ note_input_id }}"
+             data-azure-maps-key="{{ map_data.azure_maps_key }}"
+             data-geocode-url="{{ map_data.geocode_url }}"
+             data-initial-lat="{{ map_data.initial_lat }}"
+             data-initial-lon="{{ map_data.initial_lon }}"
+             data-fieldop-lat="{{ map_data.field_op_lat }}"
+             data-fieldop-lon="{{ map_data.field_op_lon }}"
+             data-fieldop-ringsize="{{ map_data.field_op_ring_size }}"
+             data-country-code="{{ map_data.country_code }}"
+             data-lat-input-id="{{ map_data.latInputId }}"
+             data-lon-input-id="{{ map_data.lonInputId }}"
+             data-source-input-id="{{ map_data.sourceInputId }}"
+             data-note-input-id="{{ map_data.noteInputId }}"
+             data-freeform-address-input-id="{{ map_data.freeformAddressInputId }}"
+             data-street-input-id="{{ map_data.streetInputId }}"
+             data-city-input-id="{{ map_data.cityInputId }}"
+             data-state-input-id="{{ map_data.stateInputId }}"
+             data-confirm-btn-id="{{ map_data.confirmBtnId }}"
+             data-geocode-json-pre-id="{{ map_data.geocodeJsonPreId }}"
+             data-form-container-id="{{ map_data.formContainerId }}"
+             data-geocode-details-container-id="{{ map_data.geocodeDetailsContainerId }}"
+             data-distance-container-id="{{ map_data.distanceContainerId }}"
+             data-geocode-json-input-id="{{ map_data.geocodeJsonInputId }}"
+             data-get-location-button-id="{{ map_data.getLocationButtonId }}"
+             data-reset-location-button-id="{{ map_data.resetLocationButtonId }}"
              ></div>
 
-        {% if latitude_field and longitude_field %}
+        {% if map_data.latitude_field and map_data.longitude_field %}
         <div class="position-absolute top-0 end-0 p-2" style="z-index: 1010;">
             <div id="coordinates-card" class="card p-1" style="background-color: rgba(255, 255, 255, 0.6);">
-                {% include "aidrequests/partials/_coordinates_input_group.html" %}
+                {% include "aidrequests/partials/_coordinates_input_group.html" with latitude_field=map_data.latitude_field longitude_field=map_data.longitude_field %}
                 <small class="text-muted text-end coordinates-title">coordinates</small>
             </div>
         </div>
         {% endif %}
     </div>
 </div>
-{% if coordinates_html %}
+{% if map_data.coordinates_html %}
 <div class="mt-2">
-    {{ coordinates_html|safe }}
+    {{ map_data.coordinates_html|safe }}
 </div>
 {% endif %}
