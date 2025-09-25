@@ -550,6 +550,41 @@
                     if (locationPickerConfig.debug) console.log('[LocationPicker] Reset map view and field highlights.');
                 });
 
+                const deviceLocationBtn = formContainer.querySelector(`#${mapContainer.dataset.getLocationButtonId}`);
+                if (deviceLocationBtn) {
+                    if (locationPickerConfig.debug) console.log(`[LocationPicker] Device location button found (#${mapContainer.dataset.getLocationButtonId})`);
+                    deviceLocationBtn.addEventListener('click', function() {
+                        if (navigator.geolocation) {
+                            navigator.geolocation.getCurrentPosition(async function(position) {
+                                const userPosition = [position.coords.longitude, position.coords.latitude];
+                                if (locationPickerConfig.debug) console.log('[LocationPicker] Got device location:', userPosition);
+
+                                requestMarker.setOptions({ position: userPosition, visible: true });
+
+                                if (fieldOpPosition) {
+                                    const bounds = atlas.data.BoundingBox.fromPositions([userPosition, fieldOpPosition]);
+                                    map.setCamera({ bounds: bounds, padding: 100 });
+                                } else {
+                                    map.setCamera({ center: userPosition, zoom: 12 });
+                                }
+
+                                const address = await reverseGeocode(userPosition, true);
+                                const formattedAddr = address ? address.freeformAddress : `No address found at ${userPosition[1].toFixed(5)}, ${userPosition[0].toFixed(5)}.`;
+                                updateForm(userPosition, 'device_location', address, formattedAddr);
+
+                            }, function() {
+                                alert('Error: The Geolocation service failed.');
+                                // Optionally, provide feedback to the user in a less intrusive way
+                            });
+                        } else {
+                            alert('Error: Your browser doesn\'t support geolocation.');
+                             // Optionally, provide feedback to the user in a less intrusive way
+                        }
+                    });
+                } else {
+                    if (locationPickerConfig.debug) console.warn(`[LocationPicker] Device location button not found (#${mapContainer.dataset.getLocationButtonId})`);
+                }
+
                 // Initial setup
                 if (initialPosition) {
                     updateCoordinatesDisplay(initialPosition.reverse()); // .reverse() because atlas uses [lon, lat]

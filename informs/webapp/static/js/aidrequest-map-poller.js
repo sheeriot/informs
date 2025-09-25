@@ -1,5 +1,5 @@
 const pollerConfig = {
-    debug: false,
+    debug: true,
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -64,8 +64,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const statusBadge = card.querySelector('.location-status-badge');
         const status = statusBadge ? statusBadge.textContent.trim().toLowerCase() : '';
 
-        if (status === 'new') {
-            if (pollerConfig.debug) console.log(`[Polling] Card for location ${locationId} is 'new' and has no map. Starting poll.`);
+        if (status === 'new' || status === 'confirmed') {
+            if (pollerConfig.debug) console.log(`[Polling] Card for location ${locationId} is '${status}' and has no map. Starting poll.`);
             pollForMap(locationId);
         }
     }

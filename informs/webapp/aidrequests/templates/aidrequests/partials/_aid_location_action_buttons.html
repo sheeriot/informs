@@ -7,6 +7,14 @@
         <button type="button" class="btn btn-warning reject-location-btn" title="Reject this location" data-location-id="{{ location.pk }}" data-action="reject">{% bs_icon 'hand-thumbs-down' %}</button>
     {% endif %}
     {% if location.status != 'archived' %}
-         <button type="button" class="btn btn-danger delete-location-btn" title="Delete Location" data-location-id="{{ location.pk }}" data-action="delete">{% bs_icon 'trash-fill' %}</button>
+         <button type="button" class="btn btn-danger delete-location-btn"
+                 title="Delete Location"
+                 data-bs-toggle="modal"
+                 data-bs-target="#confirmationModal"
+                 data-location-id="{{ location.pk }}"
+                 data-action="delete"
+                 data-confirmation-message="Are you sure you want to delete Location #{{ location.pk }}? This action cannot be undone.">
+             {% bs_icon 'trash-fill' %}
+         </button>
     {% endif %}
 </div>
