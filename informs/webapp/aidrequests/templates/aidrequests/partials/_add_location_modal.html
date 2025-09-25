@@ -1,0 +1,16 @@
+{% load crispy_forms_tags %}
+<!-- Add Location Modal -->
+
+<div class="modal fade" id="addLocationModal" tabindex="-1" aria-labelledby="addLocationModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addLocationModalLabel">Add New Location for {{ object.field_op.name|default:aid_request.field_op.name }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+          {% crispy add_location_form %}
+      </div>
+    </div>
+  </div>
+</div>

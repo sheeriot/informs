@@ -1,19 +1,27 @@
-{% load bootstrap_icons %}
+{% load static %}
 
 {% if location.map_filename %}
-    {# Map Thumbnail Preview #}
     <a href="#" class="preview-map-btn" data-map-url="{{ MEDIA_URL }}maps/{{ location.map_filename }}" title="Click to enlarge map">
         <img src="{{ MEDIA_URL }}maps/{{ location.map_filename }}" alt="Map of location {{ location.pk }}" class="img-fluid rounded" style="cursor: pointer;">
     </a>
-    {# Refresh Button Overlay #}
-    <button type="button" class="btn btn-sm btn-light generate-map-btn" title="Regenerate Map" data-location-id="{{ location.pk }}" data-action="remap" style="position: absolute; bottom: 8px; right: 8px; z-index: 10;">
-        {% bs_icon 'arrow-repeat' %}
-    </button>
 {% else %}
-    <div class="text-center p-3">
-        <div class="spinner-border text-primary" role="status">
+    {% if location.status == 'new' %}
+    <div class="text-center text-muted p-3">
+        <div class="spinner-border spinner-border-sm text-primary" role="status">
             <span class="visually-hidden">Loading...</span>
         </div>
-        <p class="mt-2 mb-0 text-muted">Generating map...</p>
+        <small class="ms-2">Polling for Map...</small>
     </div>
+    {% else %}
+    <div class="text-center text-muted p-3">
+        <small>Map not available</small>
+    </div>
+    {% endif %}
 {% endif %}
+
+<div id="map-spinner-{{ location.pk }}" class="spinner-overlay d-none">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <div class="spinner-text">Generating Map...</div>
+</div>

@@ -7,20 +7,13 @@ const aidRequestConfig = {
     fieldOp: null,
     urls: {
         sendCot: null,
-        checkStatus: null
+        checkStatus: null,
     }
 };
 
 // Initialize on document load
 document.addEventListener('DOMContentLoaded', function() {
     initializeAidRequestDetail();
-
-    // Set a timeout to ensure the modal is loaded, then initialize the map
-    setTimeout(function() {
-        if (window.initializeModalMap) {
-            window.initializeModalMap();
-        }
-    }, 200);
 });
 
 function initializeAidRequestDetail() {
@@ -37,11 +30,18 @@ function initializeAidRequestDetail() {
     aidRequestConfig.urls.sendCot = configElement.dataset.urlSendCot;
     aidRequestConfig.urls.checkStatus = configElement.dataset.urlCheckStatus;
 
+    // Clean up any session storage items from the form submission process
+    sessionStorage.removeItem('informsFormCSubmitted');
+    sessionStorage.removeItem('informsFormLastSubmittedPk');
+    if (aidRequestConfig.debug) console.log('[Detail] Cleared Form C session storage keys.');
+
     // Initialize event listeners
     const sendCotButton = document.getElementById('send-cot-button');
     if (sendCotButton) {
         sendCotButton.addEventListener('click', handleSendCot);
     }
+
+    if (aidRequestConfig.debug) console.log('[Detail] CoT Initialization complete.');
 }
 
 // COT API functions

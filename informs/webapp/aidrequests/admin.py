@@ -54,19 +54,23 @@ def validate_aid_types(modeladmin, request, queryset):
 validate_aid_types.short_description = "Validate aid type configurations"
 
 
+@admin.register(AidRequest)
 class AidRequestAdmin(admin.ModelAdmin):
     """aid request admin"""
 
     list_display = (
-        'pk', 'field_op', 'aid_type',
-        'requestor_first_name', 'requestor_last_name',
+        'id',
+        'field_op',
+        'requester_first_name', 'requester_last_name',
+        'aid_type',
+        'status',
         'group_size', 'street_address', 'city', 'created_at')
 
-    list_filter = ('field_op', 'aid_type',)
+    list_filter = ('field_op', 'status', 'priority', 'aid_type')
 
     search_fields = (
-        'requestor_first_name',
-        'requestor_last_name',
+        'requester_first_name',
+        'requester_last_name',
         'street_address',
         'city',
         'aid_description'
@@ -128,19 +132,32 @@ class FieldOpAdmin(admin.ModelAdmin):
 class AidLocationAdmin(admin.ModelAdmin):
     """AidLocation admin"""
     list_display = ('pk', 'aid_request', 'status', 'source', 'latitude', 'longitude', 'created_at', 'uid')
-    list_filter = ('aid_request',)
+    list_filter = ('aid_request', 'status', 'source')
     readonly_fields = (
         'aid_request',
+        'latitude',
+        'longitude',
+        'source',
         'created_at',
         'updated_at',
         'created_by',
         'updated_by',
         'uid',
         'address_searched',
-        'address_found',
         'map_filename',
-        'distance'
-        )
+        'distance',
+        'free_form_address',
+        'geocode_json',
+    )
+    fieldsets = (
+        (None, {
+            'fields': ('status', 'note')
+        }),
+        ('Read-only Details', {
+            'classes': ('collapse',),
+            'fields': readonly_fields,
+        }),
+    )
 
     def save_model(self, request, obj, form, change):
         # Set created_by only when creating a new object
@@ -196,7 +213,6 @@ class AidTypeAdmin(admin.ModelAdmin):
 
 admin.site.register(FieldOp, FieldOpAdmin)
 admin.site.register(FieldOpNotify, FieldOpNotifyAdmin)
-admin.site.register(AidRequest, AidRequestAdmin)
 admin.site.register(AidRequestLog, AidRequestLogAdmin)
 admin.site.register(AidLocation, AidLocationAdmin)
 admin.site.register(AidType, AidTypeAdmin)

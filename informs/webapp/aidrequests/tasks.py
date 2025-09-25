@@ -21,6 +21,8 @@ from django_q.tasks import async_task
 
 import logging
 import os
+import json
+from icecream import ic
 
 # Get the main application logger
 logger = logging.getLogger(__name__)
@@ -82,7 +84,16 @@ def generate_static_map_for_location(location_pk):
         return {'status': 'warning', 'message': 'Map generation failed.'}
 
 
-def aid_request_postsave(aid_request, **kwargs):
+def aid_request_postsave(aid_request_pk, **kwargs):
+    ic("--- aid_request_postsave task started ---")
+    ic(kwargs)
+
+    try:
+        aid_request = AidRequest.objects.get(pk=aid_request_pk)
+    except AidRequest.DoesNotExist:
+        logger.error(f"aid_request_postsave: AidRequest with pk={aid_request_pk} not found.")
+        return "Task aborted: AidRequest not found."
+
     # Guard against signal-based calls that lack necessary form data
     if 'trigger' in kwargs:
         logger.warning(f"AR-{aid_request.pk}: Post-save task called by a signal. Aborting to prevent duplicate/failed runs. KWargs: {kwargs}")
@@ -94,45 +105,11 @@ def aid_request_postsave(aid_request, **kwargs):
     if not is_new:
         return "Not a new aid request, no post-save actions taken."
 
-    latitude = kwargs.get('latitude')
-    longitude = kwargs.get('longitude')
-    location_note = kwargs.get('location_note')
-    location_source = kwargs.get('location_source')
-    aid_location = None
+    aid_location = aid_request.location
     map_file = None
 
-    if latitude and longitude:
-        logger.info(f"AR-{aid_request.pk}: Coordinates provided, creating AidLocation directly.")
-        aid_location = AidLocation.objects.create(
-            aid_request=aid_request,
-            latitude=latitude,
-            longitude=longitude,
-            source=location_source or 'user_picked',
-            status='confirmed',
-            note=location_note
-        )
-
-        logger.info(f"AR-{aid_request.pk}: Calculating distance from FieldOp.")
-        distance = round(geodesic(
-            (aid_request.field_op.latitude, aid_request.field_op.longitude),
-            (latitude, longitude)
-        ).km, 2)
-        aid_location.distance = distance
-        aid_location.save()
-
-    else:
-        logger.info(f"AR-{aid_request.pk}: No coordinates provided, checking for address to geocode.")
-        if aid_request.street_address and aid_request.city and aid_request.state:
-            geocode_results = get_azure_geocode(aid_request)
-            if geocode_results.get('status') == 'Success':
-                aid_location = geocode_save(aid_request, geocode_results)
-            else:
-                logger.error(f"AR-{aid_request.pk}: Address geocoding failed: {geocode_results.get('status')}")
-        else:
-            logger.warning(f"AR-{aid_request.pk}: Not enough address information to geocode.")
-
     if aid_location:
-        logger.info(f"AR-{aid_request.pk}: AidLocation created/found: {aid_location.pk}, distance: {aid_location.distance}km.")
+        logger.info(f"AR-{aid_request.pk}: AidLocation found: {aid_location.pk}, distance: {aid_location.distance}km.")
 
         # Generate the map using the new standalone task
         generate_static_map_for_location(aid_location.pk)

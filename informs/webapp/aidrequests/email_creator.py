@@ -1,3 +1,4 @@
+import json
 from django.conf import settings
 from django.urls import reverse
 from django.contrib.sites.models import Site
@@ -20,7 +21,7 @@ def email_creator_html(aid_request, aid_location, notify, map_file):
         f"SOA:{aid_request.field_op.slug}:"
         f"{aid_request.status} Aid Request #{aid_request.pk}:"
         f"{aid_request.aid_type}:"
-        f"{aid_request.requestor_first_name} {aid_request.requestor_last_name}"
+        f"{aid_request.requester_first_name} {aid_request.requester_last_name}"
     )
 
     html = f"""
@@ -87,9 +88,9 @@ def email_creator_html(aid_request, aid_location, notify, map_file):
             <th style="font-weight: normal;">Requestor Email</th>
         </tr>
         <tr>
-            <td style="font-weight: bold;">{aid_request.requestor_first_name} {aid_request.requestor_last_name}</td>
-            <td style="font-weight: bold;">{aid_request.requestor_phone}</td>
-            <td style="font-weight: bold;">{aid_request.requestor_email}</td>
+            <td style="font-weight: bold;">{aid_request.requester_first_name} {aid_request.requester_last_name}</td>
+            <td style="font-weight: bold;">{aid_request.requester_phone}</td>
+            <td style="font-weight: bold;">{aid_request.requester_email}</td>
         </tr>
         <tr>
             <th style="font-weight: normal;">Contact Name</th>
@@ -110,6 +111,16 @@ def email_creator_html(aid_request, aid_location, notify, map_file):
     """
 
     map_url = f"{protocol}://{domain}/{map_file}"
+
+    geocode_json_html = ""
+    if aid_location.geocode_json:
+        pretty_json = json.dumps(aid_location.geocode_json, indent=4)
+        geocode_json_html = f"""
+        <hr class="my-1 py-0">
+        Geocode JSON:<br>
+        <pre>{pretty_json}</pre>
+        """
+
     location_html = f"""
         <hr>
         <div style="text-align: left;">
@@ -127,7 +138,7 @@ def email_creator_html(aid_request, aid_location, notify, map_file):
                         <strong>{aid_location.address_searched}</strong>
                         <hr class="my-1 py-0">
                         Address Found:<br>
-                        <strong>{aid_location.address_found}</strong>
+                        <strong>{aid_location.free_form_address}</strong>
                         <hr class="my-1 py-0">
                         Aid Location ID {aid_location.pk}<br>
                         <strong>{aid_location.latitude},{aid_location.longitude}</strong><br>
@@ -137,6 +148,7 @@ def email_creator_html(aid_request, aid_location, notify, map_file):
                         <hr class="my-1 py-0">
                         Location Notes:
                         <pre>{aid_location.note}</pre>
+                        {geocode_json_html}
                     </td>
                     <td class="col-auto">
                         <div>

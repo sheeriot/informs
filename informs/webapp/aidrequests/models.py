@@ -9,6 +9,9 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from django_q.tasks import async_task
 from geopy.distance import geodesic
+from django_countries.fields import CountryField
+import json
+from icecream import ic
 
 from .timestamped_model import TimeStampedModel
 from takserver.models import TakServer
@@ -112,7 +115,7 @@ class FieldOp(TimeStampedModel):
     """Field Ops"""
     slug = models.SlugField(unique=True)
     name = models.CharField(max_length=50)
-    country = models.CharField(max_length=30, blank=True, default='USA', help_text="Default country for new aid requests.")
+    country = CountryField(default='US', help_text="Default country for new aid requests.")
     latitude = models.DecimalField(max_digits=7, decimal_places=5)
     longitude = models.DecimalField(max_digits=8, decimal_places=5)
     ring_size = models.PositiveIntegerField(
@@ -152,16 +155,16 @@ class AidRequest(TimeStampedModel):
     """ scope to a field operation object"""
     field_op = models.ForeignKey(FieldOp, on_delete=models.CASCADE,
                                  null=True, related_name='aid_requests')
-    # 1. Requestor details
-    requestor_first_name = models.CharField(max_length=20, blank=True)
-    requestor_last_name = models.CharField(max_length=30, blank=True)
+    # 1. Requester details
+    requester_first_name = models.CharField(max_length=20, blank=True)
+    requester_last_name = models.CharField(max_length=30, blank=True)
 
     @property
-    def requester_name(self):
-        return f"{self.requestor_first_name} {self.requestor_last_name}".strip()
+    def requester_full_name(self):
+        return f"{self.requester_first_name} {self.requester_last_name}".strip()
 
-    requestor_email = models.EmailField(blank=True)
-    requestor_phone = models.CharField(blank=True, max_length=25)
+    requester_email = models.EmailField(blank=True)
+    requester_phone = models.CharField(blank=True, max_length=25)
     use_whatsapp = models.BooleanField(default=False)
 
     # 2. Contact details for party needing assistance
@@ -178,37 +181,37 @@ class AidRequest(TimeStampedModel):
     @property
     def location_status(self):
         """
-        Calculates the primary location status from prefetched locations.
-        This avoids N+1 queries by operating on the prefetched `locations` queryset.
+        Calculates the primary location status using efficient database queries.
         Order of precedence: 'confirmed', then 'new'.
         """
-        all_locs = self.locations.all()
-        has_confirmed = any(loc.status == 'confirmed' for loc in all_locs)
-        if has_confirmed:
+        ic('Checking location_status for AidRequest:', self.pk)
+        is_confirmed = self.locations.filter(status='confirmed').exists()
+        ic(f"AidRequest #{self.pk}: any confirmed? ->", is_confirmed)
+        if is_confirmed:
             return 'confirmed'
 
-        has_new = any(loc.status == 'new' for loc in all_locs)
-        if has_new:
+        is_new = self.locations.filter(status='new').exists()
+        ic(f"AidRequest #{self.pk}: any new? ->", is_new)
+        if is_new:
             return 'new'
 
+        ic(f"AidRequest #{self.pk}: returning None")
         return None
 
     @property
     def location(self):
         """
-        Finds the primary location object from prefetched locations.
-        This avoids N+1 queries by operating on the prefetched `locations` queryset.
+        Finds the primary location object using an ordered database query to ensure
+        the oldest of the highest-precedence locations is returned.
         Order of precedence: 'confirmed', then 'new'.
         """
-        all_locs = list(self.locations.all())
+        confirmed_loc = self.locations.filter(status='confirmed').order_by('created_at').first()
+        if confirmed_loc:
+            return confirmed_loc
 
-        for loc in all_locs:
-            if loc.status == 'confirmed':
-                return loc
-
-        for loc in all_locs:
-            if loc.status == 'new':
-                return loc
+        new_loc = self.locations.filter(status='new').order_by('created_at').first()
+        if new_loc:
+            return new_loc
 
         return None
 
@@ -332,7 +335,7 @@ class AidRequest(TimeStampedModel):
             'aid_type': aid_type_data,
             'location': location_data,
             'address': {'full': self.full_address},
-            'requester_name': self.requester_name,
+            'requester_name': self.requester_full_name,
         }
 
     class Meta:
@@ -384,13 +387,16 @@ class AidLocation(TimeStampedModel):
     SOURCE_CHOICES = [
         ('manual', 'Manual'),
         ('azure_maps', 'Azure Maps'),
+        ('address_provided', 'Address Provided'),
         ('other', 'Other'),
+        ('user_picked', 'User Picked'),
     ]
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
     note = models.TextField(blank=True, null=True)
 
     address_searched = models.CharField(max_length=100, null=True, blank=True)
-    address_found = models.CharField(max_length=100, null=True, blank=True)
+    free_form_address = models.CharField(max_length=255, blank=True, null=True)
+    geocode_json = models.JSONField(null=True, blank=True)
 
     distance = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
 
@@ -409,6 +415,13 @@ class AidLocation(TimeStampedModel):
 
     def __str__(self):
         return f"Location ({round(self.latitude, 5)}, {round(self.longitude, 5)}) - {self.status} - {self.source}"
+
+    @property
+    def pretty_geocode_json(self):
+        """Returns a pretty-printed JSON string of the geocode_json field."""
+        if self.geocode_json:
+            return json.dumps(self.geocode_json, indent=4)
+        return ""
 
     def save(self, *args, **kwargs):
         """ override save to send CoT """

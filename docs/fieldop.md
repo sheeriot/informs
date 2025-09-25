@@ -12,7 +12,7 @@ Each Field Operations is defined by its attributes:
   -- check, supply, evac
 - notify destinations (email) **
 
-** notify destinations only set in the `/admin` pages
+** notify destinations and country code are only set in the `/admin` pages
 
 #### Field Operation URLs:
 
@@ -33,6 +33,8 @@ Tips:
 - a distinct slug, e.g. "nc2024" - short is best
 - coordinates are used to center the region of the field op, five (5) decimal places is sufficient
 - provide the ring size in kilometers
+- set the correct 2 letter country code (admin page)
+https://en.wikipedia.org/wiki/ISO_3166-2
 
 When managing the Field Op, two views of the field op are available:
 - Field Op Details page. Use for managing the Field Op settings.

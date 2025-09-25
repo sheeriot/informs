@@ -77,7 +77,7 @@ class TestForms(TestCase):
         initial_data = {'field_op': self.field_op.id}
         form = AidRequestCreateFormC(data=form_data, initial=initial_data)
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(form.cleaned_data['requestor_email'], 'test@example.com')
+        self.assertEqual(form.cleaned_data['requester_email'], 'test@example.com')
 
     def test_aid_request_create_form_c_valid_phone(self):
         """Test AidRequestCreateFormC with a valid phone number."""
@@ -89,7 +89,7 @@ class TestForms(TestCase):
         initial_data = {'field_op': self.field_op.id}
         form = AidRequestCreateFormC(data=form_data, initial=initial_data)
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(form.cleaned_data['requestor_phone'], '1234567890')
+        self.assertEqual(form.cleaned_data['requester_phone'], '1234567890')
 
     def test_aid_request_create_form_c_invalid_contact(self):
         """Test AidRequestCreateFormC with invalid contact info."""
@@ -114,5 +114,5 @@ class TestForms(TestCase):
         initial_data = {'field_op': self.field_op.id}
         form = AidRequestCreateFormC(data=form_data, initial=initial_data)
         self.assertTrue(form.is_valid())
-        self.assertEqual(form.cleaned_data['requestor_first_name'], 'First')
-        self.assertEqual(form.cleaned_data['requestor_last_name'], 'Middle Last')
+        self.assertEqual(form.cleaned_data['requester_first_name'], 'First')
+        self.assertEqual(form.cleaned_data['requester_last_name'], 'Middle Last')

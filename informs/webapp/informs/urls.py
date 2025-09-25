@@ -9,43 +9,41 @@ from django.conf.urls import handler404, handler500
 from django.shortcuts import render
 # from debug_toolbar.toolbar import debug_toolbar_urls
 
+from aidrequests.views.ajax_views import get_aid_requests_json, update_aid_request
 from aidrequests.views.aid_request import (
-     AidRequestCreateView,
-     AidRequestUpdateView,
-     AidRequestLogCreateView
-     )
-from aidrequests.views.aid_request_list import AidRequestListView
-from aidrequests.views.ajax_views import update_aid_request, get_aid_requests_json
-from aidrequests.views.aid_request_detail import AidRequestDetailView, AidRequestSubmittedView
-from aidrequests.views.aid_request_notify import AidRequestNotifyView
-
-from aidrequests.views.field_op import (
-     FieldOpCreateView,
-     FieldOpUpdateView,
-     FieldOpDetailView
-     )
-from aidrequests.views.field_op_list import FieldOpListView
-
-from aidrequests.views.export_csv import AidRequestCsvView
-
-from aidrequests.views.aid_location import (
-     AidLocationCreateView,
-     AidLocationDeleteView,
-     aid_location_status_update
-     )
-from aidrequests.views.aid_location_add import (
-     add_location,
-     regenerate_static_map,
-     delete_aid_location,
-     delete_static_map
+    AidRequestCreateView,
+    AidRequestUpdateView,
+    AidRequestLogCreateView,
+    change_aid_request_type
 )
-
+from aidrequests.views.aid_request_detail import AidRequestDetailView, AidRequestSubmittedView
+from aidrequests.views.aid_request_list import AidRequestListView
+from aidrequests.views.aid_request_notify import AidRequestNotifyView
+from aidrequests.views.field_op import (
+    FieldOpCreateView,
+    FieldOpUpdateView,
+    FieldOpDetailView
+)
+from aidrequests.views.field_op_list import FieldOpListView
+from aidrequests.views.export_csv import AidRequestCsvView
+from aidrequests.views.aid_location import (
+    AidLocationCreateView,
+    AidLocationDeleteView,
+    aid_location_status_update
+)
+from aidrequests.views.aid_location_add import (
+    add_location,
+    regenerate_static_map,
+    delete_aid_location,
+    delete_static_map
+)
 from aidrequests.views.ajax_sendcot import send_cot, sendcot_checkstatus
 from aidrequests.views.ajax_fieldop import toggle_cot
 from aidrequests.views.location import geocode_address
 from aidrequests.views.aid_request_status import get_aid_request_status
 from aidrequests.views.maps import check_map_status
 from aidrequests.views.ajax_send_email import send_email_view
+
 
 from .views import home
 
@@ -65,8 +63,8 @@ urlpatterns = [
      # path('field_op/<int:pk>/delete/', FieldOpDeleteView.as_view(), name='field_op_delete'),
      path('tz_detect/', include('tz_detect.urls')),
      path('<slug:field_op>/aidrequest/', AidRequestCreateView.as_view(), name='aid_request_create'),
-     path('<slug:field_op>/aidrequest/list/', AidRequestListView.as_view(), name='aid_request_list'),
-     path('<slug:field_op>/aidrequest/list/<str:status_group>/', AidRequestListView.as_view(), name='aid_request_list'),
+     path('<slug:field_op>/aidrequests/', AidRequestListView.as_view(), name='aid_request_list'),
+     path('<slug:field_op>/aidrequests/<str:status_group>/', AidRequestListView.as_view(), name='aid_request_list_by_status'),
      path(
           '<slug:field_op>/aidrequest/<int:pk>/update/',
           AidRequestUpdateView.as_view(),
@@ -132,7 +130,8 @@ urlpatterns = [
      path('api/<slug:field_op>/aidlocation/<int:location_pk>/status-update/', aid_location_status_update, name='aid_location_status_update'),
      path('api/<slug:field_op>/aidlocation/<int:location_pk>/check-map-status/', check_map_status, name='check_map_status'),
      path('api/<slug:field_op>/request/<int:pk>/send_email/', send_email_view, name='ajax_send_email'),
-
+     path('<str:field_op>/<int:pk>/change_type/', change_aid_request_type, name='change_aid_request_type'),
+     # path('<str:field_op>/aidrequests/', AidRequestListView.as_view(), name='aid_requests_by_field_op'),
      path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aid_request_new'),
 ]
 

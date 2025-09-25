@@ -2,8 +2,6 @@ const aidRequestUpdateConfig = {
     debug: false // Set to true for console logging
 };
 
-let alertTimeoutId;
-
 document.addEventListener('DOMContentLoaded', function () {
     if (aidRequestUpdateConfig.debug) {
         console.log('aidrequest-update-actions.js loaded');
@@ -83,35 +81,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    function showActionAlert(message, type = 'warning') {
-        const container = document.getElementById('action-alert-container');
-        if (!container) return;
-
-        // Clear any existing timeout to prevent race conditions
-        if (alertTimeoutId) {
-            clearTimeout(alertTimeoutId);
-        }
-
-        const alertHtml = `
-            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        `;
-
-        container.innerHTML = alertHtml;
-
-        alertTimeoutId = setTimeout(() => {
-            const alertElement = container.querySelector('.alert');
-            if (alertElement) {
-                const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
-                if (bsAlert) {
-                    bsAlert.close();
-                }
-            }
-        }, 3000);
-    }
-
     function handleLocationAction(e, config) {
         const button = e.target.closest('.delete-location-btn, .generate-map-btn, .confirm-location-btn, .reject-location-btn');
         if (!button) return;
@@ -167,8 +136,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (data.status === 'success') {
                 if (action === 'delete') {
-                    button.closest('.list-group-item')?.remove();
+                    button.closest('.card')?.remove();
                     showActionAlert('Location deleted successfully.', 'success');
+                    if (data.header_html) {
+                        const headerContainer = document.getElementById('aid-request-header-container');
+                        if (headerContainer) {
+                            headerContainer.innerHTML = data.header_html;
+                        }
+                    }
                 } else if (action === 'remap') {
                     const mapArea = document.getElementById(`map-area-${locationId}`);
                     if (mapArea && data.map_html) {
@@ -176,7 +151,23 @@ document.addEventListener('DOMContentLoaded', function () {
                         showActionAlert('Map regenerated successfully.', 'success');
                     }
                 } else if (action === 'confirm' || action === 'reject') {
-                    updateAllLocationCards(data);
+                    const card = document.getElementById(`ar${config.aidRequestId}-al${locationId}-loc`);
+                    if (card && data.card_html) {
+                        card.outerHTML = data.card_html; // Replace the entire card
+
+                        // After replacing, find the new card and check for polling needs
+                        const newCard = document.getElementById(`ar${config.aidRequestId}-al${locationId}-loc`);
+                        if (newCard && window.checkAndPollCard) {
+                            window.checkAndPollCard(newCard);
+                        }
+                        sortLocationCards(); // Re-sort the list ONLY after a successful update
+                    }
+                    if (data.header_html) {
+                        const header = document.getElementById('aid-request-header-container');
+                        if (header) {
+                            header.innerHTML = data.header_html;
+                        }
+                    }
                     const message = action === 'confirm' ? 'Location Confirmed.' : 'Location Rejected.';
                     showActionAlert(message, 'success');
                 }
@@ -196,57 +187,32 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    function updateAllLocationCards(data) {
-        const { location_pk, new_status, new_status_display, aid_request_has_confirmed_location } = data;
-        const allLocationCards = document.querySelectorAll('.list-group-item[id*="-loc"]');
+    function sortLocationCards() {
+        const container = document.querySelector('#locations-list-container .list-group');
+        if (!container) return;
 
-        allLocationCards.forEach(card => {
-            const cardLocationId = card.id.split('-al')[1].split('-loc')[0];
-            const statusBadge = card.querySelector('.location-status-badge');
-            let currentCardStatus;
+        const cards = Array.from(container.querySelectorAll('.card'));
+        const statusOrder = { 'confirmed': 0, 'new': 1, 'rejected': 2, 'candidate': 3, 'other': 4 };
 
-            // Determine the true status of this card. For the one just updated,
-            // use the status from the server response. For others, use their current text.
-            if (cardLocationId == location_pk) {
-                currentCardStatus = new_status;
-                if (statusBadge) {
-                    statusBadge.textContent = new_status_display;
-                    statusBadge.className = 'location-status-badge mb-1 fw-bold'; // Reset classes
-                    if (new_status === 'confirmed') statusBadge.classList.add('text-success');
-                    else if (new_status === 'rejected') statusBadge.classList.add('text-danger');
-                }
-            } else {
-                currentCardStatus = statusBadge ? statusBadge.textContent.trim().toLowerCase() : '';
+        cards.sort((a, b) => {
+            const statusA = a.querySelector('.location-status-badge').textContent.trim().toLowerCase();
+            const statusB = b.querySelector('.location-status-badge').textContent.trim().toLowerCase();
+            const orderA = statusOrder[statusA] ?? 99;
+            const orderB = statusOrder[statusB] ?? 99;
+
+            if (orderA !== orderB) {
+                return orderA - orderB;
             }
 
-            // Now, rebuild the buttons based on the card's status and the overall confirmed state
-            const actionsContainer = card.querySelector('.d-flex.align-items-center');
-            if (!actionsContainer) return;
-
-            // Remove existing buttons
-            card.querySelector('.confirm-location-btn')?.remove();
-            card.querySelector('.reject-location-btn')?.remove();
-
-            if (currentCardStatus === 'new' && !aid_request_has_confirmed_location) {
-                const confirmButton = document.createElement('button');
-                confirmButton.type = 'button';
-                confirmButton.className = 'btn btn-sm btn-success confirm-location-btn ms-2';
-                confirmButton.title = 'Confirm this as the primary location';
-                confirmButton.dataset.locationId = cardLocationId;
-                confirmButton.dataset.action = 'confirm';
-                confirmButton.innerHTML = '<i class="bi bi-check-circle"></i> Confirm';
-                actionsContainer.appendChild(confirmButton);
-            } else if (currentCardStatus === 'confirmed') {
-                const rejectButton = document.createElement('button');
-                rejectButton.type = 'button';
-                rejectButton.className = 'btn btn-sm btn-warning reject-location-btn ms-2';
-                rejectButton.title = 'Reject this location';
-                rejectButton.dataset.locationId = cardLocationId;
-                rejectButton.dataset.action = 'reject';
-                rejectButton.innerHTML = '<i class="bi bi-x-octagon"></i> Reject';
-                actionsContainer.appendChild(rejectButton);
-            }
+            // If statuses are the same, sort by location ID (as a proxy for creation date)
+            const idA = parseInt(a.id.match(/al(\d+)-loc/)[1], 10);
+            const idB = parseInt(b.id.match(/al(\d+)-loc/)[1], 10);
+            return idA - idB;
         });
+
+        // Re-append cards in the new sorted order
+        cards.forEach(card => container.appendChild(card));
+        if (aidRequestUpdateConfig.debug) console.log('[Sort] Location cards have been re-sorted by status.');
     }
 
     function handlePreviewMapClick(e) {
@@ -270,142 +236,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.error('[MapPreview] Missing mapUrl, modalElement, or modalImage.');
             }
         }
-    }
-
-    const addLocationModal = document.getElementById('addLocationModal');
-    if (addLocationModal) {
-        addLocationModal.addEventListener('show.bs.modal', function (event) {
-            if (aidRequestUpdateConfig.debug) console.log('Add location modal is being shown');
-            const modalBody = addLocationModal.querySelector('.modal-body');
-            const addLocationUrl = configDiv.dataset.urlAddLocation;
-
-            fetch(addLocationUrl)
-                .then(response => {
-                    if (!response.ok) throw new Error(`Network response was not ok, status: ${response.status}`);
-                    return response.text();
-                })
-                .then(html => {
-                    modalBody.innerHTML = html;
-                    const form = modalBody.querySelector('#addLocationForm');
-                    if (form) {
-                        if (aidRequestUpdateConfig.debug) console.log('Attaching submit handler to addLocationForm');
-                        form.addEventListener('submit', (e) => handleLocationFormSubmit(e, config));
-                    }
-                    // Initialize map for the modal
-                    if (window.initializeModalMap) {
-                        window.initializeModalMap();
-                    }
-                })
-                .catch(error => {
-                    console.error('Failed to load location form:', error);
-                    modalBody.innerHTML = `<div class="alert alert-danger">Failed to load content: ${error.message}</div>`;
-                });
-        });
-    }
-
-    function handleLocationFormSubmit(e, config) {
-        e.preventDefault();
-        const form = e.target;
-        const submitButton = form.closest('.modal-content').querySelector('#submit-location-form');
-        const originalButtonHtml = submitButton.innerHTML;
-
-        if (aidRequestUpdateConfig.debug) {
-            console.log('Location form submitted');
-        }
-
-        submitButton.disabled = true;
-        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
-
-        const formData = new FormData(form);
-
-        fetch(form.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': config.csrfToken,
-                'X-Requested-With': 'XMLHttpRequest',
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.text().then(text => { throw new Error(text); });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                if (aidRequestUpdateConfig.debug) console.log('Location form submission successful. Data:', data);
-                showActionAlert('Location added successfully.', 'success');
-                const modal = bootstrap.Modal.getInstance(addLocationModal);
-                modal.hide();
-
-                if (data.new_location_html) {
-                    const locationsContainer = document.querySelector('#locations-list-container .list-group');
-                    if (aidRequestUpdateConfig.debug) console.log('Attempting to find #locations-list-container .list-group. Found:', locationsContainer);
-                    if (locationsContainer) {
-                        const noLocationsMessage = locationsContainer.querySelector('#no-locations-message');
-                        if (noLocationsMessage) {
-                            noLocationsMessage.remove();
-                        }
-                        locationsContainer.insertAdjacentHTML('beforeend', data.new_location_html);
-                    }
-                }
-
-                if (data.location_pk) {
-                    pollForMap(data.location_pk, config);
-                }
-
-            } else {
-                console.error('Form submission failed:', data.errors);
-                // Simple error display for now
-                alert('Error saving location: ' + JSON.stringify(data.errors));
-            }
-        })
-        .catch(error => {
-            console.error('Error submitting location form. Server response below:');
-            console.error(error.message);
-            alert('An unexpected error occurred. Please check the console.');
-        })
-        .finally(() => {
-            submitButton.innerHTML = originalButtonHtml;
-            submitButton.disabled = false;
-        });
-    }
-
-    function pollForMap(locationId, config, retries = 10, delay = 2000) {
-        if (retries <= 0) {
-            if (aidRequestUpdateConfig.debug) {
-                console.error(`[MapPoll] Stopped polling for map on location ${locationId} after max retries.`);
-            }
-            return;
-        }
-
-        if (aidRequestUpdateConfig.debug) {
-            console.log(`[MapPoll] Checking map status for location ${locationId}. Retries left: ${retries}`);
-        }
-
-        const url = config.urlCheckMapStatus.replace('0', locationId);
-
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'ready') {
-                    if (aidRequestUpdateConfig.debug) {
-                        console.log(`[MapPoll] Map is ready for location ${locationId}.`);
-                    }
-                    const mapArea = document.getElementById(`map-area-${locationId}`);
-                    if (mapArea && data.map_html) {
-                        mapArea.innerHTML = data.map_html;
-                    }
-                } else {
-                    setTimeout(() => {
-                        pollForMap(locationId, config, retries - 1, delay);
-                    }, delay);
-                }
-            })
-            .catch(error => {
-                console.error(`[MapPoll] Error checking map status for location ${locationId}:`, error);
-            });
     }
 
     // --- Section Editing ---
@@ -537,6 +367,51 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(error => {
             console.error('Partial update failed:', error);
             showActionAlert(`Error: ${error.message}`, 'danger');
+        });
+    }
+
+    // Handle Change Aid Type form submission
+    const changeAidTypeForm = document.getElementById('change-aid-type-form');
+    if (changeAidTypeForm) {
+        changeAidTypeForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const confirmationInput = document.getElementById('confirmation-text');
+            const requestorName = document.getElementById('requestor-name-confirm').textContent.trim();
+            const alertContainer = document.getElementById('change-aid-type-alert');
+
+            if (confirmationInput.value.trim() !== requestorName) {
+                showActionAlert('Confirmation text does not match. Please type the requestor\'s full name exactly.', 'danger');
+                return;
+            }
+
+            const formData = new FormData(changeAidTypeForm);
+            const url = changeAidTypeForm.action;
+
+            fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showActionAlert(data.message, 'success');
+                    document.getElementById('aid-type-name-display').textContent = data.new_aid_type_name;
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('changeAidTypeModal'));
+                    modal.hide();
+                    confirmationInput.value = '';
+                    alertContainer.innerHTML = '';
+                } else {
+                    showActionAlert(data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                showActionAlert('An unexpected error occurred. Please try again.', 'danger');
+                console.error('Error:', error);
+            });
         });
     }
 });

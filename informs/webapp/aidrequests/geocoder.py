@@ -49,7 +49,7 @@ def get_azure_geocode(aid_request):
     results['longitude'] = round(coordinates[0], 5)
     results['features'] = features
     results['confidence'] = feature0['properties']['confidence']
-    results['address_found'] = feature0['properties']['address']['formattedAddress']
+    results['free_form_address'] = feature0['properties']['address']['formattedAddress']
     results['locality'] = feature0['properties']['address'].get('locality', None)
     results['neighborhood'] = feature0['properties']['address'].get('neighborhood', None)
     results['match_codes'] = feature0['properties'].get('matchCodes', None)
@@ -64,28 +64,9 @@ def get_azure_geocode(aid_request):
 
     results['distance'] = distance
 
-    note = geocode_note(results)
-    results['note'] = note
     results['source'] = "azure_maps"
 
     return results
-
-
-def geocode_note(geocode_results):
-    note = ""
-    if geocode_results['match_type'] is not None:
-        note += f"Match Type: {geocode_results['match_type']}\n"
-    if geocode_results['locality'] is not None:
-        note += f"Locality: {geocode_results['locality']}\n"
-    if geocode_results['neighborhood'] is not None:
-        note += f"Neighborhood: {geocode_results['neighborhood']}\n"
-    if geocode_results['districts'] is not None:
-        note += f"Districts: {str(geocode_results['districts'])}\n"
-    if geocode_results['match_codes'] is not None:
-        note += f"Match Codes: {geocode_results['match_codes']}\n"
-    if geocode_results['confidence'] is not None:
-        note += f"Confidence: {geocode_results['confidence']}\n"
-    return note
 
 
 def geocode_save(aid_request, geocode_results):
@@ -95,9 +76,8 @@ def geocode_save(aid_request, geocode_results):
         latitude=str(geocode_results['latitude']),
         longitude=str(geocode_results['longitude']),
         source='azure_maps',
-        note=geocode_results['note'],
         address_searched=geocode_results['address_searched'],
-        address_found=geocode_results['address_found'],
+        free_form_address=geocode_results['free_form_address'],
         distance=str(geocode_results['distance']),)
     try:
         aid_location.full_clean()

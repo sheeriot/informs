@@ -1,0 +1,5 @@
+{% load custom_tags %}
+
+{% if group_size %}
+    <span style="font-size: {{ group_size|hyperbolic_font_size }}; font-weight: bold;">{{ group_size }}</span>
+{% endif %}

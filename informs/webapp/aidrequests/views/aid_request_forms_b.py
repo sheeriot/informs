@@ -19,10 +19,10 @@ class AidRequestCreateFormB(forms.ModelForm):
         model = AidRequest
         fields = [
             'field_op',
-            'requestor_first_name',
-            'requestor_last_name',
-            'requestor_email',
-            'requestor_phone',
+            'requester_first_name',
+            'requester_last_name',
+            'requester_email',
+            'requester_phone',
             'aid_first_name',
             'aid_last_name',
             'aid_email',
@@ -43,10 +43,10 @@ class AidRequestCreateFormB(forms.ModelForm):
         ]
         widgets = {
             'aid_type': forms.RadioSelect,
-            'requestor_first_name': forms.HiddenInput(),
-            'requestor_last_name': forms.HiddenInput(),
-            'requestor_email': forms.HiddenInput(),
-            'requestor_phone': forms.HiddenInput(),
+            'requester_first_name': forms.HiddenInput(),
+            'requester_last_name': forms.HiddenInput(),
+            'requester_email': forms.HiddenInput(),
+            'requester_phone': forms.HiddenInput(),
             'aid_first_name': forms.HiddenInput(),
             'aid_last_name': forms.HiddenInput(),
             'aid_email': forms.HiddenInput(),
@@ -81,10 +81,10 @@ class AidRequestCreateFormB(forms.ModelForm):
         self.request = kwargs.pop('request', None)
         super(AidRequestCreateFormB, self).__init__(*args, **kwargs)
 
-        self.fields['requestor_first_name'].required = False
-        self.fields['requestor_last_name'].required = False
-        self.fields['requestor_email'].required = False
-        self.fields['requestor_phone'].required = False
+        self.fields['requester_first_name'].required = False
+        self.fields['requester_last_name'].required = False
+        self.fields['requester_email'].required = False
+        self.fields['requester_phone'].required = False
         self.fields['aid_first_name'].required = False
         self.fields['aid_last_name'].required = False
         self.fields['aid_email'].required = False
@@ -260,8 +260,8 @@ class AidRequestCreateFormB(forms.ModelForm):
             first_name, last_name = full_name.split(' ', 1)
         else:
             first_name, last_name = full_name, ''
-        self.cleaned_data['requestor_first_name'] = first_name
-        self.cleaned_data['requestor_last_name'] = last_name
+        self.cleaned_data['requester_first_name'] = first_name
+        self.cleaned_data['requester_last_name'] = last_name
         self.cleaned_data['aid_first_name'] = first_name
         self.cleaned_data['aid_last_name'] = last_name
         return full_name
@@ -269,16 +269,16 @@ class AidRequestCreateFormB(forms.ModelForm):
     def clean_contact_info(self):
         contact_info = self.cleaned_data.get('contact_info', '').strip()
         if '@' in contact_info:
-            self.cleaned_data['requestor_email'] = contact_info
+            self.cleaned_data['requester_email'] = contact_info
             self.cleaned_data['aid_email'] = contact_info
-            self.cleaned_data['requestor_phone'] = ''
+            self.cleaned_data['requester_phone'] = ''
             self.cleaned_data['aid_phone'] = ''
         else:
             # Basic phone number cleaning
             cleaned_phone = re.sub(r'\D', '', contact_info)
-            self.cleaned_data['requestor_phone'] = cleaned_phone
+            self.cleaned_data['requester_phone'] = cleaned_phone
             self.cleaned_data['aid_phone'] = cleaned_phone
-            self.cleaned_data['requestor_email'] = ''
+            self.cleaned_data['requester_email'] = ''
             self.cleaned_data['aid_email'] = ''
         return contact_info
 

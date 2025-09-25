@@ -1,0 +1,12 @@
+{% load bootstrap_icons %}
+<div class="btn-group btn-group-sm" role="group">
+    {% if location.status == 'new' and not aid_request.location_confirmed %}
+        <button type="button" class="btn btn-success confirm-location-btn" title="Confirm Location" data-location-id="{{ location.pk }}" data-action="confirm">{% bs_icon 'check-circle' %}</button>
+        <button type="button" class="btn btn-warning reject-location-btn" title="Reject Location" data-location-id="{{ location.pk }}" data-action="reject">{% bs_icon 'hand-thumbs-down' %}</button>
+    {% elif location.status == 'confirmed' %}
+        <button type="button" class="btn btn-warning reject-location-btn" title="Reject this location" data-location-id="{{ location.pk }}" data-action="reject">{% bs_icon 'hand-thumbs-down' %}</button>
+    {% endif %}
+    {% if location.status != 'archived' %}
+         <button type="button" class="btn btn-danger delete-location-btn" title="Delete Location" data-location-id="{{ location.pk }}" data-action="delete">{% bs_icon 'trash-fill' %}</button>
+    {% endif %}
+</div>

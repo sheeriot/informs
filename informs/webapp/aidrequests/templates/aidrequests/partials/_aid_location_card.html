@@ -1,68 +1,81 @@
 {% load bootstrap_icons %}
-<div class="list-group-item px-0 location-card-divider" id="ar{{ aid_request.pk }}-al{{ location.pk }}-loc">
+{% load custom_tags %}
 
-    <div class="d-flex w-100 justify-content-between align-items-center">
-        <h6 class="mb-0">Location: {{ location.pk }}</h6>
-        {% if location.status != 'archived' %}
-            <button type="button" class="btn btn-sm btn-outline-danger delete-location-btn" title="Delete Location" data-location-id="{{ location.pk }}" data-action="delete">
-                {% bs_icon 'trash-fill' %}
-            </button>
+<div class="card mb-1" id="ar{{ aid_request.pk }}-al{{ location.pk }}-loc">
+    <div class="card-header py-1
+        {% if location.status == 'confirmed' %}
+            bg-success-subtle text-success-emphasis
+        {% elif location.status == 'rejected' %}
+            bg-danger-subtle text-danger-emphasis
+        {% elif location.status == 'new' %}
+            bg-warning-subtle text-warning-emphasis
+        {% elif location.status == 'candidate' %}
+            bg-info-subtle text-info-emphasis
+        {% else %}
+            bg-light
         {% endif %}
+    ">
+        <h6 class="mb-0">{% bs_icon 'geo-alt' %} Location #{{ location.pk }}</h6>
     </div>
-    <small class="text-muted d-block">Created: {{ location.created_at|date:"Y-m-d H:i" }}</small>
+    <div class="card-body py-2">
+        <!-- Coordinates and Distance -->
+        <div class="row align-items-center">
+            <div class="col-12 col-lg-8">
+                {% include 'aidrequests/partials/_coordinates_display.html' with latitude=location.latitude longitude=location.longitude element_id='coordinates-'|add:location.pk %}
+            </div>
+            <div class="col-12 col-lg-4 text-lg-end">
+                 <small class="text-muted me-2">Distance:</small>
+                <span class="text-nowrap fw-bold">{{ location.distance|floatformat:2|default:"N/A" }} km</span>
+            </div>
+        </div>
 
-    <div class="input-group input-group-sm mt-1">
-        <input type="text" class="form-control font-monospace bg-light" value="{{ location.latitude|floatformat:5 }}, {{ location.longitude|floatformat:5 }}" readonly>
-        <button class="btn btn-outline-secondary btn-copy-coords" type="button" data-copy-text="{{ location.latitude }},{{ location.longitude }}" onclick="copyCoordinates(this)">
-            {% bs_icon 'clipboard' %}
-        </button>
-    </div>
+        <!-- Status and Buttons -->
+        <div class="d-flex justify-content-between align-items-center mt-2">
+            <div class="text-nowrap">
+                <small class="text-muted me-2">Status:</small>
+                <span class="location-status-badge fw-bold {% if location.status == 'confirmed' %}text-success{% elif location.status == 'rejected' %}text-danger{% endif %}">{{ location.get_status_display }}</span>
+            </div>
+            {% include 'aidrequests/partials/_aid_location_action_buttons.html' %}
+        </div>
 
-    <div class="mt-2">
-        <small class="text-muted d-block">Source</small>
-        <span class="mb-1">{{ location.source }}</span>
-    </div>
+        <!-- Source -->
+        <div class="mt-2">
+            <small class="text-muted me-2">Source:</small>
+            <span>{{ location.source }}</span>
+        </div>
 
-    {% if location.distance %}
-    <div class="mt-2">
-        <small class="text-muted d-block">Distance from FieldOp</small>
-        <span class="mb-1">{{ location.distance|floatformat:2 }} km</span>
-    </div>
-    {% endif %}
-
-    <div class="mt-2">
-        <small class="text-muted d-block">Status</small>
-        <div class="d-flex align-items-center">
-            <span class="location-status-badge mb-1 fw-bold {% if location.status == 'confirmed' %}text-success{% elif location.status == 'rejected' %}text-danger{% endif %}">{{ location.get_status_display }}</span>
-
-            {% if location.status == 'new' and aid_request.location_status != 'confirmed' %}
-                <button type="button" class="btn btn-sm btn-success confirm-location-btn ms-2" title="Confirm this as the primary location" data-location-id="{{ location.pk }}" data-action="confirm">
-                    {% bs_icon 'check-circle' %} Confirm
+        <!-- Geocoded Address -->
+        <div class="mt-2">
+            <div class="d-flex align-items-center">
+                <small class="text-muted me-2">Geocoded Address</small>
+                {% if location.geocode_json %}
+                <button class="btn btn-link p-0 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-details-{{ location.pk }}" aria-expanded="false" aria-controls="collapse-details-{{ location.pk }}">
+                    {% bs_icon 'card-list' %}
                 </button>
+                {% endif %}
+            </div>
+            <div class="font-monospace">{{ location.free_form_address|default:"Not available" }}</div>
+        </div>
+
+        <!-- Collapsible Details -->
+        <div class="collapse mt-2" id="collapse-details-{{ location.pk }}">
+             {% if location.note %}
+            <div class="mb-2">
+                <small class="text-muted">Notes:</small>
+                <pre class="mb-0 font-monospace bg-light p-1" style="white-space: pre-wrap; font-size: 0.8em;">{{ location.note }}</pre>
+            </div>
             {% endif %}
-            {% if location.status == 'confirmed' %}
-                <button type="button" class="btn btn-sm btn-warning reject-location-btn ms-2" title="Reject this location" data-location-id="{{ location.pk }}" data-action="reject">
-                    {% bs_icon 'x-octagon' %} Reject
-                </button>
+
+            {% if location.geocode_json %}
+            <div class="mb-2">
+                 <small class="text-muted">Geocode JSON:</small>
+                <pre class="mb-0 font-monospace bg-light p-1 mt-1" style="white-space: pre-wrap; font-size: 0.8em; max-height: 200px; overflow-y: auto;">{{ location.pretty_geocode_json }}</pre>
+            </div>
             {% endif %}
         </div>
     </div>
 
-    {% if location.address_found %}
-    <div class="mb-2 mt-2">
-        <small class="text-muted d-block">Address Lookup</small>
-        <span class="mb-1">{{ location.address_found }}</span>
-    </div>
-    {% endif %}
-
-    {% if location.note %}
-    <div class="mb-2">
-        <small class="text-muted">Notes:</small>
-        <pre class="mb-0 font-monospace bg-light p-1" style="white-space: pre-wrap; font-size: 0.8em;">{{ location.note }}</pre>
-    </div>
-    {% endif %}
-
-    <div class="mt-3 position-relative" id="map-area-{{ location.pk }}">
+    <div class="position-relative" id="map-area-{{ location.pk }}">
        {% include 'aidrequests/partials/_location_map_area.html' %}
     </div>
 </div>

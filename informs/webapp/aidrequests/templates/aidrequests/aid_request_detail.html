@@ -5,7 +5,7 @@
 {% load custom_tags %}
 
 {% block title %}
-Aid Request {{ aid_request.pk }} for {{ field_op.name }}
+Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
 {% endblock %}
 
 {% block content %}
@@ -21,22 +21,24 @@ Aid Request {{ aid_request.pk }} for {{ field_op.name }}
     data-url-send-cot="{% url 'send_cot' field_op=field_op.slug %}"
     data-url-check-status="{% url 'sendcot_checkstatus' field_op=field_op.slug %}"
     data-url-send-email="{% url 'ajax_send_email' field_op=field_op.slug pk=aid_request.pk %}"
+    data-url-add-location="{{ url_add_location }}"
     >
 </div>
 <div class="container-fluid">
+    <div id="aid-request-header-container">
     {% include 'aidrequests/partials/aid_request_header.html' %}
+    </div>
     <hr class="m-0" />
-    <div class="row mt-3">
+    <div class="row m-0 p-0">
         {# Left Column #}
-        <div class="col-lg-7">
+        <div class="col-md-8 m-0 p-1">
             {% include 'aidrequests/includes/aid_request_summary.html' %}
-            {% include 'aidrequests/includes/aid_request_contact.html' %}
 
-            <div class="card mb-4">
-                <div class="card-header">
+            <div class="card mb-1">
+                <div class="card-header m-0 p-1">
                     <h5 class="mb-0">Request Details</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body m-0 p-1">
                     <h2>Emergency Medical Needs</h2>
                     <p>{{ object.medical_needs|default:"None" }}</p>
 
@@ -51,7 +53,7 @@ Aid Request {{ aid_request.pk }} for {{ field_op.name }}
                 </div>
             </div>
 
-             <div class="card mb-4">
+             <div class="card m-0 p-0">
                 <div class="card-header">
                     <h5 class="mb-0">Request Logs</h5>
                 </div>
@@ -90,39 +92,28 @@ Aid Request {{ aid_request.pk }} for {{ field_op.name }}
         </div>
 
         {# Right Column #}
-        <div class="col-lg-4 ms-auto">
-            <!-- Status Card -->
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Request Status</h5>
-                </div>
-                <div class="card-body">
-                    {{ status_form.status|as_crispy_field }}
-                    {{ status_form.priority|as_crispy_field }}
-                </div>
-            </div>
+        <div class="col-md-4 m-0 p-1">
+            {% include 'aidrequests/includes/aid_request_status.html' %}
             <!-- Actions Card -->
 
             <div id="locations-list-container">
-                {% include 'aidrequests/partials/_aid_locations_list.html' %}
+                {% include 'aidrequests/includes/aid_locations_list.html' %}
             </div>
         </div>
     </div>
 </div>
 
+{% include 'aidrequests/partials/_add_location_modal.html' %}
+
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+<link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
+<script src="{% static 'js/location-picker-map.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/tak-alert.js' %}?v={{ static_version }}"></script>
-<script src="{% static 'js/aidrequests-detail.js' %}?v={{ static_version }}"></script>
+<script src="{% static 'js/aidrequest-cot.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/aidrequest-update-actions.js' %}?v={{ static_version }}"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(function() {
-            if (window.initializeModalMap) {
-                window.initializeModalMap();
-            }
-        }, 200);
-    });
-</script>
+<script src="{% static 'js/aidrequest-add-location.js' %}?v={{ static_version }}"></script>
+<script src="{% static 'js/aidrequest-map-poller.js' %}?v={{ static_version }}"></script>
 {% endblock extra_js %}

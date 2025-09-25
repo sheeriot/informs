@@ -13,9 +13,9 @@ class ValidateAidTypesTest(TestCase):
         # Create a test field operation
         self.field_op = FieldOp.objects.create(
             name='Test Field Op',
-            slug='test-op',
-            latitude=30.0,
-            longitude=-97.0
+            slug='test-field-op',
+            latitude=33.33,
+            longitude=44.44
         )
 
         # Configure only evacuation and resupply
@@ -27,8 +27,8 @@ class ValidateAidTypesTest(TestCase):
         AidRequest.objects.create(
             field_op=self.field_op,
             aid_type=self.evacuation,
-            requestor_first_name='John',
-            requestor_last_name='Doe',
+            requester_first_name='John',
+            requester_last_name='Doe',
             street_address='123 Test St',
             city='Test City',
             state='TX'
@@ -44,8 +44,8 @@ class ValidateAidTypesTest(TestCase):
         AidRequest.objects.create(
             field_op=self.field_op,
             aid_type=self.welfare,  # Welfare Check is not configured
-            requestor_first_name='Jane',
-            requestor_last_name='Doe',
+            requester_first_name='Jane',
+            requester_last_name='Doe',
             street_address='456 Test St',
             city='Test City',
             state='TX'
