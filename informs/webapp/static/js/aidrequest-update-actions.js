@@ -1,5 +1,5 @@
 const aidRequestUpdateConfig = {
-    debug: false // Set to true for console logging
+    debug: true // Set to true for console logging
 };
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -29,8 +29,53 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const locationsContainer = document.getElementById('locations-list-container');
     if (locationsContainer) {
-        locationsContainer.addEventListener('click', (e) => handleLocationAction(e, config));
+        locationsContainer.addEventListener('click', (e) => {
+            const button = e.target.closest('.delete-location-btn, .generate-map-btn, .confirm-location-btn, .reject-location-btn');
+            if (!button) return;
+
+            // If it's a delete button, Bootstrap's data attributes will handle showing the modal.
+            // We don't need to do anything else here for delete.
+            if (button.dataset.action === 'delete') {
+                return;
+            }
+
+            // For other actions, proceed with the original logic.
+            handleLocationAction(e, config);
+        });
         locationsContainer.addEventListener('click', (e) => handlePreviewMapClick(e));
+    }
+
+    // New: Setup listener for the confirmation modal
+    const confirmationModal = document.getElementById('confirmationModal');
+    if (confirmationModal) {
+        confirmationModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const message = button.dataset.confirmationMessage || 'Are you sure?';
+            const action = button.dataset.action;
+            const locationId = button.dataset.locationId;
+
+            const modalBody = confirmationModal.querySelector('#confirmationModalBody');
+            const confirmButton = confirmationModal.querySelector('#confirmActionButton');
+
+            modalBody.textContent = message;
+
+            // Pass data to the confirm button
+            confirmButton.dataset.action = action;
+            confirmButton.dataset.locationId = locationId;
+
+            if (aidRequestUpdateConfig.debug) {
+                console.log('Confirmation modal shown for action:', action, 'locationId:', locationId);
+            }
+        });
+
+        const confirmActionButton = document.getElementById('confirmActionButton');
+        confirmActionButton.addEventListener('click', function () {
+            const { action, locationId } = confirmActionButton.dataset;
+            if (action === 'delete') {
+                performDeleteAction(locationId, config);
+            }
+            bootstrap.Modal.getInstance(confirmationModal).hide();
+        });
     }
 
     const statusField = document.querySelector('#div_id_status select');
@@ -82,7 +127,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function handleLocationAction(e, config) {
-        const button = e.target.closest('.delete-location-btn, .generate-map-btn, .confirm-location-btn, .reject-location-btn');
+        // This function now ONLY handles non-delete actions.
+        const button = e.target.closest('.generate-map-btn, .confirm-location-btn, .reject-location-btn');
         if (!button) return;
 
         const locationId = button.dataset.locationId;
@@ -92,12 +138,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let action = button.dataset.action;
         const originalButtonHtml = button.innerHTML;
 
-        if (action === 'delete') {
-            if (!confirm('Are you sure you want to delete this location? This action cannot be undone.')) {
-                return;
-            }
-            url = config.urlDeleteLocation.replace('0', locationId);
-        } else if (action === 'remap') {
+        if (action === 'remap') {
             url = config.urlRegenerateMap.replace('0', locationId);
         } else if (action === 'confirm' || action === 'reject') {
             url = config.urlUpdateLocationStatus.replace('0', locationId);
@@ -135,16 +176,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (data.status === 'success') {
-                if (action === 'delete') {
-                    button.closest('.card')?.remove();
-                    showActionAlert('Location deleted successfully.', 'success');
-                    if (data.header_html) {
-                        const headerContainer = document.getElementById('aid-request-header-container');
-                        if (headerContainer) {
-                            headerContainer.innerHTML = data.header_html;
-                        }
-                    }
-                } else if (action === 'remap') {
+                if (action === 'remap') {
                     const mapArea = document.getElementById(`map-area-${locationId}`);
                     if (mapArea && data.map_html) {
                         mapArea.innerHTML = data.map_html;
@@ -184,6 +216,53 @@ document.addEventListener('DOMContentLoaded', function () {
                 button.innerHTML = originalButtonHtml;
                 button.disabled = false;
             }
+        });
+    }
+
+    function performDeleteAction(locationId, config) {
+        const url = config.urlDeleteLocation.replace('0', locationId);
+        if (aidRequestUpdateConfig.debug) {
+            console.log(`Performing delete action for location ${locationId} at URL: ${url}`);
+        }
+
+        // You might want a spinner on the modal's confirm button or disable it
+        const confirmButton = document.getElementById('confirmActionButton');
+        confirmButton.disabled = true;
+        const originalButtonText = confirmButton.innerHTML;
+        confirmButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
+
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': config.csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+             body: new FormData(), // No body needed for delete, but FormData can be used if action is checked server-side
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.querySelector(`.card[id$="-al${locationId}-loc"]`)?.remove();
+                showActionAlert('Location deleted successfully.', 'success');
+                if (data.header_html) {
+                    const headerContainer = document.getElementById('aid-request-header-container');
+                    if (headerContainer) {
+                        headerContainer.innerHTML = data.header_html;
+                    }
+                }
+            } else {
+                throw new Error(data.message || 'Deletion failed.');
+            }
+        })
+        .catch(error => {
+            console.error('Delete action failed:', error);
+            showActionAlert(`Error: ${error.message}`, 'danger');
+        })
+        .finally(() => {
+            // Restore button
+            confirmButton.disabled = false;
+            confirmButton.innerHTML = originalButtonText;
         });
     }
 
