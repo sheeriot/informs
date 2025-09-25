@@ -4,10 +4,11 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.conf import settings
 from django.template.loader import render_to_string
-# from icecream import ic
+from icecream import ic
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Fieldset, Hidden, Row, Column, Div, HTML, Field
+from ..forms.layout import MapLayoutObject
 
 from ..models import AidLocation
 # from crispy_forms.layout import Layout, Submit,  Hidden
@@ -18,30 +19,33 @@ from ..models import AidLocation
 class AidLocationCreateForm(forms.ModelForm):
     """ AidLocation Form """
     # These fields are for the UI and map interaction, not for saving to the AidLocation model.
-    address_line_1 = forms.CharField(label="Street Address", required=False)
+    street_address = forms.CharField(label="Street Address", required=False)
     city = forms.CharField(required=False)
     state = forms.CharField(label="State", required=False)
-    coordinates = forms.CharField(
-        label="Coordinates",
+
+    latitude = forms.DecimalField(
+        max_digits=9,
+        decimal_places=5,
         required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control text-dark font-monospace', 'readonly': 'readonly'})
+        widget=forms.TextInput(attrs={'class': 'form-control form-control-sm font-monospace seamless-start'})
     )
-    geocoded_address = forms.CharField(
-        label="Geocoded Address",
+    longitude = forms.DecimalField(
+        max_digits=9,
+        decimal_places=5,
         required=False,
-        widget=forms.TextInput(attrs={'readonly': True, 'class': 'form-control-plaintext'})
+        widget=forms.TextInput(attrs={'class': 'form-control form-control-sm font-monospace seamless-end'})
     )
 
     class Meta:
         """ meta """
         model = AidLocation
         # Only include fields that actually exist on the AidLocation model.
-        fields = ['latitude', 'longitude', 'note', 'source']
+        fields = ['latitude', 'longitude', 'note', 'source', 'geocode_json', 'free_form_address']
         widgets = {
-            'latitude': forms.HiddenInput(attrs={'id': 'id_latitude_modal'}),
-            'longitude': forms.HiddenInput(attrs={'id': 'id_longitude_modal'}),
-            'source': forms.HiddenInput(attrs={'id': 'id_location_source_modal'}),
-            'note': forms.Textarea(attrs={'id': 'id_note_modal', 'rows': 2, 'placeholder': 'Add any notes about this location...'}),
+            'source': forms.HiddenInput(),
+            'geocode_json': forms.HiddenInput(),
+            'note': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Add any notes about this location...'}),
+            'free_form_address': forms.TextInput(attrs={'readonly': True, 'class': 'form-control-plaintext bg-light border shadow-sm rounded-0 font-monospace p-2'})
         }
 
     def __init__(self, *args, **kwargs):
@@ -49,22 +53,27 @@ class AidLocationCreateForm(forms.ModelForm):
         self.field_op_obj = kwargs.pop('field_op_obj', None)
         aid_request_obj = kwargs.pop('aid_request_obj', None)
         super(AidLocationCreateForm, self).__init__(*args, **kwargs)
-        # ic("FORM: __init__ called.")
-        # ic("FORM: self.field_op_obj:", self.field_op_obj)
-        # ic("FORM: self.initial data:", self.initial)
 
         if aid_request_obj:
-            self.fields['address_line_1'].initial = aid_request_obj.street_address
+            self.fields['street_address'].initial = aid_request_obj.street_address
             self.fields['city'].initial = aid_request_obj.city
             self.fields['state'].initial = aid_request_obj.state
 
+        self.fields['street_address'].widget.attrs.update({'id': 'id_street_address_modal'})
+        self.fields['city'].widget.attrs.update({'id': 'id_city_modal'})
+        self.fields['state'].widget.attrs.update({'id': 'id_state_modal'})
+
         self.helper = FormHelper()
         self.helper.form_method = 'post'
-
-        # Set address fields to read-only
-        for field_name in ['address_line_1', 'city', 'state']:
-            if field_name in self.fields:
-                self.fields[field_name].widget.attrs['readonly'] = True
+        self.helper.form_tag = True
+        self.helper.form_id = 'addLocationForm'
+        self.helper.form_class = 'needs-validation'
+        self.helper.attrs = {'novalidate': ''}
+        if self.field_op_obj and aid_request_obj:
+            self.helper.form_action = reverse(
+                'add_location',
+                kwargs={'field_op': self.field_op_obj.slug, 'pk': aid_request_obj.pk}
+            )
 
         azure_maps_key = settings.AZURE_MAPS_KEY or ""
         geocode_url = reverse('geocode_address', kwargs={'field_op': self.field_op_obj.slug})
@@ -72,9 +81,9 @@ class AidLocationCreateForm(forms.ModelForm):
         field_op_lat = f'{self.field_op_obj.latitude:.5f}' if self.field_op_obj.latitude is not None else ""
         field_op_lon = f'{self.field_op_obj.longitude:.5f}' if self.field_op_obj.longitude is not None else ""
         field_op_ring_size = self.field_op_obj.ring_size or ""
+        country_name = self.field_op_obj.country.name or 'USA'
 
         self.map_context = {
-            'map_id': 'add-location-map',
             'azure_maps_key': azure_maps_key,
             'geocode_url': geocode_url,
             'initial_lat': self.initial.get('latitude', field_op_lat),
@@ -82,93 +91,108 @@ class AidLocationCreateForm(forms.ModelForm):
             'field_op_lat': field_op_lat,
             'field_op_lon': field_op_lon,
             'field_op_ring_size': field_op_ring_size,
-            'lat_input_id': 'id_latitude_modal',
-            'lon_input_id': 'id_longitude_modal',
-            'coordinates_input_id': 'id_coordinates',
-            'source_input_id': 'id_location_source_modal',
-            'note_input_id': 'id_note_modal',
-            'street_input_id': 'id_address_line_1',
-            'city_input_id': 'id_city',
-            'state_input_id': 'id_state',
-            'distance_container_id': 'distance-from-fieldop-modal',
-            'confirm_btn_id': 'confirm-location-modal',
-            'freeform_address_input_id': 'id_geocoded_address',
-            'geocode_details_container_id': 'geocode-details-container-modal',
-            'geocode_json_pre_id': 'geocode-json-pre-modal',
-            'get_location_button_id': 'get-location-modal',
-            'reset_location_button_id': 'reset-location-modal'
+            'country_code': self.field_op_obj.country.code if self.field_op_obj.country else '',
+            'latInputId': self.auto_id % 'latitude',
+            'lonInputId': self.auto_id % 'longitude',
+            'sourceInputId': self.auto_id % 'source',
+            'noteInputId': self.auto_id % 'note',
+            'freeformAddressInputId': self.auto_id % 'free_form_address',
+            'streetInputId': 'id_street_address_modal',
+            'cityInputId': 'id_city_modal',
+            'stateInputId': 'id_state_modal',
+            'confirmBtnId': 'confirm-and-next-btn-modal',
+            'geocodeJsonPreId': 'geocode-json-pre-modal',
+            'formContainerId': 'addLocationModal',
+            'geocodeDetailsContainerId': 'geocode-details-container-modal',
+            'distanceContainerId': 'distance-from-fieldop-modal',
+            'geocodeJsonInputId': self.auto_id % 'geocode_json',
+            'getLocationButtonId': 'get-location-modal',
+            'resetLocationButtonId': 'reset-location-modal'
         }
 
         self.helper.layout = Layout(
-            'latitude',
-            'longitude',
             'source',
-            Row(
-                Column(
-                    HTML("""
-                        <p class="form-text text-muted">Add location details and confirm location.</p>
-                    """),
-                    css_class='col-md-6'
-                ),
-                Column(
-                    Div(
-                        HTML("""
-                            <button type="button" id="get-location-modal" class="btn btn-warning btn-sm">
-                                <i class="bi bi-geo-alt"></i> Device Location
-                            </button>
-                            <button type="button" id="reset-location-modal" class="btn btn-outline-danger btn-sm ms-2">
-                                <i class="bi bi-x-circle"></i> Reset Location
-                            </button>
-                        """),
-                        css_class='d-flex justify-content-end'
-                    ),
-                    css_class='col-md-6'
-                ),
-                css_class='align-items-center mb-3'
-            ),
-            HTML('<div id="coordinates-display-modal-container" class="mb-3"></div>'),
-            Row(
-                Column('city', css_class='col-md-6'),
-                Column('state', css_class='col-md-6'),
-                css_class='mb-2'
-            ),
-            Row(
-                Column('address_line_1', css_class='col-12'),
-                css_class='mb-3'
-            ),
-            Div(
+            'geocode_json',
+
+            Fieldset(
+                "", # Empty legend
+                HTML(f"<h5 class='mb-3'>Aid Location ({country_name})</h5>"),
                 Row(
-                    Column(HTML('<label for="id_geocoded_address" class="form-label mb-0">Geocoded Address</label>'), css_class="col-auto me-auto"),
+                    Column(
+                            HTML("<p class='form-text text-muted mb-0 px-2'>Add location details and confirm location.</p>"),
+                            css_class="col"
+                    ),
                     Column(
                         HTML("""
-                            <button class="btn btn-link p-0 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#geocode-details-container-modal" aria-expanded="false" aria-controls="geocode-details-container-modal">
-                                <i class="bi bi-card-list"></i>
+                            <button type="button" id="get-location-modal" class="btn btn-warning btn-sm text-start">
+                                <span class="d-block text-nowrap"><i class="bi bi-phone"></i> Device</span>
+                                <span class="d-block text-nowrap"><i class="bi bi-geo-alt"></i> Location</span>
                             </button>
                         """),
                         css_class="col-auto"
                     ),
-                    css_class="align-items-center"
+                    Column(
+                        HTML("""
+                            <button type="button" id="reset-location-modal" class="btn btn-sm btn-outline-danger text-start">
+                                <span class="d-block text-nowrap"><i class="bi bi-x-circle"></i> Reset</span>
+                                <span class="d-block text-nowrap"><i class="bi bi-geo-alt"></i> Location</span>
+                            </button>
+                        """),
+                        css_class="col-auto"
+                    ),
+                    css_class="mb-3 align-items-center"
                 ),
-                Field('geocoded_address'),
-                css_class="mb-2"
+                HTML("<div id='location-error-msg-modal' class='text-danger fw-bold'></div>"),
+                Row(
+                    Column(Field('city', css_class='mb-2'), css_class='col-md-6'),
+                    Column(Field('state', css_class='mb-2'), css_class='col-md-6'),
+                ),
+                Row(
+                    Column(Field('street_address', css_class='mb-2'), css_class='col-12'),
+                ),
+                Div(
+                    Row(
+                        Column(HTML('<label for="id_free_form_address" class="form-label h6 mb-0">Geocoded Address</label><span id="geocode-spinner-modal" class="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status" aria-hidden="true"></span>'), css_class="col-auto"),
+                        Column(
+                            HTML("""
+                                <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#geocode-details-container-modal" aria-expanded="false" aria-controls="geocode-details-container-modal">
+                                    <span class="text-nowrap"><i class="bi bi-card-text"></i> Details</span>
+                                </button>
+                            """),
+                            css_class="col-auto"
+                        ),
+                        css_class="align-items-center"
+                    ),
+                    Field('free_form_address'),
+                    HTML("""
+                        <div class="collapse" id="geocode-details-container-modal">
+                            <div class="card card-body p-1 mt-1">
+                                <pre id="geocode-json-pre-modal" class="p-2 pre-geocode-json"></pre>
+                            </div>
+                        </div>
+                    """),
+                    HTML("""
+                        <div class="mt-2">
+                            <small class="text-muted">Distance from FieldOp:</small>
+                            <span id="distance-from-fieldop-modal" class="fw-bold ms-2"></span>
+                        </div>
+                    """),
+                    css_id="geocode-details-container",
+                    css_class="mt-2"
+                ),
+                HTML("<p class='text-muted text-center small mb-1'>Click on the Map to select a Location</p>"),
+                MapLayoutObject(
+                    'add-location-map',
+                    map_context_name='map_context',
+                    latitude_field='latitude',
+                    longitude_field='longitude'
+                ),
             ),
             Div(
-                Div(
-                    HTML('<small class="text-muted">Geocode Details</small>'),
-                    HTML('<pre id="geocode-json-pre-modal" class="bg-light p-1 pre-geocode-json"></pre>'),
-                    css_class="card card-body p-1"
-                ),
-                css_class="collapse",
-                id="geocode-details-container-modal"
-            ),
-            'note',
-            HTML("""
-                <div class="mt-2">
-                    <small class="text-muted">Distance from FieldOp:</small>
-                    <span id="distance-from-fieldop-modal" class="fw-bold ms-2"></span>
-                </div>
-            """),
-            HTML("""{% include 'aidrequests/partials/_location_picker_map.html' with map_data=add_location_form.map_context %}"""),
+                HTML('<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>'),
+                HTML('<button type="submit" class="btn btn-primary" id="submit-location-form">Save Location</button>'),
+                css_class="modal-footer"
+            )
         )
 
     def save(self, commit=True):

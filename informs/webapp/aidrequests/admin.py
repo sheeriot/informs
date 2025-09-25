@@ -132,9 +132,12 @@ class FieldOpAdmin(admin.ModelAdmin):
 class AidLocationAdmin(admin.ModelAdmin):
     """AidLocation admin"""
     list_display = ('pk', 'aid_request', 'status', 'source', 'latitude', 'longitude', 'created_at', 'uid')
-    list_filter = ('aid_request',)
+    list_filter = ('aid_request', 'status', 'source')
     readonly_fields = (
         'aid_request',
+        'latitude',
+        'longitude',
+        'source',
         'created_at',
         'updated_at',
         'created_by',
@@ -142,8 +145,19 @@ class AidLocationAdmin(admin.ModelAdmin):
         'uid',
         'address_searched',
         'map_filename',
-        'distance'
-        )
+        'distance',
+        'free_form_address',
+        'geocode_json',
+    )
+    fieldsets = (
+        (None, {
+            'fields': ('status', 'note')
+        }),
+        ('Read-only Details', {
+            'classes': ('collapse',),
+            'fields': readonly_fields,
+        }),
+    )
 
     def save_model(self, request, obj, form, change):
         # Set created_by only when creating a new object

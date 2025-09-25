@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const city = cityInput.value.trim();
         const state = stateInput.value.trim();
         const street = streetInput.value.trim();
+        const spinner = document.getElementById('geocode-spinner');
 
         if (city) {
             if (aidRequestFormCConfig.debug) console.log(`[FormC] Performing geocode for: ${street}, ${city}, ${state}`);
@@ -97,8 +98,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const url = `https://atlas.microsoft.com/search/address/json?api-version=1.0&query=${encodeURIComponent(query)}&countrySet=${mapContainer.dataset.countryCode || ''}&limit=1&subscription-key=${subscriptionKey}`;
 
+            if (spinner) spinner.classList.remove('d-none');
             try {
-                const response = await fetch(url);
+                const response = await fetchWithLogging(url, {}, 'Forward Geocode (Form C)');
                 const data = await response.json();
                 if (data.results && data.results.length > 0) {
                     const result = data.results[0];
@@ -128,20 +130,29 @@ document.addEventListener('DOMContentLoaded', function() {
             } catch (error) {
                 if (aidRequestFormCConfig.debug) console.error('[FormC] Geocode error:', error);
             }
+            finally {
+                if (spinner) spinner.classList.add('d-none');
+            }
         } else {
             if (aidRequestFormCConfig.debug) console.log('[FormC] City is required for geocoding.');
         }
     }
 
     // Add event listeners for address fields to trigger geocoding
-    let geocodeTimeout;
     if (cityInput && stateInput && streetInput) {
-        [cityInput, stateInput, streetInput].forEach(input => {
-            input.addEventListener('input', () => {
-                clearTimeout(geocodeTimeout);
-                geocodeTimeout = setTimeout(performGeocode, 1000); // Debounce for 1s
+        const addressFields = [cityInput, stateInput, streetInput];
+        addressFields.forEach(input => {
+            // Geocode when the user leaves an address field
+            input.addEventListener('blur', performGeocode);
+            // Geocode when the user presses Enter in an address field
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault(); // Prevent default form submission on Enter
+                    performGeocode();
+                }
             });
         });
+        if (aidRequestFormCConfig.debug) console.log('[FormC] Attached geocoding listeners to address fields.');
     }
 
 
@@ -162,13 +173,19 @@ document.addEventListener('DOMContentLoaded', function() {
             if (resetButton) {
                 e.preventDefault();
                 if (confirm('Are you sure you want to clear the form and start over?')) {
+                    if (aidRequestFormCConfig.debug) console.log('[FormC] Reset button clicked. Clearing session data and reloading.');
                     sessionStorage.removeItem('informsFormCData');
                     window.location.reload();
                 }
             }
         });
+        if (aidRequestFormCConfig.debug) console.log('[FormC] Reset button functionality enabled.');
     }
 
+    /**
+     * Saves the current state of the form fields to sessionStorage.
+     * This allows the form to be restored if the user accidentally navigates away or reloads the page.
+     */
     function saveFormData() {
         if (!form) return;
 
@@ -212,6 +229,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    /**
+     * Restores the form fields from data stored in sessionStorage.
+     */
     function restoreFormData() {
         const storedData = sessionStorage.getItem('informsFormCData');
         if (!storedData) return; // Extra safety check
@@ -269,6 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fieldsToMonitor.forEach(field => {
             field.addEventListener('blur', saveFormData);
         });
+        if (aidRequestFormCConfig.debug) console.log('[FormC] Attached "blur" listeners to all form fields for saving state.');
 
         if (form.querySelector('#submit-button')) {
             form.addEventListener('submit', function(event) {
@@ -322,6 +343,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('locationUpdated', (e) => {
         // This event signifies the map has updated the location fields.
         // Save the entire form state now to capture all map-derived values.
+        if (aidRequestFormCConfig.debug) console.log('[FormC] "locationUpdated" event received from map. Saving form data.');
         saveFormData();
 
         // Re-select the button here to ensure it's available
@@ -333,7 +355,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Setup for multi-step form navigation
+    // --- Multi-Step Form Navigation ---
+    // This section manages the visibility of form steps, updates progress indicators,
+    // and handles the logic for the "Next" and "Back" buttons.
     const steps = [
         form.querySelector('#step-1'),
         form.querySelector('#step-2'),
@@ -349,7 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const prevStep3Btn = form.querySelector('#prev-step-3');
 
     if (aidRequestFormCConfig.debug) {
-        console.log('Reset button found in DOM:', resetLocationBtn);
+        console.log('[FormC] Multi-step navigation elements initialized.');
     }
 
     // After restoring form data, check if was already set
@@ -360,7 +384,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const fieldsToClear = [
                 'id_street_address', 'id_city', 'id_state',
                 'id_latitude', 'id_longitude',
-                'id_location_note', 'id_location_source', 'id_location_freeform_address'
+                'id_location_note', 'id_location_source', 'id_location_freeform_address',
+                'id_geocode_json'
             ];
             fieldsToClear.forEach(id => {
                 const field = form.querySelector(`#${id}`);
@@ -391,6 +416,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 confirmAndNextBtn.textContent = 'Confirm Location';
             }
 
+            if (aidRequestFormCConfig.debug) console.log('[FormC] Reset Location button clicked. Form fields cleared.');
             saveFormData(); // Persist changes
 
             // Dispatch a custom event to notify the map to reset its view
@@ -399,15 +425,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (nextStep1Btn) {
-        nextStep1Btn.addEventListener('click', () => { if (validateStep(0)) { currentStep = 1; showStep(currentStep); } });
+        nextStep1Btn.addEventListener('click', () => {
+            if (aidRequestFormCConfig.debug) console.log('[FormC] Next Step 1 button clicked.');
+            if (validateStep(0)) { currentStep = 1; showStep(currentStep); }
+        });
     }
 
     if (prevStep2Btn) {
-        prevStep2Btn.addEventListener('click', () => { currentStep = 0; showStep(currentStep); });
+        prevStep2Btn.addEventListener('click', () => {
+            if (aidRequestFormCConfig.debug) console.log('[FormC] Prev Step 2 button clicked.');
+            currentStep = 0; showStep(currentStep);
+        });
     }
 
     if (confirmAndNextBtn) {
         confirmAndNextBtn.addEventListener('click', () => {
+            if (aidRequestFormCConfig.debug) console.log('[FormC] Confirm & Next button clicked.');
             if (validateStep(1)) {
                 currentStep = 2;
                 showStep(currentStep);
@@ -416,7 +449,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (prevStep3Btn) {
-        prevStep3Btn.addEventListener('click', () => { currentStep = 1; showStep(currentStep); });
+        prevStep3Btn.addEventListener('click', () => {
+            if (aidRequestFormCConfig.debug) console.log('[FormC] Prev Step 3 button clicked.');
+            currentStep = 1; showStep(currentStep);
+        });
     }
 
     // All event listeners are now set up. The rest of the script handles showing steps and validation.

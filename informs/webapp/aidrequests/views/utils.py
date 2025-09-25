@@ -31,7 +31,7 @@ def prepare_aid_locations_for_map(aid_requests_queryset):
                 'address': {
                     'full': ar.full_address,
                 },
-                'requester_name': ar.requester_name or 'N/A',
+                'requester_name': ar.requester_full_name or 'N/A',
             })
     return aid_locations
 

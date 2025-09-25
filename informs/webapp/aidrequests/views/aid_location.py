@@ -47,30 +47,42 @@ def aid_location_status_update(request, field_op, location_pk):
     action = request.POST.get('action')
 
     try:
-        # Use the existing location property to check for a confirmed location
-        has_confirmed = aid_request.location and aid_request.location.status == 'confirmed'
-
-        if action == 'confirm' and not has_confirmed:
+        if action == 'confirm':
+            # Set this location to 'confirmed'
             location.status = 'confirmed'
             location.save()
-        elif action == 'reject' and location.status == 'confirmed':
+            # Demote any other 'confirmed' locations for this request to 'new'
+            aid_request.locations.exclude(pk=location.pk).filter(status='confirmed').update(status='new')
+
+        elif action == 'reject':
             location.status = 'rejected'
             location.save()
+
         else:
             return JsonResponse({'status': 'error', 'message': 'Invalid action or state.'}, status=400)
 
         # Refresh the request object to get the latest state
         aid_request.refresh_from_db()
 
-        # Check the confirmed status again after the potential change
-        has_confirmed_after_update = aid_request.location and aid_request.location.status == 'confirmed'
+        # Prepare context for rendering partials
+        locations = aid_request.locations.all().order_by('-created_at')
+
+        context = {
+            'object': aid_request,
+            'aid_request': aid_request,
+            'location': location,
+            'locations': locations,
+            'confirmed': aid_request.location_status == 'confirmed'
+        }
+
+        card_html = render_to_string('aidrequests/partials/_aid_location_card.html', context, request=request)
+        header_html = render_to_string('aidrequests/partials/aid_request_header.html', context, request=request)
 
         return JsonResponse({
             'status': 'success',
             'location_pk': location.pk,
-            'new_status': location.status,
-            'new_status_display': location.get_status_display(),
-            'aid_request_has_confirmed_location': has_confirmed_after_update
+            'card_html': card_html,
+            'header_html': header_html,
         })
 
     except Exception as e:

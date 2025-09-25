@@ -1,29 +1,56 @@
-{% if object.location %}
-<table class="table table-bordered table-data caption-top me-2 border border-3 border-primary">
-    <caption>Location Summary</caption>
-    <tr>
-        <th class="col-auto">Address</th>
-        <td class="col-auto">{{ object.location.free_form_address }}</td>
-    </tr>
-    <tr>
-        <th class="col-auto">Coordinates</th>
-        <td class="col-auto">{{ object.location.latitude }}, {{ object.location.longitude }}</td>
-    </tr>
-    <tr>
-        <th class="col-auto">Source</th>
-        <td class="col-auto">{{ object.location.source }}</td>
-    </tr>
-    <tr>
-        <th class="col-auto">Status</th>
-        <td class="col-auto">{{ object.location.status }}</td>
-    </tr>
-    <tr>
-        <th class="col-auto">Geocode JSON</th>
-        <td class="col-auto">
-            <pre class="bg-light p-2" style="max-height: 200px; overflow-y: auto;"><code>{{ object.location.pretty_geocode_json }}</code></pre>
-        </td>
-    </tr>
-</table>
+{% load bootstrap_icons %}
+{% if location %}
+<div class="location-summary-card" data-location-id="{{ location.pk }}" {% if url_check_map_status %}data-check-map-url="{{ url_check_map_status }}"{% endif %}>
+    <table class="table table-bordered table-data caption-top me-2 border border-3 border-primary">
+        <caption>Location Summary</caption>
+        <tr>
+            <th class="col-auto">Geocoded Address</th>
+            <td class="col-auto">{{ location.free_form_address }}</td>
+        </tr>
+        <tr>
+            <th class="col-auto">Coordinates</th>
+            <td class="col-auto">{{ location.latitude }}, {{ location.longitude }}</td>
+        </tr>
+        <tr>
+            <th class="col-auto">Source</th>
+            <td class="col-auto">{{ location.source }}</td>
+        </tr>
+        <tr>
+            <th class="col-auto">Status</th>
+            <td class="col-auto">{{ location.status }}</td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <div class="d-flex align-items-center">
+                    <strong class="me-2">Geocode JSON</strong>
+                    <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#geocodeJsonCollapse-{{ location.pk }}" aria-expanded="false" aria-controls="geocodeJsonCollapse-{{ location.pk }}">
+                        <span class="text-nowrap">{% bs_icon 'card-text' %} Details</span>
+                    </button>
+                </div>
+                <div class="collapse" id="geocodeJsonCollapse-{{ location.pk }}">
+                    <pre class="bg-light p-2 mt-2"><code>{{ location.pretty_geocode_json }}</code></pre>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <th class="col-auto">Map</th>
+            <td class="col-auto">
+                <div class="static-map-container" id="static-map-container-{{ location.pk }}">
+                    {% if location.map_filename %}
+                        <img src="{{ MEDIA_URL }}maps/{{ location.map_filename }}" alt="Location Map" class="img-fluid">
+                    {% else %}
+                        <div class="text-center p-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 mb-0">Generating map...</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+    </table>
+</div>
 {% else %}
 <div class="alert alert-warning" role="alert">
     No location information available for this aid request.

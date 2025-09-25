@@ -76,9 +76,7 @@
         </div>
     </td>
     <td class="py-1 text-center">
-        {% if aid_request.group_size %}
-            <span style="font-size: {{ aid_request.group_size|hyperbolic_font_size }}; font-weight: bold;">{{ aid_request.group_size }}</span>
-        {% endif %}
+        {% include 'aidrequests/partials/_group_size_display.html' with group_size=aid_request.group_size %}
     </td>
     <td class="py-1 text-center">
         {% with primary_location=aid_request.location %}

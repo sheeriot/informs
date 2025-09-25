@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.views.generic import DetailView
 from django_q.tasks import async_task
 import logging
+from django.db.models import Case, When
 
 from ..models import AidRequest, FieldOp, AidRequestLog
 from ..forms import AidRequestLogForm, RequestStatusForm
@@ -34,6 +35,9 @@ class AidRequestSubmittedView(DetailView):
         # Get the most recent location, which should have been created by the post_save task.
         aid_location = self.object.locations.order_by('-created_at').first()
         context['aid_location'] = aid_location
+        if aid_location:
+            context['url_check_map_status'] = reverse('check_map_status', kwargs={'field_op': self.kwargs['field_op'], 'location_pk': aid_location.pk})
+            context['MEDIA_URL'] = settings.MEDIA_URL
 
         return context
 
@@ -92,7 +96,20 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
 
             context['field_op'] = self.field_op
             context['aid_request'] = self.aid_request
-            context['locations'] = self.aid_request.locations.all().order_by('-created_at')
+
+            # Custom sort order for locations
+            status_order = Case(
+                When(status='confirmed', then=0),
+                When(status='new', then=1),
+                When(status='rejected', then=2),
+                default=3
+            )
+            context['locations'] = self.aid_request.locations.all().order_by(status_order, 'created_at')
+
+            confirmed_status = self.aid_request.location_status == 'confirmed'
+            ic('AidRequestDetailView get_context_data, confirmed status for header:', confirmed_status)
+            context['confirmed'] = confirmed_status
+
             context['logs'] = self.aid_request.logs.all().order_by('-created_at')
             context['add_location_form'] = AidLocationCreateForm(
                 initial={'aid_request': self.aid_request, 'field_op': self.field_op},

@@ -18,19 +18,17 @@
         return new Promise((resolve) => {
             if (locationPickerConfig.debug) console.log(`[LocationPicker] Initializing for map container #${mapContainerId}`);
 
-            // Find the form first, as it's the scope for everything else.
-            const formContainer = document.getElementById('aid-request-form-c');
-            if (!formContainer) {
-                if (locationPickerConfig.debug) console.error(`[LocationPicker] Could not find parent form with ID #aid-request-form-c.`);
-                return;
-            }
-
-            const mapContainer = formContainer.querySelector(`#${mapContainerId}`);
+            const mapContainer = document.getElementById(mapContainerId);
             if (!mapContainer) {
-                if (locationPickerConfig.debug) console.error(`[LocationPicker] Map container #${mapContainerId} not found inside the form.`);
+                if (locationPickerConfig.debug) console.error(`[LocationPicker] Map container #${mapContainerId} not found in the DOM.`);
                 return;
             }
 
+            const formContainer = mapContainer.closest('form');
+            if (!formContainer) {
+                if (locationPickerConfig.debug) console.error(`[LocationPicker] Could not find a parent <form> for the map container #${mapContainerId}.`);
+                return;
+            }
 
             // --- All the logic from initAidRequestLocationPicker goes here ---
             // I will adapt it to read config from the mapContainer's data attributes
@@ -198,7 +196,13 @@
                     if (locationPickerConfig.debug) console.log('[LocationPicker] Received updateMapFromGeocode event:', e.detail);
 
                     requestMarker.setOptions({ position: position, visible: true });
-                    map.setCamera({ center: position, zoom: 12 });
+
+                    if (fieldOpPosition) {
+                        const bounds = atlas.data.BoundingBox.fromPositions([position, fieldOpPosition]);
+                        map.setCamera({ bounds: bounds, padding: 100 });
+                    } else {
+                        map.setCamera({ center: position, zoom: 12 });
+                    }
 
                     // We have the address object, so we can populate the note directly
                     updateFieldValue(latInput, position[1].toFixed(5));
@@ -406,7 +410,7 @@
                 async function reverseGeocode(position, persistentHighlight = false) {
                     const url = `https://atlas.microsoft.com/search/address/reverse/json?api-version=1.0&query=${position[1]},${position[0]}&subscription-key=${subscriptionKey}`;
                     try {
-                        const response = await fetch(url);
+                        const response = await fetchWithLogging(url, {}, 'Reverse Geocode (Map Picker)');
                         const data = await response.json();
                         if (data.addresses && data.addresses.length > 0) {
                             const addr = data.addresses[0].address;

@@ -54,6 +54,7 @@ def staticmap_aid(width=600, height=400,
     try:
         # Pass the list of tuples directly to httpx to handle encoding.
         # This avoids double-encoding issues.
+        ic("[API Call] Calling Azure Maps Static API for Aid Request...")
         response = httpx.get(url, params=params)
         ic("Final URL:", response.url)
         response.raise_for_status()
@@ -116,6 +117,7 @@ def staticmap_fieldop(width=600, height=400, latitude=0.0, longitude=0.0, zoom=1
         'height': height
     }
     try:
+        ic("[API Call] Calling Azure Maps Static API for FieldOp...")
         response = httpx.get(url, params=params)
         ic("Static map request params:", params)
     except Exception as e:

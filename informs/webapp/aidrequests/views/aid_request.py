@@ -114,10 +114,11 @@ class AidRequestCreateView(CreateView):
         location_source = form.cleaned_data.get('location_source')
         location_freeform_address = form.cleaned_data.get('location_freeform_address')
 
+        geocode_json_str = form.cleaned_data.get('geocode_json')
         geocode_json = None
-        if location_note:
+        if geocode_json_str:
             try:
-                geocode_json = json.loads(location_note)
+                geocode_json = json.loads(geocode_json_str)
             except json.JSONDecodeError:
                 geocode_json = None
 

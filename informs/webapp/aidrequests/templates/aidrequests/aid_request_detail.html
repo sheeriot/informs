@@ -5,7 +5,7 @@
 {% load custom_tags %}
 
 {% block title %}
-Aid Request {{ aid_request.pk }} for {{ field_op.name }}
+Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
 {% endblock %}
 
 {% block content %}
@@ -25,14 +25,16 @@ Aid Request {{ aid_request.pk }} for {{ field_op.name }}
     >
 </div>
 <div class="container-fluid">
+    <div id="aid-request-header-container">
     {% include 'aidrequests/partials/aid_request_header.html' %}
+    </div>
     <hr class="m-0" />
     <div class="row m-0 p-0">
         {# Left Column #}
         <div class="col-md-8 m-0 p-1">
             {% include 'aidrequests/includes/aid_request_summary.html' %}
 
-            <div class="card m-0 p-0">
+            <div class="card mb-1">
                 <div class="card-header m-0 p-1">
                     <h5 class="mb-0">Request Details</h5>
                 </div>
@@ -110,30 +112,8 @@ Aid Request {{ aid_request.pk }} for {{ field_op.name }}
 <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
 <script src="{% static 'js/location-picker-map.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/tak-alert.js' %}?v={{ static_version }}"></script>
-<script src="{% static 'js/aidrequests-detail.js' %}?v={{ static_version }}"></script>
+<script src="{% static 'js/aidrequest-cot.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/aidrequest-update-actions.js' %}?v={{ static_version }}"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(function() {
-            if (window.initializeModalMap) {
-                window.initializeModalMap();
-            }
-        }, 200);
-    });
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const addLocationModal = document.getElementById('addLocationModal');
-    if (addLocationModal) {
-        addLocationModal.addEventListener('shown.bs.modal', function () {
-            if (window.initializeLocationPicker) {
-                // A slight delay to ensure the modal is fully rendered before map initialization
-                setTimeout(() => {
-                    window.initializeLocationPicker('add-location-map');
-                }, 150);
-            }
-        });
-    }
-});
-</script>
+<script src="{% static 'js/aidrequest-add-location.js' %}?v={{ static_version }}"></script>
+<script src="{% static 'js/aidrequest-map-poller.js' %}?v={{ static_version }}"></script>
 {% endblock extra_js %}

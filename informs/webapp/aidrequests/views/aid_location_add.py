@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 from django.conf import settings
-# from icecream import ic
+from icecream import ic
 import os
 
 from ..models import AidRequest, AidLocation, FieldOp
@@ -23,23 +23,49 @@ def add_location(request, field_op, pk):
     if request.method == 'POST':
         form = AidLocationCreateForm(request.POST, field_op_obj=field_op_obj)
         if form.is_valid():
+            ic(form.cleaned_data)
             location = form.save(commit=False)
             location.aid_request = aid_request
+
+            # Populate missing fields
+            street = form.cleaned_data.get('street_address', '')
+            city = form.cleaned_data.get('city', '')
+            state = form.cleaned_data.get('state', '')
+            # Join only non-empty parts with a comma and a space
+            location.address_searched = ", ".join(filter(None, [street, city, state]))
+
+            location.created_by = request.user
+            location.updated_by = request.user
+
             location.save()
+
+            # After saving the new location, we need to refresh the aid_request
+            # object so that its properties (like `location_status`) are up-to-date
+            # when rendering the new card template.
+            aid_request.refresh_from_db()
 
             create_static_map(location)
 
+            context = {'aid_request': aid_request, 'location': location, 'object': aid_request, 'confirmed': aid_request.location_status == 'confirmed'}
+
             new_location_html = render_to_string(
                 'aidrequests/partials/_aid_location_card.html',
-                {'aid_request': aid_request, 'location': location},
+                context,
+                request=request
+            )
+            header_html = render_to_string(
+                'aidrequests/partials/aid_request_header.html',
+                context,
                 request=request
             )
             return JsonResponse({
                 'success': True,
                 'location_pk': location.pk,
-                'new_location_html': new_location_html
+                'new_location_html': new_location_html,
+                'header_html': header_html
             })
         else:
+            ic(form.errors)
             return JsonResponse({'success': False, 'errors': form.errors.as_json()}, status=400)
 
     # If not POST, we shouldn't be here. Redirect or raise an error.
@@ -107,6 +133,21 @@ def delete_aid_location(request, field_op, location_pk):
     try:
         location_id = location.pk
         location.delete()
-        return JsonResponse({'status': 'success', 'message': f'Location {location_id} deleted successfully.'})
+
+        aid_request.refresh_from_db()
+        locations = aid_request.locations.all()
+        context = {
+            'object': aid_request,
+            'aid_request': aid_request,
+            'locations': locations,
+            'confirmed': aid_request.location_status == 'confirmed'
+        }
+        header_html = render_to_string('aidrequests/partials/aid_request_header.html', context, request=request)
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Location {location_id} deleted successfully.',
+            'header_html': header_html
+        })
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

@@ -292,7 +292,10 @@ class AidRequestCreateFormC(forms.ModelForm):
                         ),
                         Div(
                             Row(
-                                Column(HTML('<label for="id_location_freeform_address" class="form-label h6 mb-0">Geocoded Address</label>'), css_class="col-auto"),
+                                Column(
+                                    HTML('<label for="id_location_freeform_address" class="form-label h6 mb-0">Geocoded Address</label><span id="geocode-spinner" class="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status" aria-hidden="true"></span>'),
+                                    css_class="col-auto"
+                                ),
                                 Column(
                                     HTML("""
                                         {% if request.user.is_authenticated %}
@@ -425,7 +428,6 @@ class AidRequestCreateFormC(forms.ModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        ic("Cleaned form data:", self.cleaned_data)
 
         # Manually assign cleaned data to the instance
         instance.requester_first_name = self.cleaned_data.get('requester_first_name', '')
@@ -443,36 +445,23 @@ class AidRequestCreateFormC(forms.ModelForm):
             instance.save()
 
             # After saving the AidRequest, create the AidLocation if location data exists
-            if self.cleaned_data.get('latitude') and self.cleaned_data.get('longitude'):
-
-                geocode_json_str = self.cleaned_data.get('geocode_json')
-                ic("Raw geocode_json from form:", geocode_json_str)
-
-                parsed_geocode_json = None
-                if geocode_json_str:
-                    try:
-                        parsed_geocode_json = json.loads(geocode_json_str)
-                        ic("Successfully parsed geocode_json.")
-                    except json.JSONDecodeError:
-                        ic("ERROR: Could not decode geocode_json string.")
-                        # Saving null seems safest.
-                        parsed_geocode_json = None
-                else:
-                    ic("geocode_json string is empty or None.")
-
-
-                location = AidLocation.objects.create(
-                    aid_request=instance,
-                    latitude=self.cleaned_data.get('latitude'),
-                    longitude=self.cleaned_data.get('longitude'),
-                    status='new', # Default status for a new location
-                    source=self.cleaned_data.get('location_source', 'user_picked'),
-                    note=self.cleaned_data.get('location_note'),
-                    free_form_address=self.cleaned_data.get('location_freeform_address'),
-                    geocode_json=parsed_geocode_json
-                )
-                ic("Created AidLocation object:", location)
-                ic("Saved geocode_json:", location.geocode_json)
+            # This logic is now handled in the AidRequestCreateView.form_valid method to
+            # avoid creating duplicate AidLocation objects. One 'confirmed' location is
+            # created there, which is the desired behavior.
+            #
+            # if self.cleaned_data.get('latitude') and self.cleaned_data.get('longitude'):
+            #     ic("Creating 'new' AidLocation from form's save method")
+            #     location = AidLocation.objects.create(
+            #         aid_request=instance,
+            #         latitude=self.cleaned_data.get('latitude'),
+            #         longitude=self.cleaned_data.get('longitude'),
+            #         status='new', # Default status for a new location
+            #         source=self.cleaned_data.get('location_source', 'user_picked'),
+            #         note=self.cleaned_data.get('location_note'),
+            #         free_form_address=self.cleaned_data.get('location_freeform_address'),
+            #         geocode_json=self.cleaned_data.get('geocode_json')
+            #     )
+            #     ic("Created AidLocation object:", location)
 
         return instance
 

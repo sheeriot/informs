@@ -11,6 +11,7 @@ from django_q.tasks import async_task
 from geopy.distance import geodesic
 from django_countries.fields import CountryField
 import json
+from icecream import ic
 
 from .timestamped_model import TimeStampedModel
 from takserver.models import TakServer
@@ -159,7 +160,7 @@ class AidRequest(TimeStampedModel):
     requester_last_name = models.CharField(max_length=30, blank=True)
 
     @property
-    def requester_name(self):
+    def requester_full_name(self):
         return f"{self.requester_first_name} {self.requester_last_name}".strip()
 
     requester_email = models.EmailField(blank=True)
@@ -180,37 +181,37 @@ class AidRequest(TimeStampedModel):
     @property
     def location_status(self):
         """
-        Calculates the primary location status from prefetched locations.
-        This avoids N+1 queries by operating on the prefetched `locations` queryset.
+        Calculates the primary location status using efficient database queries.
         Order of precedence: 'confirmed', then 'new'.
         """
-        all_locs = self.locations.all()
-        has_confirmed = any(loc.status == 'confirmed' for loc in all_locs)
-        if has_confirmed:
+        ic('Checking location_status for AidRequest:', self.pk)
+        is_confirmed = self.locations.filter(status='confirmed').exists()
+        ic(f"AidRequest #{self.pk}: any confirmed? ->", is_confirmed)
+        if is_confirmed:
             return 'confirmed'
 
-        has_new = any(loc.status == 'new' for loc in all_locs)
-        if has_new:
+        is_new = self.locations.filter(status='new').exists()
+        ic(f"AidRequest #{self.pk}: any new? ->", is_new)
+        if is_new:
             return 'new'
 
+        ic(f"AidRequest #{self.pk}: returning None")
         return None
 
     @property
     def location(self):
         """
-        Finds the primary location object from prefetched locations.
-        This avoids N+1 queries by operating on the prefetched `locations` queryset.
+        Finds the primary location object using an ordered database query to ensure
+        the oldest of the highest-precedence locations is returned.
         Order of precedence: 'confirmed', then 'new'.
         """
-        all_locs = list(self.locations.all())
+        confirmed_loc = self.locations.filter(status='confirmed').order_by('created_at').first()
+        if confirmed_loc:
+            return confirmed_loc
 
-        for loc in all_locs:
-            if loc.status == 'confirmed':
-                return loc
-
-        for loc in all_locs:
-            if loc.status == 'new':
-                return loc
+        new_loc = self.locations.filter(status='new').order_by('created_at').first()
+        if new_loc:
+            return new_loc
 
         return None
 
@@ -334,7 +335,7 @@ class AidRequest(TimeStampedModel):
             'aid_type': aid_type_data,
             'location': location_data,
             'address': {'full': self.full_address},
-            'requester_name': self.requester_name,
+            'requester_name': self.requester_full_name,
         }
 
     class Meta:
@@ -386,6 +387,7 @@ class AidLocation(TimeStampedModel):
     SOURCE_CHOICES = [
         ('manual', 'Manual'),
         ('azure_maps', 'Azure Maps'),
+        ('address_provided', 'Address Provided'),
         ('other', 'Other'),
         ('user_picked', 'User Picked'),
     ]

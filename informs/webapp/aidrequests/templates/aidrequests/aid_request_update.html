@@ -250,19 +250,6 @@
 <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
 <script src="{% static 'js/location-picker-map.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/aidrequest-update-actions.js' %}?v={{ static_version }}"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const addLocationModal = document.getElementById('addLocationModal');
-    if (addLocationModal) {
-        addLocationModal.addEventListener('shown.bs.modal', function () {
-            if (window.initializeLocationPicker) {
-                // A slight delay to ensure the modal is fully rendered before map initialization
-                setTimeout(() => {
-                    window.initializeLocationPicker('add-location-map');
-                }, 150);
-            }
-        });
-    }
-});
-</script>
+<script src="{% static 'js/aidrequest-add-location.js' %}?v={{ static_version }}"></script>
+<script src="{% static 'js/aidrequest-map-poller.js' %}?v={{ static_version }}"></script>
 {% endblock %}
