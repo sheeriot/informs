@@ -11,6 +11,11 @@ Aid Request for {{ object.field_op.name }}
 {% endblock %}
 
 {% block content %}
+<div id="aid-request-config"
+    data-location-id="{% if aid_location %}{{ aid_location.pk }}{% endif %}"
+    data-url-check-map-status="{% if aid_location %}{{ url_check_map_status }}{% endif %}"
+    >
+</div>
 <div class="container m-4">
     <div class="alert alert-success" role="alert">
         <h4 class="alert-heading">Thank you for your submission!</h4>
@@ -113,7 +118,7 @@ Aid Request for {{ object.field_op.name }}
 {% endblock content %}
 
 {% block extra_js %}
-    <script type="text/javascript" src="{% static 'js/aidrequest-submitted-poller.js' %}?v={{ static_version }}"></script>
+    <script type="text/javascript" src="{% static 'js/map-poller.js' %}?v={{ static_version }}"></script>
     <script>
         sessionStorage.setItem('informsFormCSubmitted', 'true');
         sessionStorage.setItem('informsFormLastSubmittedPk', '{{ object.pk }}');

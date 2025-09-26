@@ -35,17 +35,8 @@
         <tr>
             <th class="col-auto">Map</th>
             <td class="col-auto">
-                <div class="static-map-container" id="static-map-container-{{ location.pk }}">
-                    {% if location.map_filename %}
-                        <img src="{{ MEDIA_URL }}maps/{{ location.map_filename }}" alt="Location Map" class="img-fluid">
-                    {% else %}
-                        <div class="text-center p-3">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <p class="mt-2 mb-0">Generating map...</p>
-                        </div>
-                    {% endif %}
+                <div id="map-area-{{ location.pk }}">
+                    {% include 'aidrequests/partials/_location_map_area.html' %}
                 </div>
             </td>
         </tr>

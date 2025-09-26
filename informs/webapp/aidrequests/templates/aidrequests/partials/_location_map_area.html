@@ -5,18 +5,12 @@
         <img src="{{ MEDIA_URL }}maps/{{ location.map_filename }}" alt="Map of location {{ location.pk }}" class="img-fluid rounded" style="cursor: pointer;">
     </a>
 {% else %}
-    {% if location.status == 'new' %}
     <div class="text-center text-muted p-3">
         <div class="spinner-border spinner-border-sm text-primary" role="status">
             <span class="visually-hidden">Loading...</span>
         </div>
-        <small class="ms-2">Polling for Map...</small>
+        <small class="ms-2">Loading map...</small>
     </div>
-    {% else %}
-    <div class="text-center text-muted p-3">
-        <small>Map not available</small>
-    </div>
-    {% endif %}
 {% endif %}
 
 <div id="map-spinner-{{ location.pk }}" class="spinner-overlay d-none">

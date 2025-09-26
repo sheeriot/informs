@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const aidRequestConfig = {
         debug: true,
+        aidRequestId: configElement.dataset.aidRequestId,
         csrfToken: configElement.dataset.csrfToken,
         urls: {
             checkMapStatus: configElement.dataset.urlCheckMapStatus
@@ -175,8 +176,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         headerContainer.innerHTML = data.header_html;
                     }
                 }
-                if (data.location_pk && window.pollForMap) {
-                    window.pollForMap(data.location_pk);
+                if (data.location_pk && window.pollForMapCard) {
+                    const newCard = document.getElementById(`ar${aidRequestConfig.aidRequestId}-al${data.location_pk}-loc`);
+                    if (newCard) {
+                        window.pollForMapCard(newCard, aidRequestConfig.urls.checkMapStatus);
+                    }
                 }
             } else {
                 console.error('[AddLocation] Form submission failed:', data.errors);

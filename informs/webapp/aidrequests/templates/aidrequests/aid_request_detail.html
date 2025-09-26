@@ -116,5 +116,5 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
 <script src="{% static 'js/aidrequest-cot.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/aidrequest-update-actions.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/aidrequest-add-location.js' %}?v={{ static_version }}"></script>
-<script src="{% static 'js/aidrequest-map-poller.js' %}?v={{ static_version }}"></script>
+<script type="text/javascript" src="{% static 'js/map-poller.js' %}?v={{ static_version }}"></script>
 {% endblock extra_js %}
