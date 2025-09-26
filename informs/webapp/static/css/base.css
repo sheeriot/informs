@@ -91,3 +91,39 @@ div.aid-coords label {
     display: block;
     font-size: 12px;
 }
+
+/* Hide the spinners on number inputs */
+.form-control-sm[type=number]::-webkit-inner-spin-button,
+.form-control-sm[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.form-control-sm[type=number] {
+    -moz-appearance: textfield;
+}
+
+.nav-banner-link {
+    color: var(--banner-text-color);
+    text-decoration: none;
+}
+
+.nav-banner-link:hover {
+    color: var(--banner-text-color);
+    opacity: 0.8;
+}
+
+.join-text {
+    opacity: 0.5;
+}
+
+.btn-custom-success {
+    background-color: var(--bs-success-bg-subtle);
+    color: var(--bs-success-text-emphasis);
+    border-color: var(--bs-success-bg-subtle);
+}
+
+.btn-custom-success:hover {
+    background-color: #146c43; /* A slightly darker green for hover */
+    color: var(--bs-success-text-emphasis);
+    border-color: #146c43;
+}

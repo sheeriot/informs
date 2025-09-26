@@ -3,42 +3,33 @@
 {% load bootstrap_icons %}
 
 {% block content %}
-<div class="container m-4">
-    <div class="d-flex flex-column justify-content-center align-items-center centerit">
-        <p />
-        <h2 class="d-flex align-items-center">
-            <div class="d-flex justify-content-center align-items-center p-0 me-2">
-                <i class="bi bi-life-preserver text-danger"></i>
-            </div>
-            Welcome to the InForms Tool!
-            <div class="d-flex justify-content-center align-items-center p-0 me-2">
-                <i class="bi bi-person-raised-hand text-success"></i>
-            </div>
-        </h2>
+<div class="container m-4 text-center">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="d-flex align-items-center justify-content-center">
+                <i class="bi bi-life-preserver text-danger me-2"></i>
+                Welcome to the InForms Tool!
+                <i class="bi bi-person-raised-hand text-success ms-2"></i>
+            </h2>
+        </div>
     </div>
     {% if user.is_authenticated %}
     <hr>
     <p>Please report defects and enhancement requests to Kris Thompson.</p>
     <hr>
-
-    <p />
-    <p />
     <div class="row">
-        <div class="col-sm-8 mx-auto d-flex justify-content-center">
+        <div class="col-12 d-flex justify-content-center">
             <p>
                 <a href="{{ org_url }}" target="_blank" rel="noopener noreferrer">{{ org_url_text }}</a>
-            </p
+            </p>
         </div>
     </div>
-
     {% else %}
     <hr>
-    <p />
-    <p />
-        <div class="d-flex justify-content-center">
-            <img src="{% static 'images/form-inputs-1024x512.png.webp' %}" height="400px" />
+    <div class="row">
+        <div class="col-12 d-flex justify-content-center">
+            <img src="{% static 'images/form-inputs-1024x512.png.webp' %}" class="img-fluid" style="max-height: 400px;" />
         </div>
-
     </div>
     {% endif %}
 </div>

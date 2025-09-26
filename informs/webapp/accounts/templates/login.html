@@ -1,29 +1,47 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container m-4">
-    <h1>Login</h1>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header text-center">
+                    <h1>Login</h1>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        <div class="alert alert-danger" role="alert">
+                            {% for message in messages %}
+                                {{ message }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
 
-    {% if error %}
-    {{error}}
-    {% endif %}
-
-    <form method="post" action="{% url 'login' %}?next={{ next }}">
-    {% csrf_token %}
-
-    Username:
-    <br />
-    <input type="text" name="username" />
-    <br />
-
-    Password
-    <br />
-    <input type="password" name="password" />
-    <br />
-    <br />
-
-    <input class="btn btn-primary" type="submit" value="Login" />
-
-    </form>
+                    <form method="post" action="{% url 'login' %}?next={{ next }}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <div class="d-grid">
+                            <input class="btn btn-primary" type="submit" value="Login" />
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer text-center text-muted">
+                    <p class="mb-1">
+                        <i class="bi bi-life-preserver text-danger"></i>
+                        Welcome to {{ org_url_text }}
+                        <i class="bi bi-person-raised-hand text-success"></i>
+                    </p>
+                    <small><a href="{{ org_url }}" target="_blank" rel="noopener noreferrer">{{ org_url }}</a></small>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

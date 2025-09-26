@@ -1,0 +1,30 @@
+{% if user.is_authenticated %}
+    {# Hiding auth items based on hide_auth_header_items context variable #}
+    {% if not hide_auth_header_items %}
+        <div class="col-1"></div>
+        <div class="col-2 d-flex flex-column align-items-start">
+            <div class="nav-banner-link text-nowrap">
+                <i class="bi bi-person-fill text-success me-1"></i>{{ user.username }}
+            </div>
+            <a class="nav-banner-link text-nowrap" href="javascript:{document.getElementById('logout').submit()}" onclick="">
+                <i class="bi bi-box-arrow-right text-danger me-1"></i>Logout
+            </a>
+            <form id="logout" method="POST" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <input type="hidden" />
+            </form>
+        </div>
+    {% endif %}
+{% else %}
+    {% if request.resolver_match.url_name == 'home' %}
+        <div class="col-4"></div>
+        <div class="col-2 d-flex flex-column align-items-start">
+            <a class="nav-banner-link text-nowrap" href="{% url 'login' %}">
+                <i class="bi bi-box-arrow-in-right text-success me-1"></i>Login
+            </a>
+            <a class="nav-banner-link text-nowrap join-text" href="{% url 'signup'%}">
+                <i class="bi bi-person-plus-fill text-warning me-1"></i>Join</span>
+            </a>
+        </div>
+    {% endif %}
+{% endif %}

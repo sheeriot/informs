@@ -4,12 +4,17 @@ from django.contrib import auth
 from django.contrib.auth.views import LoginView
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.contrib import messages
 
 # import icecream as ic
 
 
 class login(LoginView):
     template_name = 'login.html'
+
+    def form_invalid(self, form):
+        messages.error(self.request, 'Invalid username or password. Please try again.')
+        return super().form_invalid(form)
 
     def get_success_url(self):
         next_url = self.request.GET.get('next')

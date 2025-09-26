@@ -31,15 +31,11 @@
       {% if banner_color %}
       --banner-color: {{ banner_color }};
       {% endif %}
-    }
-    /* Hide the spinners on number inputs */
-    .form-control-sm[type=number]::-webkit-inner-spin-button,
-    .form-control-sm[type=number]::-webkit-outer-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-    }
-    .form-control-sm[type=number] {
-        -moz-appearance: textfield;
+      {% if color_mode == 'dark' %}
+      --banner-text-color: {{ banner_color_light }};
+      {% else %}
+      --banner-text-color: {{ banner_color_dark }};
+      {% endif %}
     }
   </style>
   {% block extra_css %}
@@ -64,105 +60,7 @@
             </h4>
         </div>
 
-        {% if user.is_authenticated %}
-          {# Hiding auth items based on hide_auth_header_items context variable #}
-          {% if not hide_auth_header_items %}
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup"
-            aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-          </button>
-          {% if perms.aidrequests.view_fieldop %}
-            <div class="collapse navbar-collapse col-4" id="navbarNavAltMarkup">
-              <div>
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                  <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {% if navbar_theme == 'navbar-light' %}text-dark{% endif %}" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
-                      aria-expanded="false">
-                      <div class="d-inline-block float-left">Field Ops</div>
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                      <li>
-                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_list' %}'; return false;">
-                          <i class="bi bi-truck"></i> <i class="bi bi-truck"></i>  All Field Ops
-                        </button>
-                      </li>
-                      <li>
-                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_create' %}'; return false;">
-                          <i class="bi bi-plus-circle"></i> New Field Op <i class="bi bi-truck"></i>
-                        </button>
-                      </li>
-                      {% for fieldop in fieldops_active %}
-                        <li>
-                            <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'aid_request_list' field_op=fieldop.slug %}'; return false;">
-                              <i class="bi life-preserver text-danger"></i>  {{ fieldop.name }} - Aid Requests
-                            </button>
-                        </li>
-                      {% endfor %}
-                      <li><hr class="dropdown-divider"></li>
-                      <li class="dropdown-header">Beta...</li>
-                    </ul>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            {% if False %}
-            <div class="collapse navbar-collapse col-4" id="navbarNavAltMarkup2">
-              <div>
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                  <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
-                      aria-expanded="false">
-                      <img src="{% static 'images/informs-icon1.webp' %}" alt="FormsIcon" height="60px" width="60px">
-                      <div class="d-inline-block float-left">Inactive Menu</div>
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                      <ul>Next Menu</ul>
-                      <!-- <li><hr class="dropdown-divider"></li>
-                      <li class="dropdown-header">Beta...</li>
-                      <li>
-                        None
-                      </li> -->
-                    </ul>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            {% endif %}
-          {% endif %}
-          <div class="col-1"></div>
-          <div class="col-2">
-            <div class="nav-item nav-link d-flex align-items-center" aria-current="page">
-              <i class="bi bi-person-fill text-success"></i>
-              {{ user.username }}
-            </div>
-            <a class="nav-item nav-link d-flex align-items-center"
-              href="javascript:{document.getElementById('logout').submit()}" onclick="">
-              <i class="bi bi-box-arrow-right text-danger"></i>
-              Logout
-            </a>
-            <form id="logout" method="POST" action="{% url 'logout' %}">
-              {% csrf_token %}
-              <input type="hidden" />
-            </form>
-            </div>
-          </div>
-          {% endif %}
-        {% else %}
-          {% if request.resolver_match.url_name == 'home' %}
-            <div class="col-4"></div>
-            <div class="col-2">
-              <a class="nav-item nav-link link-secondary d-flex align-items-center" href="{% url 'login' %}">
-                <i class="bi bi-box-arrow-in-right text-success"></i>
-                Login
-              </a>
-              <a class="nav-item nav-link link-secondary d-flex align-items-center" aria-current="page"
-                href="{% url 'signup'%}">
-                <i class="bi bi-person-plus-fill text-white"></i>
-                Join
-              </a>
-            </div>
-          {% endif %}
-        {% endif %}
+        {% include 'partials/_login_logout_partial.html' %}
       </div>
     </nav>
   </header>
