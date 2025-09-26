@@ -16,11 +16,11 @@
     </td>
     <td>
         <div class="d-flex flex-column">
-            <a href="{% url 'aid_request_list' field_op=field_op.slug status_group='active' %}" class="text-decoration-none d-flex align-items-center">
+            <a href="{% url 'aid_request_list_by_status' field_op=field_op.slug status_group='active' %}" class="text-decoration-none d-flex align-items-center">
                 <i class="bi bi-life-preserver text-danger me-2"></i>
                 <span>{{ field_op.aidrequests_active_count }}</span>
             </a>
-            <a href="{% url 'aid_request_list' field_op=field_op.slug status_group='inactive' %}" class="text-decoration-none d-flex align-items-center">
+            <a href="{% url 'aid_request_list_by_status' field_op=field_op.slug status_group='inactive' %}" class="text-decoration-none d-flex align-items-center">
                 <i class="bi bi-life-preserver text-success me-2"></i>
                 <span>{{ field_op.aidrequests_inactive_count }}</span>
             </a>

@@ -60,6 +60,51 @@
             </h4>
         </div>
 
+        {% if user.is_authenticated %}
+          {# Hiding auth items based on hide_auth_header_items context variable #}
+          {% if not hide_auth_header_items %}
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup"
+            aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          {% if perms.aidrequests.view_fieldop %}
+            <div class="collapse navbar-collapse col-4" id="navbarNavAltMarkup">
+              <div>
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                  <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {% if navbar_theme == 'navbar-light' %}text-dark{% endif %}" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
+                      aria-expanded="false">
+                      <div class="d-inline-block float-left">Field Ops</div>
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                      <li>
+                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_list' %}'; return false;">
+                          <i class="bi bi-truck"></i> <i class="bi bi-truck"></i>  All Field Ops
+                        </button>
+                      </li>
+                      <li>
+                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_create' %}'; return false;">
+                          <i class="bi bi-plus-circle"></i> New Field Op <i class="bi bi-truck"></i>
+                        </button>
+                      </li>
+                      {% for fieldop in fieldops_active %}
+                        <li>
+                            <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'aid_request_list' field_op=fieldop.slug %}'; return false;">
+                              <i class="bi life-preserver text-danger"></i>  {{ fieldop.name }} - Aid Requests
+                            </button>
+                        </li>
+                      {% endfor %}
+                      <li><hr class="dropdown-divider"></li>
+                      <li class="dropdown-header">Beta...</li>
+                    </ul>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          {% endif %}
+          {% endif %}
+        {% endif %}
+
         {% include 'partials/_login_logout_partial.html' %}
       </div>
     </nav>
