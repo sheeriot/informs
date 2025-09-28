@@ -146,26 +146,6 @@ class RequesterInformationForm(forms.ModelForm):
         return cleaned_data
 
 
-class AidContactInformationForm(forms.ModelForm):
-    class Meta:
-        model = AidRequest
-        fields = ['aid_first_name', 'aid_last_name', 'aid_phone', 'aid_email', 'use_whatsapp_aid']
-        labels = {
-            'use_whatsapp_aid': 'Aid phone can be contacted via WhatsApp'
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.layout = Layout(
-            'aid_first_name',
-            'aid_last_name',
-            'aid_phone',
-            'aid_email',
-            Field('use_whatsapp_aid', css_class="custom-checkbox-column"),
-        )
-
-
 class LocationInformationForm(forms.ModelForm):
     latitude = forms.DecimalField(max_digits=9, decimal_places=6, required=False, widget=forms.HiddenInput())
     longitude = forms.DecimalField(max_digits=9, decimal_places=6, required=False, widget=forms.HiddenInput())

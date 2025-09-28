@@ -83,29 +83,14 @@ def email_creator_html(aid_request, aid_location, notify, map_file):
     <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: auto;">
         <caption style="text-align: left;"><strong>Contact Information</strong></caption>
         <tr>
-            <th style="font-weight: normal;">Requestor Name</th>
-            <th style="font-weight: normal;">Requestor Phone</th>
-            <th style="font-weight: normal;">Requestor Email</th>
+            <th style="font-weight: normal;">requester Name</th>
+            <th style="font-weight: normal;">requester Phone</th>
+            <th style="font-weight: normal;">requester Email</th>
         </tr>
         <tr>
             <td style="font-weight: bold;">{aid_request.requester_first_name} {aid_request.requester_last_name}</td>
             <td style="font-weight: bold;">{aid_request.requester_phone}</td>
             <td style="font-weight: bold;">{aid_request.requester_email}</td>
-        </tr>
-        <tr>
-            <th style="font-weight: normal;">Contact Name</th>
-            <th style="font-weight: normal;">Contact Phone</th>
-            <th style="font-weight: normal;">Contact Email</th>
-        </tr>
-        <tr>
-            <td style="font-weight: bold;">{aid_request.aid_first_name} {aid_request.aid_last_name}</td>
-            <td style="font-weight: bold;">{aid_request.aid_phone}</td>
-            <td style="font-weight: bold;">{aid_request.aid_email}</td>
-        </tr>
-        <tr>
-            <td colspan="3"><div style="font-weight: normal;">Methods:</div>
-                {aid_request.contact_methods}
-            </td>
         </tr>
     </table>
     """

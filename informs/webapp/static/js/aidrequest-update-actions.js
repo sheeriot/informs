@@ -1,5 +1,5 @@
 const aidRequestUpdateConfig = {
-    debug: true // Set to true for console logging
+    debug: false // Set to true for console logging
 };
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -452,44 +452,90 @@ document.addEventListener('DOMContentLoaded', function () {
     // Handle Change Aid Type form submission
     const changeAidTypeForm = document.getElementById('change-aid-type-form');
     if (changeAidTypeForm) {
+        const alertContainer = document.getElementById('change-aid-type-alert');
+
+        function showModalAlert(message, type = 'danger') {
+            if (alertContainer) {
+                alertContainer.innerHTML = `
+                    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `;
+            }
+            if (aidRequestUpdateConfig.debug) console.log(`Modal Alert (${type}): ${message}`);
+        }
+
         changeAidTypeForm.addEventListener('submit', function(event) {
             event.preventDefault();
 
             const confirmationInput = document.getElementById('confirmation-text');
-            const requestorName = document.getElementById('requestor-name-confirm').textContent.trim();
-            const alertContainer = document.getElementById('change-aid-type-alert');
+            const requesterNameElem = document.getElementById('requester-name-confirm');
 
-            if (confirmationInput.value.trim() !== requestorName) {
-                showActionAlert('Confirmation text does not match. Please type the requestor\'s full name exactly.', 'danger');
+            if (!requesterNameElem) {
+                if (aidRequestUpdateConfig.debug) console.error('Could not find requester name element #requester-name-confirm');
+                showModalAlert('A page error occurred. Could not verify confirmation name.');
+                return;
+            }
+
+            // Trim quotes and whitespace for comparison
+            const requesterName = requesterNameElem.textContent.trim();
+            if (aidRequestUpdateConfig.debug) {
+                console.log(`Confirmation check:
+                  Input: "${confirmationInput.value.trim()}"
+                  Expected: "${requesterName}"`);
+            }
+
+            if (confirmationInput.value.trim() !== requesterName) {
+                showModalAlert('Confirmation text does not match. Please type the requester\'s full name exactly as shown.');
                 return;
             }
 
             const formData = new FormData(changeAidTypeForm);
             const url = changeAidTypeForm.action;
 
+            if (aidRequestUpdateConfig.debug) {
+                console.log('Submitting change aid type form to URL:', url);
+            }
+
             fetch(url, {
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                 if (!response.ok) {
+                    // Try to get JSON error, but fallback to status text
+                    return response.json().catch(() => {
+                        throw new Error(`Server responded with status: ${response.status} ${response.statusText}`);
+                    }).then(err => {
+                        throw new Error(err.message || 'An unknown server error occurred.');
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
+                 if (aidRequestUpdateConfig.debug) console.log('Received response:', data);
                 if (data.status === 'success') {
+                    // Use the global alert for success messages after the modal closes
                     showActionAlert(data.message, 'success');
                     document.getElementById('aid-type-name-display').textContent = data.new_aid_type_name;
                     const modal = bootstrap.Modal.getInstance(document.getElementById('changeAidTypeModal'));
-                    modal.hide();
+                    if (modal) {
+                        modal.hide();
+                    }
                     confirmationInput.value = '';
-                    alertContainer.innerHTML = '';
+                    if(alertContainer) alertContainer.innerHTML = '';
                 } else {
-                    showActionAlert(data.message, 'danger');
+                    showModalAlert(data.message || 'Failed to change aid type.');
                 }
             })
             .catch(error => {
-                showActionAlert('An unexpected error occurred. Please try again.', 'danger');
-                console.error('Error:', error);
+                showModalAlert(`An unexpected error occurred: ${error.message}`);
+                console.error('Error changing aid type:', error);
             });
         });
     }

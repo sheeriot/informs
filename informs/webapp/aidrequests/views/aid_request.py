@@ -22,7 +22,6 @@ from ..tasks import aid_request_postsave, send_cot_task
 from ..forms import (
     AidRequestCreateFormA,
     RequesterInformationForm,
-    AidContactInformationForm,
     LocationInformationForm,
     RequestDetailsForm,
     RequestStatusForm,
@@ -206,7 +205,6 @@ class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVi
         context['requester_form'] = RequesterInformationForm(instance=instance)
         context['location_form'] = LocationInformationForm(instance=instance)
         context['details_form'] = RequestDetailsForm(instance=instance)
-        context['aid_contact_form'] = AidContactInformationForm(instance=instance)
         context['status_form'] = RequestStatusForm(instance=instance)
         context['log_form'] = AidRequestLogForm(initial={'aid_request': self.object.pk})
 
@@ -339,7 +337,7 @@ def change_aid_request_type(request, field_op, pk):
             aid_request=aid_request,
             created_by=request.user,
             updated_by=request.user,
-            entry=f"Aid Type changed from '{original_aid_type_name}' to '{new_aid_type.name}' by {request.user.username}."
+            log_entry=f"Aid Type changed from '{original_aid_type_name}' to '{new_aid_type.name}' by {request.user.username}."
         )
 
         return JsonResponse({

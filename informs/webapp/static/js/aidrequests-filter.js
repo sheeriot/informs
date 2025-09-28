@@ -7,7 +7,7 @@
 
 // Configuration and Data Store
 window.aidRequestsStore = {
-    debug: true,  // Set to false in production
+    debug: false,  // Set to false in production
 
     // Status group lookup table - matches Django model's ACTIVE_STATUSES and INACTIVE_STATUSES
     statusGroups: {

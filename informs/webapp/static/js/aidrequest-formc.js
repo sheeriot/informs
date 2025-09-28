@@ -7,7 +7,7 @@ window.addEventListener('pageshow', function(event) {
 });
 
 const aidRequestFormCConfig = {
-    debug: true // Set to false for production
+    debug: false // Set to false for production
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (allStepsValid) {
                     if(aidRequestFormCConfig.debug) {
                         const fullName = form.querySelector('#id_full_name').value;
-                        console.log("[FormC] All steps are valid. Submitting form. Requestor full name:", fullName);
+                        console.log("[FormC] All steps are valid. Submitting form. requester full name:", fullName);
                     }
                     form.querySelector('#submit-button').disabled = true;
                     form.querySelector('#submit-button').innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...';

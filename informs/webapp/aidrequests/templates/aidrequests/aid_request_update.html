@@ -15,8 +15,8 @@
     data-url-check-map-status="{% url 'check_map_status' field_op=object.field_op.slug location_pk=0 %}"
     data-url-add-location="{% url 'add_location' field_op=object.field_op.slug pk=object.pk %}">
 </div>
-<div id="action-alert-container" class="mb-3" style="position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 2000; min-width: 300px;"></div>
-<div class="container mt-4">
+<div id="action-alert-container" class="mb-3 action-alert-container"></div>
+<div class="container mt-1">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="mb-0">
             Update Aid Request <a href="{% url 'aid_request_detail' pk=object.pk field_op=object.field_op.slug %}">#{{ object.pk }}</a>: <span class="fw-normal" id="aid-type-name-display">{{ object.aid_type.name }}</span>
@@ -51,34 +51,6 @@
                                 <div class="col-md-6 mb-3">{{ requester_form.requester_phone|as_crispy_field }}</div>
                                 <div class="col-md-6 mb-3">{{ requester_form.requester_email|as_crispy_field }}</div>
                                 <div class="col-md-12 mb-3 custom-checkbox-column">{{ requester_form.use_whatsapp|as_crispy_field }}</div>
-                            </div>
-                            <div class="d-flex justify-content-end d-none mt-2">
-                                <button type="button" class="btn btn-secondary btn-sm me-2 btn-cancel-edit">Cancel</button>
-                                <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
-                            </div>
-                        </fieldset>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Aid Contact Information -->
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Party in Need Information</h5>
-                    <button type="button" class="btn btn-sm btn-outline-danger btn-edit-section" data-target="#aid-contact-fieldset">
-                        <i class="bi bi-lock-fill"></i>
-                    </button>
-                </div>
-                <div class="card-body">
-                    <form id="aid-contact-form" class="partial-update-form" data-form-name="aid_contact">
-                        {% csrf_token %}
-                        <fieldset id="aid-contact-fieldset" disabled>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">{{ aid_contact_form.aid_first_name|as_crispy_field }}</div>
-                                <div class="col-md-6 mb-3">{{ aid_contact_form.aid_last_name|as_crispy_field }}</div>
-                                <div class="col-md-6 mb-3">{{ aid_contact_form.aid_phone|as_crispy_field }}</div>
-                                <div class="col-md-6 mb-3">{{ aid_contact_form.aid_email|as_crispy_field }}</div>
-                                <div class="col-md-12 mb-3 custom-checkbox-column">{{ aid_contact_form.use_whatsapp_aid|as_crispy_field }}</div>
                             </div>
                             <div class="d-flex justify-content-end d-none mt-2">
                                 <button type="button" class="btn btn-secondary btn-sm me-2 btn-cancel-edit">Cancel</button>
@@ -220,10 +192,10 @@
           <div class="mb-3">
             <label for="confirmation-text" class="form-label">To confirm, type the full name of the requester:</label>
             <div class="ms-3 mb-1">
-                <code id="requester-name-confirm" style="font-size: 1.1rem;">{{ object.requester_name }}</code>
+                <code id="requester-name-confirm" class="confirm-text-fs">{{ object.requester_full_name }}</code>
             </div>
             <div class="input-group">
-                <input type="text" id="confirmation-text" class="form-control" autocomplete="off" placeholder="Type name to confirm">
+                <input type="text" id="confirmation-text" class="form-control" autocomplete="off">
                 <div class="btn-group btn-group-sm ms-2" role="group">
                     <button type="button" class="btn btn-secondary text-nowrap" data-bs-dismiss="modal">
                         <i class="bi bi-x-circle"></i> Cancel

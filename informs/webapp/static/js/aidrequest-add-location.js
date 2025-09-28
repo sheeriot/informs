@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const aidRequestConfig = {
-        debug: true,
+        debug: false,
         aidRequestId: configElement.dataset.aidRequestId,
         csrfToken: configElement.dataset.csrfToken,
         urls: {

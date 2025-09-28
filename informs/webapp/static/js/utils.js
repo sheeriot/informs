@@ -43,7 +43,7 @@ function showActionAlert(message, type = 'warning') {
 }
 
 const apiConfig = {
-    debug: true, // Master debug switch for API calls
+    debug: false, // Master debug switch for API calls
 };
 
 /**
