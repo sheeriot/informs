@@ -515,3 +515,24 @@ textarea:not([disabled]) {
 #changeAidTypeModal .btn-warning.focus {
   box-shadow: 0 0 0 0.2rem rgba(217, 164, 6, 0.5);
 }
+
+/* Styles for disabled Choices.js dropdown to look like plain text */
+.choices.is-disabled {
+    cursor: default;
+}
+
+.choices.is-disabled .choices__inner {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    padding-left: 0 !important;
+}
+
+.choices.is-disabled .choices__arrow,
+.choices.is-disabled .choices__button {
+    display: none;
+}
+
+.choices__inner {
+    background-color: var(--bs-body-bg);
+    border: 1px solid #dee2e6;
+}

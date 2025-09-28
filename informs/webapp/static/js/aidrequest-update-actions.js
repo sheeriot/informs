@@ -361,6 +361,44 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (actionButtons) {
                     actionButtons.classList.toggle('d-none', !isCurrentlyLocked);
                 }
+
+                const countryDisplayWrapper = fieldset.querySelector('#country-display-wrapper');
+                const countryInputWrapper = fieldset.querySelector('#country-input-wrapper');
+                const countryDropdown = fieldset.querySelector('#id_country');
+
+                if (countryDropdown) {
+                    if (isCurrentlyLocked) {
+                        // Switch to input mode
+                        if (countryDisplayWrapper) countryDisplayWrapper.classList.add('d-none');
+                        if (countryInputWrapper) countryInputWrapper.classList.remove('d-none');
+
+                        // Initialize Choices.js
+                        if (!countryDropdown.choices) {
+                            const initialCountryValue = countryDropdown.value;
+                            const choices = new Choices(countryDropdown, { removeItemButton: true });
+                            countryDropdown.choices = choices;
+
+                            // Add listener to handle 'remove' button click
+                            countryDropdown.addEventListener('change', function() {
+                                if (!countryDropdown.value) {
+                                    countryDropdown.choices.setValue([initialCountryValue]);
+                                }
+                            });
+                        }
+                        countryDropdown.choices.enable();
+
+                    } else {
+                        // Switch back to display mode
+                        if (countryDisplayWrapper) countryDisplayWrapper.classList.remove('d-none');
+                        if (countryInputWrapper) countryInputWrapper.classList.add('d-none');
+
+                        // Destroy Choices.js instance
+                        if (countryDropdown.choices) {
+                            countryDropdown.choices.destroy();
+                            countryDropdown.choices = null;
+                        }
+                    }
+                }
             } else {
                  if (aidRequestUpdateConfig.debug) console.error(`Fieldset not found for selector: ${button.dataset.target}`);
             }
@@ -382,6 +420,18 @@ document.addEventListener('DOMContentLoaded', function () {
             editButton.classList.add('btn-outline-danger');
             editButton.classList.remove('btn-outline-success');
             button.closest('.d-flex').classList.add('d-none');
+
+            const countryDropdown = fieldset.querySelector('#id_country');
+            if (countryDropdown && countryDropdown.choices) {
+                countryDropdown.choices.destroy();
+                countryDropdown.choices = null;
+            }
+
+            const countryDisplayWrapper = fieldset.querySelector('#country-display-wrapper');
+            const countryInputWrapper = fieldset.querySelector('#country-input-wrapper');
+            if (countryDisplayWrapper) countryDisplayWrapper.classList.remove('d-none');
+            if (countryInputWrapper) countryInputWrapper.classList.add('d-none');
+
         });
     });
 
@@ -428,6 +478,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 editButton.classList.add('btn-outline-danger');
                 editButton.classList.remove('btn-outline-success');
                 form.querySelector('.d-flex.justify-content-end').classList.add('d-none');
+
+                const countryDropdown = fieldset.querySelector('#id_country');
+                if (countryDropdown && countryDropdown.choices) {
+                    const countryDisplayText = document.getElementById('country-display-text');
+                    if (countryDisplayText) {
+                        countryDisplayText.textContent = countryDropdown.choices.getValue(true);
+                    }
+                    countryDropdown.choices.destroy();
+                    countryDropdown.choices = null;
+                }
+                const countryDisplayWrapper = fieldset.querySelector('#country-display-wrapper');
+                const countryInputWrapper = fieldset.querySelector('#country-input-wrapper');
+                if (countryDisplayWrapper) countryDisplayWrapper.classList.remove('d-none');
+                if (countryInputWrapper) countryInputWrapper.classList.add('d-none');
+
             } else {
                 // If there are form-specific errors, display them
                 if (data.errors) {

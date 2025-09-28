@@ -13,6 +13,7 @@ from django.contrib import admin
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.template.loader import render_to_string
+from django_countries import countries
 
 from ..models import AidRequest, AidRequestLog, FieldOp, AidLocation
 from ..context_processors import get_field_op_for_form
@@ -149,6 +150,10 @@ class RequesterInformationForm(forms.ModelForm):
 class LocationInformationForm(forms.ModelForm):
     latitude = forms.DecimalField(max_digits=9, decimal_places=6, required=False, widget=forms.HiddenInput())
     longitude = forms.DecimalField(max_digits=9, decimal_places=6, required=False, widget=forms.HiddenInput())
+    country = forms.ChoiceField(
+        choices=[('', '---------')] + [(code, f"{name} ({code})") for code, name in list(countries)],
+        required=False
+    )
 
     class Meta:
         model = AidRequest

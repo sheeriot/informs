@@ -2,23 +2,18 @@ import json
 from django.shortcuts import get_object_or_404, render
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.urls import reverse_lazy, reverse
-from django.views.generic import CreateView, UpdateView, DetailView, DeleteView, ListView
+from django.views.generic import CreateView, UpdateView
 from django.conf import settings
 from django.http import Http404, HttpResponseRedirect, JsonResponse
-from django.template import Template
-from django.template.context import Context
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import user_passes_test
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
 
-from django_q.tasks import async_chain, async_task
+from django_q.tasks import async_task
 
-from geopy.distance import geodesic
 from icecream import ic
 
 from ..models import AidRequest, FieldOp, AidRequestLog, AidLocation, AidType
-from ..tasks import aid_request_postsave, send_cot_task
+from ..tasks import aid_request_postsave
 from ..forms import (
     AidRequestCreateFormA,
     RequesterInformationForm,
@@ -31,8 +26,6 @@ from .aid_request_forms_b import AidRequestCreateFormB
 from .aid_request_forms_c import AidRequestCreateFormC
 from .aid_location_forms import AidLocationCreateForm
 from ..context_processors import get_field_op_from_kwargs
-from ..geocoder import get_azure_geocode
-from meta.views import Meta
 
 
 # Create View for AidRequest
@@ -73,26 +66,16 @@ class AidRequestCreateView(CreateView):
         context['fieldop_slug'] = self.fieldop_slug
         context['azure_maps_key'] = settings.AZURE_MAPS_KEY
         context['hide_auth_header_items'] = True
-        if self.object is None:
-            context['New'] = True
-        else:
-            context['New'] = False
+        context['New'] = self.object is None
         return context
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['request'] = self.request
-        kwargs['initial'] = {
-            'field_op': self.field_op.pk,
-            'fieldop_slug': self.fieldop_slug
-        }
+        kwargs.setdefault('initial', {})
+        kwargs['initial']['field_op'] = self.field_op.pk
+        kwargs['initial']['fieldop_slug'] = self.fieldop_slug
         return kwargs
-
-    def get_initial(self):
-        initial = super().get_initial()
-        initial['field_op'] = self.field_op.pk
-        initial['fieldop_slug'] = self.fieldop_slug
-        return initial
 
     def form_valid(self, form):
         self.object = form.save(commit=False)
@@ -101,6 +84,8 @@ class AidRequestCreateView(CreateView):
         if self.request.user.is_authenticated:
             self.object.requester_first_name = self.request.user.first_name
             self.object.requester_last_name = self.request.user.last_name
+            self.object.created_by = self.request.user
+            self.object.updated_by = self.request.user
         else:
             self.object.created_by = None
             self.object.updated_by = None
@@ -109,8 +94,6 @@ class AidRequestCreateView(CreateView):
 
         latitude = form.cleaned_data.get('latitude')
         longitude = form.cleaned_data.get('longitude')
-        location_note = form.cleaned_data.get('location_note')
-        location_source = form.cleaned_data.get('location_source')
         location_freeform_address = form.cleaned_data.get('location_freeform_address')
 
         geocode_json_str = form.cleaned_data.get('geocode_json')
@@ -127,7 +110,7 @@ class AidRequestCreateView(CreateView):
                 aid_request=self.object,
                 latitude=latitude,
                 longitude=longitude,
-                source=location_source,
+                source=form.cleaned_data.get('location_source'),
                 geocode_json=geocode_json,
                 free_form_address=location_freeform_address,
                 status='confirmed',
@@ -147,8 +130,6 @@ class AidRequestCreateView(CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        # ic("Form is invalid, rendering again with errors.")
-        # ic(form.errors.as_json())
         return super().form_invalid(form)
 
 
@@ -171,13 +152,6 @@ class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVi
         context['aid_request'] = self.object  # Add this for consistency with DetailView
         context['MEDIA_URL'] = settings.MEDIA_URL
         context['AZURE_MAPS_KEY'] = settings.AZURE_MAPS_KEY
-
-        # URLs for javascript actions
-        context['url_partial_update'] = reverse('aid_request_ajax_update', kwargs={'field_op': self.field_op.slug, 'pk': self.object.pk})
-        context['url_regenerate_map'] = reverse('static_map_regenerate', kwargs={'field_op': self.field_op.slug, 'location_pk': 0})
-        context['url_delete_location'] = reverse('api_aid_location_delete', kwargs={'field_op': self.field_op.slug, 'location_pk': 0})
-        context['url_update_location_status'] = reverse('aid_location_status_update', kwargs={'field_op': self.field_op.slug, 'location_pk': 0})
-        context['url_check_map_status'] = reverse('check_map_status', kwargs={'field_op': self.field_op.slug, 'location_pk': 0})
 
         # Get locations and sort them
         all_locations = self.object.locations.all()
@@ -218,16 +192,9 @@ class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVi
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        if 'initial' not in kwargs:
-            kwargs['initial'] = {}
+        kwargs.setdefault('initial', {})
         kwargs['initial']['fieldop_slug'] = self.fieldop_slug
         return kwargs
-
-    def form_valid(self, form):
-        # This method will no longer be used for standard form submissions,
-        # as updates will be handled by the AJAX view.
-        # We can leave it for now or remove it if we are sure it's not needed.
-        return super().form_valid(form)
 
 
 class AidRequestLogCreateView(LoginRequiredMixin, CreateView):
@@ -270,50 +237,6 @@ class AidRequestLogCreateView(LoginRequiredMixin, CreateView):
             'fieldop_slug': self.fieldop_slug
         }
         return kwargs
-
-
-def has_location_status(aid_request, status):
-    """
-    Check if any of the aid_request locations have the matching status.
-
-    :param aid_request: The AidRequest instance to check.
-    :param status: location status you seek
-    :return: found (boolean), and locations list
-    """
-    found = aid_request.locations.filter(status=status).exists()
-    locations = aid_request.locations.filter(status=status)
-    return found, locations
-
-
-def geodist(aid_request):
-    if any([aid_request.latitude, aid_request.longitude, aid_request.field_op.latitude,
-            aid_request.field_op.longitude]) is None:
-        return None
-
-    return round(
-        geodesic(
-            (aid_request.latitude, aid_request.longitude),
-            (aid_request.field_op.latitude, aid_request.field_op.longitude)
-            ).km, 1)
-
-
-def format_aid_location_summary(aid_location):
-    """
-    Renders an HTML-formatted summary for a given AidLocation object.
-    """
-    if not aid_location:
-        return ""
-
-    template_string = """
-        <strong>{{ aid_location.get_status_display }}</strong>
-        {% if aid_location.distance %}
-            ({{ aid_location.distance }} km from FieldOp)
-        {% endif %}
-        - {{ aid_location.created_at|date:'Y-m-d H:i' }}
-    """
-    template = Template(template_string)
-    context = {'aid_location': aid_location}
-    return template.render(Context(context))
 
 
 @require_POST
