@@ -2,7 +2,7 @@
     'use strict';
 
     const locationPickerConfig = {
-        debug: true,
+        debug: false,
     };
 
     // Helper to update a field's value.

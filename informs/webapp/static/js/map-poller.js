@@ -1,7 +1,7 @@
 // informs/webapp/static/js/map-poller.js
 
 const mapPollerConfig = {
-    debug: true,
+    debug: false,
 };
 
 function pollForMap(locationId, checkMapStatusUrl) {

@@ -6,10 +6,9 @@ import json
 import logging
 from decimal import Decimal
 
-from ..models import AidRequest, FieldOp
+from ..models import AidRequest, FieldOp, AidRequestLog
 from ..forms import (
     RequesterInformationForm,
-    AidContactInformationForm,
     LocationInformationForm,
     RequestDetailsForm,
     RequestStatusForm,
@@ -42,22 +41,44 @@ def update_aid_request(request, field_op, pk):
         form_name = data.get('form_name')
 
         FORM_MAP = {
-            'requester': RequesterInformationForm,
-            'aid_contact': AidContactInformationForm,
-            'location': LocationInformationForm,
-            'details': RequestDetailsForm,
-            'status': RequestStatusForm,
+            'requester': ('Requester Information', RequesterInformationForm),
+            'location': ('Location Information', LocationInformationForm),
+            'details': ('Request Details', RequestDetailsForm),
+            'status': ('Request Status', RequestStatusForm),
         }
 
         if form_name in FORM_MAP:
-            form_class = FORM_MAP[form_name]
+            form_title, form_class = FORM_MAP[form_name]
             form = form_class(data, instance=aid_request)
             if form.is_valid():
                 form.save()
+
+                changed_fields = form.changed_data
+                if changed_fields:
+                    changes_list = []
+                    for field_name in changed_fields:
+                        field_label = form.fields[field_name].label or field_name
+                        new_value = form.cleaned_data.get(field_name)
+                        if isinstance(new_value, bool):
+                            new_value = "Yes" if new_value else "No"
+                        changes_list.append(f"'{field_label}' to '{new_value}'")
+
+                    changes_str = ", ".join(changes_list)
+                    log_message = f"Updated {form_title}: changed {changes_str}."
+
+                    AidRequestLog.objects.create(
+                        aid_request=aid_request,
+                        created_by=request.user,
+                        updated_by=request.user,
+                        log_entry=log_message
+                    )
+
                 return JsonResponse({'success': True})
             else:
                 return JsonResponse({'success': False, 'errors': form.errors}, status=400)
 
+        # This part handles the legacy status/priority updates from the sidebar
+        # and can be removed if that form is also converted to a partial-update-form.
         updated = False
         if 'status' in data:
             aid_request.status = data['status']

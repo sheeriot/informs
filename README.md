@@ -43,7 +43,7 @@ To submit a new Aid Request, use the name of the server followed by the `/<slug>
 
 Note that this page is NOT authenticated (no user required), as it is intended to be available to the public to input Aid Requests.
 
-Aid Requests ask for the following info from the requestor:
+Aid Requests ask for the following info from the requester:
 
 * Requester Name
 * Phone or Email

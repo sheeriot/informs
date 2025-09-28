@@ -1,5 +1,5 @@
 const aidRequestUpdateConfig = {
-    debug: true // Set to true for console logging
+    debug: false // Set to true for console logging
 };
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -361,6 +361,44 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (actionButtons) {
                     actionButtons.classList.toggle('d-none', !isCurrentlyLocked);
                 }
+
+                const countryDisplayWrapper = fieldset.querySelector('#country-display-wrapper');
+                const countryInputWrapper = fieldset.querySelector('#country-input-wrapper');
+                const countryDropdown = fieldset.querySelector('#id_country');
+
+                if (countryDropdown) {
+                    if (isCurrentlyLocked) {
+                        // Switch to input mode
+                        if (countryDisplayWrapper) countryDisplayWrapper.classList.add('d-none');
+                        if (countryInputWrapper) countryInputWrapper.classList.remove('d-none');
+
+                        // Initialize Choices.js
+                        if (!countryDropdown.choices) {
+                            const initialCountryValue = countryDropdown.value;
+                            const choices = new Choices(countryDropdown, { removeItemButton: true });
+                            countryDropdown.choices = choices;
+
+                            // Add listener to handle 'remove' button click
+                            countryDropdown.addEventListener('change', function() {
+                                if (!countryDropdown.value) {
+                                    countryDropdown.choices.setValue([initialCountryValue]);
+                                }
+                            });
+                        }
+                        countryDropdown.choices.enable();
+
+                    } else {
+                        // Switch back to display mode
+                        if (countryDisplayWrapper) countryDisplayWrapper.classList.remove('d-none');
+                        if (countryInputWrapper) countryInputWrapper.classList.add('d-none');
+
+                        // Destroy Choices.js instance
+                        if (countryDropdown.choices) {
+                            countryDropdown.choices.destroy();
+                            countryDropdown.choices = null;
+                        }
+                    }
+                }
             } else {
                  if (aidRequestUpdateConfig.debug) console.error(`Fieldset not found for selector: ${button.dataset.target}`);
             }
@@ -382,6 +420,18 @@ document.addEventListener('DOMContentLoaded', function () {
             editButton.classList.add('btn-outline-danger');
             editButton.classList.remove('btn-outline-success');
             button.closest('.d-flex').classList.add('d-none');
+
+            const countryDropdown = fieldset.querySelector('#id_country');
+            if (countryDropdown && countryDropdown.choices) {
+                countryDropdown.choices.destroy();
+                countryDropdown.choices = null;
+            }
+
+            const countryDisplayWrapper = fieldset.querySelector('#country-display-wrapper');
+            const countryInputWrapper = fieldset.querySelector('#country-input-wrapper');
+            if (countryDisplayWrapper) countryDisplayWrapper.classList.remove('d-none');
+            if (countryInputWrapper) countryInputWrapper.classList.add('d-none');
+
         });
     });
 
@@ -428,6 +478,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 editButton.classList.add('btn-outline-danger');
                 editButton.classList.remove('btn-outline-success');
                 form.querySelector('.d-flex.justify-content-end').classList.add('d-none');
+
+                const countryDropdown = fieldset.querySelector('#id_country');
+                if (countryDropdown && countryDropdown.choices) {
+                    const countryDisplayText = document.getElementById('country-display-text');
+                    if (countryDisplayText) {
+                        countryDisplayText.textContent = countryDropdown.choices.getValue(true);
+                    }
+                    countryDropdown.choices.destroy();
+                    countryDropdown.choices = null;
+                }
+                const countryDisplayWrapper = fieldset.querySelector('#country-display-wrapper');
+                const countryInputWrapper = fieldset.querySelector('#country-input-wrapper');
+                if (countryDisplayWrapper) countryDisplayWrapper.classList.remove('d-none');
+                if (countryInputWrapper) countryInputWrapper.classList.add('d-none');
+
             } else {
                 // If there are form-specific errors, display them
                 if (data.errors) {
@@ -452,44 +517,90 @@ document.addEventListener('DOMContentLoaded', function () {
     // Handle Change Aid Type form submission
     const changeAidTypeForm = document.getElementById('change-aid-type-form');
     if (changeAidTypeForm) {
+        const alertContainer = document.getElementById('change-aid-type-alert');
+
+        function showModalAlert(message, type = 'danger') {
+            if (alertContainer) {
+                alertContainer.innerHTML = `
+                    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `;
+            }
+            if (aidRequestUpdateConfig.debug) console.log(`Modal Alert (${type}): ${message}`);
+        }
+
         changeAidTypeForm.addEventListener('submit', function(event) {
             event.preventDefault();
 
             const confirmationInput = document.getElementById('confirmation-text');
-            const requestorName = document.getElementById('requestor-name-confirm').textContent.trim();
-            const alertContainer = document.getElementById('change-aid-type-alert');
+            const requesterNameElem = document.getElementById('requester-name-confirm');
 
-            if (confirmationInput.value.trim() !== requestorName) {
-                showActionAlert('Confirmation text does not match. Please type the requestor\'s full name exactly.', 'danger');
+            if (!requesterNameElem) {
+                if (aidRequestUpdateConfig.debug) console.error('Could not find requester name element #requester-name-confirm');
+                showModalAlert('A page error occurred. Could not verify confirmation name.');
+                return;
+            }
+
+            // Trim quotes and whitespace for comparison
+            const requesterName = requesterNameElem.textContent.trim();
+            if (aidRequestUpdateConfig.debug) {
+                console.log(`Confirmation check:
+                  Input: "${confirmationInput.value.trim()}"
+                  Expected: "${requesterName}"`);
+            }
+
+            if (confirmationInput.value.trim() !== requesterName) {
+                showModalAlert('Confirmation text does not match. Please type the requester\'s full name exactly as shown.');
                 return;
             }
 
             const formData = new FormData(changeAidTypeForm);
             const url = changeAidTypeForm.action;
 
+            if (aidRequestUpdateConfig.debug) {
+                console.log('Submitting change aid type form to URL:', url);
+            }
+
             fetch(url, {
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                 if (!response.ok) {
+                    // Try to get JSON error, but fallback to status text
+                    return response.json().catch(() => {
+                        throw new Error(`Server responded with status: ${response.status} ${response.statusText}`);
+                    }).then(err => {
+                        throw new Error(err.message || 'An unknown server error occurred.');
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
+                 if (aidRequestUpdateConfig.debug) console.log('Received response:', data);
                 if (data.status === 'success') {
+                    // Use the global alert for success messages after the modal closes
                     showActionAlert(data.message, 'success');
                     document.getElementById('aid-type-name-display').textContent = data.new_aid_type_name;
                     const modal = bootstrap.Modal.getInstance(document.getElementById('changeAidTypeModal'));
-                    modal.hide();
+                    if (modal) {
+                        modal.hide();
+                    }
                     confirmationInput.value = '';
-                    alertContainer.innerHTML = '';
+                    if(alertContainer) alertContainer.innerHTML = '';
                 } else {
-                    showActionAlert(data.message, 'danger');
+                    showModalAlert(data.message || 'Failed to change aid type.');
                 }
             })
             .catch(error => {
-                showActionAlert('An unexpected error occurred. Please try again.', 'danger');
-                console.error('Error:', error);
+                showModalAlert(`An unexpected error occurred: ${error.message}`);
+                console.error('Error changing aid type:', error);
             });
         });
     }

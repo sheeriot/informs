@@ -6,11 +6,12 @@ from django.views.generic import DetailView
 from django_q.tasks import async_task
 import logging
 from django.db.models import Case, When
+from django.template import Template
+from django.template.context import Context
 
 from ..models import AidRequest, FieldOp, AidRequestLog
 from ..forms import AidRequestLogForm, RequestStatusForm
 from .aid_location_forms import AidLocationStatusForm, AidLocationCreateForm
-from .aid_request import has_location_status, format_aid_location_summary
 from .maps import staticmap_aid
 from ..geocoder import get_azure_geocode, geocode_save
 from ..tasks import send_cot_task
@@ -20,6 +21,37 @@ from datetime import datetime
 from icecream import ic
 
 logger = logging.getLogger(__name__)
+
+
+def has_location_status(aid_request, status):
+    """
+    Check if any of the aid_request locations have the matching status.
+    :param aid_request: The AidRequest instance to check.
+    :param status: location status you seek
+    :return: found (boolean), and locations list
+    """
+    found = aid_request.locations.filter(status=status).exists()
+    locations = aid_request.locations.filter(status=status)
+    return found, locations
+
+
+def format_aid_location_summary(aid_location):
+    """
+    Renders an HTML-formatted summary for a given AidLocation object.
+    """
+    if not aid_location:
+        return ""
+
+    template_string = """
+        <strong>{{ aid_location.get_status_display }}</strong>
+        {% if aid_location.distance %}
+            ({{ aid_location.distance }} km from FieldOp)
+        {% endif %}
+        - {{ aid_location.created_at|date:'Y-m-d H:i' }}
+    """
+    template = Template(template_string)
+    context = {'aid_location': aid_location}
+    return template.render(Context(context))
 
 
 class AidRequestSubmittedView(DetailView):
