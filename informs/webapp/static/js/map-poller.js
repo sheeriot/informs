@@ -33,11 +33,16 @@ function pollForMap(locationId, checkMapStatusUrl) {
             if (mapPollerConfig.debug) console.error(`[MapPoll] Invalid checkMapStatusUrl provided:`, checkMapStatusUrl);
             return;
         }
-        const url = checkMapStatusUrl.replace('0', locationId);
+        const url = checkMapStatusUrl.replace('/0/', `/${locationId}/`);
         if (mapPollerConfig.debug) console.log(`[MapPoll] Fetching URL: ${url}`);
 
         fetch(url)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Network response was not ok, status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (mapPollerConfig.debug) console.log(`[MapPoll] Received data for location ${locationId}:`, data);
                 if (data.status === 'ready') {

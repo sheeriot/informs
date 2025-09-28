@@ -94,19 +94,16 @@ Aid Request for {{ object.field_op.name }}
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="col-auto">Requester Name</td>
                         <td class="col-auto">{{ object.requester_full_name }}</td>
-                    </tr>
                     {% if object.requester_phone %}
-                    <tr>
-                        <td class="col-auto">Requester Phone</td>
                         <td class="col-auto">{{ object.requester_phone }}</td>
-                    </tr>
+                    {% else %}
+                        <td class="col-auto">-</td>
                     {% endif %}
                     {% if object.requester_email %}
-                    <tr>
-                        <td class="col-auto">Requester Email</td>
                         <td class="col-auto">{{ object.requester_email }}</td>
+                    {% else %}
+                        <td class="col-auto">-</td>
                     </tr>
                     {% endif %}
                 </tbody>

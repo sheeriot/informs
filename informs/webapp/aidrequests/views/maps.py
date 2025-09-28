@@ -152,7 +152,6 @@ def create_static_map(location: object, synchronous=False) -> None:
 def update_location_map_filename(task):
     pass
 
-@login_required
 def check_map_status(request, field_op, location_pk):
     location = get_object_or_404(AidLocation, pk=location_pk)
     if location.map_filename:
