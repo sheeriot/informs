@@ -8,7 +8,7 @@
                 <tr>
                     <td class="border border-info bg-transparent m-0 px-1 py-0">
                         priority:
-                        {{ object.priority }}
+                        <span id="header-priority-display">{{ object.get_priority_display }}</span>
                     </td>
                     <td class="border border-info bg-transparent m-0 px-1 py-0">
                         created:
@@ -22,7 +22,7 @@
                 <tr>
                     <td class="border border-info bg-transparent m-0 px-1 py-0">
                         status:
-                        {{ object.status }}
+                        <span id="header-status-display">{{ object.get_status_display }}</span>
                     </td>
                     <td class="border border-info bg-transparent m-0 px-1 py-0">
                         updated:

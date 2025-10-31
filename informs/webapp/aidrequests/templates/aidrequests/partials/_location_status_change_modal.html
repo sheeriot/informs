@@ -1,0 +1,29 @@
+{% load bootstrap_icons %}
+<div class="modal fade" id="locationStatusChangeModal" tabindex="-1" aria-labelledby="locationStatusChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="locationStatusChangeModalLabel"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="location-status-context-container" class="mb-3"></div>
+                <p id="location-status-change-confirmation-message"></p>
+                <div class="mb-3">
+                    <label for="location-action-note" class="form-label">Add a note (optional):</label>
+                    <textarea class="form-control" id="location-action-note" rows="2"></textarea>
+                </div>
+                <div class="form-check mt-2">
+                  <input class="form-check-input" type="checkbox" value="" id="location-status-markdown-check">
+                  <label class="form-check-label" for="location-status-markdown-check">
+                    Enable Markdown
+                  </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% bs_icon 'x-circle' %} Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirm-location-status-change-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>

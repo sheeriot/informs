@@ -1,141 +1,123 @@
 // Aid Request Detail JavaScript
 // Handles COT sending and status checking for aid requests
 
-const aidRequestConfig = {
-    debug: false,
-    csrfToken: null,
-    fieldOp: null,
-    urls: {
-        sendCot: null,
-        checkStatus: null,
-    }
-};
+if (typeof window.aidRequestCotConfig === 'undefined') {
+    window.aidRequestCotConfig = {
+        debug: false,
+        csrfToken: null,
+        fieldOp: null,
+        urls: {
+            sendCot: null,
+            checkStatus: null,
+        }
+    };
+}
 
 // Initialize on document load
 document.addEventListener('DOMContentLoaded', function() {
-    initializeAidRequestDetail();
+    const configEl = document.getElementById('aid-request-config');
+    if (configEl) {
+        if(window.aidRequestCotConfig.debug) console.log("configEl", configEl.dataset);
+        window.aidRequestCotConfig.csrfToken = configEl.dataset.csrfToken;
+        window.aidRequestCotConfig.fieldOp = configEl.dataset.fieldOp;
+        window.aidRequestCotConfig.urls.sendCot = configEl.dataset.sendCotUrl;
+        window.aidRequestCotConfig.urls.checkStatus = configEl.dataset.checkStatusUrl;
+    } else {
+        if(window.aidRequestCotConfig.debug) console.log("aid-request-config not found");
+    }
+
+    const sendCotButton = document.getElementById("send-cot-btn");
+    if (sendCotButton) {
+        sendCotButton.addEventListener("click", function () {
+            const aidRequestId = this.dataset.aidrequestId;
+            if(window.aidRequestCotConfig.debug) console.log("aidRequestId", aidRequestId);
+            sendCoT(aidRequestId, this);
+        });
+    } else {
+        if(window.aidRequestCotConfig.debug) console.log("send-cot-btn not found");
+    }
 });
 
-function initializeAidRequestDetail() {
-    // Get configuration from data attributes
-    const configElement = document.getElementById('aid-request-config');
-    if (!configElement) {
-        console.error('Aid request configuration element not found');
-        return;
-    }
 
-    // Initialize configuration
-    aidRequestConfig.csrfToken = configElement.dataset.csrfToken;
-    aidRequestConfig.fieldOp = configElement.dataset.fieldOp;
-    aidRequestConfig.urls.sendCot = configElement.dataset.urlSendCot;
-    aidRequestConfig.urls.checkStatus = configElement.dataset.urlCheckStatus;
+function sendCoT(aidRequestId, button) {
+    const originalButtonHtml = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...`;
 
-    // Clean up any session storage items from the form submission process
-    sessionStorage.removeItem('informsFormCSubmitted');
-    sessionStorage.removeItem('informsFormLastSubmittedPk');
-    if (aidRequestConfig.debug) console.log('[Detail] Cleared Form C session storage keys.');
+    if(window.aidRequestCotConfig.debug) console.log("Sending CoT for aid request:", aidRequestId);
+    if(window.aidRequestCotConfig.debug) console.log("URL:", window.aidRequestCotConfig.urls.sendCot);
 
-    // Initialize event listeners
-    const sendCotButton = document.getElementById('send-cot-button');
-    if (sendCotButton) {
-        sendCotButton.addEventListener('click', handleSendCot);
-    }
-
-    if (aidRequestConfig.debug) console.log('[Detail] CoT Initialization complete.');
+    fetch(window.aidRequestCotConfig.urls.sendCot, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": window.aidRequestCotConfig.csrfToken,
+        },
+        body: JSON.stringify({
+            aidrequest_id: aidRequestId
+        }),
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if(window.aidRequestCotConfig.debug) console.log("sendCoT response", data);
+        if (data.sendcot_id) {
+            pollStatus(data.sendcot_id, button, originalButtonHtml);
+        } else {
+            button.innerHTML = "Error";
+            setTimeout(() => {
+                button.innerHTML = originalButtonHtml;
+                button.disabled = false;
+            }, 2000);
+        }
+    })
+    .catch((error) => {
+        console.error("Error sending CoT:", error);
+        button.innerHTML = "Error";
+        setTimeout(() => {
+            button.innerHTML = originalButtonHtml;
+            button.disabled = false;
+        }, 2000);
+    });
 }
 
-// COT API functions
-const cotApi = {
-    send: function(data) {
-        return $.ajax({
-            url: aidRequestConfig.urls.sendCot,
-            type: "POST",
-            data: JSON.stringify({
-                aidrequest_id: data.aidrequest_id,
-                mark_type: 'aid'  // Explicitly set mark_type to 'aid'
-            }),
-            contentType: "application/json",
-            headers: { "X-CSRFToken": aidRequestConfig.csrfToken }
-        });
-    },
-    checkStatus: function(sendcotId) {
-        return $.get(aidRequestConfig.urls.checkStatus, { sendcot_id: sendcotId });
-    }
-};
+function pollStatus(sendcot_id, button, originalButtonHtml) {
+    const statusUrl = `${window.aidRequestCotConfig.urls.checkStatus}?sendcot_id=${sendcot_id}`;
+    if(window.aidRequestCotConfig.debug) console.log("Polling status from:", statusUrl);
 
-// UI update functions
-const ui = {
-    setStatus: function(text) {
-        $("#send-cot-status").text(text);
-    },
-    startPolling: function(sendcotId) {
-        let interval = setInterval(function() {
-            cotApi.checkStatus(sendcotId)
-                .then(function(response) {
-                    console.log('Connection status:', response);
-                    if (response.status === "PENDING") {
-                        ui.setStatus("Sending COT...");
-                        // Continue polling
-                    } else if (response.status === "SUCCESS") {
-                        // Format the result to include statistics if available
-                        let statusText = response.result;
-                        if (response.stats) {
-                            const stats = response.stats;
-                            let statsText = "";
-
-                            // Only include field markers if any were sent
-                            if (stats.field_marks > 0) {
-                                statsText += `${stats.field_marks} field marker${stats.field_marks > 1 ? 's' : ''}`;
-                            }
-
-                            // Only include aid markers if any were sent
-                            if (stats.aid_marks > 0) {
-                                if (statsText) {
-                                    statsText += ", ";
-                                }
-                                statsText += `${stats.aid_marks} aid marker${stats.aid_marks > 1 ? 's' : ''}`;
-                            }
-
-                            // Only add the stat text if we have any markers
-                            if (statsText) {
-                                statusText = `COT sent (${statsText})`;
-                            }
-                        }
-                        ui.setStatus(statusText);
-                        clearInterval(interval);
-                    } else if (response.status === "FAILURE") {
-                        ui.setStatus("Error: " + response.result);
-                        clearInterval(interval);
-                    } else {
-                        ui.setStatus("Unknown status: " + response.status);
-                        clearInterval(interval);
-                    }
-                })
-                .catch(function(error) {
-                    console.error("Status check error:", error);
-                    ui.setStatus("Error checking status");
+    const interval = setInterval(() => {
+        fetch(statusUrl)
+            .then(response => response.json())
+            .then(data => {
+                if(window.aidRequestCotConfig.debug) console.log("Poll status:", data.status);
+                if (data.status === "SUCCESS") {
                     clearInterval(interval);
-                });
-        }, 2000);
-    }
-};
-
-// Event handlers
-function handleSendCot() {
-    const aidRequestId = $("#aidrequest_id").val();
-    ui.setStatus("Sending COT..");
-
-    cotApi.send({ aidrequest_id: aidRequestId })
-        .then(function(data) {
-            if (data.status === "error") {
-                ui.setStatus("Error: " + data.message);
-                return;
-            }
-            console.log(data);
-            ui.startPolling(data.sendcot_id);
-        })
-        .catch(function(xhr, status, error) {
-            console.error("AJAX Error:", error);
-            ui.setStatus("Error sending COT");
-        });
+                    button.innerHTML = "Sent!";
+                    setTimeout(() => {
+                        button.innerHTML = originalButtonHtml;
+                        button.disabled = false;
+                    }, 2000);
+                } else if (data.status === "FAILURE") {
+                    clearInterval(interval);
+                    button.innerHTML = "Failed";
+                     setTimeout(() => {
+                        button.innerHTML = originalButtonHtml;
+                        button.disabled = false;
+                    }, 2000);
+                }
+            })
+            .catch(error => {
+                console.error("Error polling status:", error);
+                clearInterval(interval);
+                button.innerHTML = "Error";
+                setTimeout(() => {
+                    button.innerHTML = originalButtonHtml;
+                    button.disabled = false;
+                }, 2000);
+            });
+    }, 2000);
 }

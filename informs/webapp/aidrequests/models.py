@@ -388,6 +388,7 @@ class AidLocation(TimeStampedModel):
         ('manual', 'Manual'),
         ('azure_maps', 'Azure Maps'),
         ('address_provided', 'Address Provided'),
+        ('device_location', 'Device Location'),
         ('other', 'Other'),
         ('user_picked', 'User Picked'),
     ]
@@ -425,6 +426,20 @@ class AidLocation(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         """ override save to send CoT """
+        is_new = self._state.adding
+        status_changed = False
+        old_status = None
+
+        if not is_new:
+            try:
+                original = AidLocation.objects.get(pk=self.pk)
+                old_status = original.status
+                if original.status != self.status:
+                    status_changed = True
+            except AidLocation.DoesNotExist:
+                # This case should ideally not happen in an update
+                pass
+
         if self.latitude and self.longitude and self.aid_request.field_op:
             op_coords = (self.aid_request.field_op.latitude, self.aid_request.field_op.longitude)
             loc_coords = (self.latitude, self.longitude)
@@ -432,30 +447,56 @@ class AidLocation(TimeStampedModel):
 
         super(AidLocation, self).save(*args, **kwargs)
 
+        if is_new:
+            message_data = {
+                "event_name": "Location Created",
+                "event_text": f"New location added: {self.latitude}, {self.longitude} with status '{self.get_status_display()}' and source '{self.get_source_display()}'.",
+                "agent": self.created_by.username if self.created_by else "System"
+            }
+            ActionLog.objects.create(
+                aid_request=self.aid_request,
+                log_type='location',
+                message=json.dumps(message_data),
+                created_by=self.created_by
+            )
+        elif status_changed:
+            message_data = {
+                "event_name": "Location Updated",
+                "event_text": f"Location status changed from '{old_status}' to '{self.get_status_display()}'.",
+                "agent": self.updated_by.username if self.updated_by else "System"
+            }
+            ActionLog.objects.create(
+                aid_request=self.aid_request,
+                log_type='location',
+                message=json.dumps(message_data),
+                created_by=self.updated_by
+            )
+
     def get_absolute_url(self):
         return reverse('aid_location_detail', kwargs={'pk': self.pk})
 
 
-class AidRequestLog(TimeStampedModel):
-    aid_request = models.ForeignKey(
-        'AidRequest',
-        on_delete=models.CASCADE,
-        related_name='logs'
-    )
-    log_entry = models.TextField()
-    created_by = models.ForeignKey(
-        User, related_name='aid_request_logs_created', on_delete=models.SET_NULL, null=True, blank=True
-    )
-    updated_by = models.ForeignKey(
-        User, related_name='aid_request_logs_updated', on_delete=models.SET_NULL, null=True, blank=True
-    )
+class ActionLog(TimeStampedModel):
+    """Action Log for an AidRequest"""
+    LOG_TYPE_CHOICES = [
+        ('user', 'User'),
+        ('system', 'System'),
+        ('location', 'Location'),
+    ]
 
-    class Meta:
-        verbose_name = 'Aid Request Log'
-        verbose_name_plural = 'Aid Request Logs'
+    aid_request = models.ForeignKey(AidRequest, on_delete=models.CASCADE, related_name='action_logs')
+    log_type = models.CharField(max_length=10, choices=LOG_TYPE_CHOICES, default='user')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+
+    # New structured fields
+    event_name = models.CharField(max_length=255, blank=True)
+    event_text = models.TextField(blank=True)
+    note = models.TextField(blank=True)
+    is_markdown = models.BooleanField(default=False)
+    agent_name = models.CharField(max_length=150, blank=True)
 
     def __str__(self):
-        return f"{self.updated_at}({self.updated_by}): {self.log_entry}"
+        return f"{self.log_type} log for {self.aid_request} at {self.created_at}"
 
 
 auditlog.register(FieldOp,
@@ -473,8 +514,8 @@ auditlog.register(AidLocation,
                   serialize_data=True,
                   serialize_auditlog_fields_only=True
                   )
-auditlog.register(AidRequestLog,
-                  exclude_fields=['created_by', 'created_at', 'updated_by', 'updated_at'],
+auditlog.register(ActionLog,
+                  exclude_fields=['created_at', 'updated_at'],
                   serialize_data=True,
                   serialize_auditlog_fields_only=True
                   )

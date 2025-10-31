@@ -53,39 +53,37 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
                 </div>
             </div>
 
-             <div class="card m-0 p-0">
+            <div class="card m-0 p-0">
                 <div class="card-header">
-                    <h5 class="mb-0">Request Logs</h5>
+                    <ul class="nav nav-tabs card-header-tabs" id="logTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="action-logs-tab" data-bs-toggle="tab" data-bs-target="#action-logs" type="button" role="tab" aria-controls="action-logs" aria-selected="true">Action Logs</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="audit-logs-tab" data-bs-toggle="tab" data-bs-target="#audit-logs" type="button" role="tab" aria-controls="audit-logs" aria-selected="false">Audit Logs</button>
+                        </li>
+                    </ul>
                 </div>
-                <div class="card-body">
-                    {% if log_form %}
-                        {% crispy log_form %}
-                    {% endif %}
-                    <hr class="m-1">
-                    <div class="container font-monospace">
-                        <table class="table table-sm table-warning table-striped table-bordered table-font-small">
-                            <thead>
-                                <tr>
-                                    <th class="col-auto">Updated</th>
-                                    <th class="col-auto">Log</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for log in logs %}
-                                <tr>
-                                    <td class="col-auto">
-                                        {{ log.updated_at|date:"Y-m-d H:i" }}
-                                        ({{ log.updated_by }})
-                                    </td>
-                                    <td class="col-auto">
-                                        <div class="text-wrap">
-                                            {{ log.log_entry }}
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                <div class="card-body tab-content" id="logTabsContent">
+                    <div class="tab-pane fade show active" id="action-logs" role="tabpanel" aria-labelledby="action-logs-tab"
+                        hx-get="{% url 'get_action_logs_partial' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
+                        hx-trigger="load, actionLogUpdated from:body"
+                        hx-swap="innerHTML">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="audit-logs" role="tabpanel" aria-labelledby="audit-logs-tab"
+                        hx-get="{% url 'get_audit_logs_partial' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
+                        hx-trigger="load, actionLogUpdated from:body"
+                        hx-swap="innerHTML">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -96,25 +94,39 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
             {% include 'aidrequests/includes/aid_request_status.html' %}
             <!-- Actions Card -->
 
-            <div id="locations-list-container">
-                {% include 'aidrequests/includes/aid_locations_list.html' %}
+            <div id="locations-list-container"
+                 hx-get="{% url 'get_locations_list_partial' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
+                 hx-trigger="load, refreshLocations from:body"
+                 hx-swap="innerHTML">
+                <div class="text-center mt-3">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading Locations...</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 {% include 'aidrequests/partials/_add_location_modal.html' %}
-{% include 'aidrequests/partials/_confirmation_modal.html' %}
+{% include 'aidrequests/partials/_delete_location_modal.html' %}
+{% include 'aidrequests/partials/_action_confirmation_modal.html' %}
+{% include 'aidrequests/partials/_location_status_change_modal.html' %}
 
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+<script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
 <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
+<script src="{% static 'js/debug.js' %}?v={{ static_version }}"></script>
+<script src="{% static 'js/htmx-helpers.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/location-picker-map.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/tak-alert.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/aidrequest-cot.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/aidrequest-update-actions.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/aidrequest-add-location.js' %}?v={{ static_version }}"></script>
+<script src="{% static 'js/aidrequest-status-update.js' %}?v={{ static_version }}"></script>
 <script type="text/javascript" src="{% static 'js/map-poller.js' %}?v={{ static_version }}"></script>
 {% endblock extra_js %}

@@ -1,11 +1,12 @@
-var d = new Date();
-
-let timeTable = {
-    "1-day-ago" : d.setDate(d.getDate()-1),
-    "today" : Date.now(),
-    "1-month-ago" : d.setDate(d.getDate()-30),
-    "now": Date.now(),
-    "1-week-ago" : d.setDate(d.getDate()+24)
+if (typeof window.timeTable === 'undefined') {
+    const d = new Date();
+    window.timeTable = {
+        "1-day-ago": new Date(d.getTime()).setDate(d.getDate() - 1),
+        "today": Date.now(),
+        "1-month-ago": new Date(d.getTime()).setMonth(d.getMonth() - 1),
+        "now": Date.now(),
+        "1-week-ago": new Date(d.getTime()).setDate(d.getDate() - 7),
+    };
 }
 
 const setDateTimeLocal = (formatted, nodeName) => {
@@ -20,7 +21,7 @@ const formatEpoch = (ts, nodeName, timeAgo = '') => {
         ts = timeTable['today']
     }
 
-    someDate = new Date(ts);
+    const someDate = new Date(ts);
 
     if(timeAgo === 'now' || timeAgo === 'start' || timeAgo === 'end') {
         nodeName = timeAgo

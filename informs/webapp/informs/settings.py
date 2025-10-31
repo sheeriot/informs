@@ -137,6 +137,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'widget_tweaks',
     'meta',
+    'django_htmx',
     'accounts.apps.AccountsConfig',
     'aidrequests.apps.AidRequestsConfig',
     'takserver.apps.TakServerConfig',
@@ -155,6 +156,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'auditlog.middleware.AuditlogMiddleware',
     'tz_detect.middleware.TimezoneMiddleware',
+    'django_htmx.middleware.HtmxMiddleware',
 ]
 
 ROOT_URLCONF = 'informs.urls'

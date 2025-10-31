@@ -15,7 +15,7 @@ from django.core.exceptions import ValidationError
 from django.template.loader import render_to_string
 from django_countries import countries
 
-from ..models import AidRequest, AidRequestLog, FieldOp, AidLocation
+from ..models import AidRequest, ActionLog, FieldOp, AidLocation
 from ..context_processors import get_field_op_for_form
 from .layout import MapLayoutObject
 
@@ -177,6 +177,9 @@ class RequestDetailsForm(forms.ModelForm):
 
 
 class RequestStatusForm(forms.ModelForm):
+    """ simple form for changing the status and priority of a request """
+    note = forms.CharField(widget=forms.Textarea(attrs={'rows': 2}), required=False)
+
     class Meta:
         model = AidRequest
         fields = ['status', 'priority']
@@ -187,23 +190,29 @@ class RequestStatusForm(forms.ModelForm):
         self.fields['priority'].required = False
 
 
-class AidRequestLogForm(forms.ModelForm):
-    """ Activity Log Form """
+class ActionLogForm(forms.ModelForm):
+    """ Action Log Form """
+    enable_markdown = forms.BooleanField(
+        required=False,
+        label="Markdown"
+    )
 
     class Meta:
         """ meta """
-        model = AidRequestLog
-        fields = ('log_entry', 'aid_request')
+        model = ActionLog
+        fields = ('note', 'aid_request', 'log_type')
 
     def __init__(self, *args, **kwargs):
         field_op_slug = kwargs.pop('field_op_slug', None)
         aid_request_pk = kwargs.pop('aid_request_pk', None)
         super().__init__(*args, **kwargs)
-        self.fields['log_entry'].widget = forms.Textarea(
-            attrs={'rows': 4, 'placeholder': 'Log an update or note...'}
+        self.fields['note'].widget = forms.Textarea(
+            attrs={'rows': 2, 'placeholder': 'Log an update or note...'}
         )
-        self.fields['log_entry'].label = ""
+        self.fields['note'].label = ""
         self.fields['aid_request'].widget = forms.HiddenInput()
+        self.fields['log_type'].widget = forms.HiddenInput()
+        self.fields['log_type'].initial = 'user'
 
         self.helper = FormHelper()
         if field_op_slug and aid_request_pk:
@@ -212,13 +221,22 @@ class AidRequestLogForm(forms.ModelForm):
                 kwargs={'field_op': field_op_slug, 'pk': aid_request_pk}
             )
         self.helper.form_method = 'post'
+        self.helper.attrs = {
+            'hx-post': self.helper.form_action,
+            'hx-target': '#action-logs-tbody',
+            'hx-swap': 'afterbegin',
+            'hx-vals': 'js:{"enable_markdown": document.getElementById("id_enable_markdown").checked}',
+            'hx-on::after-request': 'this.reset()'
+        }
 
         self.helper.layout = Layout(
-            'log_entry',
+            'note',
             'aid_request',
+            'log_type',
             Div(
-                Submit('submit', 'Add Log', css_class='btn btn-primary'),
-                css_class='d-flex justify-content-end'
+                Field('enable_markdown', wrapper_class="form-check form-switch"),
+                Submit('submit', 'Add Log', css_class='btn btn-primary btn-sm'),
+                css_class='d-flex justify-content-between align-items-center mt-2'
             )
         )
 

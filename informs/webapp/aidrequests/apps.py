@@ -5,5 +5,5 @@ class AidRequestsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'aidrequests'
 
-    # def ready(self):
-    #     import aidrequests.signals
+    def ready(self):
+        pass

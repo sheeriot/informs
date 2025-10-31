@@ -3,12 +3,14 @@
  * Version: 0.1.1
  */
 
-const takConfig = {
-    debug: false,
-    version: '0.1.1',
-    pollInterval: 2000,
-    maxPollAttempts: 30
-};
+if (typeof window.takAlertConfig === 'undefined') {
+    window.takAlertConfig = {
+        debug: false,
+        version: '0.1.1',
+        pollInterval: 2000,
+        maxPollAttempts: 30
+    };
+}
 
 // Main execution - Start with initialization
 document.addEventListener('DOMContentLoaded', () => {
@@ -29,28 +31,28 @@ function initializeTakAlert() {
 
     // Store CSRF token if available
     if (configElement) {
-        takConfig.csrfToken = configElement.dataset.csrfToken;
+        window.takAlertConfig.csrfToken = configElement.dataset.csrfToken;
     }
 
-    if (takConfig.debug) {
+    if (window.takAlertConfig.debug) {
         console.log('[TAK] Initializing:', {
-            version: takConfig.version,
+            version: window.takAlertConfig.version,
             button: 'found',
             fieldOp: fieldOpSlug || 'not found',
-            csrfToken: takConfig.csrfToken ? 'found' : 'not found'
+            csrfToken: window.takAlertConfig.csrfToken ? 'found' : 'not found'
         });
     }
 
     // Disable button if no field op
     if (!fieldOpSlug) {
-        if (takConfig.debug) console.error('[TAK] Field operation slug not found');
+        if (window.takAlertConfig.debug) console.error('[TAK] Field operation slug not found');
         takAlertButton.disabled = true;
         takAlertButton.title = 'Field operation not available';
         return;
     }
 
     // Store for later use
-    takConfig.fieldOpSlug = fieldOpSlug;
+    window.takAlertConfig.fieldOpSlug = fieldOpSlug;
 
     // Attach click handler
     takAlertButton.addEventListener('click', handleTakAlert);
@@ -59,10 +61,10 @@ function initializeTakAlert() {
 // Handle TAK Alert button click - Main action flow
 async function handleTakAlert() {
     const takAlertButton = document.getElementById('tak-alert-button');
-    const fieldOpSlug = takConfig.fieldOpSlug;
+    const fieldOpSlug = window.takAlertConfig.fieldOpSlug;
     const aidRequestIds = getVisibleAidRequestIds();
 
-    if (takConfig.debug) {
+    if (window.takAlertConfig.debug) {
         console.log('[TAK] Alert triggered:', {
             requestIds: aidRequestIds,
             fieldOp: fieldOpSlug
@@ -71,7 +73,7 @@ async function handleTakAlert() {
 
     // Exit if no aid requests to send
     if (aidRequestIds.length === 0) {
-        if (takConfig.debug) console.warn('[TAK] No aid requests to send');
+        if (window.takAlertConfig.debug) console.warn('[TAK] No aid requests to send');
         showStatus('warning', 'No aid requests to send');
         return;
     }
@@ -88,7 +90,7 @@ async function handleTakAlert() {
         const data = await sendTakAlert(fieldOpSlug, aidRequestIds);
 
         if (data.sendcot_id) {
-            if (takConfig.debug) {
+            if (window.takAlertConfig.debug) {
                 console.log('[TAK] Task started:', {
                     taskId: data.sendcot_id,
                     fieldOp: fieldOpSlug
@@ -111,7 +113,7 @@ async function handleTakAlert() {
             throw new Error(data.message || 'Failed to send TAK alerts');
         }
     } catch (error) {
-        if (takConfig.debug) {
+        if (window.takAlertConfig.debug) {
             console.error('[TAK] Alert Error:', {
                 error: error.message,
                 stack: error.stack
@@ -133,7 +135,7 @@ function cleanupStatusDisplay() {
     // Make sure status wrapper exists
     let statusWrapper = document.getElementById('tak-status-wrapper');
     if (!statusWrapper) {
-        if (takConfig.debug) console.warn('[TAK] Status wrapper not found, creating one');
+        if (window.takAlertConfig.debug) console.warn('[TAK] Status wrapper not found, creating one');
 
         // Find the TAK alert button
         const takAlertButton = document.getElementById('tak-alert-button');
@@ -151,7 +153,7 @@ function cleanupStatusDisplay() {
     // Create the status element if it doesn't exist
     let statusElement = document.getElementById('send-cot-status');
     if (!statusElement && statusWrapper) {
-        if (takConfig.debug) console.log('[TAK] Creating new status element');
+        if (window.takAlertConfig.debug) console.log('[TAK] Creating new status element');
         statusElement = document.createElement('div');
         statusElement.id = 'send-cot-status';
         statusElement.className = 'small text-nowrap rounded px-2 py-1 transition-opacity';
@@ -188,10 +190,10 @@ function getVisibleAidRequestIds() {
 // Send TAK alert to server
 async function sendTakAlert(fieldOpSlug, aidRequestIds) {
     // Get CSRF token
-    let csrfToken = takConfig.csrfToken ||
+    let csrfToken = window.takAlertConfig.csrfToken ||
                    document.querySelector('[name=csrfmiddlewaretoken]')?.value;
 
-    if (takConfig.debug && !csrfToken) {
+    if (window.takAlertConfig.debug && !csrfToken) {
         console.warn('[TAK] CSRF token not found');
     }
 
@@ -200,7 +202,7 @@ async function sendTakAlert(fieldOpSlug, aidRequestIds) {
         ? { aidrequest_id: aidRequestIds[0], mark_type: 'aid' } // Detail view
         : { aidrequests: aidRequestIds, mark_type: 'aid' };    // List view
 
-    if (takConfig.debug) {
+    if (window.takAlertConfig.debug) {
         console.log('[TAK] Sending request:', {
             url: `/api/${fieldOpSlug}/send-cot/`,
             payload: requestPayload
@@ -224,7 +226,7 @@ async function sendTakAlert(fieldOpSlug, aidRequestIds) {
 
     const data = await response.json();
 
-    if (takConfig.debug) {
+    if (window.takAlertConfig.debug) {
         console.log('[TAK] Server response:', {
             status: response.status,
             data: data
@@ -267,7 +269,7 @@ async function pollTaskStatus(taskId) {
             polling = true;
 
             try {
-                if (takConfig.debug) {
+                if (window.takAlertConfig.debug) {
                     console.log('[TAK] Starting poll attempt:', {
                         attempt: attempts + 1,
                         taskId: taskId
@@ -308,14 +310,14 @@ async function pollTaskStatus(taskId) {
 
                         showStatus('polling', `${baseMessage}${getDots()}`);
 
-                        if (attempts >= takConfig.maxPollAttempts) {
+                        if (attempts >= window.takAlertConfig.maxPollAttempts) {
                             showStatus('warning', 'Task taking longer than expected. Please check status later.');
                             resolve({ status: 'TIMEOUT', message: 'Task taking too long' });
                             return;
                         }
 
                         attempts++;
-                        setTimeout(poll, takConfig.pollInterval);
+                        setTimeout(poll, window.takAlertConfig.pollInterval);
                         break;
 
                     default:
@@ -324,7 +326,7 @@ async function pollTaskStatus(taskId) {
                         return;
                 }
             } catch (error) {
-                if (takConfig.debug) {
+                if (window.takAlertConfig.debug) {
                     console.error('[TAK] Polling Error:', {
                         error: error.message,
                         attempt: attempts + 1
@@ -353,7 +355,7 @@ async function pollTaskStatus(taskId) {
 
 // Fetch task status from server
 async function fetchTaskStatus(taskId) {
-    const response = await fetch(`/api/${takConfig.fieldOpSlug}/sendcot-checkstatus/?sendcot_id=${taskId}`, {
+    const response = await fetch(`/api/${window.takAlertConfig.fieldOpSlug}/sendcot-checkstatus/?sendcot_id=${taskId}`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' }
     });
@@ -364,7 +366,7 @@ async function fetchTaskStatus(taskId) {
 
     const data = await response.json();
 
-    if (takConfig.debug) {
+    if (window.takAlertConfig.debug) {
         console.log('[TAK] Poll response:', {
             status: data.status,
             result: data.result || data.message
@@ -459,7 +461,7 @@ function resetButton(button) {
 
 // Display status messages
 function showStatus(type, message) {
-    if (takConfig.debug) {
+    if (window.takAlertConfig.debug) {
         console.log('[TAK] STATUS UPDATE:', {
             type: type,
             message: message
@@ -468,7 +470,7 @@ function showStatus(type, message) {
 
     const sendCotStatus = document.getElementById('send-cot-status');
     if (!sendCotStatus) {
-        if (takConfig.debug) console.warn('[TAK] Status container not found');
+        if (window.takAlertConfig.debug) console.warn('[TAK] Status container not found');
         return;
     }
 
@@ -508,7 +510,7 @@ function shouldSkipUpdate(element, type, message) {
     const isPollingUpdate = type === 'polling' && element.dataset.currentType === 'polling';
 
     if (isSameMessage && !isPollingUpdate) {
-        if (takConfig.debug) console.log('[TAK] Skipping identical status update');
+        if (window.takAlertConfig.debug) console.log('[TAK] Skipping identical status update');
         return true;
     }
 
@@ -521,7 +523,7 @@ function shouldSkipUpdate(element, type, message) {
         if (currentBaseMsg === newBaseMsg &&
             element.dataset.currentMessage?.endsWith(message.slice(-4)) &&
             !message.match(/\.{1,4}$/)) {
-            if (takConfig.debug) console.log('[TAK] Skipping redundant polling update');
+            if (window.takAlertConfig.debug) console.log('[TAK] Skipping redundant polling update');
             return true;
         }
     }
@@ -588,7 +590,7 @@ function applyStatusStyling(element, styling) {
     // Set content
     element.innerHTML = `${styling.icon}${styling.text}`;
 
-    if (takConfig.debug) {
+    if (window.takAlertConfig.debug) {
         console.log('[TAK] Status element updated:', {
             type: element.dataset.currentType,
             message: styling.text
@@ -609,7 +611,7 @@ function setStatusTimeout(element, delay) {
             delete element.dataset.currentMessage;
             delete element.dataset.currentType;
 
-            if (takConfig.debug) {
+            if (window.takAlertConfig.debug) {
                 console.log('[TAK] Status cleared after timeout');
             }
         }, 500);
@@ -627,7 +629,7 @@ function cleanupDuplicateStatusElements() {
     if (statusElements.length <= 1) return;
 
     // Log if duplicates found
-    if (takConfig.debug) {
+    if (window.takAlertConfig.debug) {
         console.warn('[TAK] Found multiple status elements, cleaning up', {
             count: statusElements.length
         });
@@ -637,14 +639,14 @@ function cleanupDuplicateStatusElements() {
     statusElements.forEach(el => {
         if (el.id !== 'send-cot-status') {
             el.remove();
-            if (takConfig.debug) console.log('[TAK] Removed duplicate status element:', el.id || 'unnamed');
+            if (window.takAlertConfig.debug) console.log('[TAK] Removed duplicate status element:', el.id || 'unnamed');
         }
     });
 
     // Also look for any legacy status containers
     const legacyContainers = document.querySelectorAll('.sendcot-statuscontainer, #tak-alert-status');
     legacyContainers.forEach(container => {
-        if (takConfig.debug) console.log('[TAK] Hiding legacy status container:', container.id || 'unnamed');
+        if (window.takAlertConfig.debug) console.log('[TAK] Hiding legacy status container:', container.id || 'unnamed');
         container.classList.add('d-none');  // Hide using Bootstrap
     });
 }
@@ -669,7 +671,7 @@ function addPulseAnimation() {
         `;
         document.head.appendChild(style);
 
-        if (takConfig.debug) {
+        if (window.takAlertConfig.debug) {
             console.log('[TAK] Added pulse animation styles');
         }
     }

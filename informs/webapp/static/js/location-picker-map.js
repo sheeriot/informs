@@ -559,18 +559,21 @@
                                 const userPosition = [position.coords.longitude, position.coords.latitude];
                                 if (locationPickerConfig.debug) console.log('[LocationPicker] Got device location:', userPosition);
 
-                                requestMarker.setOptions({ position: userPosition, visible: true });
+                                // This is where we safely update the map and form
+                                if (userPosition[0] && userPosition[1]) {
+                                    requestMarker.setOptions({ position: userPosition, visible: true });
 
-                                if (fieldOpPosition) {
-                                    const bounds = atlas.data.BoundingBox.fromPositions([userPosition, fieldOpPosition]);
-                                    map.setCamera({ bounds: bounds, padding: 100 });
-                                } else {
-                                    map.setCamera({ center: userPosition, zoom: 12 });
+                                    if (fieldOpPosition) {
+                                        const bounds = atlas.data.BoundingBox.fromPositions([userPosition, fieldOpPosition]);
+                                        map.setCamera({ bounds: bounds, padding: 100 });
+                                    } else {
+                                        map.setCamera({ center: userPosition, zoom: 12 });
+                                    }
+
+                                    const address = await reverseGeocode(userPosition, true);
+                                    const formattedAddr = address ? address.freeformAddress : `No address found at ${userPosition[1].toFixed(5)}, ${userPosition[0].toFixed(5)}.`;
+                                    updateForm(userPosition, 'device_location', address, formattedAddr);
                                 }
-
-                                const address = await reverseGeocode(userPosition, true);
-                                const formattedAddr = address ? address.freeformAddress : `No address found at ${userPosition[1].toFixed(5)}, ${userPosition[0].toFixed(5)}.`;
-                                updateForm(userPosition, 'device_location', address, formattedAddr);
 
                             }, function() {
                                 alert('Error: The Geolocation service failed.');

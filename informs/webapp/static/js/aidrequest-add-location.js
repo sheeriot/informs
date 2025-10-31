@@ -176,10 +176,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         headerContainer.innerHTML = data.header_html;
                     }
                 }
-                if (data.location_pk && window.pollForMapCard) {
+                if (data.location_pk && window.checkAndPollCard) {
                     const newCard = document.getElementById(`ar${aidRequestConfig.aidRequestId}-al${data.location_pk}-loc`);
                     if (newCard) {
-                        window.pollForMapCard(newCard, aidRequestConfig.urls.checkMapStatus);
+                        window.checkAndPollCard(newCard);
                     }
                 }
             } else {

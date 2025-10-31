@@ -13,6 +13,8 @@ django-cors-headers
 django-widget-tweaks
 django-countries
 django-meta
+django-htmx
+markdown
 
 pandas
 

@@ -8,9 +8,11 @@ import logging
 from django.db.models import Case, When
 from django.template import Template
 from django.template.context import Context
+from auditlog.models import LogEntry
+from django.contrib.contenttypes.models import ContentType
 
-from ..models import AidRequest, FieldOp, AidRequestLog
-from ..forms import AidRequestLogForm, RequestStatusForm
+from ..models import AidRequest, FieldOp, ActionLog
+from ..forms import ActionLogForm, RequestStatusForm
 from .aid_location_forms import AidLocationStatusForm, AidLocationCreateForm
 from .maps import staticmap_aid
 from ..geocoder import get_azure_geocode, geocode_save
@@ -125,6 +127,7 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
     def get_context_data(self, **kwargs):
         try:
             context = super().get_context_data(**kwargs)
+            context['request'] = self.request
 
             context['field_op'] = self.field_op
             context['aid_request'] = self.aid_request
@@ -139,10 +142,11 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
             context['locations'] = self.aid_request.locations.all().order_by(status_order, 'created_at')
 
             confirmed_status = self.aid_request.location_status == 'confirmed'
-            ic('AidRequestDetailView get_context_data, confirmed status for header:', confirmed_status)
             context['confirmed'] = confirmed_status
 
-            context['logs'] = self.aid_request.logs.all().order_by('-created_at')
+            context['action_logs'] = self.aid_request.action_logs.all().order_by('-created_at')
+            content_type = ContentType.objects.get_for_model(self.aid_request)
+            context['audit_logs'] = LogEntry.objects.filter(content_type=content_type, object_pk=self.aid_request.pk)
             context['add_location_form'] = AidLocationCreateForm(
                 initial={'aid_request': self.aid_request, 'field_op': self.field_op},
                 field_op_obj=self.field_op,
@@ -152,7 +156,7 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
             log_init = {
                 'aid_request': self.aid_request.pk,
                 }
-            context['log_form'] = AidRequestLogForm(
+            context['log_form'] = ActionLogForm(
                 initial=log_init,
                 field_op_slug=self.field_op.slug,
                 aid_request_pk=self.aid_request.pk
