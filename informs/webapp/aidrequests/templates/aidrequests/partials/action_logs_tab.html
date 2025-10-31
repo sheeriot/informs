@@ -1,0 +1,31 @@
+{% load crispy_forms_tags %}
+
+<div id="action-logs-container" class="mt-3">
+    <div class="card">
+        <div class="card-body">
+            {% if log_form %}
+                {% crispy log_form %}
+            {% endif %}
+            <hr class="m-1">
+            <div class="container font-monospace">
+                <table class="table table-sm table-warning table-striped table-bordered table-font-small">
+                    <thead>
+                        <tr>
+                            <th class="col-auto">Timestamp</th>
+                            <th class="col-auto">User</th>
+                            <th class="col-auto">Type</th>
+                            <th class="col-auto">Message</th>
+                        </tr>
+                    </thead>
+                    <tbody id="action-logs-tbody"
+                           hx-get="{% url 'get_action_logs_partial' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
+                           hx-trigger="actionLogUpdated from:body"
+                           hx-swap="afterbegin"
+                           hx-vals='js:{"since": getLatestLogId()}'>
+                        {% include 'aidrequests/partials/_action_logs_rows.html' %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

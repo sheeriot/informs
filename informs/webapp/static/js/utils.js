@@ -11,40 +11,46 @@ function copyCoordinates(buttonElement) {
     });
 }
 
-let alertTimeoutId;
-
-function showActionAlert(message, type = 'warning') {
-    const container = document.getElementById('action-alert-container');
-    if (!container) return;
-
-    // Clear any existing timeout to prevent race conditions
-    if (alertTimeoutId) {
-        clearTimeout(alertTimeoutId);
-    }
-
-    const alertHtml = `
-        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    `;
-
-    container.innerHTML = alertHtml;
-
-    alertTimeoutId = setTimeout(() => {
-        const alertElement = container.querySelector('.alert');
-        if (alertElement) {
-            const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
-            if (bsAlert) {
-                bsAlert.close();
-            }
-        }
-    }, 3000);
+if (typeof window.utilsConfig === 'undefined') {
+    window.utilsConfig = {
+        alertTimeoutId: null,
+        apiDebug: false, // Master debug switch for API calls
+    };
 }
 
-const apiConfig = {
-    debug: false, // Master debug switch for API calls
-};
+
+function showActionAlert(message, type = 'success') {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = [
+        `<div class="alert alert-${type} alert-dismissible fade show" role="alert" style="position: fixed; top: 1rem; right: 1rem; z-index: 1056;">`,
+        `   <div>${message}</div>`,
+        '   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
+        '</div>'
+    ].join('');
+
+    const alertElement = wrapper.firstChild;
+    document.body.appendChild(alertElement);
+
+    // Clear previous timeout if it exists
+    if (window.utilsConfig.alertTimeoutId) {
+        clearTimeout(window.utilsConfig.alertTimeoutId);
+    }
+
+    // Set a new timeout to remove the alert
+    window.utilsConfig.alertTimeoutId = setTimeout(() => {
+        const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
+        if (bsAlert) {
+            bsAlert.close();
+        }
+    }, 5000);
+}
+
+// Global API configuration
+if (typeof window.apiConfig === 'undefined') {
+    window.apiConfig = {
+        debug: false, // Master debug switch for API calls
+    };
+}
 
 /**
  * A wrapper for the fetch API that adds logging for Azure Maps calls.
@@ -54,19 +60,19 @@ const apiConfig = {
  * @returns {Promise<Response>} A promise that resolves with the fetch response.
  */
 async function fetchWithLogging(url, options = {}, apiName = 'Azure Maps API') {
-    if (apiConfig.debug) {
+    if (window.apiConfig.debug) {
         console.log(`[API Call] Preparing to call ${apiName}.`);
         console.log(`[API Call] URL: ${url}`);
     }
 
     try {
         const response = await fetch(url, options);
-        if (apiConfig.debug) {
+        if (window.apiConfig.debug) {
             console.log(`[API Call] Received response from ${apiName}. Status: ${response.status}`);
         }
         return response;
     } catch (error) {
-        if (apiConfig.debug) {
+        if (window.apiConfig.debug) {
             console.error(`[API Call] Error calling ${apiName}:`, error);
         }
         // Re-throw the error so the calling function's catch block can handle it.

@@ -53,7 +53,7 @@ def generate_static_map_for_location(location_pk):
 
     if staticmap_data:
         timestamp = datetime.now().strftime("%y%m%d%H%M%S")
-        map_filename = f"AR{aid_request.pk}-L{location.pk}-map_{timestamp}.png"
+        map_filename = f"AR{aid_request.pk}-AL{location.pk}-map_{timestamp}.png"
 
         # We need the full path to save the file
         map_directory = os.path.join(settings.BASE_DIR, 'media', 'maps')

@@ -1,0 +1,23 @@
+<div
+    hx-get="{% url 'get_audit_logs_partial' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
+    hx-trigger="actionLogUpdated from:body"
+    hx-swap="afterbegin"
+    hx-target="#audit-logs-tbody"
+    hx-vals='js:{"since": getLatestTimestamp("audit-logs-tbody")}'>
+
+    <div class="container font-monospace">
+        <table class="table table-sm table-info table-striped table-bordered table-font-small">
+            <thead>
+                <tr>
+                    <th class="col-auto">Timestamp</th>
+                    <th class="col-auto">User</th>
+                    <th class="col-auto">Action</th>
+                    <th class="col-auto">Changes</th>
+                </tr>
+            </thead>
+            <tbody id="audit-logs-tbody">
+                {% include 'aidrequests/partials/_audit_logs_rows.html' %}
+            </tbody>
+        </table>
+    </div>
+</div>

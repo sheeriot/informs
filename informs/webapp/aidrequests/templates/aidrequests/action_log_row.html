@@ -1,0 +1,52 @@
+{% load markdown_tags %}
+{% load actionlog_tags %}
+{% load bootstrap_icons %}
+
+<tr data-log-id="{{ log.pk }}" data-timestamp="{{ log.created_at.isoformat }}">
+    <td class="col-auto">{{ log.created_at|date:"Y-m-d" }}<br>{{ log.created_at|date:"H:i:s" }}</td>
+    <td class="col-auto">{{ log.created_by.username|default:"System" }}</td>
+    <td class="col-auto">{{ log.get_log_type_display }}</td>
+    <td class="col-auto">
+        <div class="text-wrap">
+            <strong>
+                {{ log.event_name }}
+                {% if log.is_markdown %}
+                    <span class="badge bg-secondary ms-1">Markdown</span>
+                {% endif %}
+            </strong><br>
+            {{ log.event_text }}
+            {% if log.note %}
+                <div class="card bg-light mt-2">
+                    <div class="card-body p-2" {% if not log.is_markdown %}style="white-space: pre-wrap;"{% endif %}>
+                        {% if log.is_markdown %}
+                            {{ log.note|markdownify|safe }}
+                        {% else %}
+                            {{ log.note }}
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+            <br><small>Agent: {{ log.agent_name }}</small>
+
+            {% comment %}
+            This part for edited logs needs to be updated once we add the fields.
+            The `log_data` variable is no longer available after the refactor.
+            We will add `edited_at` and `edited_by` fields directly to the `ActionLog` model later.
+            {% if log.edited_at %}
+                <br><small class="text-muted fst-italic">Edited by {{ log.edited_by }} at {{ log.edited_at|date:"Y-m-d H:i" }}</small>
+            {% endif %}
+            {% endcomment %}
+
+            {% if request.user == log.created_by and log.created_at|is_recent and log.note %}
+            <div class="mt-2">
+                <button class="btn btn-sm btn-outline-secondary"
+                        hx-get="{% url 'get_action_log_edit_form' pk=log.pk %}"
+                        hx-target="closest tr"
+                        hx-swap="outerHTML">
+                    {% bs_icon 'pencil' %} Edit
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </td>
+</tr>

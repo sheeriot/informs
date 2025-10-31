@@ -1,0 +1,28 @@
+{% load bootstrap_icons %}
+<div class="modal fade" id="statusChangeConfirmationModal" tabindex="-1" aria-labelledby="statusChangeConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="statusChangeConfirmationModalLabel">Confirm action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="status-change-confirmation-message"></p>
+                <div class="mb-3">
+                    <label for="action-note" class="form-label">Add a note (optional):</label>
+                    <textarea class="form-control" id="action-note" rows="2"></textarea>
+                </div>
+                <div class="form-check mt-2">
+                  <input class="form-check-input" type="checkbox" value="" id="status-priority-markdown-check">
+                  <label class="form-check-label" for="status-priority-markdown-check">
+                    Enable Markdown
+                  </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancel-status-change-btn">{% bs_icon 'x-circle' %} Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirm-status-change-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>

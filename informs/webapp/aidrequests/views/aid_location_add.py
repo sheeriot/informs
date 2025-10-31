@@ -2,12 +2,13 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from django.conf import settings
 from icecream import ic
 import os
+import json
 
-from ..models import AidRequest, AidLocation, FieldOp
+from ..models import AidRequest, AidLocation, FieldOp, ActionLog
 from .aid_location_forms import AidLocationCreateForm
 from .maps import create_static_map
 
@@ -38,6 +39,20 @@ def add_location(request, field_op, pk):
             location.updated_by = request.user
 
             location.save()
+
+            message_data = {
+                "event_name": "Location Added",
+                "event_text": f"New location #{location.pk} added.",
+                "note": "",
+                "is_markdown": False,
+                "agent": request.user.username
+            }
+            ActionLog.objects.create(
+                aid_request=aid_request,
+                created_by=request.user,
+                log_type='user',
+                message=json.dumps(message_data)
+            )
 
             # After saving the new location, we need to refresh the aid_request
             # object so that its properties (like `location_status`) are up-to-date
@@ -123,17 +138,41 @@ def delete_static_map(request, field_op, location_pk):
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 
-@require_POST
 @login_required
+@require_http_methods(["DELETE"])
 def delete_aid_location(request, field_op, location_pk):
     location = get_object_or_404(AidLocation, pk=location_pk)
     aid_request = location.aid_request
     if aid_request.field_op.slug != field_op:
         return JsonResponse({'status': 'error', 'message': 'Permission denied.'}, status=403)
     try:
-        location_id = location.pk
-        location.delete()
+        note = ''
+        is_markdown = False
+        if request.body:
+            try:
+                data = json.loads(request.body)
+                note = data.get('note', '')
+                is_markdown = data.get('is_markdown', False)
+            except json.JSONDecodeError:
+                pass
 
+        location_id = location.pk
+        location_str = str(location)
+        friendly_address = location.free_form_address or 'N/A'
+        status_display = location.get_status_display()
+
+        ActionLog.objects.create(
+            aid_request=aid_request,
+            created_by=request.user,
+            log_type='location',
+            event_name="Location Deleted",
+            event_text=f"Location #{location_id} ({status_display}) at {friendly_address} was deleted.",
+            note=note,
+            is_markdown=is_markdown,
+            agent_name=request.user.username
+        )
+
+        location.delete()
         aid_request.refresh_from_db()
         locations = aid_request.locations.all()
         context = {

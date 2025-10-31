@@ -1,128 +1,118 @@
 // informs/webapp/static/js/map-poller.js
 
-const mapPollerConfig = {
-    debug: false,
-};
+if (typeof window.mapPollerConfig === 'undefined') {
+    window.mapPollerConfig = {
+        debug: false,
+    };
+}
 
-function pollForMap(locationId, checkMapStatusUrl) {
-    let retries = 5;
-    const delay = 3000;
+(function(window, document) {
+    'use strict';
 
-    if (mapPollerConfig.debug) console.log(`[MapPoller] Starting poll for location ${locationId} with URL ${checkMapStatusUrl}`);
-
-    function poll() {
-        if (retries <= 0) {
-            if (mapPollerConfig.debug) console.error(`[MapPoll] Stopped polling for map ${locationId} after max retries.`);
-            const mapArea = document.getElementById(`map-area-${locationId}`);
-            if (mapArea) {
-                mapArea.innerHTML = `
-                    <div class="text-center p-3">
-                        <p class="text-danger small mb-2">Map generation timed out.</p>
-                        <button type="button" class="btn btn-sm btn-light generate-map-btn" title="Generate Map" data-location-id="${locationId}" data-action="remap">
-                            <i class="bi bi-arrow-clockwise"></i> Generate Map
-                        </button>
-                    </div>
-                `;
+    const Poller = {
+        init: function() {
+            if (window.mapPollerConfig.debug) {
+                console.log('[MapPoller] Initializing...');
             }
-            return;
-        }
+            document.addEventListener('DOMContentLoaded', () => {
+                this.pollAllVisibleCards();
 
-        if (mapPollerConfig.debug) console.log(`[MapPoll] Checking map for location ${locationId}. Retries left: ${retries}`);
-
-        if (!checkMapStatusUrl || typeof checkMapStatusUrl.replace !== 'function') {
-            if (mapPollerConfig.debug) console.error(`[MapPoll] Invalid checkMapStatusUrl provided:`, checkMapStatusUrl);
-            return;
-        }
-        const url = checkMapStatusUrl.replace('/0/', `/${locationId}/`);
-        if (mapPollerConfig.debug) console.log(`[MapPoll] Fetching URL: ${url}`);
-
-        fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Network response was not ok, status: ${response.status}`);
+                // Optional: set up a MutationObserver to automatically poll new cards added to the DOM
+                const listContainer = document.getElementById('locations-list-container');
+                if (listContainer) {
+                    const observer = new MutationObserver((mutations) => {
+                        mutations.forEach((mutation) => {
+                            mutation.addedNodes.forEach((node) => {
+                                if (node.nodeType === 1 && node.matches('.card')) {
+                                     if (window.mapPollerConfig.debug) {
+                                        console.log('[MapPoller] New card detected by observer, checking for polling.', node);
+                                     }
+                                    this.checkAndPollCard(node);
+                                }
+                            });
+                        });
+                    });
+                    observer.observe(listContainer, { childList: true, subtree: true });
+                     if (window.mapPollerConfig.debug) {
+                        console.log('[MapPoller] MutationObserver attached to locations list.');
+                     }
                 }
-                return response.json();
-            })
-            .then(data => {
-                if (mapPollerConfig.debug) console.log(`[MapPoll] Received data for location ${locationId}:`, data);
-                if (data.status === 'ready') {
-                    if (mapPollerConfig.debug) console.log(`[MapPoll] Map is ready for ${locationId}.`);
-                    const mapArea = document.getElementById(`map-area-${locationId}`);
-                    if (mapArea && data.map_html) {
-                        mapArea.innerHTML = data.map_html;
-                    }
-                } else {
-                    retries--;
-                    if (mapPollerConfig.debug) console.log(`[MapPoll] Map not ready for ${locationId}. Retrying in ${delay / 1000}s.`);
-                    setTimeout(poll, delay);
-                }
-            })
-            .catch(error => {
-                console.error(`[MapPoll] Error for location ${locationId}:`, error);
-                retries = 0; // Stop polling on error
             });
-    }
+        },
 
-    poll();
-}
+        pollAllVisibleCards: function() {
+            const cards = document.querySelectorAll('#locations-list-container .card');
+             if (window.mapPollerConfig.debug) {
+                console.log(`[MapPoller] Found ${cards.length} location cards to check for polling.`);
+            }
+            cards.forEach(card => this.checkAndPollCard(card));
+        },
 
-function pollForMapCard(card, checkMapStatusUrl) {
-    const locationIdMatch = card.id.match(/al(\d+)-loc/);
-    if (!locationIdMatch) return;
-    const locationId = locationIdMatch[1];
+        checkAndPollCard: function(card) {
+            const mapArea = card.querySelector('.map-area');
+            if (mapArea && mapArea.dataset.isProcessing === 'true') {
+                const statusUrl = mapArea.dataset.statusUrl;
+                if (statusUrl) {
+                    if (window.mapPollerConfig.debug) {
+                        console.log(`[MapPoller] Polling started for card ${card.id} at ${statusUrl}`);
+                    }
+                    this.poll(statusUrl, mapArea, card);
+                } else {
+                     if (window.mapPollerConfig.debug) {
+                        console.error(`[MapPoller] Card ${card.id} is processing but has no status URL.`);
+                    }
+                }
+            }
+        },
 
-    const mapArea = card.querySelector(`#map-area-${locationId}`);
-    if (!mapArea || mapArea.querySelector('img')) {
-        return; // Map already exists or no map area
-    }
+        poll: function(statusUrl, mapArea, card, attempt = 1) {
+            const maxAttempts = 30; // 30 attempts * 5 seconds = 2.5 minutes
+            const interval = 5000; // 5 seconds
 
-    const statusBadge = card.querySelector('.location-status-badge');
-    const status = statusBadge ? statusBadge.textContent.trim().toLowerCase() : '';
+            fetch(statusUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                     if (window.mapPollerConfig.debug) {
+                        console.log(`[MapPoller] Poll attempt ${attempt} for ${card.id}:`, data);
+                    }
+                    if (data.status === 'success' && data.map_html) {
+                        // Success: stop polling and replace content
+                        mapArea.innerHTML = data.map_html;
+                        // No longer processing
+                        delete mapArea.dataset.isProcessing;
+                        if (window.mapPollerConfig.debug) {
+                            console.log(`[MapPoller] Successfully updated map for ${card.id}.`);
+                        }
+                    } else if (data.status === 'pending' || data.status === 'processing') {
+                        // Still processing: continue polling if attempts are not maxed out
+                        if (attempt < maxAttempts) {
+                            setTimeout(() => this.poll(statusUrl, mapArea, card, attempt + 1), interval);
+                        } else {
+                             if (window.mapPollerConfig.debug) {
+                                console.warn(`[MapPoller] Max polling attempts reached for ${card.id}.`);
+                            }
+                            mapArea.innerHTML = '<div class="alert alert-warning small p-2">Map generation timed out.</div>';
+                        }
+                    } else {
+                        // Failed or unexpected status: stop polling and show error
+                        throw new Error(data.message || 'Map generation failed.');
+                    }
+                })
+                .catch(error => {
+                    console.error(`[MapPoller] Error polling for ${card.id}:`, error);
+                    mapArea.innerHTML = `<div class="alert alert-danger small p-2">Error loading map: ${error.message}</div>`;
+                });
+        }
+    };
 
-    if (status === 'new' || status === 'confirmed') {
-        if (mapPollerConfig.debug) console.log(`[Polling] Card for location ${locationId} is '${status}' and has no map. Starting poll.`);
-        pollForMap(locationId, checkMapStatusUrl);
-    }
-}
+    // Expose checkAndPollCard globally if needed by other scripts (like htmx callbacks)
+    window.checkAndPollCard = Poller.checkAndPollCard.bind(Poller);
 
-function initializePolling() {
-    const configElement = document.getElementById('aid-request-config');
-    if (!configElement) {
-        if (mapPollerConfig.debug) console.error('[MapPoller] Config element not found.');
-        return;
-    }
+    Poller.init();
 
-    const checkMapStatusUrl = configElement.dataset.urlCheckMapStatus;
-    if (!checkMapStatusUrl) {
-        if (mapPollerConfig.debug) console.log('[MapPoller] No map status URL found, poller will not run.');
-        return;
-    }
-
-    // Case 1: Detail/Update page with multiple location cards
-    const locationCards = document.querySelectorAll('.card[id*="-loc"]');
-    if (locationCards.length > 0) {
-        if (mapPollerConfig.debug) console.log(`[MapPoller] Found ${locationCards.length} location cards. Initializing card polling.`);
-        locationCards.forEach(card => {
-            pollForMapCard(card, checkMapStatusUrl);
-        });
-        return; // Done
-    }
-
-    // Case 2: Submitted page with a single location
-    const locationId = configElement.dataset.locationId;
-    if (locationId) {
-        if (mapPollerConfig.debug) console.log(`[MapPoller] No cards found. Found single locationId ${locationId}. Initializing direct polling.`);
-        pollForMap(locationId, checkMapStatusUrl);
-        return; // Done
-    }
-
-    if (mapPollerConfig.debug) console.log('[MapPoller] No location cards or single location ID found to poll.');
-}
-
-// Make functions globally accessible if needed for dynamic content
-window.pollForMap = pollForMap;
-window.pollForMapCard = pollForMapCard;
-
-document.addEventListener('DOMContentLoaded', function() {
-    initializePolling();
-});
+})(window, document);

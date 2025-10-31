@@ -12,7 +12,7 @@ from django_q.tasks import async_task
 
 from icecream import ic
 
-from ..models import AidRequest, FieldOp, AidRequestLog, AidLocation, AidType
+from ..models import AidRequest, FieldOp, ActionLog, AidLocation, AidType
 from ..tasks import aid_request_postsave
 from ..forms import (
     AidRequestCreateFormA,
@@ -20,7 +20,7 @@ from ..forms import (
     LocationInformationForm,
     RequestDetailsForm,
     RequestStatusForm,
-    AidRequestLogForm,
+    ActionLogForm,
 )
 from .aid_request_forms_b import AidRequestCreateFormB
 from .aid_request_forms_c import AidRequestCreateFormC
@@ -180,7 +180,6 @@ class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVi
         context['location_form'] = LocationInformationForm(instance=instance)
         context['details_form'] = RequestDetailsForm(instance=instance)
         context['status_form'] = RequestStatusForm(instance=instance)
-        context['log_form'] = AidRequestLogForm(initial={'aid_request': self.object.pk})
 
         if self.request.user.is_superuser:
             context['aid_types'] = self.field_op.aid_types.all()
@@ -197,10 +196,10 @@ class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVi
         return kwargs
 
 
-class AidRequestLogCreateView(LoginRequiredMixin, CreateView):
+class ActionLogCreateView(LoginRequiredMixin, CreateView):
     """ Aid Request Log - Create """
-    model = AidRequestLog
-    form_class = AidRequestLogForm
+    model = ActionLog
+    form_class = ActionLogForm
 
     def setup(self, request, *args, **kwargs):
         """Initialize attributes shared by all view methods."""
@@ -219,15 +218,26 @@ class AidRequestLogCreateView(LoginRequiredMixin, CreateView):
                        )
 
     def form_valid(self, form):
+        """
+        Set the created_by user, structure the message as JSON, and save the log.
+        For HTMX requests, return a partial template of the new log row.
+        """
+        # Set the user who created the log
         self.object = form.save(commit=False)
-        user = self.request.user
-        if user.is_authenticated:
-            self.object.created_by = user
-            self.object.updated_by = user
-        else:
-            self.object.created_by = None
-            self.object.updated_by = None
+        self.object.created_by = self.request.user
+
+        # For manual user logs, populate the new structured fields
+        if self.object.log_type == 'user':
+            self.object.note = form.cleaned_data.get('note', '')
+            self.object.is_markdown = self.request.POST.get('enable_markdown') == 'true'
+            self.object.event_name = "User Note"
+            self.object.agent_name = self.request.user.username
+
         self.object.save()
+
+        # For HTMX requests, we return just the new row to be prepended
+        if self.request.htmx:
+            return render(self.request, 'aidrequests/action_log_row.html', {'log': self.object})
         return HttpResponseRedirect(self.get_success_url())
 
     def get_form_kwargs(self):
@@ -256,11 +266,16 @@ def change_aid_request_type(request, field_op, pk):
         aid_request.save()
 
         # Add a log entry for this change
-        AidRequestLog.objects.create(
+        message_data = {
+            "event_name": "Aid Type Change",
+            "event_text": f"Aid Type changed from '{original_aid_type_name}' to '{new_aid_type.name}'.",
+            "agent": request.user.username
+        }
+        ActionLog.objects.create(
             aid_request=aid_request,
             created_by=request.user,
-            updated_by=request.user,
-            log_entry=f"Aid Type changed from '{original_aid_type_name}' to '{new_aid_type.name}' by {request.user.username}."
+            log_type='system',
+            message=json.dumps(message_data)
         )
 
         return JsonResponse({

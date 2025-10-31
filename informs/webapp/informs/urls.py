@@ -13,9 +13,10 @@ from aidrequests.views.ajax_views import get_aid_requests_json, update_aid_reque
 from aidrequests.views.aid_request import (
     AidRequestCreateView,
     AidRequestUpdateView,
-    AidRequestLogCreateView,
+    ActionLogCreateView,
     change_aid_request_type
 )
+from aidrequests.views.htmx_views import get_action_logs_partial, get_audit_logs_partial, get_locations_list_partial, get_action_log_edit_form, update_action_log, get_action_log_row
 from aidrequests.views.aid_request_detail import AidRequestDetailView, AidRequestSubmittedView
 from aidrequests.views.aid_request_list import AidRequestListView
 from aidrequests.views.aid_request_notify import AidRequestNotifyView
@@ -113,7 +114,7 @@ urlpatterns = [
           ),
      path(
           '<slug:field_op>/aidrequest/<int:pk>/addlog',
-          AidRequestLogCreateView.as_view(),
+          ActionLogCreateView.as_view(),
           name='aid_request_addlog'
           ),
      path('api/<slug:field_op>/requests/', get_aid_requests_json, name='get_aid_requests_json'),
@@ -130,6 +131,12 @@ urlpatterns = [
      path('api/<slug:field_op>/aidlocation/<int:location_pk>/status-update/', aid_location_status_update, name='aid_location_status_update'),
      path('api/<slug:field_op>/aidlocation/<int:location_pk>/check-map-status/', check_map_status, name='check_map_status'),
      path('api/<slug:field_op>/request/<int:pk>/send_email/', send_email_view, name='ajax_send_email'),
+     path('api/<slug:field_op>/aidrequest/<int:pk>/action-logs/', get_action_logs_partial, name='get_action_logs_partial'),
+     path('api/<slug:field_op>/aidrequest/<int:pk>/audit-logs/', get_audit_logs_partial, name='get_audit_logs_partial'),
+     path('api/<slug:field_op>/aidrequest/<int:pk>/locations-list/', get_locations_list_partial, name='get_locations_list_partial'),
+     path('api/action-log/<int:pk>/edit/', get_action_log_edit_form, name='get_action_log_edit_form'),
+     path('api/action-log/<int:pk>/update/', update_action_log, name='update_action_log'),
+     path('api/action-log/<int:pk>/', get_action_log_row, name='get_action_log_row'),
      path('<str:field_op>/<int:pk>/change_type/', change_aid_request_type, name='change_aid_request_type'),
      # path('<str:field_op>/aidrequests/', AidRequestListView.as_view(), name='aid_requests_by_field_op'),
      path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aid_request_new'),

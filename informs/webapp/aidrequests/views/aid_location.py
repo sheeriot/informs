@@ -8,8 +8,9 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.template.loader import render_to_string
 import logging
+import json
 
-from ..models import AidLocation, AidRequest
+from ..models import AidLocation, AidRequest, ActionLog
 from .aid_location_forms import AidLocationCreateForm
 from .maps import create_static_map
 
@@ -44,26 +45,41 @@ class AidLocationDeleteView(LoginRequiredMixin, DeleteView):
 def aid_location_status_update(request, field_op, location_pk):
     location = get_object_or_404(AidLocation, pk=location_pk)
     aid_request = location.aid_request
-    action = request.POST.get('action')
 
     try:
+        data = json.loads(request.body)
+        action = data.get('action')
+        note = data.get('note', '')
+        is_markdown = data.get('is_markdown', False)
+
         if action == 'confirm':
-            # Set this location to 'confirmed'
             location.status = 'confirmed'
             location.save()
-            # Demote any other 'confirmed' locations for this request to 'new'
             aid_request.locations.exclude(pk=location.pk).filter(status='confirmed').update(status='new')
+            event_name = "Location Confirmed"
+            event_text = f"Location #{location.pk} confirmed."
 
         elif action == 'reject':
             location.status = 'rejected'
             location.save()
+            event_name = "Location Rejected"
+            event_text = f"Location #{location.pk} rejected."
 
         else:
-            return JsonResponse({'status': 'error', 'message': 'Invalid action or state.'}, status=400)
+            return JsonResponse({'status': 'error', 'message': 'Invalid action.'}, status=400)
 
-        # Refresh the request object to get the latest state
+        ActionLog.objects.create(
+            aid_request=aid_request,
+            created_by=request.user,
+            log_type='location',
+            event_name=event_name,
+            event_text=event_text,
+            note=note,
+            is_markdown=is_markdown,
+            agent_name=request.user.username
+        )
+
         aid_request.refresh_from_db()
-
         # Prepare context for rendering partials
         locations = aid_request.locations.all().order_by('-created_at')
 
@@ -85,6 +101,8 @@ def aid_location_status_update(request, field_op, location_pk):
             'header_html': header_html,
         })
 
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON.'}, status=400)
     except Exception as e:
         logger.error(f"Error updating location status for pk {location_pk}: {e}")
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

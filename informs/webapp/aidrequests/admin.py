@@ -7,8 +7,9 @@ from django.db.models import Count
 from django.contrib import messages
 from django.utils.html import format_html
 from django.urls import reverse
+import json
 
-from .models import FieldOp, FieldOpNotify, AidType, AidRequest, AidRequestLog, AidLocation
+from .models import FieldOp, FieldOpNotify, AidType, AidRequest, ActionLog, AidLocation
 from .forms import AidLocationInline, AidRequestInline
 
 
@@ -166,35 +167,37 @@ class AidLocationAdmin(admin.ModelAdmin):
         # Set updated_by on every save
         obj.updated_by = request.user
         if change:
-            obj.aid_request.logs.create(
+            obj.aid_request.action_logs.create(
                 created_by=request.user,
-                log_entry=f"Updated {obj} with changes: {form.changed_data}"
+                log_type='system',
+                event_name="Location Updated (Admin)",
+                event_text=f"Updated {obj} with changes: {form.changed_data}",
+                agent_name=request.user.username
             )
         else:
-            obj.aid_request.logs.create(
+            obj.aid_request.action_logs.create(
                 created_by=request.user,
-                log_entry=f"Created {obj}"
+                log_type='system',
+                event_name="Location Created (Admin)",
+                event_text=f"Created {obj}",
+                agent_name=request.user.username
             )
         super().save_model(request, obj, form, change)
 
 
-class AidRequestLogAdmin(admin.ModelAdmin):
-    """AidRequestLog admin"""
-    list_display = ('aid_request', 'log_entry', 'created_at', 'created_by', 'updated_at', 'updated_by')
-    list_filter = ('aid_request',)
+class ActionLogAdmin(admin.ModelAdmin):
+    """ActionLog admin"""
+    list_display = ('aid_request', 'event_name', 'note', 'is_markdown', 'log_type', 'created_at', 'created_by')
+    list_filter = ('aid_request', 'log_type', 'is_markdown')
     readonly_fields = (
         'created_at',
-        'updated_at',
         'created_by',
-        'updated_by'
         )
 
     def save_model(self, request, obj, form, change):
         # Set created_by only when creating a new object
         if not obj.pk:
             obj.created_by = request.user
-        # Set updated_by on every save
-        obj.updated_by = request.user
         super().save_model(request, obj, form, change)
 
 
@@ -213,6 +216,6 @@ class AidTypeAdmin(admin.ModelAdmin):
 
 admin.site.register(FieldOp, FieldOpAdmin)
 admin.site.register(FieldOpNotify, FieldOpNotifyAdmin)
-admin.site.register(AidRequestLog, AidRequestLogAdmin)
+admin.site.register(ActionLog, ActionLogAdmin)
 admin.site.register(AidLocation, AidLocationAdmin)
 admin.site.register(AidType, AidTypeAdmin)

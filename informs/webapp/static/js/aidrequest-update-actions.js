@@ -1,607 +1,219 @@
-const aidRequestUpdateConfig = {
-    debug: false // Set to true for console logging
-};
+if (typeof window.aidRequestUpdateActionsConfig === 'undefined') {
+    window.aidRequestUpdateActionsConfig = {
+        debug: false // Set to true for console logging
+    };
+}
+
 
 document.addEventListener('DOMContentLoaded', function () {
-    if (aidRequestUpdateConfig.debug) {
-        console.log('aidrequest-update-actions.js loaded');
+    if (window.aidRequestUpdateActionsConfig.debug) {
+        console.log('Update actions script loaded.');
     }
 
-    const configDiv = document.getElementById('aid-request-config');
-    const config = {
-        csrfToken: configDiv.dataset.csrfToken,
-        fieldOp: configDiv.dataset.fieldOp,
-        aidRequestId: configDiv.dataset.aidRequestId,
-        urlPartialUpdate: configDiv.dataset.urlPartialUpdate,
-        urlRegenerateMap: configDiv.dataset.urlRegenerateMap,
-        urlDeleteLocation: configDiv.dataset.urlDeleteLocation,
-        urlUpdateLocationStatus: configDiv.dataset.urlUpdateLocationStatus,
-        urlCheckMapStatus: configDiv.dataset.urlCheckMapStatus,
-    };
-
-    if (aidRequestUpdateConfig.debug) {
-        console.table(config);
-    }
-
-    if (aidRequestUpdateConfig.debug) {
-        console.log('Setting up section editing...');
-    }
-
-    const locationsContainer = document.getElementById('locations-list-container');
-    if (locationsContainer) {
-        locationsContainer.addEventListener('click', (e) => {
-            const button = e.target.closest('.delete-location-btn, .generate-map-btn, .confirm-location-btn, .reject-location-btn');
-            if (!button) return;
-
-            // If it's a delete button, Bootstrap's data attributes will handle showing the modal.
-            // We don't need to do anything else here for delete.
-            if (button.dataset.action === 'delete') {
-                return;
+    const modalElement = document.getElementById('add-location-modal');
+    if (modalElement) {
+        modalElement.addEventListener('show.bs.modal', function (event) {
+            if (window.aidRequestUpdateActionsConfig.debug) {
+                console.log('Add location modal is opening.');
             }
-
-            // For other actions, proceed with the original logic.
-            handleLocationAction(e, config);
-        });
-        locationsContainer.addEventListener('click', (e) => handlePreviewMapClick(e));
-    }
-
-    // New: Setup listener for the confirmation modal
-    const confirmationModal = document.getElementById('confirmationModal');
-    if (confirmationModal) {
-        confirmationModal.addEventListener('show.bs.modal', function (event) {
             const button = event.relatedTarget;
-            const message = button.dataset.confirmationMessage || 'Are you sure?';
-            const action = button.dataset.action;
+            if (!button) {
+                if (window.aidRequestUpdateActionsConfig.debug) {
+                    console.log('Modal opened without a button.');
+                }
+                return;
+            }
+
+            const aidRequestId = button.dataset.aidrequestId;
+            const fieldOpSlug = button.dataset.fieldOpSlug;
+            const form = modalElement.querySelector('form');
+
+            if (form && aidRequestId && fieldOpSlug) {
+                const url = `/api/${fieldOpSlug}/aidrequest/${aidRequestId}/add-location/`;
+                if (window.aidRequestUpdateActionsConfig.debug) {
+                    console.log('Setting form action to:', url);
+                }
+                form.action = url;
+            } else {
+                if (window.aidRequestUpdateActionsConfig.debug) {
+                    console.error('Could not set form action. Missing data.', {
+                        form: !!form,
+                        aidRequestId: aidRequestId,
+                        fieldOpSlug: fieldOpSlug
+                    });
+                }
+            }
+        });
+    } else {
+        if (window.aidRequestUpdateActionsConfig.debug) {
+            console.log('Add location modal not found.');
+        }
+    }
+
+    const deleteModal = document.getElementById('deleteLocationModal');
+    if (deleteModal) {
+        deleteModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
             const locationId = button.dataset.locationId;
+            const locationStatus = button.dataset.locationStatus;
+            const aidRequestId = button.dataset.aidRequestId;
+            const requesterName = button.dataset.requesterName;
+            const fullAddress = button.dataset.fullAddress;
+            const friendlyAddress = button.dataset.friendlyAddress;
+            const locationNote = button.dataset.locationNote;
 
-            const modalBody = confirmationModal.querySelector('#confirmationModalBody');
-            const confirmButton = confirmationModal.querySelector('#confirmActionButton');
+            if (window.aidRequestUpdateActionsConfig.debug) {
+                console.log('Delete modal triggered for:', { locationId, locationStatus, aidRequestId });
+            }
 
-            modalBody.textContent = message;
+            const modalTitle = deleteModal.querySelector('#deleteLocationModalLabel');
+            const modalBody = deleteModal.querySelector('#location-details-container');
 
-            // Pass data to the confirm button
-            confirmButton.dataset.action = action;
+            if (modalTitle) {
+                let titleText = `Delete Location #${locationId} for Aid Request #${aidRequestId}`;
+                if (requesterName) {
+                    titleText += ` (${requesterName})`;
+                }
+                modalTitle.textContent = titleText;
+            } else {
+                if (window.aidRequestUpdateActionsConfig.debug) {
+                    console.error('Could not find modal title element.');
+                }
+            }
+
+            const mapContainer = document.getElementById(`map-area-${locationId}`);
+            const originalMapImage = mapContainer ? mapContainer.querySelector('img') : null;
+
+            let mapHtml = '<p>Map not available.</p>';
+            if (originalMapImage) {
+                mapHtml = `<img src="${originalMapImage.src}" class="img-fluid" alt="Map for location ${locationId}">`;
+            }
+
+            let detailsHtml = `
+                <p class="mb-1"><strong>Status:</strong> ${locationStatus}</p>
+            `;
+            if (friendlyAddress && friendlyAddress !== 'N/A') {
+                detailsHtml += `<p class="mb-1"><strong>Found Address:</strong> ${friendlyAddress}</p>`;
+            }
+            if (locationNote) {
+                detailsHtml += `<p class="mb-1"><strong>Geocode Details:</strong> ${locationNote}</p>`;
+            }
+
+            modalBody.innerHTML = `
+                ${detailsHtml}
+                <div class="mt-2">${mapHtml}</div>
+            `;
+
+            const confirmButton = document.getElementById('confirmDeleteLocationButton');
             confirmButton.dataset.locationId = locationId;
+        });
 
-            if (aidRequestUpdateConfig.debug) {
-                console.log('Confirmation modal shown for action:', action, 'locationId:', locationId);
+        deleteModal.addEventListener('hidden.bs.modal', function() {
+            const noteTextarea = document.getElementById('delete-location-note');
+            if (noteTextarea) {
+                noteTextarea.value = '';
             }
         });
 
-        const confirmActionButton = document.getElementById('confirmActionButton');
-        confirmActionButton.addEventListener('click', function () {
-            const { action, locationId } = confirmActionButton.dataset;
-            if (action === 'delete') {
-                performDeleteAction(locationId, config);
-            }
-            bootstrap.Modal.getInstance(confirmationModal).hide();
-        });
-    }
+        const confirmDeleteButton = deleteModal.querySelector('#confirmDeleteLocationButton');
+        if (confirmDeleteButton) {
+            confirmDeleteButton.addEventListener('click', function() {
+                const locationId = this.dataset.locationId;
+                const config = document.getElementById('aid-request-config');
+                const csrfToken = config.dataset.csrfToken;
+                let url = config.dataset.urlDeleteLocation.replace('0', locationId);
+                const note = document.getElementById('delete-location-note').value;
+                const isMarkdown = document.getElementById('delete-location-markdown-check').checked;
 
-    const statusField = document.querySelector('#div_id_status select');
-    const priorityField = document.querySelector('#div_id_priority select');
-
-    if (statusField) {
-        statusField.addEventListener('change', (e) => updateRequestField(e, config, 'status'));
-    }
-    if (priorityField) {
-        priorityField.addEventListener('change', (e) => updateRequestField(e, config, 'priority'));
-    }
-
-    function updateRequestField(e, config, fieldName) {
-        const newValue = e.target.value;
-        if (aidRequestUpdateConfig.debug) {
-            console.log(`Updating ${fieldName} to ${newValue}`);
-        }
-
-        const data = {
-            [fieldName]: newValue
-        };
-
-        fetch(config.urlPartialUpdate, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': config.csrfToken,
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: JSON.stringify(data),
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => { throw new Error(err.error || 'Server error'); });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                showActionAlert(`${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} updated successfully.`, 'success');
-            } else {
-                throw new Error(data.error || 'Update failed');
-            }
-        })
-        .catch(error => {
-            console.error(`Failed to update ${fieldName}:`, error);
-            showActionAlert(`Error updating ${fieldName}: ${error.message}`, 'danger');
-        });
-    }
-
-    function handleLocationAction(e, config) {
-        // This function now ONLY handles non-delete actions.
-        const button = e.target.closest('.generate-map-btn, .confirm-location-btn, .reject-location-btn');
-        if (!button) return;
-
-        const locationId = button.dataset.locationId;
-        if (!locationId) return;
-
-        let url;
-        let action = button.dataset.action;
-        const originalButtonHtml = button.innerHTML;
-
-        if (action === 'remap') {
-            url = config.urlRegenerateMap.replace('0', locationId);
-        } else if (action === 'confirm' || action === 'reject') {
-            url = config.urlUpdateLocationStatus.replace('0', locationId);
-        } else {
-            return;
-        }
-
-        if (aidRequestUpdateConfig.debug) {
-            console.log(`Performing action '${action}' for location ${locationId} at URL: ${url}`);
-        }
-
-        button.disabled = true;
-        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-
-        const body = new FormData();
-        body.append('action', action);
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': config.csrfToken,
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: body,
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (aidRequestUpdateConfig.debug) {
-                console.log(`Response for '${action}' action:`, data);
-            }
-
-            if (data.status === 'success') {
-                if (action === 'remap') {
-                    const mapArea = document.getElementById(`map-area-${locationId}`);
-                    if (mapArea && data.map_html) {
-                        mapArea.innerHTML = data.map_html;
-                        showActionAlert('Map regenerated successfully.', 'success');
-                    }
-                } else if (action === 'confirm' || action === 'reject') {
-                    const card = document.getElementById(`ar${config.aidRequestId}-al${locationId}-loc`);
-                    if (card && data.card_html) {
-                        card.outerHTML = data.card_html; // Replace the entire card
-
-                        // After replacing, find the new card and check for polling needs
-                        const newCard = document.getElementById(`ar${config.aidRequestId}-al${locationId}-loc`);
-                        if (newCard && window.checkAndPollCard) {
-                            window.checkAndPollCard(newCard);
-                        }
-                        sortLocationCards(); // Re-sort the list ONLY after a successful update
-                    }
-                    if (data.header_html) {
-                        const header = document.getElementById('aid-request-header-container');
-                        if (header) {
-                            header.innerHTML = data.header_html;
-                        }
-                    }
-                    const message = action === 'confirm' ? 'Location Confirmed.' : 'Location Rejected.';
-                    showActionAlert(message, 'success');
-                }
-            } else {
-                throw new Error(data.message || 'An unknown error occurred.');
-            }
-        })
-        .catch(error => {
-            console.error('Action failed:', error);
-            showActionAlert(`Error: ${error.message}`, 'danger');
-        })
-        .finally(() => {
-            if (action !== 'delete') {
-                button.innerHTML = originalButtonHtml;
-                button.disabled = false;
-            }
-        });
-    }
-
-    function performDeleteAction(locationId, config) {
-        const url = config.urlDeleteLocation.replace('0', locationId);
-        if (aidRequestUpdateConfig.debug) {
-            console.log(`Performing delete action for location ${locationId} at URL: ${url}`);
-        }
-
-        // You might want a spinner on the modal's confirm button or disable it
-        const confirmButton = document.getElementById('confirmActionButton');
-        confirmButton.disabled = true;
-        const originalButtonText = confirmButton.innerHTML;
-        confirmButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
-
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': config.csrfToken,
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-             body: new FormData(), // No body needed for delete, but FormData can be used if action is checked server-side
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                document.querySelector(`.card[id$="-al${locationId}-loc"]`)?.remove();
-                showActionAlert('Location deleted successfully.', 'success');
-                if (data.header_html) {
-                    const headerContainer = document.getElementById('aid-request-header-container');
-                    if (headerContainer) {
-                        headerContainer.innerHTML = data.header_html;
-                    }
-                }
-            } else {
-                throw new Error(data.message || 'Deletion failed.');
-            }
-        })
-        .catch(error => {
-            console.error('Delete action failed:', error);
-            showActionAlert(`Error: ${error.message}`, 'danger');
-        })
-        .finally(() => {
-            // Restore button
-            confirmButton.disabled = false;
-            confirmButton.innerHTML = originalButtonText;
-        });
-    }
-
-    function sortLocationCards() {
-        const container = document.querySelector('#locations-list-container .list-group');
-        if (!container) return;
-
-        const cards = Array.from(container.querySelectorAll('.card'));
-        const statusOrder = { 'confirmed': 0, 'new': 1, 'rejected': 2, 'candidate': 3, 'other': 4 };
-
-        cards.sort((a, b) => {
-            const statusA = a.querySelector('.location-status-badge').textContent.trim().toLowerCase();
-            const statusB = b.querySelector('.location-status-badge').textContent.trim().toLowerCase();
-            const orderA = statusOrder[statusA] ?? 99;
-            const orderB = statusOrder[statusB] ?? 99;
-
-            if (orderA !== orderB) {
-                return orderA - orderB;
-            }
-
-            // If statuses are the same, sort by location ID (as a proxy for creation date)
-            const idA = parseInt(a.id.match(/al(\d+)-loc/)[1], 10);
-            const idB = parseInt(b.id.match(/al(\d+)-loc/)[1], 10);
-            return idA - idB;
-        });
-
-        // Re-append cards in the new sorted order
-        cards.forEach(card => container.appendChild(card));
-        if (aidRequestUpdateConfig.debug) console.log('[Sort] Location cards have been re-sorted by status.');
-    }
-
-    function handlePreviewMapClick(e) {
-        const button = e.target.closest('.preview-map-btn');
-        if (!button) return;
-
-        const mapUrl = button.dataset.mapUrl;
-        const modalElement = document.getElementById('mapPreviewModal');
-        const modalImage = document.getElementById('mapPreviewImage');
-
-        if (aidRequestUpdateConfig.debug) {
-            console.log('[MapPreview] Button clicked. URL:', mapUrl);
-        }
-
-        if (mapUrl && modalElement && modalImage) {
-            modalImage.src = mapUrl;
-            const modal = new bootstrap.Modal(modalElement);
-            modal.show();
-        } else {
-            if (aidRequestUpdateConfig.debug) {
-                console.error('[MapPreview] Missing mapUrl, modalElement, or modalImage.');
-            }
-        }
-    }
-
-    // --- Section Editing ---
-    function isAnySectionBeingEdited() {
-        const fieldsets = document.querySelectorAll('.partial-update-form fieldset');
-        for (const fieldset of fieldsets) {
-            if (!fieldset.disabled) {
-                if (aidRequestUpdateConfig.debug) console.log('isAnySectionBeingEdited: Found an unlocked fieldset', fieldset);
-                return true;
-            }
-        }
-        if (aidRequestUpdateConfig.debug) console.log('isAnySectionBeingEdited: No unlocked fieldsets found.');
-        return false;
-    }
-
-    const editButtons = document.querySelectorAll('.btn-edit-section');
-    if (aidRequestUpdateConfig.debug) {
-        console.log(`Found ${editButtons.length} edit buttons to attach listeners to.`);
-    }
-
-    editButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            if (aidRequestUpdateConfig.debug) console.log('Edit button clicked', button);
-            const fieldset = document.querySelector(button.dataset.target);
-
-            if (fieldset) {
-                const isCurrentlyLocked = fieldset.disabled;
-
-                if (isCurrentlyLocked && isAnySectionBeingEdited()) {
-                    showActionAlert('Please save or cancel your current edits before editing another section.', 'warning');
-                    if (aidRequestUpdateConfig.debug) console.log('Another section is already being edited. Aborting unlock.');
-                    return;
-                }
-
-                if (aidRequestUpdateConfig.debug) console.log(`Toggling section ${button.dataset.target}. Currently locked: ${isCurrentlyLocked}`);
-
-                fieldset.disabled = !isCurrentlyLocked;
-                button.querySelector('i').classList.toggle('bi-lock-fill', !isCurrentlyLocked);
-                button.querySelector('i').classList.toggle('bi-unlock-fill', isCurrentlyLocked);
-                button.classList.toggle('btn-outline-danger', !isCurrentlyLocked);
-                button.classList.toggle('btn-outline-success', isCurrentlyLocked);
-
-                const actionButtons = fieldset.querySelector('.d-flex.justify-content-end');
-                if (actionButtons) {
-                    actionButtons.classList.toggle('d-none', !isCurrentlyLocked);
-                }
-
-                const countryDisplayWrapper = fieldset.querySelector('#country-display-wrapper');
-                const countryInputWrapper = fieldset.querySelector('#country-input-wrapper');
-                const countryDropdown = fieldset.querySelector('#id_country');
-
-                if (countryDropdown) {
-                    if (isCurrentlyLocked) {
-                        // Switch to input mode
-                        if (countryDisplayWrapper) countryDisplayWrapper.classList.add('d-none');
-                        if (countryInputWrapper) countryInputWrapper.classList.remove('d-none');
-
-                        // Initialize Choices.js
-                        if (!countryDropdown.choices) {
-                            const initialCountryValue = countryDropdown.value;
-                            const choices = new Choices(countryDropdown, { removeItemButton: true });
-                            countryDropdown.choices = choices;
-
-                            // Add listener to handle 'remove' button click
-                            countryDropdown.addEventListener('change', function() {
-                                if (!countryDropdown.value) {
-                                    countryDropdown.choices.setValue([initialCountryValue]);
-                                }
-                            });
-                        }
-                        countryDropdown.choices.enable();
-
+                fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ note: note, is_markdown: isMarkdown })
+                }).then(response => {
+                    if (response.ok) {
+                        response.json().then(data => {
+                            const modal = bootstrap.Modal.getInstance(deleteModal);
+                            modal.hide();
+                            htmx.trigger('#locations-list-container', 'refreshLocations');
+                            htmx.trigger('body', 'actionLogUpdated');
+                        });
                     } else {
-                        // Switch back to display mode
-                        if (countryDisplayWrapper) countryDisplayWrapper.classList.remove('d-none');
-                        if (countryInputWrapper) countryInputWrapper.classList.add('d-none');
-
-                        // Destroy Choices.js instance
-                        if (countryDropdown.choices) {
-                            countryDropdown.choices.destroy();
-                            countryDropdown.choices = null;
-                        }
+                        console.error('Failed to delete location');
                     }
-                }
-            } else {
-                 if (aidRequestUpdateConfig.debug) console.error(`Fieldset not found for selector: ${button.dataset.target}`);
-            }
-        });
-    });
-
-    const cancelButtons = document.querySelectorAll('.btn-cancel-edit');
-    cancelButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            if (aidRequestUpdateConfig.debug) console.log('Cancel button clicked', button);
-            const form = button.closest('form');
-            const fieldset = form.querySelector('fieldset');
-            const editButton = document.querySelector(`.btn-edit-section[data-target="#${fieldset.id}"]`);
-
-            form.reset(); // Reset form fields to their initial values
-            fieldset.disabled = true;
-            editButton.querySelector('i').classList.add('bi-lock-fill');
-            editButton.querySelector('i').classList.remove('bi-unlock-fill');
-            editButton.classList.add('btn-outline-danger');
-            editButton.classList.remove('btn-outline-success');
-            button.closest('.d-flex').classList.add('d-none');
-
-            const countryDropdown = fieldset.querySelector('#id_country');
-            if (countryDropdown && countryDropdown.choices) {
-                countryDropdown.choices.destroy();
-                countryDropdown.choices = null;
-            }
-
-            const countryDisplayWrapper = fieldset.querySelector('#country-display-wrapper');
-            const countryInputWrapper = fieldset.querySelector('#country-input-wrapper');
-            if (countryDisplayWrapper) countryDisplayWrapper.classList.remove('d-none');
-            if (countryInputWrapper) countryInputWrapper.classList.add('d-none');
-
-        });
-    });
-
-    const partialUpdateForms = document.querySelectorAll('.partial-update-form');
-    partialUpdateForms.forEach(form => {
-        form.addEventListener('submit', (e) => handlePartialUpdate(e, config));
-    });
-
-    function handlePartialUpdate(e, config) {
-        e.preventDefault();
-        const form = e.target;
-        const formName = form.dataset.formName;
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-        data['form_name'] = formName; // Tell backend which form is being submitted
-
-        if (aidRequestUpdateConfig.debug) {
-            console.log(`Submitting partial update for ${formName}:`, data);
+                }).catch(error => console.error('Error:', error));
+            });
         }
-
-        fetch(config.urlPartialUpdate, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': config.csrfToken,
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: JSON.stringify(data),
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => { throw new Error(err.error || 'Server error'); });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                showActionAlert(`${formName.charAt(0).toUpperCase() + formName.slice(1)} information updated.`, 'success');
-                const fieldset = form.querySelector('fieldset');
-                const editButton = document.querySelector(`.btn-edit-section[data-target="#${fieldset.id}"]`);
-                fieldset.disabled = true;
-                editButton.querySelector('i').classList.add('bi-lock-fill');
-                editButton.querySelector('i').classList.remove('bi-unlock-fill');
-                editButton.classList.add('btn-outline-danger');
-                editButton.classList.remove('btn-outline-success');
-                form.querySelector('.d-flex.justify-content-end').classList.add('d-none');
-
-                const countryDropdown = fieldset.querySelector('#id_country');
-                if (countryDropdown && countryDropdown.choices) {
-                    const countryDisplayText = document.getElementById('country-display-text');
-                    if (countryDisplayText) {
-                        countryDisplayText.textContent = countryDropdown.choices.getValue(true);
-                    }
-                    countryDropdown.choices.destroy();
-                    countryDropdown.choices = null;
-                }
-                const countryDisplayWrapper = fieldset.querySelector('#country-display-wrapper');
-                const countryInputWrapper = fieldset.querySelector('#country-input-wrapper');
-                if (countryDisplayWrapper) countryDisplayWrapper.classList.remove('d-none');
-                if (countryInputWrapper) countryInputWrapper.classList.add('d-none');
-
-            } else {
-                // If there are form-specific errors, display them
-                if (data.errors) {
-                    // This part needs a more sophisticated implementation to display errors next to fields
-                    // For now, we'll just show a generic error message
-                    let errorMsg = 'Please correct the errors below.';
-                    const errorList = Object.entries(data.errors).map(([field, errors]) => `${field}: ${errors.join(', ')}`).join(' ');
-                    if(errorList) errorMsg = errorList;
-                    showActionAlert(errorMsg, 'danger');
-
-                } else {
-                    showActionAlert(data.error || 'Update failed.', 'danger');
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Partial update failed:', error);
-            showActionAlert(`Error: ${error.message}`, 'danger');
-        });
     }
 
-    // Handle Change Aid Type form submission
-    const changeAidTypeForm = document.getElementById('change-aid-type-form');
-    if (changeAidTypeForm) {
-        const alertContainer = document.getElementById('change-aid-type-alert');
+    const locationStatusModalEl = document.getElementById('locationStatusChangeModal');
+    const locationStatusModal = locationStatusModalEl ? new bootstrap.Modal(locationStatusModalEl) : null;
 
-        function showModalAlert(message, type = 'danger') {
-            if (alertContainer) {
-                alertContainer.innerHTML = `
-                    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-                        ${message}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                `;
+    document.body.addEventListener('click', function(event) {
+        const target = event.target.closest('.confirm-location-btn, .reject-location-btn');
+        if (target && locationStatusModal) {
+            const locationId = target.dataset.locationId;
+            const action = target.dataset.action;
+            const aidRequestId = target.dataset.aidRequestId;
+            const requesterName = target.dataset.requesterName;
+            const friendlyAddress = target.dataset.friendlyAddress;
+
+            const modalTitle = locationStatusModalEl.querySelector('.modal-title');
+            const contextContainer = locationStatusModalEl.querySelector('#location-status-context-container');
+            const confirmBtn = locationStatusModalEl.querySelector('#confirm-location-status-change-btn');
+
+            modalTitle.textContent = `${action === 'confirm' ? 'Confirm' : 'Reject'} Location #${locationId}`;
+
+            let contextHtml = `<p class="mb-1"><strong>Aid Request:</strong> #${aidRequestId} (${requesterName})</p>`;
+            if (friendlyAddress && friendlyAddress !== 'N/A') {
+                contextHtml += `<p class="mb-1"><strong>Found Address:</strong> ${friendlyAddress}</p>`;
             }
-            if (aidRequestUpdateConfig.debug) console.log(`Modal Alert (${type}): ${message}`);
+            contextContainer.innerHTML = contextHtml;
+
+            confirmBtn.className = target.className.replace('btn-sm', '');
+            confirmBtn.innerHTML = target.innerHTML;
+
+            confirmBtn.dataset.locationId = locationId;
+            confirmBtn.dataset.action = action;
+
+            locationStatusModal.show();
         }
+    });
 
-        changeAidTypeForm.addEventListener('submit', function(event) {
-            event.preventDefault();
+    if (locationStatusModalEl) {
+        const confirmBtn = locationStatusModalEl.querySelector('#confirm-location-status-change-btn');
+        confirmBtn.addEventListener('click', function() {
+            const locationId = this.dataset.locationId;
+            const action = this.dataset.action;
+            const note = locationStatusModalEl.querySelector('#location-action-note').value;
+            const isMarkdown = locationStatusModalEl.querySelector('#location-status-markdown-check').checked;
 
-            const confirmationInput = document.getElementById('confirmation-text');
-            const requesterNameElem = document.getElementById('requester-name-confirm');
-
-            if (!requesterNameElem) {
-                if (aidRequestUpdateConfig.debug) console.error('Could not find requester name element #requester-name-confirm');
-                showModalAlert('A page error occurred. Could not verify confirmation name.');
-                return;
-            }
-
-            // Trim quotes and whitespace for comparison
-            const requesterName = requesterNameElem.textContent.trim();
-            if (aidRequestUpdateConfig.debug) {
-                console.log(`Confirmation check:
-                  Input: "${confirmationInput.value.trim()}"
-                  Expected: "${requesterName}"`);
-            }
-
-            if (confirmationInput.value.trim() !== requesterName) {
-                showModalAlert('Confirmation text does not match. Please type the requester\'s full name exactly as shown.');
-                return;
-            }
-
-            const formData = new FormData(changeAidTypeForm);
-            const url = changeAidTypeForm.action;
-
-            if (aidRequestUpdateConfig.debug) {
-                console.log('Submitting change aid type form to URL:', url);
-            }
+            const config = document.getElementById('aid-request-config');
+            const csrfToken = config.dataset.csrfToken;
+            let url = config.dataset.urlUpdateLocationStatus.replace('0', locationId);
 
             fetch(url, {
                 method: 'POST',
-                body: formData,
                 headers: {
-                    'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => {
-                 if (!response.ok) {
-                    // Try to get JSON error, but fallback to status text
-                    return response.json().catch(() => {
-                        throw new Error(`Server responded with status: ${response.status} ${response.statusText}`);
-                    }).then(err => {
-                        throw new Error(err.message || 'An unknown server error occurred.');
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                 if (aidRequestUpdateConfig.debug) console.log('Received response:', data);
-                if (data.status === 'success') {
-                    // Use the global alert for success messages after the modal closes
-                    showActionAlert(data.message, 'success');
-                    document.getElementById('aid-type-name-display').textContent = data.new_aid_type_name;
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('changeAidTypeModal'));
-                    if (modal) {
-                        modal.hide();
-                    }
-                    confirmationInput.value = '';
-                    if(alertContainer) alertContainer.innerHTML = '';
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: action, note: note, is_markdown: isMarkdown })
+            }).then(response => {
+                if (response.ok) {
+                    htmx.trigger('#locations-list-container', 'refreshLocations');
+                    htmx.trigger('body', 'actionLogUpdated');
+                    locationStatusModal.hide();
                 } else {
-                    showModalAlert(data.message || 'Failed to change aid type.');
+                    console.error('Failed to update location status');
                 }
-            })
-            .catch(error => {
-                showModalAlert(`An unexpected error occurred: ${error.message}`);
-                console.error('Error changing aid type:', error);
-            });
+            }).catch(error => console.error('Error:', error));
+        });
+
+        locationStatusModalEl.addEventListener('hidden.bs.modal', function() {
+            locationStatusModalEl.querySelector('#location-action-note').value = '';
         });
     }
 });

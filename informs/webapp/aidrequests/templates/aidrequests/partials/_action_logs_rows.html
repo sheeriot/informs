@@ -1,0 +1,3 @@
+{% for log in action_logs %}
+    {% include "aidrequests/action_log_row.html" with log=log request=request %}
+{% endfor %}
