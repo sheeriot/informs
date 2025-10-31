@@ -133,7 +133,12 @@ def aid_request_postsave(aid_request_pk, **kwargs):
             email_results = email_results[:-2]
 
         try:
-            aid_request.logs.create(log_entry=f'{email_results}')
+            aid_request.action_logs.create(
+                log_type='system',
+                event_name="Email Notifications Sent",
+                event_text=email_results,
+                agent_name="System"
+            )
         except Exception as e:
             logger.error(f"Error logging email results: {e}")
 
@@ -194,8 +199,11 @@ def aid_request_notify(aid_request, **kwargs):
         results = results[:-1]
 
     try:
-        aid_request.logs.create(
-            log_entry=f'{results}'
+        aid_request.action_logs.create(
+            log_type='system',
+            event_name="Manual Email Notifications Sent",
+            event_text=results,
+            agent_name=request.user.username if request.user.is_authenticated else "System"
         )
     except Exception as e:
         logger.error(f"Error logging notification results: {e}")

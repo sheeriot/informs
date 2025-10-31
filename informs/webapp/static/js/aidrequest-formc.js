@@ -7,7 +7,7 @@ window.addEventListener('pageshow', function(event) {
 });
 
 const aidRequestFormCConfig = {
-    debug: false // Set to false for production
+    debug: true // Master debug switch for this script
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -538,6 +538,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const step = steps[stepIndex];
         if (!step) return true;
 
+        if (aidRequestFormCConfig.debug) console.log(`[FormC] --- Starting validation for Step ${stepIndex} ---`);
+
         const requiredInputs = step.querySelectorAll('[required]');
         const validatedRadioGroups = new Set();
         let firstInvalidInput = null;
@@ -605,13 +607,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (!isEmail && !isPhone) {
                     inputValid = false;
+                    if (aidRequestFormCConfig.debug) console.log(`[FormC] Validation FAIL: Contact info is not a valid email or phone number. Value: "${value}"`);
                     if (errorDiv) errorDiv.textContent = 'Please enter a valid phone number (at least 10 digits) or email address.';
                 } else if (!isEmail && value.length > 25) {
                     inputValid = false;
+                    if (aidRequestFormCConfig.debug) console.log(`[FormC] Validation FAIL: Phone number exceeds 25 characters. Value: "${value}"`);
                     if (errorDiv) errorDiv.textContent = 'Phone number cannot exceed 25 characters.';
                 }
             } else if (input.value.trim() === '') {
                 inputValid = false;
+                if (aidRequestFormCConfig.debug) console.log(`[FormC] Validation FAIL: Required field is empty. ID: ${input.id}`);
                 const label = document.querySelector(`label[for="${input.id}"]`);
                 const fieldName = label ? label.textContent.replace('*','').trim() : 'This field';
                 if (errorDiv) errorDiv.textContent = `${fieldName} is required.`;
@@ -624,12 +629,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     firstInvalidInput = input;
                 }
             } else {
-                input.classList.remove('is-invalid');
-                if (errorDiv && input.type !== 'radio') { // Radio error is cleared inside its block
-                    errorDiv.textContent = '';
-                }
+                if (aidRequestFormCConfig.debug) console.log(`[FormC] Validation PASS: Field ${input.id}`);
             }
         });
+
+        if (aidRequestFormCConfig.debug) console.log(`[FormC] --- Finished validation for Step ${stepIndex}. Overall valid: ${isValid} ---`);
 
         if (!isValid && firstInvalidInput) {
             const invalidStepEl = firstInvalidInput.closest('.form-step');

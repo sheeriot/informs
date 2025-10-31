@@ -187,8 +187,8 @@ class AidLocationAdmin(admin.ModelAdmin):
 
 class ActionLogAdmin(admin.ModelAdmin):
     """ActionLog admin"""
-    list_display = ('aid_request', 'event_name', 'note', 'is_markdown', 'log_type', 'created_at', 'created_by')
-    list_filter = ('aid_request', 'log_type', 'is_markdown')
+    list_display = ('aid_request', 'event_name', 'note', 'text_markdown', 'note_markdown', 'log_type', 'created_at', 'created_by')
+    list_filter = ('aid_request', 'log_type', 'text_markdown', 'note_markdown')
     readonly_fields = (
         'created_at',
         'created_by',

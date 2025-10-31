@@ -8,9 +8,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const countdownTimerElement = document.getElementById('countdown-timer');
     const refreshLink = document.getElementById('manual-refresh-link');
     const fieldOpSlug = document.body.dataset.fieldOpSlug;
+    const listContainer = document.getElementById('aid-request-list-container');
 
-    if (!countdownTimerElement || !refreshLink || !fieldOpSlug) {
-        console.error('Refresh components not found. AJAX refresh will not be enabled.');
+    if (!countdownTimerElement || !refreshLink || !fieldOpSlug || !listContainer) {
+        console.log('Refresh components not found, or not on list page. AJAX refresh will not be enabled.');
         return;
     }
 

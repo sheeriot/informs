@@ -209,7 +209,7 @@
                     updateFieldValue(lonInput, position[0].toFixed(5));
 
                     if (sourceInput) {
-                        updateFieldValue(sourceInput, 'forward_geocoded');
+                        updateFieldValue(sourceInput, 'azure_maps');
                     }
 
                     const freeformAddressInput = formContainer.querySelector(`#${mapContainer.dataset.freeformAddressInputId}`);
@@ -244,7 +244,7 @@
                     // Dispatch this event LAST, after all form fields have been updated.
                     const event = new CustomEvent('locationUpdated', {
                         detail: {
-                            source: 'forward_geocoded',
+                            source: 'azure_maps',
                             position: position,
                             geocodeData: address
                         }
@@ -463,7 +463,7 @@
 
                     const address = await reverseGeocode(e.position, true);
                     const formattedAddr = address ? address.freeformAddress : `No address found at ${e.position[1].toFixed(5)}, ${e.position[0].toFixed(5)}.`;
-                    updateForm(e.position, 'user_picked', address, formattedAddr);
+                    updateForm(e.position, 'azure_maps', address, formattedAddr);
                 });
 
                 map.events.add('dragend', requestMarker, async function() {
@@ -480,7 +480,7 @@
 
                     const address = await reverseGeocode(pos, true);
                     const formattedAddr = address ? address.freeformAddress : `No address found at ${pos[1].toFixed(5)}, ${pos[0].toFixed(5)}.`;
-                    updateForm(pos, 'user_picked', address, formattedAddr);
+                    updateForm(pos, 'azure_maps', address, formattedAddr);
                 });
 
                 function normalizeLongitude(lon) {
@@ -501,7 +501,7 @@
                             const address = await reverseGeocode(newPosition, true);
                             const formattedAddr = address ? address.freeformAddress : `No address found at ${lat.toFixed(5)}, ${lon.toFixed(5)}.`;
 
-                            updateForm(newPosition, 'user_entered', address, formattedAddr);
+                            updateForm(newPosition, 'manual', address, formattedAddr);
 
                             if (locationPickerConfig.debug) console.log(`[LocationPicker] Updated map to manually entered coordinates: ${lat}, ${lon}`);
                         } else {
@@ -572,7 +572,7 @@
 
                                     const address = await reverseGeocode(userPosition, true);
                                     const formattedAddr = address ? address.freeformAddress : `No address found at ${userPosition[1].toFixed(5)}, ${userPosition[0].toFixed(5)}.`;
-                                    updateForm(userPosition, 'device_location', address, formattedAddr);
+                                    updateForm(userPosition, 'azure_maps', address, formattedAddr);
                                 }
 
                             }, function() {

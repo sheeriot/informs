@@ -1,27 +1,33 @@
 {% load bootstrap_icons %}
-<div class="modal fade" id="statusChangeConfirmationModal" tabindex="-1" aria-labelledby="statusChangeConfirmationModalLabel" aria-hidden="true">
+<div class="modal fade" id="actionConfirmationModal" tabindex="-1" aria-labelledby="actionConfirmationModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="statusChangeConfirmationModalLabel">Confirm action</h5>
+                <h5 class="modal-title" id="actionConfirmationModalLabel">Confirm Action</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p id="status-change-confirmation-message"></p>
+                <div class="modal-body-dynamic mb-3">
+                    <!-- Dynamic content goes here -->
+                    <p>Are you sure you want to perform this action?</p>
+                </div>
                 <div class="mb-3">
-                    <label for="action-note" class="form-label">Add a note (optional):</label>
-                    <textarea class="form-control" id="action-note" rows="2"></textarea>
+                    <label for="actionNoteTextarea" class="form-label">Add a note (optional):</label>
+                    <textarea class="form-control action-note-textarea" id="actionNoteTextarea" rows="2"></textarea>
                 </div>
                 <div class="form-check mt-2">
-                  <input class="form-check-input" type="checkbox" value="" id="status-priority-markdown-check">
-                  <label class="form-check-label" for="status-priority-markdown-check">
-                    Enable Markdown
+                  <input class="form-check-input action-markdown-checkbox" type="checkbox" value="" id="actionMarkdownCheckbox">
+                  <label class="form-check-label" for="actionMarkdownCheckbox">
+                    Enable Markdown for Note
                   </label>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" id="cancel-status-change-btn">{% bs_icon 'x-circle' %} Cancel</button>
-                <button type="button" class="btn btn-primary" id="confirm-status-change-btn">Confirm</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% bs_icon 'x-circle' %} Cancel</button>
+                <button type="button" class="btn btn-primary confirm-action-btn">
+                    <span class="button-icon"></span>
+                    <span class="button-text">Confirm</span>
+                </button>
             </div>
         </div>
     </div>

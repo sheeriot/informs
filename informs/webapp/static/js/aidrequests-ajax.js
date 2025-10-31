@@ -1,236 +1,86 @@
 /**
  * aidrequests-ajax.js
  *
- * Handles AJAX updates for aid request status and priority changes
+ * This script is deprecated in favor of aidrequest-actions.js.
+ * Its functionality for handling status/priority changes from dropdowns
+ * has been integrated into the modal-based action workflow.
+ *
+ * The logic is now handled by a combination of:
+ * 1. The generic modal handler in `aidrequest-actions.js`.
+ * 2. The event listeners that trigger the modal, which could be here or elsewhere.
+ *
+ * For now, this file can be left empty or removed. To maintain the functionality,
+ * we will re-implement the dropdown click handlers to use the modal system.
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Get CSRF token
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const scriptConfig = {
+        debug: true,
+    };
 
-    // Handle status changes
-    document.querySelectorAll('.status-option').forEach(option => {
-        option.addEventListener('click', function(e) {
-            e.preventDefault();
-            const requestId = this.dataset.requestId;
-            const newStatus = this.dataset.status;
-            const button = document.querySelector(`.status-button[data-request-id="${requestId}"]`);
+    document.body.addEventListener('click', function(event) {
+        // Find the closest ancestor that is a status or priority option.
+        const target = event.target.closest('.status-option, .priority-option');
 
-            // Close the dropdown
-            const dropdown = this.closest('.dropdown-menu');
-            if (dropdown) {
-                const dropdownInstance = bootstrap.Dropdown.getInstance(button);
-                if (dropdownInstance) {
-                    dropdownInstance.hide();
-                }
-            }
-
-            updateAidRequest(requestId, { status: newStatus }, button);
-        });
-    });
-
-    // Handle priority changes
-    document.querySelectorAll('.priority-option').forEach(option => {
-        option.addEventListener('click', function(e) {
-            e.preventDefault();
-            const requestId = this.dataset.requestId;
-            const newPriority = this.dataset.priority;
-            const button = document.querySelector(`.priority-button[data-request-id="${requestId}"]`);
-
-            // Close the dropdown
-            const dropdown = this.closest('.dropdown-menu');
-            if (dropdown) {
-                const dropdownInstance = bootstrap.Dropdown.getInstance(button);
-                if (dropdownInstance) {
-                    dropdownInstance.hide();
-                }
-            }
-
-            updateAidRequest(requestId, { priority: newPriority }, button);
-        });
-    });
-
-    // Function to get field operation slug from URL or element
-    function getFieldOpSlug() {
-        // First try to get from element
-        const fieldOpElement = document.getElementById('field-op-slug');
-        if (fieldOpElement && fieldOpElement.textContent) {
-            return fieldOpElement.textContent;
+        if (!target) {
+            return; // Exit if the click wasn't on a relevant option.
         }
 
-        // If element not found, try to get from URL path
-        const pathParts = window.location.pathname.split('/');
-        const fieldOpIndex = pathParts.findIndex(part => part === 'field-ops') + 1;
-        if (fieldOpIndex > 0 && fieldOpIndex < pathParts.length) {
-            return pathParts[fieldOpIndex];
-        }
+        event.preventDefault();
 
-        console.error('Could not determine field operation slug');
-        return null;
-    }
-
-    // Function to update aid request via AJAX
-    function updateAidRequest(requestId, data, buttonElement) {
+        const requestId = target.dataset.requestId;
+        const isStatusUpdate = target.classList.contains('status-option');
+        const fieldName = isStatusUpdate ? 'status' : 'priority';
+        const newValue = target.dataset[fieldName];
         const fieldOpSlug = document.body.dataset.fieldOpSlug;
+
         if (!fieldOpSlug) {
-            throw new Error('Field operation slug not found in body data attribute');
+            console.error('[AJAX Actions] Field operation slug not found in body data attribute. Cannot build URL.');
+            return;
         }
 
-        const url = `/api/${fieldOpSlug}/request/${requestId}/update/`;
+        if (scriptConfig.debug) {
+            console.log(`[AJAX Actions] Dropdown item clicked: Request ID ${requestId}, New ${fieldName}: ${newValue}`);
+        }
 
-        // Store the type of update we're doing
-        const isStatusUpdate = 'status' in data;
-        const isPriorityUpdate = 'priority' in data;
-
-        // Show loading state
-        const originalContent = buttonElement.innerHTML;
-        buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-        buttonElement.disabled = true;
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Only update the button that matches our update type
-                if (isStatusUpdate && buttonElement.classList.contains('status-button')) {
-                    updateStatusButton(buttonElement, data.status, data.status_display);
-                } else if (isPriorityUpdate && buttonElement.classList.contains('priority-button')) {
-                    updatePriorityButton(buttonElement, data.priority, data.priority_display);
-                } else {
-                    console.error('Button type mismatch:', {
-                        isStatusUpdate,
-                        isPriorityUpdate,
-                        buttonClasses: buttonElement.classList
-                    });
-                    buttonElement.innerHTML = originalContent;
-                }
-
-                // Update the store with new data
-                if (window.aidRequestsStore?.initialized) {
-                    const updates = {};
-                    if (isStatusUpdate) {
-                        updates.status = data.status;
-                        updates.status_display = data.status_display;
-                    }
-                    if (isPriorityUpdate) {
-                        updates.priority = data.priority;
-                        updates.priority_display = data.priority_display;
-                    }
-                    window.aidRequestsStore.updateAidRequest(requestId, updates);
-                } else {
-                    console.warn('Store not initialized, skipping store update');
-                }
-            } else {
-                console.error('Update failed:', data.error);
-                // Restore original content
-                buttonElement.innerHTML = originalContent;
+        // Close the dropdown menu it came from.
+        const dropdownButton = document.querySelector(`button[data-request-id="${requestId}"].dropdown-toggle`);
+        if (dropdownButton) {
+            const dropdownInstance = bootstrap.Dropdown.getInstance(dropdownButton);
+            if (dropdownInstance) {
+                dropdownInstance.hide();
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            // Restore original content
-            buttonElement.innerHTML = originalContent;
-        })
-        .finally(() => {
-            buttonElement.disabled = false;
-        });
-    }
-
-    // Update status button appearance
-    function updateStatusButton(button, status, displayText) {
-        // Remove existing button classes
-        button.classList.remove('btn-outline-warning', 'btn-outline-success', 'btn-outline-primary', 'btn-outline-danger', 'btn-outline-secondary');
-
-        // Add appropriate class based on new status
-        switch(status) {
-            case 'new':
-            case 'assigned':
-                button.classList.add('btn-outline-warning');
-                break;
-            case 'resolved':
-                button.classList.add('btn-outline-success');
-                break;
-            case 'closed':
-                button.classList.add('btn-outline-primary');
-                break;
-            case 'rejected':
-                button.classList.add('btn-outline-danger');
-                break;
-            default:
-                button.classList.add('btn-outline-secondary');
         }
 
-        // Update icon and text
-        const iconClass = getStatusIcon(status);
-        button.innerHTML = `<i class="bi ${iconClass}"></i> <span class="text-dark">${displayText}</span>`;
-
-        // Update data attribute
-        button.dataset.currentStatus = status;
-
-        // Update row visibility based on status group
-        const row = button.closest('.aid-request-row');
-        if (row) {
-            const isInactive = window.aidRequestsStore?.statusGroups.inactive.includes(status);
-            row.classList.toggle('d-none', isInactive);
-            row.dataset.status = status;
-        }
-    }
-
-    // Update priority button appearance
-    function updatePriorityButton(button, priority, displayText) {
-        // Remove existing button classes
-        button.classList.remove('btn-danger', 'btn-warning', 'btn-primary', 'btn-secondary');
-
-        // Add appropriate class based on new priority
-        switch(priority) {
-            case 'high':
-                button.classList.add('btn-danger');
-                break;
-            case 'medium':
-                button.classList.add('btn-warning');
-                break;
-            case 'low':
-                button.classList.add('btn-primary');
-                break;
-            default:
-                button.classList.add('btn-secondary');
+        // This button is hidden but holds the data for the generic modal handler.
+        const triggerButton = document.getElementById('status-priority-change-trigger');
+        if (!triggerButton) {
+            console.error('[AJAX Actions] Cannot find hidden trigger button #status-priority-change-trigger');
+            return;
         }
 
-        // Update text and keep button structure consistent
-        button.innerHTML = displayText;
+        // 1. Dynamically set the data for this specific change.
+        triggerButton.dataset.actionUrl = `/api/${fieldOpSlug}/request/${requestId}/update/`;
+        triggerButton.dataset.modalTitle = `Confirm ${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} Change`;
+        triggerButton.dataset.modalBody = `You are about to change the ${fieldName} for this Aid Request. This will be logged.`;
+        triggerButton.dataset.requestId = requestId;
 
-        // Update data attribute
-        button.dataset.currentPriority = priority;
+        // 2. Clear any lingering data from previous actions before setting new data.
+        delete triggerButton.dataset.status;
+        delete triggerButton.dataset.priority;
+        triggerButton.dataset[fieldName] = newValue; // Set the new value to be sent in the payload.
 
-        // Update row data attribute
-        const row = button.closest('.aid-request-row');
-        if (row) {
-            row.dataset.priority = priority || 'none';
+        if (scriptConfig.debug) {
+            console.log('[AJAX Actions] Populated hidden trigger button:', triggerButton.dataset);
         }
-    }
 
-    // Get status icon class
-    function getStatusIcon(status) {
-        switch(status) {
-            case 'new':
-                return 'bi-download';
-            case 'assigned':
-                return 'bi-clock';
-            case 'resolved':
-                return 'bi-hand-thumbs-up';
-            case 'closed':
-                return 'bi-door-closed';
-            case 'rejected':
-                return 'bi-hand-thumbs-down';
-            default:
-                return 'bi-question-lg';
+        // 3. Find and show the modal.
+        const modalEl = document.querySelector(triggerButton.dataset.bsTarget);
+        if (!modalEl) {
+            console.error('[AJAX Actions] Cannot find modal element with selector:', triggerButton.dataset.bsTarget);
+            return;
         }
-    }
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show(triggerButton); // Pass the trigger button to the modal 'show' event.
+    });
 });

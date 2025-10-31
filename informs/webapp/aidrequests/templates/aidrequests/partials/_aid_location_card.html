@@ -14,68 +14,94 @@
         {% else %}
             bg-light
         {% endif %}
-    ">
+        d-flex justify-content-between align-items-center"
+        data-bs-toggle="collapse"
+        data-bs-target="#location-collapse-{{ location.pk }}"
+        aria-expanded="{% if location.status == 'confirmed' %}true{% else %}false{% endif %}"
+        aria-controls="location-collapse-{{ location.pk }}"
+        style="cursor: pointer;">
+
         <h6 class="mb-0">{% bs_icon 'geo-alt' %} Location #{{ location.pk }}</h6>
+
+        <div>
+            <span class="badge me-2
+                {% if location.status == 'confirmed' %}bg-success
+                {% elif location.status == 'rejected' %}bg-danger
+                {% elif location.status == 'new' %}bg-warning text-dark
+                {% elif location.status == 'candidate' %}bg-info text-dark
+                {% else %}bg-secondary{% endif %}
+            ">{{ location.get_status_display }}</span>
+            <span class="collapse-icon">
+                {% if location.status == 'confirmed' %}
+                    {% bs_icon 'chevron-up' %}
+                {% else %}
+                    {% bs_icon 'chevron-down' %}
+                {% endif %}
+            </span>
+        </div>
     </div>
-    <div class="card-body py-2">
-        <!-- Coordinates and Distance -->
-        <div class="row align-items-center">
-            <div class="col-12 col-lg-8">
-                {% include 'aidrequests/partials/_coordinates_display.html' with latitude=location.latitude longitude=location.longitude element_id='coordinates-'|add:location.pk %}
-            </div>
-            <div class="col-12 col-lg-4 text-lg-end">
-                 <small class="text-muted me-2">Distance:</small>
-                <span class="text-nowrap fw-bold">{{ location.distance|floatformat:2|default:"N/A" }} km</span>
-            </div>
-        </div>
 
-        <!-- Status and Buttons -->
-        <div class="d-flex justify-content-between align-items-center mt-2">
-            <div class="text-nowrap">
-                <small class="text-muted me-2">Status:</small>
-                <span class="location-status-badge fw-bold {% if location.status == 'confirmed' %}text-success{% elif location.status == 'rejected' %}text-danger{% endif %}">{{ location.get_status_display }}</span>
+    <div id="location-collapse-{{ location.pk }}" class="collapse {% if location.status == 'confirmed' %}show{% endif %}">
+        <div class="card-body py-2">
+            <!-- Coordinates and Distance -->
+            <div class="row align-items-center">
+                <div class="col-12 col-lg-8">
+                    {% include 'aidrequests/partials/_coordinates_display.html' with latitude=location.latitude longitude=location.longitude element_id='coordinates-'|add:location.pk %}
+                </div>
+                <div class="col-12 col-lg-4 text-lg-end">
+                     <small class="text-muted me-2">Distance:</small>
+                    <span class="text-nowrap fw-bold">{{ location.distance|floatformat:2|default:"N/A" }} km</span>
+                </div>
             </div>
-            {% include 'aidrequests/partials/_aid_location_action_buttons.html' %}
-        </div>
 
-        <!-- Source -->
-        <div class="mt-2">
-            <small class="text-muted me-2">Source:</small>
-            <span>{{ location.source }}</span>
-        </div>
+            <!-- Status and Buttons -->
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <div class="text-nowrap">
+                    <small class="text-muted me-2">Status:</small>
+                    <span class="location-status-badge fw-bold {% if location.status == 'confirmed' %}text-success{% elif location.status == 'rejected' %}text-danger{% endif %}">{{ location.get_status_display }}</span>
+                </div>
+                {% include 'aidrequests/partials/_aid_location_action_buttons.html' %}
+            </div>
 
-        <!-- Geocoded Address -->
-        <div class="mt-2">
-            <div class="d-flex align-items-center">
-                <small class="text-muted me-2">Geocoded Address</small>
+            <!-- Source -->
+            <div class="mt-2">
+                <small class="text-muted me-2">Source:</small>
+                <span>{{ location.source }}</span>
+            </div>
+
+            <!-- Geocoded Address -->
+            <div class="mt-2">
+                <div class="d-flex align-items-center">
+                    <small class="text-muted me-2">Geocoded Address</small>
+                    {% if location.geocode_json %}
+                    <button class="btn btn-link p-0 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-details-{{ location.pk }}" aria-expanded="false" aria-controls="collapse-details-{{ location.pk }}">
+                        {% bs_icon 'card-list' %}
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="font-monospace">{{ location.free_form_address|default:"Not available" }}</div>
+            </div>
+
+            <!-- Collapsible Details -->
+            <div class="collapse mt-2" id="collapse-details-{{ location.pk }}">
+                 {% if location.note %}
+                <div class="mb-2">
+                    <small class="text-muted">Notes:</small>
+                    <pre class="mb-0 font-monospace bg-light p-1" style="white-space: pre-wrap; font-size: 0.8em;">{{ location.note }}</pre>
+                </div>
+                {% endif %}
+
                 {% if location.geocode_json %}
-                <button class="btn btn-link p-0 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-details-{{ location.pk }}" aria-expanded="false" aria-controls="collapse-details-{{ location.pk }}">
-                    {% bs_icon 'card-list' %}
-                </button>
+                <div class="mb-2">
+                     <small class="text-muted">Geocode JSON:</small>
+                    <pre class="mb-0 font-monospace bg-light p-1 mt-1" style="white-space: pre-wrap; font-size: 0.8em; max-height: 200px; overflow-y: auto;">{{ location.pretty_geocode_json }}</pre>
+                </div>
                 {% endif %}
             </div>
-            <div class="font-monospace">{{ location.free_form_address|default:"Not available" }}</div>
         </div>
 
-        <!-- Collapsible Details -->
-        <div class="collapse mt-2" id="collapse-details-{{ location.pk }}">
-             {% if location.note %}
-            <div class="mb-2">
-                <small class="text-muted">Notes:</small>
-                <pre class="mb-0 font-monospace bg-light p-1" style="white-space: pre-wrap; font-size: 0.8em;">{{ location.note }}</pre>
-            </div>
-            {% endif %}
-
-            {% if location.geocode_json %}
-            <div class="mb-2">
-                 <small class="text-muted">Geocode JSON:</small>
-                <pre class="mb-0 font-monospace bg-light p-1 mt-1" style="white-space: pre-wrap; font-size: 0.8em; max-height: 200px; overflow-y: auto;">{{ location.pretty_geocode_json }}</pre>
-            </div>
-            {% endif %}
+        <div class="position-relative" id="map-area-{{ location.pk }}">
+           {% include 'aidrequests/partials/_location_map_area.html' %}
         </div>
-    </div>
-
-    <div class="position-relative" id="map-area-{{ location.pk }}">
-       {% include 'aidrequests/partials/_location_map_area.html' %}
     </div>
 </div>

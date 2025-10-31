@@ -1,4 +1,35 @@
 document.addEventListener('DOMContentLoaded', function() {
+    const scriptConfig = {
+        debug: false, // Set to false to disable console logs for this script
+    };
+    if(scriptConfig.debug) console.log('scriptConfig', scriptConfig);
+
+    // Listener for chevron icons on collapsible location cards
+    const locationListContainer = document.getElementById('locations-list-container');
+    if (locationListContainer) {
+        locationListContainer.addEventListener('show.bs.collapse', function(event) {
+            const header = event.target.previousElementSibling;
+            if (header && header.matches('.card-header')) {
+                const icon = header.querySelector('.collapse-icon .bi');
+                if (icon) {
+                    icon.classList.remove('bi-chevron-down');
+                    icon.classList.add('bi-chevron-up');
+                }
+            }
+        });
+
+        locationListContainer.addEventListener('hide.bs.collapse', function(event) {
+            const header = event.target.previousElementSibling;
+            if (header && header.matches('.card-header')) {
+                const icon = header.querySelector('.collapse-icon .bi');
+                if (icon) {
+                    icon.classList.remove('bi-chevron-up');
+                    icon.classList.add('bi-chevron-down');
+                }
+            }
+        });
+    }
+
     const configElement = document.getElementById('aid-request-config');
     if (!configElement) {
         console.error('[AddLocation] Aid request configuration element not found');
@@ -6,7 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const aidRequestConfig = {
-        debug: false,
         aidRequestId: configElement.dataset.aidRequestId,
         csrfToken: configElement.dataset.csrfToken,
         urls: {
@@ -19,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function initializeAddLocation() {
         const addLocationModal = document.getElementById('addLocationModal');
         if (!addLocationModal) {
-            if (aidRequestConfig.debug) console.error('[AddLocation] Modal with ID "addLocationModal" not found.');
+            if (scriptConfig.debug) console.error('[AddLocation] Modal with ID "addLocationModal" not found.');
             return;
         }
 
@@ -32,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         // After map is ready, check if we should auto-geocode
                         const cityInput = addLocationModal.querySelector('#id_city_modal');
                         if (cityInput && cityInput.value.trim()) {
-                            if (aidRequestConfig.debug) console.log('[AddLocation] City field has value on modal open, attempting auto-geocode.');
+                            if (scriptConfig.debug) console.log('[AddLocation] City field has value on modal open, attempting auto-geocode.');
                             performModalGeocode();
                         }
                     });
@@ -74,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const sourceInput = addLocationModal.querySelector('input[name="source"]');
                 if (sourceInput) {
                     sourceInput.value = 'address_provided';
-                     if (aidRequestConfig.debug) {
+                     if (scriptConfig.debug) {
                         console.log('[AddLocation] Overrode location source to "address_provided".');
                     }
                 }
@@ -96,11 +126,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const street = streetInput ? streetInput.value.trim() : '';
 
         if (city) {
-            if (aidRequestConfig.debug) console.log(`[AddLocation] Performing geocode for: ${street}, ${city}, ${state}`);
+            if (scriptConfig.debug) console.log(`[AddLocation] Performing geocode for: ${street}, ${city}, ${state}`);
 
             const mapContainer = modal.querySelector('#add-location-map');
             if (!mapContainer) {
-                if (aidRequestConfig.debug) console.error('[AddLocation] Modal map container not found.');
+                if (scriptConfig.debug) console.error('[AddLocation] Modal map container not found.');
                 return;
             }
 
@@ -115,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (data.results && data.results.length > 0) {
                     const result = data.results[0];
-                    if (aidRequestConfig.debug) console.log('[AddLocation] Geocode successful:', result);
+                    if (scriptConfig.debug) console.log('[AddLocation] Geocode successful:', result);
                     document.dispatchEvent(new CustomEvent('updateMapFromGeocode', {
                         detail: {
                             position: [result.position.lon, result.position.lat],
@@ -123,10 +153,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }));
                 } else {
-                    if (aidRequestConfig.debug) console.warn('[AddLocation] Geocode returned no results.');
+                    if (scriptConfig.debug) console.warn('[AddLocation] Geocode returned no results.');
                 }
             } catch (error) {
-                if (aidRequestConfig.debug) console.error('[AddLocation] Geocode error:', error);
+                if (scriptConfig.debug) console.error('[AddLocation] Geocode error:', error);
             } finally {
                 if (spinner) spinner.classList.add('d-none');
             }
@@ -136,12 +166,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleLocationFormSubmit(e) {
         e.preventDefault();
         const form = e.target;
-        const submitButton = form.closest('.modal-content').querySelector('#submit-location-form');
-        const originalButtonHtml = submitButton.innerHTML;
+        const modal = form.closest('.modal');
+        const modalFooter = modal.querySelector('.modal-footer');
+        const formContainer = form.parentElement;
+        const loadingContainer = modal.querySelector('#addLocationLoading');
 
-        if (aidRequestConfig.debug) console.log('[AddLocation] Location form submitted.');
-        submitButton.disabled = true;
-        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+        if (scriptConfig.debug) console.log('[AddLocation] Location form submitted.');
+
+        // Hide form and footer, show loading indicator
+        if(formContainer) formContainer.classList.add('d-none');
+        if(modalFooter) modalFooter.classList.add('d-none');
+        if(loadingContainer) loadingContainer.classList.remove('d-none');
 
         fetch(form.action, {
             method: 'POST',
@@ -157,29 +192,43 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(data => {
             if (data.success) {
-                if (aidRequestConfig.debug) console.log('[AddLocation] Form submission successful.', data);
+                if (scriptConfig.debug) console.log('[AddLocation] Form submission successful.', data);
                 showActionAlert('Location added successfully.', 'success');
                 const modal = bootstrap.Modal.getInstance(document.getElementById('addLocationModal'));
                 modal.hide();
 
                 if (data.new_location_html) {
+                    if (scriptConfig.debug) console.log('[AddLocation] Received new location HTML. Injecting into container.');
                     const locationsContainer = document.querySelector('#locations-list-container .list-group');
                     if (locationsContainer) {
                         const noLocationsMessage = locationsContainer.querySelector('#no-locations-message');
                         if (noLocationsMessage) noLocationsMessage.remove();
                         locationsContainer.insertAdjacentHTML('afterbegin', data.new_location_html);
+                    } else {
+                        if (scriptConfig.debug) console.error('[AddLocation] Locations container not found.');
                     }
                 }
                 if (data.header_html) {
+                    if (scriptConfig.debug) console.log('[AddLocation] Received new header HTML. Updating header.');
                     const headerContainer = document.getElementById('aid-request-header-container');
                     if (headerContainer) {
                         headerContainer.innerHTML = data.header_html;
+                    } else {
+                        if (scriptConfig.debug) console.error('[AddLocation] Header container not found.');
                     }
                 }
+
+                // Trigger a refresh of the action logs tab
+                if (scriptConfig.debug) console.log('[AddLocation] Triggering actionLogUpdated event.');
+                htmx.trigger('body', 'actionLogUpdated');
+
                 if (data.location_pk && window.checkAndPollCard) {
+                     if (scriptConfig.debug) console.log(`[AddLocation] Polling for map on new card for location PK: ${data.location_pk}.`);
                     const newCard = document.getElementById(`ar${aidRequestConfig.aidRequestId}-al${data.location_pk}-loc`);
                     if (newCard) {
                         window.checkAndPollCard(newCard);
+                    } else {
+                        if (scriptConfig.debug) console.error(`[AddLocation] Could not find new card element for location PK: ${data.location_pk}`);
                     }
                 }
             } else {
@@ -192,8 +241,10 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('An unexpected error occurred. Please check the console.');
         })
         .finally(() => {
-            submitButton.innerHTML = originalButtonHtml;
-            submitButton.disabled = false;
+            // Restore form visibility in case of error or if user needs to re-submit
+            if(formContainer) formContainer.classList.remove('d-none');
+            if(modalFooter) modalFooter.classList.remove('d-none');
+            if(loadingContainer) loadingContainer.classList.add('d-none');
         });
     }
 

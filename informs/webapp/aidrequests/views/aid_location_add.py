@@ -40,26 +40,11 @@ def add_location(request, field_op, pk):
 
             location.save()
 
-            message_data = {
-                "event_name": "Location Added",
-                "event_text": f"New location #{location.pk} added.",
-                "note": "",
-                "is_markdown": False,
-                "agent": request.user.username
-            }
-            ActionLog.objects.create(
-                aid_request=aid_request,
-                created_by=request.user,
-                log_type='user',
-                message=json.dumps(message_data)
-            )
-
             # After saving the new location, we need to refresh the aid_request
             # object so that its properties (like `location_status`) are up-to-date
             # when rendering the new card template.
             aid_request.refresh_from_db()
-
-            create_static_map(location)
+            location.refresh_from_db() # Also refresh the location to get the map filename for the card
 
             context = {'aid_request': aid_request, 'location': location, 'object': aid_request, 'confirmed': aid_request.location_status == 'confirmed'}
 
@@ -147,28 +132,30 @@ def delete_aid_location(request, field_op, location_pk):
         return JsonResponse({'status': 'error', 'message': 'Permission denied.'}, status=403)
     try:
         note = ''
-        is_markdown = False
+        note_is_markdown = False
         if request.body:
             try:
                 data = json.loads(request.body)
                 note = data.get('note', '')
-                is_markdown = data.get('is_markdown', False)
+                note_is_markdown = data.get('is_markdown', False)
             except json.JSONDecodeError:
                 pass
 
-        location_id = location.pk
-        location_str = str(location)
-        friendly_address = location.free_form_address or 'N/A'
-        status_display = location.get_status_display()
+        # Render the details of the location BEFORE deleting it
+        log_text = render_to_string(
+            'aidrequests/logs/location_deleted_log.md',
+            {'location': location}
+        )
 
         ActionLog.objects.create(
             aid_request=aid_request,
             created_by=request.user,
             log_type='location',
-            event_name="Location Deleted",
-            event_text=f"Location #{location_id} ({status_display}) at {friendly_address} was deleted.",
-            note=note,
-            is_markdown=is_markdown,
+            event_name=f"Location #{location.pk} Deleted",
+            event_text=log_text,
+            text_markdown=True, # The event_text is now markdown
+            note=note, # The user-provided note is kept separate
+            note_markdown=note_is_markdown,
             agent_name=request.user.username
         )
 
@@ -185,7 +172,7 @@ def delete_aid_location(request, field_op, location_pk):
 
         return JsonResponse({
             'status': 'success',
-            'message': f'Location {location_id} deleted successfully.',
+            'message': f'Location {location_pk} deleted successfully.',
             'header_html': header_html
         })
     except Exception as e:

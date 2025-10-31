@@ -25,6 +25,16 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
     >
 </div>
 <div class="container-fluid">
+    <!-- This hidden button acts as a trigger for the generic action modal,
+       especially for the status/priority radio button changes. The JS will
+       populate its data attributes dynamically before 'clicking' it. -->
+    <button id="status-priority-change-trigger"
+            class="d-none"
+            data-bs-toggle="modal"
+            data-bs-target="#actionConfirmationModal"
+            data-action-url="{% url 'aid_request_ajax_update' field_op=aid_request.field_op.slug pk=aid_request.pk %}">
+    </button>
+
     <div id="aid-request-header-container">
     {% include 'aidrequests/partials/aid_request_header.html' %}
     </div>
@@ -52,41 +62,6 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
                     <p>{{ object.additional_info|default:"None" }}</p>
                 </div>
             </div>
-
-            <div class="card m-0 p-0">
-                <div class="card-header">
-                    <ul class="nav nav-tabs card-header-tabs" id="logTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="action-logs-tab" data-bs-toggle="tab" data-bs-target="#action-logs" type="button" role="tab" aria-controls="action-logs" aria-selected="true">Action Logs</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="audit-logs-tab" data-bs-toggle="tab" data-bs-target="#audit-logs" type="button" role="tab" aria-controls="audit-logs" aria-selected="false">Audit Logs</button>
-                        </li>
-                    </ul>
-                </div>
-                <div class="card-body tab-content" id="logTabsContent">
-                    <div class="tab-pane fade show active" id="action-logs" role="tabpanel" aria-labelledby="action-logs-tab"
-                        hx-get="{% url 'get_action_logs_partial' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
-                        hx-trigger="load, actionLogUpdated from:body"
-                        hx-swap="innerHTML">
-                        <div class="text-center">
-                            <div class="spinner-border" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="tab-pane fade" id="audit-logs" role="tabpanel" aria-labelledby="audit-logs-tab"
-                        hx-get="{% url 'get_audit_logs_partial' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
-                        hx-trigger="load, actionLogUpdated from:body"
-                        hx-swap="innerHTML">
-                        <div class="text-center">
-                            <div class="spinner-border" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         {# Right Column #}
@@ -106,12 +81,54 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
             </div>
         </div>
     </div>
+    {# New Row for Logs #}
+    <div class="row m-0 p-0">
+        <div class="col-12 m-0 p-1">
+            <div class="card m-0 p-0">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" id="logTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="action-logs-tab" data-bs-toggle="tab" data-bs-target="#action-logs" type="button" role="tab" aria-controls="action-logs" aria-selected="true">Action Logs</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="audit-logs-tab" data-bs-toggle="tab" data-bs-target="#audit-logs" type="button" role="tab" aria-controls="audit-logs" aria-selected="false">Audit Logs</button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body tab-content" id="logTabsContent">
+                    <div class="tab-pane fade show active" id="action-logs" role="tabpanel" aria-labelledby="action-logs-tab">
+                        <div hx-get="{% url 'get_action_logs_partial' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
+                             hx-trigger="load, actionLogUpdated from:body"
+                             hx-swap="innerHTML">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="audit-logs" role="tabpanel" aria-labelledby="audit-logs-tab">
+                        <div hx-get="{% url 'get_audit_logs_partial' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
+                             hx-trigger="load, actionLogUpdated from:body"
+                             hx-swap="innerHTML">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 {% include 'aidrequests/partials/_add_location_modal.html' %}
-{% include 'aidrequests/partials/_delete_location_modal.html' %}
+{# The two modals below are now replaced by the single, generic _action_confirmation_modal #}
+{# {% include 'aidrequests/partials/_delete_location_modal.html' %} #}
 {% include 'aidrequests/partials/_action_confirmation_modal.html' %}
-{% include 'aidrequests/partials/_location_status_change_modal.html' %}
+{# {% include 'aidrequests/partials/_location_status_change_modal.html' %} #}
 
 {% endblock %}
 
@@ -120,13 +137,11 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
 <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
 <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
-<script src="{% static 'js/debug.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/htmx-helpers.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/location-picker-map.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/tak-alert.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/aidrequest-cot.js' %}?v={{ static_version }}"></script>
-<script src="{% static 'js/aidrequest-update-actions.js' %}?v={{ static_version }}"></script>
-<script src="{% static 'js/aidrequest-add-location.js' %}?v={{ static_version }}"></script>
-<script src="{% static 'js/aidrequest-status-update.js' %}?v={{ static_version }}"></script>
-<script type="text/javascript" src="{% static 'js/map-poller.js' %}?v={{ static_version }}"></script>
+<script src="{% static 'js/aidrequest-actions.js' %}?v={{ static_version }}"></script>
+<script src="{% static 'js/aidrequest_locations.js' %}?v={{ static_version }}"></script>
+
 {% endblock extra_js %}

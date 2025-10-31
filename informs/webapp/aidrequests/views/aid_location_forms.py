@@ -189,8 +189,8 @@ class AidLocationCreateForm(forms.ModelForm):
                 ),
             ),
             Div(
-                HTML('<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>'),
-                HTML('<button type="submit" class="btn btn-primary" id="submit-location-form">Save Location</button>'),
+                HTML('<button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle"></i> Cancel</button>'),
+                HTML('<button type="submit" class="btn btn-primary" id="submit-location-form"><i class="bi bi-geo-alt"></i> Confirm Location</button>'),
                 css_class="modal-footer"
             )
         )

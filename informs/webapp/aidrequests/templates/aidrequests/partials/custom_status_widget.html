@@ -6,7 +6,7 @@
             <div class="btn-group btn-group-sm w-100" role="group" aria-label="Active Statuses">
                 {% for status_key, status_display in status_form.fields.status.choices %}
                     {% if status_key in aid_request.ACTIVE_STATUSES %}
-                        <input type="radio" class="btn-check" name="status" id="status-{{ status_key }}" value="{{ status_key }}" autocomplete="off" {% if aid_request.status == status_key %}checked{% endif %}>
+                        <input type="radio" class="btn-check" name="status" id="status-{{ status_key }}" value="{{ status_key }}" autocomplete="off" {% if aid_request.status == status_key %}checked data-original-value="true"{% endif %}>
                         <label class="btn btn-outline-primary" for="status-{{ status_key }}">{{ status_display }}</label>
                     {% endif %}
                 {% endfor %}
@@ -17,7 +17,7 @@
             <div class="btn-group btn-group-sm w-100" role="group" aria-label="Inactive Statuses">
                 {% for status_key, status_display in status_form.fields.status.choices %}
                     {% if status_key in aid_request.INACTIVE_STATUSES %}
-                        <input type="radio" class="btn-check" name="status" id="status-{{ status_key }}" value="{{ status_key }}" autocomplete="off" {% if aid_request.status == status_key %}checked{% endif %}>
+                        <input type="radio" class="btn-check" name="status" id="status-{{ status_key }}" value="{{ status_key }}" autocomplete="off" {% if aid_request.status == status_key %}checked data-original-value="true"{% endif %}>
                         <label class="btn btn-outline-secondary" for="status-{{ status_key }}">{{ status_display }}</label>
                     {% endif %}
                 {% endfor %}
@@ -32,7 +32,7 @@
         <div class="btn-group btn-group-sm w-100" role="group" aria-label="Priority Levels">
             {% for priority_key, priority_display in status_form.fields.priority.choices %}
                 {% if priority_key %}
-                <input type="radio" class="btn-check" name="priority" id="priority-{{ priority_key }}" value="{{ priority_key }}" autocomplete="off" {% if aid_request.priority == priority_key %}checked{% endif %}>
+                <input type="radio" class="btn-check" name="priority" id="priority-{{ priority_key }}" value="{{ priority_key }}" autocomplete="off" {% if aid_request.priority == priority_key %}checked data-original-value="true"{% endif %}>
                 {% if priority_key == 'high' %}
                 <label class="btn btn-outline-danger" for="priority-{{ priority_key }}">{{ priority_display }}</label>
                 {% elif priority_key == 'medium' %}

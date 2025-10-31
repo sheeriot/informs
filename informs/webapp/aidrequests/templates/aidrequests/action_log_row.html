@@ -2,27 +2,43 @@
 {% load actionlog_tags %}
 {% load bootstrap_icons %}
 
-<tr data-log-id="{{ log.pk }}" data-timestamp="{{ log.created_at.isoformat }}">
-    <td class="col-auto">{{ log.created_at|date:"Y-m-d" }}<br>{{ log.created_at|date:"H:i:s" }}</td>
+<tr data-log-id="{{ log.pk }}" data-timestamp="{{ log.created_at.isoformat }}"
+    class="{% if log.log_type == 'user' or log.log_type == 'location' %}table-warning
+           {% elif log.log_type == 'system' %}table-light
+           {% endif %}">
+    <td class="col-auto text-nowrap">
+        {{ log.created_at|date:"Y-m-d" }}<br>
+        {{ log.created_at|date:"H:i:s" }}
+    </td>
     <td class="col-auto">{{ log.created_by.username|default:"System" }}</td>
-    <td class="col-auto">{{ log.get_log_type_display }}</td>
-    <td class="col-auto">
+    <td class="col-auto text-nowrap">{{ log.get_log_type_display }}</td>
+    <td class="col-auto text-break">
         <div class="text-wrap">
             <strong>
                 {{ log.event_name }}
-                {% if log.is_markdown %}
-                    <span class="badge bg-secondary ms-1">Markdown</span>
-                {% endif %}
             </strong><br>
-            {{ log.event_text }}
+            {% if log.text_markdown %}
+                {{ log.event_text|markdownify|safe }}
+            {% else %}
+                <p>{{ log_data.event_text }}</p>
+            {% endif %}
+
             {% if log.note %}
-                <div class="card bg-light mt-2">
-                    <div class="card-body p-2" {% if not log.is_markdown %}style="white-space: pre-wrap;"{% endif %}>
-                        {% if log.is_markdown %}
-                            {{ log.note|markdownify|safe }}
-                        {% else %}
-                            {{ log.note }}
+                <div class="mt-2">
+                    <div class="d-flex align-items-center">
+                        <strong class="me-2">Note:</strong>
+                        {% if log.note_markdown %}
+                            <span class="badge bg-primary">Markdown</span>
                         {% endif %}
+                    </div>
+                    <div class="card bg-light mt-1">
+                        <div class="card-body p-2">
+                            {% if log.note_markdown %}
+                                {{ log.note|markdownify|safe }}
+                            {% else %}
+                                <pre class="mb-0 font-sans-serif text-wrap">{{ log.note }}</pre>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             {% endif %}

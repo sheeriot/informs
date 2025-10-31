@@ -1,0 +1,10 @@
+- **Source**: `{{ location.get_source_display }}`
+- **Distance from Op**: `{{ location.distance }} km`
+- **Address**: `{{ location.free_form_address }}`
+- **Coordinates**: `{{ location.latitude }}, {{ location.longitude }}`
+- **Map File**: `{{ location.map_filename|default:"Not generated" }}`
+
+**Geocode Details:**
+```json
+{{ location.pretty_geocode_json|safe|default:"{}" }}
+```

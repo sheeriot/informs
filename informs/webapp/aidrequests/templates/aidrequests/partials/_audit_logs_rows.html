@@ -1,18 +1,18 @@
-{% for log_entry in audit_logs %}
-<tr data-timestamp="{{ log_entry.timestamp.isoformat }}">
-    <td>{{ log_entry.timestamp|date:"Y-m-d H:i:s" }}</td>
-    <td>{{ log_entry.actor.username|default:"System" }}</td>
-    <td>{{ log_entry.get_action_display }}</td>
+{% for log in audit_logs %}
+<tr class="table-info" data-log-id="{{ log.pk }}">
+    <td>{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+    <td>{{ log.actor.get_full_name|default:log.actor.username|default:"System" }}</td>
     <td>
-        {% if log_entry.changes_dict %}
-            <ul>
-            {% for field, values in log_entry.changes_dict.items %}
-                <li><strong>{{ field }}</strong>: '{{ values.0 }}' -> '{{ values.1 }}'</li>
-            {% endfor %}
-            </ul>
-        {% else %}
-            No changes recorded.
-        {% endif %}
+        {% if log.action == 0 %}Create{% endif %}
+        {% if log.action == 1 %}Update{% endif %}
+        {% if log.action == 2 %}Delete{% endif %}
+    </td>
+    <td>
+        <ul class="list-unstyled mb-0">
+        {% for key, value in log.changes_dict.items %}
+            <li><strong>{{ key|escape }}:</strong> '{{ value.0|escape }}' changed to '{{ value.1|escape }}'</li>
+        {% endfor %}
+        </ul>
     </td>
 </tr>
 {% endfor %}

@@ -1,19 +1,13 @@
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, render
-from django.template.loader import render_to_string
+from django.shortcuts import get_object_or_404
+from django.core.exceptions import PermissionDenied
 from django.views.decorators.http import require_POST
 import json
 import logging
 from decimal import Decimal
 
-from ..models import AidRequest, FieldOp, ActionLog
-from ..forms import (
-    RequesterInformationForm,
-    LocationInformationForm,
-    RequestDetailsForm,
-    RequestStatusForm,
-)
+from ..models import AidRequest, FieldOp
 
 logger = logging.getLogger(__name__)
 
@@ -36,141 +30,59 @@ def get_aid_requests_json(request, field_op):
 @require_POST
 @login_required
 def update_aid_request(request, field_op, pk):
+    """
+    Updates an AidRequest's status and/or priority.
+    This view now handles all field updates for the main aid request card.
+    """
     try:
-        aid_request = get_object_or_404(AidRequest, pk=pk, field_op__slug=field_op)
-        is_htmx = request.headers.get('HX-Request') == 'true'
+        aid_request = get_object_or_404(AidRequest, pk=pk)
+        if aid_request.field_op.slug != field_op:
+            raise PermissionDenied("You do not have permission for this field operation.")
 
-        if is_htmx:
-            data = request.POST
-        else:
-            data = json.loads(request.body)
+        data = json.loads(request.body)
+        note = data.get('note', '')
+        note_markdown = data.get('note_markdown', False)
 
-        form_name = data.get('form_name')
+        updated = False
+        update_fields = ['updated_by']
 
-        FORM_MAP = {
-            'requester': ('Requester Information', RequesterInformationForm),
-            'location': ('Location Information', LocationInformationForm),
-            'details': ('Request Details', RequestDetailsForm),
-            'status': ('Request Status', RequestStatusForm),
-        }
+        if 'status' in data:
+            new_status = data.get('status')
+            if new_status not in [choice[0] for choice in AidRequest.STATUS_CHOICES]:
+                return JsonResponse({'status': 'error', 'message': 'Invalid status value.'}, status=400)
+            if aid_request.status != new_status:
+                aid_request.status = new_status
+                update_fields.append('status')
+                updated = True
 
-        if form_name in FORM_MAP:
-            form_title, form_class = FORM_MAP[form_name]
-            form = form_class(data, instance=aid_request)
-            if form.is_valid():
-                form.save()
+        if 'priority' in data:
+            new_priority = data.get('priority')
+            if new_priority not in [choice[0] for choice in AidRequest.PRIORITY_CHOICES if choice[0] is not None] + ['']:
+                 return JsonResponse({'status': 'error', 'message': 'Invalid priority value.'}, status=400)
+            new_priority = new_priority if new_priority else None
+            if aid_request.priority != new_priority:
+                aid_request.priority = new_priority
+                update_fields.append('priority')
+                updated = True
 
-                note = form.cleaned_data.get('note')
-                changed_fields = form.changed_data
-
-                if changed_fields or note:
-                    changes_list = []
-                    for field_name in changed_fields:
-                        field_label = form.fields[field_name].label or field_name
-                        new_value = form.cleaned_data.get(field_name)
-
-                        # For choice fields, get the display value
-                        display_method = getattr(aid_request, f'get_{field_name}_display', None)
-                        if callable(display_method):
-                            new_value = display_method()
-
-                        if isinstance(new_value, bool):
-                            new_value = "Yes" if new_value else "No"
-                        changes_list.append(f"'{field_label}' to '{new_value}'")
-
-                    changes_str = ", ".join(changes_list)
-
-                    if changes_str:
-                        event_text = f"Changed {changes_str}"
-                    else:
-                        event_text = "Note added"
-
-                    is_markdown = data.get('is_markdown') == 'true'
-
-                    ActionLog.objects.create(
-                        aid_request=aid_request,
-                        created_by=request.user,
-                        log_type='user',
-                        event_name=f"Updated {form_title}",
-                        event_text=event_text,
-                        note=note if note else "",
-                        is_markdown=is_markdown,
-                        agent_name=request.user.username
-                    )
-
-                return JsonResponse({'success': True})
-            else:
-                return JsonResponse({'success': False, 'errors': form.errors}, status=400)
-
-        # This part handles the HTMX status/priority updates from the new widget.
-        changed_fields = []
-        note = data.get('action_note', '')
-        is_markdown = data.get('is_markdown') == 'on'
-
-        # We process status and priority separately to avoid issues with missing data
-        if 'status' in data and data['status'] != aid_request.status:
-            old_status_display = aid_request.get_status_display()
-            aid_request.status = data['status']
-            new_status_display = aid_request.get_status_display()
-            changed_fields.append(f"'Status' from '{old_status_display}' to '{new_status_display}'")
-
-        if 'priority' in data and data['priority'] != aid_request.priority:
-            old_priority_display = aid_request.get_priority_display()
-            aid_request.priority = data['priority']
-            new_priority_display = aid_request.get_priority_display()
-            changed_fields.append(f"'Priority' from '{old_priority_display}' to '{new_priority_display}'")
-
-        if changed_fields:
-            ActionLog.objects.create(
-                aid_request=aid_request,
-                created_by=request.user,
-                log_type='user',
-                event_name="Request Status Update",
-                event_text="Updated " + ", ".join(changed_fields),
+        if updated:
+            aid_request.updated_by = request.user
+            aid_request.save(
+                update_fields=update_fields,
                 note=note,
-                is_markdown=is_markdown,
-                agent_name=request.user.username
+                note_markdown=note_markdown
             )
 
-            aid_request.save()  # This now correctly triggers django-auditlog
-
-            if is_htmx:
-                status_form = RequestStatusForm(instance=aid_request)
-                context = {'aid_request': aid_request, 'status_form': status_form}
-                response = render(request, 'aidrequests/includes/aid_request_status.html', context)
-
-                # Create the event detail payload
-                event_detail = {
-                    'status_display': aid_request.get_status_display(),
-                    'priority_display': aid_request.get_priority_display(),
-                }
-                response['HX-Trigger'] = json.dumps({'actionLogUpdated': event_detail})
-                return response
-
-            # Fallback for non-HTMX requests if any
-            response_data = {
-                'success': True,
-                'id': aid_request.id,
-                'status': aid_request.status,
-                'status_display': aid_request.get_status_display(),
-                'priority': aid_request.priority,
-                'priority_display': aid_request.get_priority_display(),
-            }
-            return JsonResponse(response_data)
-        else:
-            # Handle case where data was submitted but nothing changed
-            if is_htmx:
-                 # Re-render the same component to do nothing visually
-                status_form = RequestStatusForm(instance=aid_request)
-                context = {'aid_request': aid_request, 'status_form': status_form}
-                return render(request, 'aidrequests/includes/aid_request_status.html', context)
-            return JsonResponse({'success': False, 'error': 'No changes detected'}, status=400)
-
+        return JsonResponse({
+            'status': 'success',
+            'new_status_display': aid_request.get_status_display(),
+            'new_priority_display': aid_request.get_priority_display(),
+        })
 
     except AidRequest.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'AidRequest not found'}, status=404)
+        return JsonResponse({'status': 'error', 'message': 'AidRequest not found.'}, status=404)
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON in request body.'}, status=400)
     except Exception as e:
         logger.error(f"Error updating aid request {pk}: {e}")
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

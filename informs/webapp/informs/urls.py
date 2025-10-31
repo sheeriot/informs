@@ -9,42 +9,43 @@ from django.conf.urls import handler404, handler500
 from django.shortcuts import render
 # from debug_toolbar.toolbar import debug_toolbar_urls
 
-from aidrequests.views.ajax_views import get_aid_requests_json, update_aid_request
-from aidrequests.views.aid_request import (
+from aidrequests.views import (
+    get_aid_requests_json,
+    update_aid_request,
     AidRequestCreateView,
     AidRequestUpdateView,
     ActionLogCreateView,
-    change_aid_request_type
-)
-from aidrequests.views.htmx_views import get_action_logs_partial, get_audit_logs_partial, get_locations_list_partial, get_action_log_edit_form, update_action_log, get_action_log_row
-from aidrequests.views.aid_request_detail import AidRequestDetailView, AidRequestSubmittedView
-from aidrequests.views.aid_request_list import AidRequestListView
-from aidrequests.views.aid_request_notify import AidRequestNotifyView
-from aidrequests.views.field_op import (
+    change_aid_request_type,
+    AidRequestDetailView,
+    AidRequestSubmittedView,
+    AidRequestListView,
+    AidRequestNotifyView,
     FieldOpCreateView,
     FieldOpUpdateView,
-    FieldOpDetailView
-)
-from aidrequests.views.field_op_list import FieldOpListView
-from aidrequests.views.export_csv import AidRequestCsvView
-from aidrequests.views.aid_location import (
+    FieldOpDetailView,
+    FieldOpListView,
+    AidRequestCsvView,
     AidLocationCreateView,
     AidLocationDeleteView,
-    aid_location_status_update
-)
-from aidrequests.views.aid_location_add import (
+    aid_location_status_update,
     add_location,
     regenerate_static_map,
     delete_aid_location,
-    delete_static_map
+    delete_static_map,
+    send_cot,
+    sendcot_checkstatus,
+    toggle_cot,
+    geocode_address,
+    get_aid_request_status,
+    check_map_status,
+    send_email,
+    get_action_logs_partial,
+    get_audit_logs_partial,
+    get_locations_list_partial,
+    get_action_log_edit_form,
+    update_action_log,
+    get_action_log_row,
 )
-from aidrequests.views.ajax_sendcot import send_cot, sendcot_checkstatus
-from aidrequests.views.ajax_fieldop import toggle_cot
-from aidrequests.views.location import geocode_address
-from aidrequests.views.aid_request_status import get_aid_request_status
-from aidrequests.views.maps import check_map_status
-from aidrequests.views.ajax_send_email import send_email_view
-
 
 from .views import home
 
@@ -130,7 +131,7 @@ urlpatterns = [
      path('api/<slug:field_op>/aidlocation/<int:location_pk>/delete-map/', delete_static_map, name='delete_static_map'),
      path('api/<slug:field_op>/aidlocation/<int:location_pk>/status-update/', aid_location_status_update, name='aid_location_status_update'),
      path('api/<slug:field_op>/aidlocation/<int:location_pk>/check-map-status/', check_map_status, name='check_map_status'),
-     path('api/<slug:field_op>/request/<int:pk>/send_email/', send_email_view, name='ajax_send_email'),
+     path('api/<slug:field_op>/request/<int:pk>/send_email/', send_email, name='ajax_send_email'),
      path('api/<slug:field_op>/aidrequest/<int:pk>/action-logs/', get_action_logs_partial, name='get_action_logs_partial'),
      path('api/<slug:field_op>/aidrequest/<int:pk>/audit-logs/', get_audit_logs_partial, name='get_audit_logs_partial'),
      path('api/<slug:field_op>/aidrequest/<int:pk>/locations-list/', get_locations_list_partial, name='get_locations_list_partial'),
@@ -142,6 +143,7 @@ urlpatterns = [
      path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aid_request_new'),
 ]
 
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 handler404 = 'informs.views.custom_404'

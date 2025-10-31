@@ -1,23 +1,32 @@
-<div
-    hx-get="{% url 'get_audit_logs_partial' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
-    hx-trigger="actionLogUpdated from:body"
-    hx-swap="afterbegin"
-    hx-target="#audit-logs-tbody"
-    hx-vals='js:{"since": getLatestTimestamp("audit-logs-tbody")}'>
-
-    <div class="container font-monospace">
-        <table class="table table-sm table-info table-striped table-bordered table-font-small">
-            <thead>
-                <tr>
-                    <th class="col-auto">Timestamp</th>
-                    <th class="col-auto">User</th>
-                    <th class="col-auto">Action</th>
-                    <th class="col-auto">Changes</th>
-                </tr>
-            </thead>
-            <tbody id="audit-logs-tbody">
-                {% include 'aidrequests/partials/_audit_logs_rows.html' %}
-            </tbody>
-        </table>
-    </div>
+<div class="container font-monospace">
+    <table class="table table-sm table-bordered table-font-small w-100">
+        <thead class="table-light">
+            <tr>
+                <th scope="col">Timestamp</th>
+                <th scope="col">User</th>
+                <th scope="col">Action</th>
+                <th scope="col">Changes</th>
+            </tr>
+        </thead>
+        <tbody id="audit-logs-tbody">
+            {% for log in audit_logs %}
+            <tr class="table-info" data-log-id="{{ log.pk }}">
+                <td class="text-nowrap">{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+                <td class="text-nowrap">{{ log.actor.get_full_name|default:log.actor.username|default:"System" }}</td>
+                <td class="text-nowrap">
+                    {% if log.action == 0 %}Create{% endif %}
+                    {% if log.action == 1 %}Update{% endif %}
+                    {% if log.action == 2 %}Delete{% endif %}
+                </td>
+                <td>
+                    <ul class="list-unstyled mb-0">
+                    {% for key, value in log.changes_dict.items %}
+                        <li><strong>{{ key|escape }}:</strong> '{{ value.0|escape }}' changed to '{{ value.1|escape }}'</li>
+                    {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>

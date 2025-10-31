@@ -52,6 +52,10 @@ class AidRequestCreateView(CreateView):
             self.fieldop_slug = self.field_op.slug
         except FieldOp.DoesNotExist:
             return render(request, 'aidrequests/field_op_not_found.html', {'field_op_slug': kwargs.get('field_op')})
+
+        if self.field_op.aid_types.count() == 0:
+            return render(request, 'aidrequests/field_op_misconfigured.html', {'field_op': self.field_op})
+
         return super().dispatch(request, *args, **kwargs)
 
     def get_template_names(self):
@@ -89,6 +93,10 @@ class AidRequestCreateView(CreateView):
         else:
             self.object.created_by = None
             self.object.updated_by = None
+
+        # If there is only one aid_type, assign it automatically.
+        if self.object.field_op.aid_types.count() == 1 and not self.object.aid_type:
+            self.object.aid_type = self.object.field_op.aid_types.first()
 
         self.object.save()
 
@@ -130,6 +138,8 @@ class AidRequestCreateView(CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
+        ic("Form is invalid")
+        ic(form.errors)
         return super().form_invalid(form)
 
 
@@ -229,7 +239,7 @@ class ActionLogCreateView(LoginRequiredMixin, CreateView):
         # For manual user logs, populate the new structured fields
         if self.object.log_type == 'user':
             self.object.note = form.cleaned_data.get('note', '')
-            self.object.is_markdown = self.request.POST.get('enable_markdown') == 'true'
+            self.object.note_markdown = self.request.POST.get('enable_markdown') == 'true'
             self.object.event_name = "User Note"
             self.object.agent_name = self.request.user.username
 

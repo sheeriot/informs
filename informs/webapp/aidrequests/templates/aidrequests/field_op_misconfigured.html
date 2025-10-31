@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Field Operation Misconfigured{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Field Operation Not Ready
+                </h4>
+                <p>
+                    The Field Operation named <strong>"{{ field_op.name }}"</strong> is not fully configured and cannot accept new Aid Requests at this time.
+                </p>
+                <hr>
+                <p class="mb-0">
+                    Specifically, no "Aid Types" have been assigned to it. An administrator needs to configure this before new requests can be submitted.
+                </p>
+            </div>
+            <div class="text-center mt-4">
+                <a href="{% url 'home' %}" class="btn btn-secondary">Return to Home</a>
+                {% if user.is_staff %}
+                <a href="{% url 'field_op_update' slug=field_op.slug %}" class="btn btn-primary">Configure Field Op</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

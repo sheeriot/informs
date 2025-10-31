@@ -50,34 +50,23 @@ def aid_location_status_update(request, field_op, location_pk):
         data = json.loads(request.body)
         action = data.get('action')
         note = data.get('note', '')
-        is_markdown = data.get('is_markdown', False)
+        note_is_markdown = data.get('note_markdown', False)
 
         if action == 'confirm':
             location.status = 'confirmed'
-            location.save()
+            location.save(note=note, note_markdown=note_is_markdown)
             aid_request.locations.exclude(pk=location.pk).filter(status='confirmed').update(status='new')
             event_name = "Location Confirmed"
             event_text = f"Location #{location.pk} confirmed."
 
         elif action == 'reject':
             location.status = 'rejected'
-            location.save()
+            location.save(note=note, note_markdown=note_is_markdown)
             event_name = "Location Rejected"
             event_text = f"Location #{location.pk} rejected."
 
         else:
             return JsonResponse({'status': 'error', 'message': 'Invalid action.'}, status=400)
-
-        ActionLog.objects.create(
-            aid_request=aid_request,
-            created_by=request.user,
-            log_type='location',
-            event_name=event_name,
-            event_text=event_text,
-            note=note,
-            is_markdown=is_markdown,
-            agent_name=request.user.username
-        )
 
         aid_request.refresh_from_db()
         # Prepare context for rendering partials
