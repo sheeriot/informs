@@ -1,5 +1,5 @@
 const utilsScriptConfig = {
-    debug: true // Master debug switch for this script
+    debug: false // Master debug switch for this script
 };
 
 /**

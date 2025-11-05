@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('[AidRequest Actions] Script version 0.0.14 loaded. STANDBY FOR MODAL LOGS.');
     const scriptConfig = {
-        debug: true, // Master debug switch for this script
+        debug: false, // Master debug switch for this script
     };
 
     // For debugging htmx swaps

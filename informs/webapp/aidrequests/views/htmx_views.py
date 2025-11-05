@@ -258,7 +258,7 @@ def save_detail_field(request, field_op, pk, field_name):
             'detailFieldUpdated': None,
             'actionLogUpdated': None,
             'auditLogUpdated': None,
-            'closeModal': None,
+            'closeModal': '#genericEditModal',
         })
         return response
 

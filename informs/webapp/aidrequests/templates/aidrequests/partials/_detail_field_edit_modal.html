@@ -16,9 +16,9 @@
 </div>
 <div class="modal-footer justify-content-between">
     <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" role="switch" id="edit-confirmation-eyeball" onchange="document.getElementById('generic-save-button').disabled = !this.checked;">
-        <label class="form-check-label" for="edit-confirmation-eyeball">
-            {% bs_icon 'eye-fill' %} Confirm Change
+        <input class="form-check-input" type="checkbox" role="switch" id="edit-confirmation-toggle">
+        <label class="form-check-label text-danger" for="edit-confirmation-toggle" id="edit-confirmation-label">
+            <i class="bi bi-lock-fill"></i> Locked
         </label>
     </div>
     <div>
@@ -37,6 +37,31 @@
         if (modal && modalContent) {
             modal.addEventListener('hidden.bs.modal', () => {
                 modalContent.innerHTML = '';
+            });
+        }
+
+        const toggle = document.getElementById('edit-confirmation-toggle');
+        const label = document.getElementById('edit-confirmation-label');
+        const saveButton = document.getElementById('generic-save-button');
+        const icon = label.querySelector('i');
+
+        if (toggle && label && saveButton && icon) {
+            toggle.addEventListener('change', function() {
+                if (this.checked) {
+                    saveButton.disabled = false;
+                    label.classList.remove('text-danger');
+                    label.classList.add('text-success');
+                    icon.classList.remove('bi-lock-fill');
+                    icon.classList.add('bi-unlock-fill');
+                    label.innerHTML = '<i class="bi bi-unlock-fill"></i> Unlocked';
+                } else {
+                    saveButton.disabled = true;
+                    label.classList.remove('text-success');
+                    label.classList.add('text-danger');
+                    icon.classList.remove('bi-unlock-fill');
+                    icon.classList.add('bi-lock-fill');
+                    label.innerHTML = '<i class="bi bi-lock-fill"></i> Locked';
+                }
             });
         }
     })();

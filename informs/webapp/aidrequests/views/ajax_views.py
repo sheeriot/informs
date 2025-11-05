@@ -104,7 +104,18 @@ def update_aid_request(request, field_op, pk):
                     agent_name=request.user.username,
                 )
 
-            return JsonResponse({'status': 'success', 'message': 'Update successful.'})
+            response = HttpResponse(status=204) # 204 No Content
+            response['HX-Trigger'] = json.dumps({
+                "closeModal": "#genericEditModal",
+                "detailFieldUpdated": "", # This will trigger the header refresh
+                "actionLogUpdated": "",
+                "auditLogUpdated": "",
+                "showActionAlert": {
+                    "message": f"{form_name.title()} Info updated successfully.",
+                    "level": "success"
+                }
+            })
+            return response
         else:
             ic(form.errors)
             return JsonResponse({'status': 'error', 'errors': form.errors.as_json()}, status=400)

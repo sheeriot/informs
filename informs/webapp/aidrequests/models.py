@@ -429,8 +429,8 @@ class AidRequest(TimeStampedModel):
                     note_markdown=note_markdown
                 )
 
-            # Trigger CoT update if needed
-            if (status_changed or priority_changed) and not self.field_op.disable_cot:
+            # Trigger CoT update if ANY field on an existing request was updated.
+            if not self.field_op.disable_cot:
                 async_task(
                     'aidrequests.tasks.send_cot_task',
                     field_op_slug=self.field_op.slug,
@@ -625,6 +625,17 @@ class AidLocation(TimeStampedModel):
                 note=note,
                 note_markdown=note_markdown
             )
+
+            # If a location's status changes, trigger a CoT update for the parent AidRequest
+            # to ensure the marker reflects the new primary location.
+            if not self.aid_request.field_op.disable_cot:
+                async_task(
+                    'aidrequests.tasks.send_cot_task',
+                    field_op_slug=self.aid_request.field_op.slug,
+                    mark_type='aid',
+                    aidrequest=self.aid_request.pk,
+                    task_name=f"Update_CoT_AR_{self.aid_request.pk}_Loc_{self.pk}"
+                )
 
     def get_absolute_url(self):
         return reverse('aid_location_detail', kwargs={'pk': self.pk})
