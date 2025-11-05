@@ -594,6 +594,16 @@ class AidLocation(TimeStampedModel):
                 agent_name=self.created_by.username if self.created_by else "System",
                 created_by=self.created_by
             )
+
+            # If a new location is created, trigger a CoT update for the parent AidRequest
+            if not self.aid_request.field_op.disable_cot:
+                async_task(
+                    'aidrequests.tasks.send_cot_task',
+                    field_op_slug=self.aid_request.field_op.slug,
+                    mark_type='aid',
+                    aidrequest=self.aid_request.pk,
+                    task_name=f"Update_CoT_AR_{self.aid_request.pk}_Loc_{self.pk}_Created"
+                )
         elif status_changed:
             if self.status == 'confirmed':
                 event_name = f"Location #{self.pk} Confirmed"

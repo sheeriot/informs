@@ -1,15 +1,25 @@
 {% load bootstrap_icons %}
 
 <div class="card" id="aid-request-details-card">
-    <div class="card-header d-flex align-items-center">
-        <h5 class="mb-0">
-            Aid Type: <span id="aid-type-display" class="fw-normal">{{ aid_request.aid_type.name }}</span>
-        </h5>
-        {% if request.user.is_superuser %}
-            <button class="btn btn-sm btn-outline-warning ms-2" data-bs-toggle="modal" data-bs-target="#changeAidTypeModal" title="Change Aid Type">
-                {% bs_icon 'wrench' %}
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <h5 class="mb-0">
+                Aid Type: <span id="aid-type-display" class="fw-normal">{{ aid_request.aid_type.name }}</span>
+            </h5>
+            {% if request.user.is_superuser %}
+                <button class="btn btn-sm btn-outline-warning ms-2" data-bs-toggle="modal" data-bs-target="#changeAidTypeModal" title="Change Aid Type">
+                    {% bs_icon 'wrench' %}
+                </button>
+            {% endif %}
+        </div>
+        <div class="btn-group btn-group-sm">
+            <button id="tak-alert-button" class="btn btn-outline-danger">
+                <i class="bi bi-broadcast"></i> Alert TAK
             </button>
-        {% endif %}
+            <a href="{% url 'aid_request_notify' field_op=aid_request.field_op.slug pk=aid_request.pk %}" class="btn btn-outline-secondary">
+                <i class="bi bi-envelope"></i> Send Email
+            </a>
+        </div>
     </div>
     <div class="card-body">
         {% include 'aidrequests/partials/_requester_info_display.html' %}

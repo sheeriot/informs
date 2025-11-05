@@ -12,6 +12,7 @@ from django.db.models import Case, When, Value
 from ..models import AidRequest, AidLocation, FieldOp, ActionLog
 from .aid_location_forms import AidLocationCreateForm
 from .maps import create_static_map
+from django_q.tasks import async_task
 
 
 @login_required
@@ -181,6 +182,17 @@ def delete_aid_location(request, field_op, pk):
         )
 
         location.delete()
+
+        # After deleting, trigger a CoT update for the parent aid request
+        # to ensure the map marker reflects the new primary location.
+        if not aid_request.field_op.disable_cot:
+            async_task(
+                'aidrequests.tasks.send_cot_task',
+                field_op_slug=aid_request.field_op.slug,
+                mark_type='aid',
+                aidrequest=aid_request.pk,
+                task_name=f"Update_CoT_AR_{aid_request.pk}_Loc_{pk}_Deleted"
+            )
 
         # After deleting, fetch the remaining locations to render the updated list
         locations = aid_request.locations.sorted_for_display()

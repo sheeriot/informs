@@ -227,9 +227,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     return response.text();
                 })
                 .then(html => {
+                    newConfirmBtn.blur(); // Remove focus before hiding to prevent ARIA warning
                     modalInstance.hide();
 
-                    // Only swap the content if the action was for a location and we received HTML
+                    // If the action was for a location, swap the returned HTML
                     if (triggerButton.dataset.actionUrl.includes('aidlocation') && html) {
                         if (scriptConfig.debug) {
                             console.log('[Modal Action] Location action detected. Swapping HTML.');
@@ -239,16 +240,15 @@ document.addEventListener('DOMContentLoaded', function() {
                             container.innerHTML = html;
                             htmx.process(container);
                         }
-                    } else if (scriptConfig.debug) {
-                        console.log('[Modal Action] Non-location action. Letting HTMX triggers handle UI updates.');
                     }
 
-                    // For non-location actions, the server's HX-Trigger header will handle UI updates.
-                    // For location actions, we still trigger these as a fallback.
-                    if (!triggerButton.dataset.actionUrl.includes('aidlocation')) {
-                        htmx.trigger('body', 'actionLogUpdated', {});
-                        htmx.trigger('body', 'auditLogUpdated', {});
+                    // After any successful modal action, trigger the UI refreshes
+                    if (scriptConfig.debug) {
+                        console.log('[Modal Action] Triggering UI updates for header and logs.');
                     }
+                    htmx.trigger('body', 'detailFieldUpdated', {});
+                    htmx.trigger('body', 'actionLogUpdated', {});
+                    htmx.trigger('body', 'auditLogUpdated', {});
                 })
                 .catch(error => {
                     console.error('[Actions] There was a problem with the fetch operation:', error);

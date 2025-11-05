@@ -31,7 +31,7 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
         <div id="aid-request-header-container"
             class="flex-grow-1"
             hx-get="{% url 'get_aid_request_header' field_op=field_op.slug pk=aid_request.pk %}"
-            hx-trigger="detailFieldUpdated from:body, auditLogUpdated from:body"
+            hx-trigger="detailFieldUpdated from:body"
             hx-swap="innerHTML">
             {% include 'aidrequests/partials/_aid_request_header.html' %}
         </div>
