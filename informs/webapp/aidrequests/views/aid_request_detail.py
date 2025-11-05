@@ -99,7 +99,7 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
 
         # Ensure the location has a map
         if self.aid_location and not self.aid_location.map_filename:
-            logger.info(f"AR-{self.aid_request.pk}: Location {self.aid_location.pk} is missing a map. Generating one now.")
+            ic(f"AR-{self.aid_request.pk}: Location {self.aid_location.pk} is missing a map. Generating one now.")
             staticmap_data = staticmap_aid(
                 width=600, height=600,
                 fieldop_lat=self.aid_request.field_op.latitude,
@@ -115,7 +115,7 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
                     file.write(staticmap_data)
                 self.aid_location.map_filename = map_filename
                 self.aid_location.save()
-                logger.info(f"AR-{self.aid_request.pk}: Map generated and saved as {map_filename}")
+                ic(f"AR-{self.aid_request.pk}: Map generated and saved as {map_filename}")
 
     def get_context_data(self, **kwargs):
         try:
@@ -181,5 +181,5 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
         try:
             return super().get_object(queryset)
         except Exception as e:
-            logger.error(f"Error getting aid request object: {e}")
+            ic(f"Error getting aid request object: {e}")
             raise

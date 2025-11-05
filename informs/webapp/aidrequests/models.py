@@ -350,86 +350,86 @@ class AidRequest(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         """
-        Custom save method to trigger CoT updates and log changes.
+        Custom save method to trigger CoT updates and log all changes.
+        This method is designed to be the single point of truth for logging
+        changes to the AidRequest model. It can automatically detect changes
+        or accept specific event details.
         """
-        # If requester_full_name is provided and first/last are blank, parse it.
-        # This should happen before the first save.
-        if self.requester_full_name and not self.requester_first_name and not self.requester_last_name:
-            parts = self.requester_full_name.split()
-            self.requester_first_name = parts[0]
-            if len(parts) > 1:
-                self.requester_last_name = ' '.join(parts[1:])
-
+        # --- 1. Pop all custom kwargs at the start ---
+        # These are not part of the model, so they must be removed before super().save()
         note = kwargs.pop('note', None)
         note_markdown = kwargs.pop('note_markdown', False)
         source_ip = kwargs.pop('source_ip', None)
+        # Allow views to pass pre-formatted event details for logging
+        event_name = kwargs.pop('event_name', None)
+        event_text = kwargs.pop('event_text', None)
 
         is_new = self._state.adding
-        if is_new:
-            # For new requests, we don't have an original state to compare
-            super(AidRequest, self).save(*args, **kwargs)
-            # The auditlog will now capture the creation event.
-            # We also create a user-visible ActionLog.
+        original = None
+        if not is_new:
+            try:
+                # Get the object's state from the DB before we change it
+                original = AidRequest.objects.get(pk=self.pk)
+            except AidRequest.DoesNotExist:
+                pass  # Should not happen on an update, but handle gracefully
 
+        # --- 2. Call the actual save method ONCE ---
+        super(AidRequest, self).save(*args, **kwargs)
+
+        # --- 3. Handle Logging ---
+        if is_new:
+            # For new requests, log the creation event
             excluded_fields = ['id', 'created_at', 'updated_at', 'field_op']
             data_dict = model_to_dict(self, exclude=excluded_fields)
             if source_ip:
                 data_dict['source_ip'] = source_ip
-
-            log_text = json.dumps(data_dict, indent=4, default=str)
-
+            log_details = json.dumps(data_dict, indent=4, default=str)
 
             ActionLog.objects.create(
                 aid_request=self,
                 log_type='system',
                 event_name="Request Created",
-                event_text=log_text,
-                text_markdown=False,
+                event_text=log_details,
                 created_by=self.created_by,
                 agent_name=self.created_by.username if self.created_by else "System"
             )
-            # Do not return early, allow auditlog to process.
+        elif original: # For existing requests, log the updates
+            changes = []
+            if event_text: # If the view provided event_text, use it
+                final_event_text = event_text
+            else: # Otherwise, auto-detect changes
+                fields_to_check = [
+                    'status', 'priority', 'street_address', 'city', 'state', 'zip_code',
+                    'requester_first_name', 'requester_last_name', 'requester_phone',
+                    'requester_email', 'requester_phone_is_whatsapp', 'group_size',
+                    'aid_description', 'supplies_needed', 'medical_needs',
+                    'welfare_check_info', 'additional_info'
+                ]
+                for field in fields_to_check:
+                    old_value = getattr(original, field)
+                    new_value = getattr(self, field)
+                    if old_value != new_value:
+                        old_display = getattr(original, f'get_{field}_display', lambda: old_value)()
+                        new_display = getattr(self, f'get_{field}_display', lambda: new_value)()
+                        changes.append(f"{field.replace('_', ' ').title()}: '{old_display}' → '{new_display}'")
+                final_event_text = "\n".join(changes)
 
-        # For existing requests, get the original state from the database
-        if not is_new:
-            try:
-                original = AidRequest.objects.get(pk=self.pk)
-            except AidRequest.DoesNotExist:
-                # This should not happen in a save on an existing object, but handle it gracefully.
-                super(AidRequest, self).save(*args, **kwargs)
-                return
+            final_event_name = event_name or "Aid Request Updated"
 
-            status_changed = original.status != self.status
-            priority_changed = original.priority != self.priority
-
-            # Now, save the changes to the database
-            super(AidRequest, self).save(*args, **kwargs)
-
-            # After saving, create logs for what changed
-            if status_changed:
-                ActionLog.objects.create(
+            if final_event_text:  # Only create a log if something actually changed
+                log_entry = ActionLog(
                     aid_request=self,
                     log_type='system',
-                    event_name="Status Changed",
-                    event_text=f"Status changed from '{original.get_status_display()}' to '{self.get_status_display()}'.",
+                    event_name=final_event_name,
+                    event_text=final_event_text,
                     created_by=getattr(self, 'updated_by', None),
                     agent_name=self.updated_by.username if getattr(self, 'updated_by', None) else "System",
                     note=note,
                     note_markdown=note_markdown
                 )
-            if priority_changed:
-                ActionLog.objects.create(
-                    aid_request=self,
-                    log_type='system',
-                    event_name="Priority Changed",
-                    event_text=f"Priority changed from '{original.get_priority_display()}' to '{self.get_priority_display()}'.",
-                    created_by=getattr(self, 'updated_by', None),
-                    agent_name=self.updated_by.username if getattr(self, 'updated_by', None) else "System",
-                    note=note,
-                    note_markdown=note_markdown
-                )
+                log_entry.save()
 
-            # Trigger CoT update if ANY field on an existing request was updated.
+            # --- 4. Trigger CoT update on any change for an existing request ---
             if not self.field_op.disable_cot:
                 async_task(
                     'aidrequests.tasks.send_cot_task',

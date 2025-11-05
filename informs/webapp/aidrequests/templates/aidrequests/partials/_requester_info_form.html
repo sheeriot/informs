@@ -11,7 +11,7 @@ It's swapped into the #requester-info-section div.
           hx-target="#requester-info-section"
           hx-swap="outerHTML">
         {% csrf_token %}
-        {{ form|crispy }}
+        {% crispy form %}
 
         <hr>
         <h5>Action Note (Optional)</h5>

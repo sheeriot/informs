@@ -29,8 +29,8 @@ class RequesterInformationForm(forms.ModelForm):
             'requester_first_name',
             'requester_last_name',
             'requester_phone',
-            'requester_email',
             Field('requester_phone_is_whatsapp', css_class="custom-checkbox-column"),
+            'requester_email',
         )
 
     def clean(self):
@@ -92,12 +92,14 @@ class RequesterAndGroupSizeForm(forms.ModelForm):
                 css_class='form-row'
             ),
             Row(
-                Column('requester_phone', css_class='form-group col-md-6 mb-0'),
+                Column('requester_phone', css_class='form-group col-md-4 mb-0'),
+                Column(Field('requester_phone_is_whatsapp', css_class='mt-4'), css_class='form-group col-md-2 mb-0'),
                 Column('requester_email', css_class='form-group col-md-6 mb-0'),
-                css_class='form-row'
+                css_class='form-row align-items-center'
             ),
-            'requester_phone_is_whatsapp',
-            'group_size'
+            Row(
+                Column('group_size', css_class='form-group col-md-3 mb-0')
+            )
         )
 
     def clean(self):

@@ -5,18 +5,15 @@ from crispy_forms.layout import Layout, Submit, Row, Column
 from ..models import AidRequest
 
 class AddressForm(forms.ModelForm):
-    country = CountryField(blank_label='(select country)').formfield(
-        label="Country",
-        required=True,
-    )
 
     class Meta:
         model = AidRequest
-        fields = ['street_address', 'city', 'state', 'zip_code', 'country']
+        fields = ['street_address', 'city', 'state', 'zip_code']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
+        self.helper.form_tag = False  # We are rendering our own <form> tag in the template
         self.helper.form_method = 'post'
         self.helper.layout = Layout(
             'street_address',
@@ -26,6 +23,5 @@ class AddressForm(forms.ModelForm):
             ),
             Row(
                 Column('zip_code', css_class='form-group col-md-6 mb-0'),
-                Column('country', css_class='form-group col-md-6 mb-0'),
             )
         )

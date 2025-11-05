@@ -157,22 +157,23 @@ def save_address_info(request, field_op, pk):
         'city': aid_request.city,
         'state': aid_request.state,
         'zip_code': aid_request.zip_code,
-        'country': str(aid_request.country),
     }
 
     form = AddressForm(request.POST, instance=aid_request)
 
     if form.is_valid():
-        updated_request = form.save()
+        # Get note from form BEFORE saving, as we will pass it to the save method
+        note = request.POST.get('note', '')
+        note_markdown = request.POST.get('note_markdown') == 'on'
+
+        # Manually set the country from the FieldOp before saving
+        updated_request = form.save(commit=False)
+        updated_request.country = aid_request.field_op.country
 
         # Compare old and new values to build the event_text
         changes = []
         for field, old_value in original_values.items():
             new_value = getattr(updated_request, field)
-            # Country field needs to be converted to string for comparison
-            if field == 'country':
-                new_value = str(new_value)
-
             if old_value != new_value:
                 changes.append(f"{field.replace('_', ' ').title()}: '{old_value}' → '{new_value}'")
 
@@ -180,22 +181,21 @@ def save_address_info(request, field_op, pk):
         if not event_text:
             event_text = "Address information saved with no changes."
 
-
-        ActionLog.objects.create(
-            aid_request=updated_request,
-            log_type='system',
+        # Now save, passing the logging details to the model's save method
+        updated_request.save(
             event_name='Address Info Updated',
             event_text=event_text,
-            created_by=request.user,
-            agent_name=request.user.username,
+            note=note,
+            note_markdown=note_markdown
         )
+
         # Return the smaller, updated address partial to be swapped.
         response = render(request, 'aidrequests/partials/_address_info_display.html', {'aid_request': updated_request})
         response['HX-Trigger'] = json.dumps({
             'actionLogUpdated': None,
             'auditLogUpdated': None,
             'detailFieldUpdated': None, # To trigger header refresh
-            'closeModal': None,
+            'closeModal': '#genericEditModal',
         })
         return response
 

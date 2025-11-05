@@ -11,7 +11,17 @@
           hx-target="#address-info-section"
           hx-swap="outerHTML">
         {% csrf_token %}
-        {{ form|crispy }}
+        {% crispy form %}
+
+        <hr>
+        <h5>Action Note (Optional)</h5>
+        <textarea name="note" class="form-control mb-2" rows="3" placeholder="Add an optional note about this change..."></textarea>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="note_markdown" id="id_note_markdown_address">
+            <label class="form-check-label" for="id_note_markdown_address">
+                Note is Markdown
+            </label>
+        </div>
     </form>
 </div>
 <div class="modal-footer justify-content-between">
