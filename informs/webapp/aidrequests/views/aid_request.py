@@ -148,8 +148,6 @@ class AidRequestCreateView(CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        ic("Form is invalid")
-        ic(form.errors)
         return super().form_invalid(form)
 
 
@@ -216,70 +214,25 @@ class AidRequestCreateView(CreateView):
 #         return kwargs
 
 
-class ActionLogCreateView(LoginRequiredMixin, CreateView):
-    """ Aid Request Log - Create """
-    model = ActionLog
-    form_class = ActionLogForm
-
-    def setup(self, request, *args, **kwargs):
-        """Initialize attributes shared by all view methods."""
-        super().setup(request, *args, **kwargs)
-        # custom setup
-        self.field_op, self.fieldop_slug = get_field_op_from_kwargs(kwargs)
-        if not self.field_op:
-            raise Http404("Field operation not found")
-        self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
-
-    def get_success_url(self):
-        return reverse('aid_request_detail',
-                       kwargs={
-                           'field_op': self.fieldop_slug,
-                           'pk': self.aid_request.pk}
-                       )
-
-    def form_valid(self, form):
-        """
-        Set the created_by user, structure the message as JSON, and save the log.
-        For HTMX requests, return a partial template of the new log row.
-        """
-        # Set the user who created the log
-        self.object = form.save(commit=False)
-        self.object.created_by = self.request.user
-
-        # For manual user logs, populate the new structured fields
-        if self.object.log_type == 'user':
-            self.object.note = form.cleaned_data.get('note', '')
-            self.object.note_markdown = self.request.POST.get('enable_markdown') == 'true'
-            self.object.event_name = "User Note"
-            self.object.agent_name = self.request.user.username
-
-        self.object.save()
-
-        # For HTMX requests, we return just the new row to be prepended
-        if self.request.htmx:
-            return render(self.request, 'aidrequests/action_log_row.html', {'log': self.object})
-        return HttpResponseRedirect(self.get_success_url())
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs['initial'] = {
-            'aid_request': self.aid_request.pk,
-            'fieldop_slug': self.fieldop_slug
-        }
-        return kwargs
-
-
 class ActionLogAddView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = ActionLog
     form_class = ActionLogForm
     permission_required = 'aidrequests.add_actionlog'
 
+    def setup(self, request, *args, **kwargs):
+        """Initialize attributes shared by all view methods."""
+        super().setup(request, *args, **kwargs)
+        self.aid_request = get_object_or_404(AidRequest, pk=self.kwargs['pk'])
+        self.fieldop_slug = self.kwargs['field_op']
+
     def form_valid(self, form):
         self.object = form.save(commit=False)
-        self.object.aid_request = get_object_or_404(AidRequest, pk=self.kwargs['pk'])
+        self.object.aid_request = self.aid_request
         self.object.created_by = self.request.user
         self.object.agent_name = self.request.user.username
         self.object.log_type = 'user'
+        self.object.note = form.cleaned_data.get('note', '')
+        self.object.note_markdown = form.cleaned_data.get('enable_markdown', False)
         self.object.save()
         return render(self.request, 'aidrequests/partials/_action_log_row.html', {'log': self.object})
 

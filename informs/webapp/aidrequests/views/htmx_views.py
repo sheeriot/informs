@@ -229,18 +229,15 @@ def save_detail_field(request, field_op, pk, field_name):
         new_value = form.cleaned_data['value']
         old_value = getattr(aid_request, field_name)
 
+        note = request.POST.get('note', '')
+        note_markdown = request.POST.get('note_markdown') == 'on'
+
         # Update the field and save the model
         setattr(aid_request, field_name, new_value)
-        aid_request.save(update_fields=[field_name])
-
-        # Create an ActionLog for the change
-        ActionLog.objects.create(
-            aid_request=aid_request,
-            log_type='system',
-            event_name=f'{field_label} Updated',
-            event_text=f'Changed from "{old_value}" to "{new_value}".',
-            created_by=request.user,
-            agent_name=request.user.username,
+        aid_request.save(
+            update_fields=[field_name],
+            note=note,
+            note_markdown=note_markdown
         )
 
         # Manually escape and replace newlines with <br> to create valid, safe HTML.

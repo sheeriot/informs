@@ -1,7 +1,7 @@
 {% for log in audit_logs %}
 <tr class="table-info" data-log-id="{{ log.pk }}">
     <td>{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
-    <td>{{ log.actor.get_full_name|default:log.actor.username|default:"System" }}</td>
+    <td>{% if log.actor %}{{ log.actor.get_full_name|default:log.actor.username }}{% else %}System{% endif %}</td>
     <td>
         {% if log.action == 0 %}Create{% endif %}
         {% if log.action == 1 %}Update{% endif %}
