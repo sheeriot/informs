@@ -1,0 +1,41 @@
+{% load crispy_forms_tags %}
+{% load bootstrap_icons %}
+
+<!--
+This partial renders the form for editing requester information.
+It's swapped into the #requester-info-section div.
+-->
+<div id="requester-info-section" class="p-3 rounded bg-warning-subtle">
+    <form id="requester-info-form"
+          hx-post="{% url 'save_requester_info' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
+          hx-target="#requester-info-section"
+          hx-swap="outerHTML">
+        {% csrf_token %}
+        {{ form|crispy }}
+
+        <hr>
+        <h5>Action Note (Optional)</h5>
+        <textarea name="note" class="form-control mb-2" rows="3" placeholder="Add an optional note about this change..."></textarea>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="note_markdown" id="id_note_markdown">
+            <label class="form-check-label" for="id_note_markdown">
+                Note is Markdown
+            </label>
+        </div>
+
+        <div class="mb-3">
+            <p class="mb-1"><strong>Address Provided (Read-Only)</strong></p>
+            <p class="form-control-plaintext">{{ aid_request.full_address|default:"-" }}</p>
+        </div>
+
+        <hr>
+        <div class="d-flex justify-content-end">
+            <button type="button" class="btn btn-secondary me-2" hx-get="{% url 'get_requester_info' field_op=aid_request.field_op.slug pk=aid_request.pk %}" hx-target="#requester-info-section" hx-swap="outerHTML">
+                Cancel
+            </button>
+            <button type="submit" class="btn btn-primary">
+                {% bs_icon 'check-circle-fill' %} Save Changes
+            </button>
+        </div>
+    </form>
+</div>

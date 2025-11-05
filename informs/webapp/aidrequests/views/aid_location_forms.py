@@ -8,7 +8,7 @@ from icecream import ic
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Fieldset, Hidden, Row, Column, Div, HTML, Field
-from ..forms.layout import MapLayoutObject
+from ..forms.crispy_map_layout import MapLayoutObject
 
 from ..models import AidLocation
 # from crispy_forms.layout import Layout, Submit,  Hidden
@@ -69,6 +69,15 @@ class AidLocationCreateForm(forms.ModelForm):
         self.helper.form_id = 'addLocationForm'
         self.helper.form_class = 'needs-validation'
         self.helper.attrs = {'novalidate': ''}
+
+        # This form now posts and swaps the locations list directly.
+        self.helper.attrs['hx-post'] = reverse(
+            'add_location',
+            kwargs={'field_op': self.field_op_obj.slug, 'pk': aid_request_obj.pk}
+        )
+        self.helper.attrs['hx-target'] = '#locations-list-container'
+        self.helper.attrs['hx-swap'] = 'innerHTML'
+
         if self.field_op_obj and aid_request_obj:
             self.helper.form_action = reverse(
                 'add_location',
@@ -100,7 +109,7 @@ class AidLocationCreateForm(forms.ModelForm):
             'streetInputId': 'id_street_address_modal',
             'cityInputId': 'id_city_modal',
             'stateInputId': 'id_state_modal',
-            'confirmBtnId': 'confirm-and-next-btn-modal',
+            'confirmBtnId': 'submit-location-form',
             'geocodeJsonPreId': 'geocode-json-pre-modal',
             'formContainerId': 'addLocationModal',
             'geocodeDetailsContainerId': 'geocode-details-container-modal',
@@ -150,6 +159,7 @@ class AidLocationCreateForm(forms.ModelForm):
                 Row(
                     Column(Field('street_address', css_class='mb-2'), css_class='col-12'),
                 ),
+                'note',
                 Div(
                     Row(
                         Column(HTML('<label for="id_free_form_address" class="form-label h6 mb-0">Geocoded Address</label><span id="geocode-spinner-modal" class="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status" aria-hidden="true"></span>'), css_class="col-auto"),

@@ -1,88 +1,50 @@
-{% load bootstrap_icons %}
-<div class="btn-group btn-group-sm" role="group">
-    {% url 'aid_location_status_update' field_op=aid_request.field_op.slug location_pk=location.pk as location_status_url %}
-    {% url 'api_aid_location_delete' field_op=aid_request.field_op.slug location_pk=location.pk as location_delete_url %}
+{% load i18n %}
+<div class="d-flex justify-content-end">
 
-    {% if location.status == 'new' and not aid_request.location_confirmed %}
-        <button type="button" class="btn btn-success" title="Confirm Location"
+    {% if location.status != 'confirmed' %}
+        <button class="btn btn-sm btn-success me-2"
                 data-bs-toggle="modal"
                 data-bs-target="#actionConfirmationModal"
-                data-action-url="{{ location_status_url }}"
-                data-http-method="POST"
+                data-action-url="{% url 'aid_location_status_update' field_op=aid_request.field_op.slug pk=location.pk %}"
                 data-action="confirm"
-                data-location-id="{{ location.pk }}"
-                data-modal-title="Confirm Location #{{ location.pk }}"
                 data-action-name="Confirm"
-                data-object-name="this Location"
-                data-confirm-button-text="Confirm"
+                data-object-name="Location #{{ location.pk }}"
+                data-new-value="Confirmed"
+                data-old-value="{{ location.get_status_display }}"
                 data-confirm-button-class="btn-success"
-                data-confirm-button-icon="check-circle">
-            {% bs_icon 'check-circle' %}
-        </button>
-        <button type="button" class="btn btn-warning" title="Reject Location"
-                data-bs-toggle="modal"
-                data-bs-target="#actionConfirmationModal"
-                data-action-url="{{ location_status_url }}"
-                data-http-method="POST"
-                data-action="reject"
-                data-location-id="{{ location.pk }}"
-                data-modal-title="Reject Location #{{ location.pk }}"
-                data-action-name="Reject"
-                data-object-name="Location #{{ location.pk }}"
-                data-modal-body="<p>You are about to reject this location. This action cannot be undone.</p>
-                                 <ul>
-                                     <li><strong>ID:</strong> {{ location.pk }}</li>
-                                     <li><strong>Coordinates:</strong> {{ location.latitude }}, {{ location.longitude }}</li>
-                                     <li><strong>Address:</strong> {{ location.free_form_address|default:'N/A' }}</li>
-                                 </ul>"
-                data-confirm-button-text="Reject"
-                data-confirm-button-class="btn-warning"
-                data-confirm-button-icon="hand-thumbs-down">
-            {% bs_icon 'hand-thumbs-down' %}
-        </button>
-    {% elif location.status == 'confirmed' %}
-        <button type="button" class="btn btn-warning" title="Reject this location"
-                data-bs-toggle="modal"
-                data-bs-target="#actionConfirmationModal"
-                data-action-url="{{ location_status_url }}"
-                data-http-method="POST"
-                data-action="reject"
-                data-location-id="{{ location.pk }}"
-                data-modal-title="Reject Location #{{ location.pk }}"
-                data-action-name="Reject"
-                data-object-name="Location #{{ location.pk }}"
-                data-modal-body="<p>You are about to reject this location. This action cannot be undone.</p>
-                                 <ul>
-                                     <li><strong>ID:</strong> {{ location.pk }}</li>
-                                     <li><strong>Coordinates:</strong> {{ location.latitude }}, {{ location.longitude }}</li>
-                                     <li><strong>Address:</strong> {{ location.free_form_address|default:'N/A' }}</li>
-                                 </ul>"
-                data-confirm-button-text="Reject"
-                data-confirm-button-class="btn-warning"
-                data-confirm-button-icon="hand-thumbs-down">
-            {% bs_icon 'hand-thumbs-down' %}
+                data-confirm-button-icon="check-circle"
+                data-confirm-button-text="{% trans 'Confirm Location' %}">
+            <i class="bi bi-check-circle"></i>
         </button>
     {% endif %}
-    {% if location.status != 'archived' %}
-         <button type="button" class="btn btn-danger"
-                 title="Delete Location"
-                 data-bs-toggle="modal"
-                 data-bs-target="#actionConfirmationModal"
-                 data-action-url="{{ location_delete_url }}"
-                 data-http-method="DELETE"
-                 data-location-id="{{ location.pk }}"
-                 data-modal-title="Delete Location #{{ location.pk }}"
-                 data-action-name="Delete"
-                 data-object-name="Location #{{ location.pk }}"
-                 data-modal-body="<p>You are about to permanently delete this location. This action cannot be undone.</p>
-                                  <ul>
-                                      <li><strong>ID:</strong> {{ location.pk }}</li>
-                                      <li><strong>Coordinates:</strong> {{ location.latitude }}, {{ location.longitude }}</li>
-                                  </ul>"
-                 data-confirm-button-text="Delete"
-                 data-confirm-button-class="btn-danger"
-                 data-confirm-button-icon="trash-fill">
-             {% bs_icon 'trash-fill' %}
-         </button>
+
+    {% if location.status != 'rejected' %}
+        <button class="btn btn-sm btn-warning me-2"
+                data-bs-toggle="modal"
+                data-bs-target="#actionConfirmationModal"
+                data-action-url="{% url 'aid_location_status_update' field_op=aid_request.field_op.slug pk=location.pk %}"
+                data-action="reject"
+                data-action-name="Reject"
+                data-object-name="Location #{{ location.pk }}"
+                data-new-value="Rejected"
+                data-old-value="{{ location.get_status_display }}"
+                data-confirm-button-class="btn-warning"
+                data-confirm-button-icon="hand-thumbs-down-fill"
+                data-confirm-button-text="{% trans 'Reject Location' %}">
+            <i class="bi bi-hand-thumbs-down"></i>
+        </button>
     {% endif %}
+
+    <button class="btn btn-sm btn-danger"
+            data-bs-toggle="modal"
+            data-bs-target="#actionConfirmationModal"
+            data-action-url="{% url 'api_aid_location_delete' field_op=aid_request.field_op.slug pk=location.pk %}"
+            data-http-method="DELETE"
+            data-action-name="Delete"
+            data-object-name="Location #{{ location.pk }}"
+            data-confirm-button-class="btn-danger"
+            data-confirm-button-icon="trash"
+            data-confirm-button-text="{% trans 'Delete Location' %}">
+        <i class="bi bi-trash"></i>
+    </button>
 </div>

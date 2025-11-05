@@ -3,6 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.urls import reverse_lazy
 from django.views.generic import DetailView, CreateView, UpdateView
 from django.http import HttpResponseRedirect
+from django_q.tasks import async_task
 from ..models import FieldOp, AidRequest
 from ..forms import FieldOpForm
 from .utils import prepare_aid_locations_for_map, locations_to_bounds
@@ -14,6 +15,8 @@ class FieldOpDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
     permission_required = 'aidrequests.view_fieldop'
     model = FieldOp
     template_name = 'aidrequests/field_op_detail.html'
+    slug_url_kwarg = 'field_op'
+    slug_field = 'slug'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -73,13 +76,26 @@ class FieldOpCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
         if user.is_authenticated:
             form.instance.created_by = user
             form.instance.updated_by = user
-        return super().form_valid(form)
+
+        response = super().form_valid(form)
+
+        if not self.object.disable_cot:
+            async_task(
+                'aidrequests.tasks.send_cot_task',
+                field_op_slug=self.object.slug,
+                mark_type='field_op',
+                task_name=f"Send_CoT_FieldOp_{self.object.slug}"
+            )
+
+        return response
 
 class FieldOpUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     permission_required = 'aidrequests.change_fieldop'
     model = FieldOp
     form_class = FieldOpForm
     template_name = 'aidrequests/field_op_form.html'
+    slug_url_kwarg = 'slug'
+    slug_field = 'slug'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -98,14 +114,17 @@ class FieldOpUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
             return next_url
 
         # Otherwise, redirect to the detail page
-        return reverse_lazy('field_op_detail', kwargs={'slug': self.object.slug})
+        return reverse_lazy('field_op_detail', kwargs={'field_op': self.object.slug})
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['action'] = 'update'
 
-        # Get next URL from GET parameters
+        # Get next URL from GET parameters or from referrer
         next_url = self.request.GET.get('next')
+        if not next_url:
+            next_url = self.request.META.get('HTTP_REFERER')
+
         if next_url:
             if 'initial' not in kwargs:
                 kwargs['initial'] = {}
@@ -131,6 +150,15 @@ class FieldOpUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
         if user.is_authenticated:
             form.instance.updated_by = user
         form.save()
+
+        if not self.object.disable_cot:
+            async_task(
+                'aidrequests.tasks.send_cot_task',
+                field_op_slug=self.object.slug,
+                mark_type='field_op',
+                task_name=f"Send_CoT_FieldOp_{self.object.slug}"
+            )
+
         success_url = self.get_success_url()
         ic("Redirecting to:", success_url)
         return HttpResponseRedirect(success_url)

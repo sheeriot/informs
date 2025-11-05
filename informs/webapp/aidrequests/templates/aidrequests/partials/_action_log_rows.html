@@ -1,3 +1,3 @@
-{% for log in action_logs %}
-    {% include 'aidrequests/action_log_row.html' %}
+{% for log in logs %}
+    {% include 'aidrequests/partials/_action_log_row.html' with log=log %}
 {% endfor %}

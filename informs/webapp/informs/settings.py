@@ -125,6 +125,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # 3rd Party
     'django_bootstrap_icons',
     'django_q',
     'django_filters',
@@ -272,7 +274,7 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB max upload size
 
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
-LOGIN_URL = '/accounts/login/'
+LOGIN_URL = 'login'
 
 # MAPS
 AZURE_MAPS_STATIC_URL = 'https://atlas.microsoft.com/map/static'
@@ -391,6 +393,6 @@ COT_ICONS = {key: value for key, value in icons_config.items('Icons')}
 # ic(COT_ICONS)
 
 # Static Version information
-STATIC_VERSION = os.environ.get('STATIC_VERSION', '0.0.1')
+STATIC_VERSION = '0.0.12'
 
 # PYTAK_FLUSH_TIMEOUT = 40 # seconds

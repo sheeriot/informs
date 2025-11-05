@@ -202,8 +202,14 @@ class CotMaker:
             if location_obj.note: remarks.append(f"Location Note: {location_obj.note}")
             if aid_request.aid_description: remarks.append(f"\nDescription:\n{aid_request.aid_description}")
 
+            # Add the new fields to the remarks
+            if aid_request.supplies_needed: remarks.append(f"\nSupplies Needed:\n{aid_request.supplies_needed}")
+            if aid_request.medical_needs: remarks.append(f"\nMedical Needs:\n{aid_request.medical_needs}")
+            if aid_request.welfare_check_info: remarks.append(f"\nWelfare Check:\n{aid_request.welfare_check_info}")
+            if aid_request.additional_info: remarks.append(f"\nAdditional Info:\n{aid_request.additional_info}")
+
             # Base for this Aid Request marker's own callsign. This can change if aid_type changes.
-            aid_request_callsign_identifier = f"{aid_request.aid_type.slug}.{aid_request.pk}"
+            aid_request_callsign_identifier = f"{field_op.slug}.{aid_request.aid_type.slug}.{aid_request.pk}"
             contact_callsign_for_marker = aid_request_callsign_identifier
             if settings.ENV_NAME and settings.ENV_NAME != 'prod':
                 contact_callsign_for_marker = f"{aid_request_callsign_identifier}.{settings.ENV_NAME}"

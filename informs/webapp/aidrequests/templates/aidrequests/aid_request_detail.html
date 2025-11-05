@@ -12,7 +12,9 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
 <div id="aid-request-config"
     data-csrf-token="{{ csrf_token }}"
     data-field-op="{{ field_op.slug }}"
+    data-field-op-name="{{ field_op.name }}"
     data-aid-request-id="{{ aid_request.pk }}"
+    data-requester-full-name="{{ aid_request.requester_full_name|default:'' }}"
     data-url-partial-update="{{ url_partial_update }}"
     data-url-regenerate-map="{{ url_regenerate_map }}"
     data-url-delete-location="{{ url_delete_location }}"
@@ -25,110 +27,75 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
     >
 </div>
 <div class="container-fluid">
-    <!-- This hidden button acts as a trigger for the generic action modal,
-       especially for the status/priority radio button changes. The JS will
-       populate its data attributes dynamically before 'clicking' it. -->
-    <button id="status-priority-change-trigger"
-            class="d-none"
-            data-bs-toggle="modal"
-            data-bs-target="#actionConfirmationModal"
-            data-action-url="{% url 'aid_request_ajax_update' field_op=aid_request.field_op.slug pk=aid_request.pk %}">
-    </button>
-
-    <div id="aid-request-header-container">
-    {% include 'aidrequests/partials/aid_request_header.html' %}
+    <div class="d-flex justify-content-between align-items-center">
+        <div id="aid-request-header-container"
+            class="flex-grow-1"
+            hx-get="{% url 'get_aid_request_header' field_op=field_op.slug pk=aid_request.pk %}"
+            hx-trigger="detailFieldUpdated from:body"
+            hx-swap="innerHTML">
+            {% include 'aidrequests/partials/_aid_request_header.html' %}
+        </div>
+        {% include 'aidrequests/partials/_field_op_badge.html' %}
     </div>
-    <hr class="m-0" />
-    <div class="row m-0 p-0">
-        {# Left Column #}
-        <div class="col-md-8 m-0 p-1">
-            {% include 'aidrequests/includes/aid_request_summary.html' %}
-
-            <div class="card mb-1">
-                <div class="card-header m-0 p-1">
-                    <h5 class="mb-0">Request Details</h5>
-                </div>
-                <div class="card-body m-0 p-1">
-                    <h2>Emergency Medical Needs</h2>
-                    <p>{{ object.medical_needs|default:"None" }}</p>
-
-                    <h2>Supplies Needed</h2>
-                    <p>{{ object.supplies_needed|default:"None" }}</p>
-
-                    <h2>Welfare Check Information</h2>
-                    <p>{{ object.welfare_check_info|default:"None" }}</p>
-
-                    <h2>Additional Information</h2>
-                    <p>{{ object.additional_info|default:"None" }}</p>
-                </div>
-            </div>
+    <div class="row">
+        <!-- Left column for details -->
+        <div class="col-lg-7">
+            {% include 'aidrequests/includes/aid_request_details_card.html' %}
         </div>
 
-        {# Right Column #}
-        <div class="col-md-4 m-0 p-1">
-            {% include 'aidrequests/includes/aid_request_status.html' %}
-            <!-- Actions Card -->
-
-            <div id="locations-list-container"
-                 hx-get="{% url 'get_locations_list_partial' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
-                 hx-trigger="load, refreshLocations from:body"
-                 hx-swap="innerHTML">
-                <div class="text-center mt-3">
-                    <div class="spinner-border" role="status">
-                        <span class="visually-hidden">Loading Locations...</span>
-                    </div>
-                </div>
+        <!-- Right column for locations -->
+        <div class="col-lg-5">
+            <div class="card mb-3">
+                {% include 'aidrequests/includes/aid_request_status.html' %}
+           </div>
+            <div id="locations-list-container">
+                {% include 'aidrequests/includes/aid_locations_list.html' with aid_request=object %}
             </div>
         </div>
     </div>
-    {# New Row for Logs #}
-    <div class="row m-0 p-0">
-        <div class="col-12 m-0 p-1">
-            <div class="card m-0 p-0">
-                <div class="card-header">
-                    <ul class="nav nav-tabs card-header-tabs" id="logTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="action-logs-tab" data-bs-toggle="tab" data-bs-target="#action-logs" type="button" role="tab" aria-controls="action-logs" aria-selected="true">Action Logs</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="audit-logs-tab" data-bs-toggle="tab" data-bs-target="#audit-logs" type="button" role="tab" aria-controls="audit-logs" aria-selected="false">Audit Logs</button>
-                        </li>
-                    </ul>
+    <div class="mt-3">
+        {% include 'aidrequests/partials/_logs_card.html' %}
+    </div>
+
+    <!-- Generic, reusable modal for editing fields -->
+    <div class="modal fade draggable" id="genericEditModal" tabindex="-1" aria-labelledby="genericEditModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div id="generic-modal-content" class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Loading...</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="card-body tab-content" id="logTabsContent">
-                    <div class="tab-pane fade show active" id="action-logs" role="tabpanel" aria-labelledby="action-logs-tab">
-                        <div hx-get="{% url 'get_action_logs_partial' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
-                             hx-trigger="load, actionLogUpdated from:body"
-                             hx-swap="innerHTML">
-                            <div class="text-center">
-                                <div class="spinner-border" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="tab-pane fade" id="audit-logs" role="tabpanel" aria-labelledby="audit-logs-tab">
-                        <div hx-get="{% url 'get_audit_logs_partial' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
-                             hx-trigger="load, actionLogUpdated from:body"
-                             hx-swap="innerHTML">
-                            <div class="text-center">
-                                <div class="spinner-border" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="modal-body">
+                    <!-- Content will be loaded here by HTMX -->
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Modals -->
 {% include 'aidrequests/partials/_add_location_modal.html' %}
 {# The two modals below are now replaced by the single, generic _action_confirmation_modal #}
 {# {% include 'aidrequests/partials/_delete_location_modal.html' %} #}
 {% include 'aidrequests/partials/_action_confirmation_modal.html' %}
 {# {% include 'aidrequests/partials/_location_status_change_modal.html' %} #}
+{% if request.user.is_superuser %}
+    {% include 'aidrequests/partials/_change_aid_type_modal.html' with aid_request=object %}
+{% endif %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        const genericEditModal = document.getElementById('genericEditModal');
+        if(genericEditModal) {
+            genericEditModal.addEventListener('hide.bs.modal', function () {
+                const saveButton = document.getElementById('generic-save-button');
+                if (saveButton && document.activeElement === saveButton) {
+                    saveButton.blur();
+                }
+            });
+        }
+    });
+</script>
 
 {% endblock %}
 
@@ -138,10 +105,11 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
 <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
 <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
 <script src="{% static 'js/htmx-helpers.js' %}?v={{ static_version }}"></script>
+<script src="{% static 'js/alert.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/location-picker-map.js' %}?v={{ static_version }}"></script>
+<script src="{% static 'js/map-poller.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/tak-alert.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/aidrequest-cot.js' %}?v={{ static_version }}"></script>
 <script src="{% static 'js/aidrequest-actions.js' %}?v={{ static_version }}"></script>
-<script src="{% static 'js/aidrequest_locations.js' %}?v={{ static_version }}"></script>
-
+<script src="{% static 'js/movable-modal.js' %}?v={{ static_version }}"></script>
 {% endblock extra_js %}

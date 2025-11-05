@@ -3,38 +3,42 @@
 {% load bootstrap_icons %}
 
 <tr hx-target="this" hx-swap="outerHTML">
-    <td>{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
-    <td>{{ log.created_by.username|default:"System" }}</td>
-    <td>{{ log.get_log_type_display }}</td>
-    <td>
-        <form hx-post="{% url 'update_action_log' pk=log.pk %}">
-            {% csrf_token %}
-            <div class="mb-2">
-                <strong>{{ log.event_name }}</strong><br>
-                {% if log.text_markdown %}
-                    {{ log.event_text|markdownify|safe }}
-                {% else %}
-                    {{ log.event_text }}
-                {% endif %}
-            </div>
-            <div class="mb-2">
-                <label for="note-{{ log.pk }}" class="form-label">Note:</label>
-                <textarea name="note" id="note-{{ log.pk }}" class="form-control" rows="3">{{ log.note }}</textarea>
-            </div>
-            <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" name="is_markdown" id="edit-markdown-{{ log.pk }}" {% if log.note_markdown %}checked{% endif %}>
-                <label class="form-check-label" for="edit-markdown-{{ log.pk }}">
-                    Enable Markdown for Note
-                </label>
-            </div>
-            <div class="d-flex justify-content-end align-items-center">
-                <small class="text-muted me-auto">Agent: {{ log.agent_name }}</small>
-                <button type="button" class="btn btn-sm btn-secondary me-2"
-                        hx-get="{% url 'get_action_log_row' pk=log.pk %}">
-                    {% bs_icon 'x-circle' %} Cancel
-                </button>
-                <button type="submit" class="btn btn-sm btn-primary">{% bs_icon 'pencil' %} Save Edit</button>
-            </div>
-        </form>
+    <td class="text-nowrap">{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
+    <td class="text-nowrap">{{ log.created_by.username|default:"System" }}</td>
+    <td class="text-nowrap">{{ log.get_log_type_display }}</td>
+    <td class="col">
+        <div class="text-break">
+            <form hx-post="{% url 'update_action_log' field_op=log.aid_request.field_op.slug aid_request_pk=log.aid_request.pk pk=log.pk %}">
+                {% csrf_token %}
+                <div class="mb-2">
+                    <strong>{{ log.event_name }}</strong><br>
+                    {% if log.text_markdown %}
+                        {{ log.event_text|markdownify|safe }}
+                    {% else %}
+                        <pre class="mb-0 font-sans-serif text-wrap">{{ log.event_text }}</pre>
+                    {% endif %}
+                </div>
+                <div class="mb-2">
+                    <label for="note-{{ log.pk }}" class="form-label">Note:</label>
+                    <textarea name="note" id="note-{{ log.pk }}" class="form-control" rows="3">{{ log.note }}</textarea>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="note_markdown" id="edit-markdown-{{ log.pk }}" {% if log.note_markdown %}checked{% endif %}>
+                    <label class="form-check-label" for="edit-markdown-{{ log.pk }}">
+                        Enable Markdown for Note
+                    </label>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted me-auto">Agent: {{ log.agent_name }}</small>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-secondary"
+                                hx-get="{% url 'get_action_log_row' field_op=log.aid_request.field_op.slug aid_request_pk=log.aid_request.pk pk=log.pk %}">
+                            {% bs_icon 'x-circle' %} Cancel
+                        </button>
+                        <button type="submit" class="btn btn-sm btn-primary">{% bs_icon 'pencil' %} Save Edit</button>
+                    </div>
+                </div>
+            </form>
+        </div>
     </td>
 </tr>

@@ -69,13 +69,8 @@ if (typeof window.mapPollerConfig === 'undefined') {
             const maxAttempts = 30; // 30 attempts * 5 seconds = 2.5 minutes
             const interval = 5000; // 5 seconds
 
-            fetch(statusUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
+            fetchWithLogging(statusUrl, {}, 'Check Map Status')
+                .then(response => response.json())
                 .then(data => {
                      if (window.mapPollerConfig.debug) {
                         console.log(`[MapPoller] Poll attempt ${attempt} for ${card.id}:`, data);

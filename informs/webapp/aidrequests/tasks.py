@@ -7,7 +7,7 @@ from geopy.distance import geodesic
 from .email_creator import email_connectstring, email_creator_html
 from .geocoder import get_azure_geocode, geocode_save
 from .views.maps import staticmap_aid, calculate_zoom
-from .models import FieldOpNotify, AidRequest, FieldOp, AidLocation
+from .models import FieldOpNotify, AidRequest, FieldOp, AidLocation, ActionLog
 from takserver.cot import CotSender, pytak_send_cot
 
 import asyncio
@@ -117,30 +117,54 @@ def aid_request_postsave(aid_request_pk, **kwargs):
 
         logger.info(f"AR-{aid_request.pk}: Preparing to send notification emails.")
         notify_emails = aid_request.field_op.notify.filter(type__startswith='email')
-        email_results = ""
+
+        sent_to = []
+        email_body_html = "" # Store one example of the email body
+
         for notify in notify_emails:
             map_file = f"{settings.MAPS_PATH}/{aid_location.map_filename}" if aid_location.map_filename else None
             message = email_creator_html(aid_request, aid_location, notify, map_file)
+
+            if not email_body_html: # Capture the first generated body as a sample
+                email_body_html = message.get('content', {}).get('html', '')
+
             try:
                 task_name = f"AR{aid_request.pk}_SendEmail_New_{notify.pk}"
                 async_task('aidrequests.tasks.send_email', message, task_name=task_name)
-                email_results += f"Email task for {notify.name} enqueued.\\n"
+                sent_to.append(notify.email)
             except Exception as e:
                 logger.error(f"Error enqueuing email task for {notify.name}: {e}")
-                email_results += f"Email Enqueue Error for {notify.name}: {e}\\n"
 
-        if email_results.endswith('\\n'):
-            email_results = email_results[:-2]
+        if sent_to:
+            log_text = render_to_string('aidrequests/logs/email_notifications_sent_log.md', {
+                'aid_request': aid_request,
+                'recipients': sent_to,
+                'email_body': email_body_html,
+            })
+            event_name = "Email Notifications Sent"
+            text_markdown = True
+        else:
+            log_text = "No email recipients were configured for this Field Operation. No notifications were sent."
+            event_name = "Email Notifications Skipped"
+            text_markdown = False
 
-        try:
-            aid_request.action_logs.create(
-                log_type='system',
-                event_name="Email Notifications Sent",
-                event_text=email_results,
-                agent_name="System"
+        aid_request.action_logs.create(
+            log_type='system',
+            event_name=event_name,
+            event_text=log_text,
+            text_markdown=text_markdown,
+            agent_name="System"
+        )
+
+        # After emails, also trigger the CoT update for the new request
+        if not aid_request.field_op.disable_cot:
+            async_task(
+                'aidrequests.tasks.send_cot_task',
+                field_op_slug=aid_request.field_op.slug,
+                mark_type='aid',
+                aidrequest=aid_request.pk,
+                task_name=f"Send_CoT_AR_{aid_request.pk}_New"
             )
-        except Exception as e:
-            logger.error(f"Error logging email results: {e}")
 
         return {
             'location_created_pk': aid_location.pk,
@@ -475,6 +499,29 @@ def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests
                 success_msg = f"CoT task completed for {field_op_slug}, but no specific markers were designated for sending in this call."
             else:
                 success_msg = f"CoT task for {field_op_slug} initiated to send: {', '.join(sent_parts)}."
+
+            # Log CoT event only for individual aid request updates.
+            if aidrequest is not None:
+                try:
+                    # Fetch the AidRequest object to associate with the log
+                    aid_request_obj = AidRequest.objects.get(pk=aidrequest)
+                    tak_server_name = aid_request_obj.field_op.tak_server.dns_name if aid_request_obj.field_op.tak_server else "N/A"
+
+                    log_text = render_to_string('aidrequests/logs/cot_sent_log.md', {
+                        'tak_server_name': tak_server_name,
+                        'cot_summary': success_msg,
+                    })
+
+                    ActionLog.objects.create(
+                        aid_request=aid_request_obj,
+                        log_type='system',
+                        event_name='CoT Sent',
+                        event_text=log_text,
+                        text_markdown=True,
+                        agent_name='System'
+                    )
+                except AidRequest.DoesNotExist:
+                    logger.error(f"Attempted to log CoT Sent, but AidRequest with pk={aidrequest} not found.")
 
             logger.info(success_msg)
             return success_msg # Return the more generic success message from pytak_send_cot or this constructed one

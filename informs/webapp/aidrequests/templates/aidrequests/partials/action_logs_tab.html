@@ -1,26 +1,26 @@
-{% load crispy_forms_tags %}
+{% include 'aidrequests/partials/_add_log_form.html' %}
 
-<div class="mb-3">
-    {% crispy log_form %}
+<div class="table-responsive">
+    <table class="table table-sm w-100" style="table-layout: fixed;">
+        <thead class="table-light">
+            <tr>
+                <th scope="col" class="col-1 text-nowrap">Timestamp</th>
+                <th scope="col" class="col-1 text-nowrap">User</th>
+                <th scope="col" class="col-1 text-nowrap">Type</th>
+                <th scope="col">Message</th>
+            </tr>
+        </thead>
+        <tbody id="action-logs-tbody"
+               hx-get="{% url 'get_action_logs_partial' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
+               hx-trigger="actionLogUpdated from:body"
+               hx-swap="afterbegin">
+            {% for log in action_logs %}
+                {% include 'aidrequests/partials/_action_log_row.html' with log=log %}
+            {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted">No action logs found.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
-
-<table class="table table-sm table-striped table-bordered w-100">
-    <caption class="caption-top text-muted small">
-        {% if action_logs.first %}
-        All timestamps are in {{ action_logs.first.created_at|date:"T" }} ({{ action_logs.first.created_at|date:"O" }})
-        {% endif %}
-    </caption>
-    <thead class="table-light">
-        <tr>
-            <th scope="col">Timestamp</th>
-            <th scope="col">User</th>
-            <th scope="col">Type</th>
-            <th scope="col">Message</th>
-        </tr>
-    </thead>
-    <tbody id="action-logs-tbody">
-        {% for log in action_logs %}
-            {% include 'aidrequests/action_log_row.html' %}
-        {% endfor %}
-    </tbody>
-</table>

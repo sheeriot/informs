@@ -12,15 +12,13 @@
     </td>
     <td class="col-auto">{{ log.created_by.username|default:"System" }}</td>
     <td class="col-auto text-nowrap">{{ log.get_log_type_display }}</td>
-    <td class="col-auto text-break">
-        <div class="text-wrap">
-            <strong>
-                {{ log.event_name }}
-            </strong><br>
+    <td class="col">
+        <div class="text-break">
+            <strong>{{ log.event_name }}</strong>
             {% if log.text_markdown %}
                 {{ log.event_text|markdownify|safe }}
             {% else %}
-                <p>{{ log_data.event_text }}</p>
+                <pre class="mb-0 font-sans-serif text-wrap">{{ log.event_text }}</pre>
             {% endif %}
 
             {% if log.note %}
@@ -36,33 +34,24 @@
                             {% if log.note_markdown %}
                                 {{ log.note|markdownify|safe }}
                             {% else %}
-                                <pre class="mb-0 font-sans-serif text-wrap">{{ log.note }}</pre>
+                                <pre class="mb-0 bg-light border rounded p-1 text-wrap">{{ log.note }}</pre>
                             {% endif %}
                         </div>
                     </div>
                 </div>
             {% endif %}
-            <br><small>Agent: {{ log.agent_name }}</small>
 
-            {% comment %}
-            This part for edited logs needs to be updated once we add the fields.
-            The `log_data` variable is no longer available after the refactor.
-            We will add `edited_at` and `edited_by` fields directly to the `ActionLog` model later.
-            {% if log.edited_at %}
-                <br><small class="text-muted fst-italic">Edited by {{ log.edited_by }} at {{ log.edited_at|date:"Y-m-d H:i" }}</small>
-            {% endif %}
-            {% endcomment %}
-
-            {% if request.user == log.created_by and log.created_at|is_recent and log.note %}
-            <div class="mt-2">
-                <button class="btn btn-sm btn-outline-secondary"
-                        hx-get="{% url 'get_action_log_edit_form' pk=log.pk %}"
-                        hx-target="closest tr"
-                        hx-swap="outerHTML">
-                    {% bs_icon 'pencil' %} Edit
-                </button>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <small class="text-muted me-auto">Agent: {{ log.agent_name }}</small>
+                {% if request.user == log.created_by and log.created_at|is_recent and log.note %}
+                    <button class="btn btn-sm btn-outline-secondary"
+                            hx-get="{% url 'get_action_log_edit_form' field_op=log.aid_request.field_op.slug aid_request_pk=log.aid_request.pk pk=log.pk %}"
+                            hx-target="closest tr"
+                            hx-swap="outerHTML">
+                        {% bs_icon 'pencil' %} Edit
+                    </button>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
     </td>
 </tr>

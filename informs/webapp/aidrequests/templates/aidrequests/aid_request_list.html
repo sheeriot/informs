@@ -9,7 +9,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center">
             <h2 class="mb-0 me-2">Aid Requests List</h2>
-            <a class="btn btn-info" href="{% url 'field_op_detail' slug=field_op.slug %}">
+            <a class="btn btn-info" href="{% url 'field_op_detail' field_op=field_op.slug %}">
                 <i class="bi bi-truck"></i>
                 {{ field_op.name }}
             </a>

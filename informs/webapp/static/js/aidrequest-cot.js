@@ -47,26 +47,20 @@ function sendCoT(aidRequestId, button) {
     if(window.aidRequestCotConfig.debug) console.log("Sending CoT for aid request:", aidRequestId);
     if(window.aidRequestCotConfig.debug) console.log("URL:", window.aidRequestCotConfig.urls.sendCot);
 
-    fetch(window.aidRequestCotConfig.urls.sendCot, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": window.aidRequestCotConfig.csrfToken,
-        },
-        body: JSON.stringify({
-            aidrequest_id: aidRequestId
-        }),
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
+    const payload = {
+        aid_request_id: aidRequestId,
+    };
+
+    showTakAlert('Sending CoT message...', 'info', 0); // Show pending message
+
+    fetchWithLogging(window.aidRequestCotConfig.urls.sendCot, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    }, 'Send CoT')
+    .then(response => response.json())
     .then(data => {
-        if(window.aidRequestCotConfig.debug) console.log("sendCoT response", data);
-        if (data.sendcot_id) {
-            pollStatus(data.sendcot_id, button, originalButtonHtml);
+        if (data.task_id) {
+            pollStatus(data.task_id, button, originalButtonHtml);
         } else {
             button.innerHTML = "Error";
             setTimeout(() => {

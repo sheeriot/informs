@@ -14,6 +14,7 @@ import json
 from icecream import ic
 from django.template.loader import render_to_string
 from django.db.models import Case, When, Value
+from django.forms.models import model_to_dict
 
 from .timestamped_model import TimeStampedModel
 from takserver.models import TakServer
@@ -159,16 +160,15 @@ class AidRequest(TimeStampedModel):
     field_op = models.ForeignKey(FieldOp, on_delete=models.CASCADE,
                                  null=True, related_name='aid_requests')
     # 1. Requester details
-    requester_first_name = models.CharField(max_length=20, blank=True)
-    requester_last_name = models.CharField(max_length=30, blank=True)
+    requester_first_name = models.CharField(max_length=100, blank=True)
+    requester_last_name = models.CharField(max_length=100, blank=True)
+    requester_phone = models.CharField(max_length=20, blank=True)
+    requester_phone_is_whatsapp = models.BooleanField(default=False)
+    requester_email = models.EmailField(blank=True)
 
     @property
     def requester_full_name(self):
         return f"{self.requester_first_name} {self.requester_last_name}".strip()
-
-    requester_email = models.EmailField(blank=True)
-    requester_phone = models.CharField(blank=True, max_length=25)
-    use_whatsapp = models.BooleanField(default=False)
 
     # 2. Contact details for party needing assistance
     aid_first_name = models.CharField(max_length=20, blank=True)
@@ -194,7 +194,7 @@ class AidRequest(TimeStampedModel):
             return 'confirmed'
 
         is_new = self.locations.filter(status='new').exists()
-        ic(f"AidRequest #{self.pk}: any new? ->", is_new)
+        # ic(f"AidRequest #{self.pk}: any new? ->", is_new)
         if is_new:
             return 'new'
 
@@ -223,12 +223,12 @@ class AidRequest(TimeStampedModel):
     city = models.CharField(max_length=25, blank=True)
     state = models.CharField(max_length=20, blank=True)
     zip_code = models.CharField(max_length=10, blank=True)
-    country = models.CharField(max_length=30, blank=True)
+    country = CountryField(blank=True)
 
     @property
     def full_address(self):
         """Returns the full address as a single string."""
-        parts = [self.street_address, self.city, self.state, self.zip_code, self.country]
+        parts = [self.street_address, self.city, self.state, self.zip_code, self.country.name if self.country else '']
         return ", ".join(filter(None, parts))
 
     # 4. Type of assistance requested
@@ -352,72 +352,92 @@ class AidRequest(TimeStampedModel):
         """
         Custom save method to trigger CoT updates and log changes.
         """
-        # Pop custom kwargs before calling super().save()
+        # If requester_full_name is provided and first/last are blank, parse it.
+        # This should happen before the first save.
+        if self.requester_full_name and not self.requester_first_name and not self.requester_last_name:
+            parts = self.requester_full_name.split()
+            self.requester_first_name = parts[0]
+            if len(parts) > 1:
+                self.requester_last_name = ' '.join(parts[1:])
+
         note = kwargs.pop('note', None)
         note_markdown = kwargs.pop('note_markdown', False)
+        source_ip = kwargs.pop('source_ip', None)
 
         is_new = self._state.adding
         if is_new:
             # For new requests, we don't have an original state to compare
             super(AidRequest, self).save(*args, **kwargs)
-            # Log the creation event after the object has a PK
+            # The auditlog will now capture the creation event.
+            # We also create a user-visible ActionLog.
+
+            excluded_fields = ['id', 'created_at', 'updated_at', 'field_op']
+            data_dict = model_to_dict(self, exclude=excluded_fields)
+            if source_ip:
+                data_dict['source_ip'] = source_ip
+
+            log_text = json.dumps(data_dict, indent=4, default=str)
+
+
             ActionLog.objects.create(
                 aid_request=self,
                 log_type='system',
                 event_name="Request Created",
-                event_text=f"New aid request created with status '{self.get_status_display()}'.",
+                event_text=log_text,
+                text_markdown=False,
                 created_by=self.created_by,
                 agent_name=self.created_by.username if self.created_by else "System"
             )
-            return  # Exit after handling creation
+            # Do not return early, allow auditlog to process.
 
         # For existing requests, get the original state from the database
-        try:
-            original = AidRequest.objects.get(pk=self.pk)
-        except AidRequest.DoesNotExist:
-            # This should not happen in a save on an existing object, but handle it gracefully.
+        if not is_new:
+            try:
+                original = AidRequest.objects.get(pk=self.pk)
+            except AidRequest.DoesNotExist:
+                # This should not happen in a save on an existing object, but handle it gracefully.
+                super(AidRequest, self).save(*args, **kwargs)
+                return
+
+            status_changed = original.status != self.status
+            priority_changed = original.priority != self.priority
+
+            # Now, save the changes to the database
             super(AidRequest, self).save(*args, **kwargs)
-            return
 
-        status_changed = original.status != self.status
-        priority_changed = original.priority != self.priority
+            # After saving, create logs for what changed
+            if status_changed:
+                ActionLog.objects.create(
+                    aid_request=self,
+                    log_type='system',
+                    event_name="Status Changed",
+                    event_text=f"Status changed from '{original.get_status_display()}' to '{self.get_status_display()}'.",
+                    created_by=getattr(self, 'updated_by', None),
+                    agent_name=self.updated_by.username if getattr(self, 'updated_by', None) else "System",
+                    note=note,
+                    note_markdown=note_markdown
+                )
+            if priority_changed:
+                ActionLog.objects.create(
+                    aid_request=self,
+                    log_type='system',
+                    event_name="Priority Changed",
+                    event_text=f"Priority changed from '{original.get_priority_display()}' to '{self.get_priority_display()}'.",
+                    created_by=getattr(self, 'updated_by', None),
+                    agent_name=self.updated_by.username if getattr(self, 'updated_by', None) else "System",
+                    note=note,
+                    note_markdown=note_markdown
+                )
 
-        # Now, save the changes to the database
-        super(AidRequest, self).save(*args, **kwargs)
-
-        # After saving, create logs for what changed
-        if status_changed:
-            ActionLog.objects.create(
-                aid_request=self,
-                log_type='system',
-                event_name="Status Changed",
-                event_text=f"Status changed from '{original.get_status_display()}' to '{self.get_status_display()}'.",
-                created_by=getattr(self, 'updated_by', None),
-                agent_name=self.updated_by.username if getattr(self, 'updated_by', None) else "System",
-                note=note,
-                note_markdown=note_markdown
-            )
-        if priority_changed:
-            ActionLog.objects.create(
-                aid_request=self,
-                log_type='system',
-                event_name="Priority Changed",
-                event_text=f"Priority changed from '{original.get_priority_display()}' to '{self.get_priority_display()}'.",
-                created_by=getattr(self, 'updated_by', None),
-                agent_name=self.updated_by.username if getattr(self, 'updated_by', None) else "System",
-                note=note,
-                note_markdown=note_markdown
-            )
-
-        # Trigger CoT update if needed
-        if (status_changed or priority_changed) and not self.field_op.disable_cot:
-            async_task(
-                'aidrequests.tasks.send_cot_task',
-                field_op_slug=self.field_op.slug,
-                mark_type='aid',
-                aidrequest=self.pk,
-                task_name=f"Update_CoT_AR_{self.pk}"
-            )
+            # Trigger CoT update if ANY field on an existing request was updated.
+            if not self.field_op.disable_cot:
+                async_task(
+                    'aidrequests.tasks.send_cot_task',
+                    field_op_slug=self.field_op.slug,
+                    mark_type='aid',
+                    aidrequest=self.pk,
+                    task_name=f"Update_CoT_AR_{self.pk}"
+                )
 
 
 class AidLocationManager(models.Manager):
@@ -497,6 +517,19 @@ class AidLocation(TimeStampedModel):
             return json.dumps(self.geocode_json, indent=4)
         return ""
 
+    @property
+    def static_map_url(self):
+        """
+        Returns a secure, cacheable URL for the static map image.
+        """
+        if self.map_filename:
+            return reverse('serve_map_file', kwargs={
+                'field_op': self.aid_request.field_op.slug,
+                'aid_request_pk': self.aid_request.pk,
+                'filename': self.map_filename,
+            })
+        return None
+
     def save(self, *args, **kwargs):
         """ override save to send CoT """
         from .views.maps import create_static_map # Local import to avoid circular dependency
@@ -514,6 +547,24 @@ class AidLocation(TimeStampedModel):
                 old_status = original.status
                 if original.status != self.status:
                     status_changed = True
+
+                # If this location is becoming confirmed, reject any others.
+                if self.status == 'confirmed' and original.status != 'confirmed':
+                    other_confirmed = AidLocation.objects.filter(
+                        aid_request=self.aid_request,
+                        status='confirmed'
+                    ).exclude(pk=self.pk)
+
+                    for loc in other_confirmed:
+                        loc.status = 'rejected'
+                        # Pass the user who initiated the change
+                        loc.updated_by = self.updated_by
+                        # The note will be picked up by the save() method and added to the ActionLog
+                        loc.save(
+                            note=f"Automatically rejected because Location #{self.pk} was confirmed.",
+                            note_markdown=False
+                        )
+
             except AidLocation.DoesNotExist:
                 # This case should ideally not happen in an update
                 pass
@@ -543,11 +594,25 @@ class AidLocation(TimeStampedModel):
                 agent_name=self.created_by.username if self.created_by else "System",
                 created_by=self.created_by
             )
+
+            # If a new location is created, trigger a CoT update for the parent AidRequest
+            if not self.aid_request.field_op.disable_cot:
+                async_task(
+                    'aidrequests.tasks.send_cot_task',
+                    field_op_slug=self.aid_request.field_op.slug,
+                    mark_type='aid',
+                    aidrequest=self.aid_request.pk,
+                    task_name=f"Update_CoT_AR_{self.aid_request.pk}_Loc_{self.pk}_Created"
+                )
         elif status_changed:
             if self.status == 'confirmed':
                 event_name = f"Location #{self.pk} Confirmed"
             elif self.status == 'rejected':
-                event_name = f"Location #{self.pk} Rejected"
+                # Check if a note is being passed, which indicates an auto-rejection
+                if note:
+                    event_name = f"Location #{self.pk} Auto-Rejected"
+                else:
+                    event_name = f"Location #{self.pk} Rejected"
             else:
                 event_name = f"Location #{self.pk} Updated"
 
@@ -570,6 +635,17 @@ class AidLocation(TimeStampedModel):
                 note=note,
                 note_markdown=note_markdown
             )
+
+            # If a location's status changes, trigger a CoT update for the parent AidRequest
+            # to ensure the marker reflects the new primary location.
+            if not self.aid_request.field_op.disable_cot:
+                async_task(
+                    'aidrequests.tasks.send_cot_task',
+                    field_op_slug=self.aid_request.field_op.slug,
+                    mark_type='aid',
+                    aidrequest=self.aid_request.pk,
+                    task_name=f"Update_CoT_AR_{self.aid_request.pk}_Loc_{self.pk}"
+                )
 
     def get_absolute_url(self):
         return reverse('aid_location_detail', kwargs={'pk': self.pk})

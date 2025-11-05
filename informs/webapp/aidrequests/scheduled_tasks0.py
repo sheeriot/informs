@@ -57,7 +57,7 @@ def hourly_field_op_cot(field_op_slug=None):
 
             try:
                 result = send_cot_task(
-                    field_op_slug=field_op.slug,
+                    field_op_field_op=field_op.slug,
                     mark_type='aid',
                     aidrequests=aid_request_ids,
                 )
