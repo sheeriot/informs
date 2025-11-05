@@ -17,7 +17,7 @@ def staticmap_aid(width=600, height=400,
                   fieldop_lat=0.0, fieldop_lon=0.0,
                   aid1_lat=0.0, aid1_lon=0.0):
 
-    ic("build staticmap_aid")
+    # ic("build staticmap_aid")
 
     # --- Calculate Center Point ---
     center_lon = (float(fieldop_lon) + float(aid1_lon)) / 2
@@ -54,9 +54,9 @@ def staticmap_aid(width=600, height=400,
     try:
         # Pass the list of tuples directly to httpx to handle encoding.
         # This avoids double-encoding issues.
-        ic("[API Call] Calling Azure Maps Static API for Aid Request...")
+        # ic("[API Call] Calling Azure Maps Static API for Aid Request...")
         response = httpx.get(url, params=params)
-        ic("Final URL:", response.url)
+        # ic("Final URL:", response.url)
         response.raise_for_status()
     except httpx.HTTPStatusError as e:
         ic(f"Error making static map request: {e}")
@@ -134,7 +134,7 @@ def create_static_map(location: object, synchronous=False) -> None:
     Creates a static map for the given location object.
     Can be run synchronously or asynchronously.
     """
-    ic('run create_static_map')
+    # ic('run create_static_map')
     task_name = f"GenerateMap_L{location.pk}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
     if synchronous:

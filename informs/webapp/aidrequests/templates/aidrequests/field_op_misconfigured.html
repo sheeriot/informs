@@ -21,7 +21,7 @@
             <div class="text-center mt-4">
                 <a href="{% url 'home' %}" class="btn btn-secondary">Return to Home</a>
                 {% if user.is_staff %}
-                <a href="{% url 'field_op_update' slug=field_op.slug %}" class="btn btn-primary">Configure Field Op</a>
+                <a href="{% url 'field_op_update' field_op=field_op.slug %}" class="btn btn-primary">Configure Field Op</a>
                 {% endif %}
             </div>
         </div>

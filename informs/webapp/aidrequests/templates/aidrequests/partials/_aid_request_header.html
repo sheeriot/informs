@@ -1,9 +1,9 @@
-<div class="row flex-row align-items-center my-1">
-    <div class="col-auto">
-        <h1 class="mb-0">Aid Request #{{ object.pk }}</h1>
-    </div>
-    <div class="col text-end">
-        <div class="col-auto font-monospace bg-light ms-4 p-0" style="font-size: 0.75rem;">
+{% load custom_tags %}
+
+<div class="d-flex justify-content-between align-items-center my-1">
+    <div class="d-flex align-items-center">
+        <h1 class="mb-0 me-3">Aid Request #{{ object.pk }}</h1>
+        <div class="font-monospace bg-light p-0" style="font-size: 0.75rem;">
             <table class="table border border-1 m-0 p-0 w-auto">
                 <tr>
                     <td class="border border-info bg-transparent m-0 px-1 py-0">
@@ -17,6 +17,9 @@
                     </td>
                     <th class="border border-info bg-transparent m-0 px-1 py-0">
                         Locations
+                    </th>
+                    <th class="border border-info bg-transparent m-0 px-1 py-0">
+                        Logs
                     </th>
                 </tr>
                 <tr>
@@ -35,6 +38,9 @@
                     {% else %}
                         <span class="text-danger"><i class="bi bi-exclamation"></i> NOT CONFIRMED</span>
                     {% endif %}
+                    </td>
+                    <td class="border border-info bg-transparent m-0 px-1 py-0">
+                        <a href="#logTabs">{{ action_logs|length }}</a>
                     </td>
                 </tr>
             </table>

@@ -1,13 +1,19 @@
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
 from django.views.decorators.http import require_POST
 import json
 import logging
 from decimal import Decimal
+from icecream import ic
+
+# Configure icecream output
+ic.configureOutput(prefix='[ic] | ', includeContext=True)
 
 from ..models import AidRequest, FieldOp
+from ..forms import RequesterInformationForm, LocationInformationForm, RequestDetailsForm
+
 
 logger = logging.getLogger(__name__)
 
@@ -31,15 +37,84 @@ def get_aid_requests_json(request, field_op):
 @login_required
 def update_aid_request(request, field_op, pk):
     """
-    Updates an AidRequest's status and/or priority.
-    This view now handles all field updates for the main aid request card.
+    Handles AJAX updates for an AidRequest's status and priority.
     """
+    aid_request = get_object_or_404(AidRequest, pk=pk, field_op__slug=field_op)
+    data = json.loads(request.body)
+    # ic(data)
+
+    response_data = {}
+    updated_fields = []
+    form_name = data.get('form_name')
+
+    # Map form_name to the actual form class
+    FORM_MAP = {
+        'requester': RequesterInformationForm,
+        'location': LocationInformationForm,
+        'details': RequestDetailsForm,
+    }
+
+    if form_name in FORM_MAP:
+        form_class = FORM_MAP[form_name]
+
+        # IMPORTANT: Get old values *before* the instance is updated by the form.
+        old_values = {field: getattr(aid_request, field) for field in form_class.Meta.fields}
+
+        # The form needs the instance to compare against, and the data to validate
+        form = form_class(data, instance=aid_request)
+
+        if form.is_valid():
+            changes = {}
+            for field_name, new_value in form.cleaned_data.items():
+                old_value = old_values.get(field_name) # Use the saved old value
+
+                # Special handling for different field types to ensure accurate comparison
+                if isinstance(old_value, Decimal) and isinstance(new_value, float):
+                    old_value = float(old_value)
+
+                if old_value != new_value:
+                    changes[field_name] = {'old': old_value, 'new': new_value}
+                    # No longer need setattr here, form.save() will handle it.
+
+            if changes:
+                # Construct a detailed log message
+                change_details = []
+                for field, values in changes.items():
+                    field_display = field.replace('_', ' ').title()
+                    old_str = f"'{values['old']}'" if values['old'] not in [None, ''] else 'empty'
+                    new_str = f"'{values['new']}'" if values['new'] not in [None, ''] else 'empty'
+                    change_details.append(f"° {field_display}:\n    ° From {old_str} -> {new_str}")
+
+                note_text = "\n".join(change_details)
+                ic(note_text)
+
+                # Save the form to get the updated instance, but don't commit to DB yet
+                updated_instance = form.save(commit=False)
+                updated_instance.updated_by = request.user
+                updated_instance.save() # Now, save all fields to trigger auditlog and main model save logic
+
+                # Create the detailed ActionLog
+                updated_instance.action_logs.create(
+                    log_type='user',
+                    event_name=f"{form_name.title()} Info Updated",
+                    event_text="",
+                    note=note_text,
+                    note_markdown=False,
+                    created_by=request.user,
+                    agent_name=request.user.username,
+                )
+
+            return JsonResponse({'status': 'success', 'message': 'Update successful.'})
+        else:
+            ic(form.errors)
+            return JsonResponse({'status': 'error', 'errors': form.errors.as_json()}, status=400)
+
+
+    # --- Keep the old logic for status/priority for now ---
     try:
-        aid_request = get_object_or_404(AidRequest, pk=pk)
         if aid_request.field_op.slug != field_op:
             raise PermissionDenied("You do not have permission for this field operation.")
 
-        data = json.loads(request.body)
         note = data.get('note', '')
         note_markdown = data.get('note_markdown', False)
 
@@ -70,14 +145,22 @@ def update_aid_request(request, field_op, pk):
             aid_request.save(
                 update_fields=update_fields,
                 note=note,
-                note_markdown=note_markdown
+                note_markdown=note_markdown,
             )
 
-        return JsonResponse({
-            'status': 'success',
-            'new_status_display': aid_request.get_status_display(),
-            'new_priority_display': aid_request.get_priority_display(),
+        # Instead of JSON, return an empty response with HTMX triggers
+        # to let the client-side handle UI updates.
+        response = HttpResponse(status=204) # 204 No Content
+        response['HX-Trigger'] = json.dumps({
+            "detailFieldUpdated": "", # This will trigger the header refresh
+            "actionLogUpdated": "",
+            "auditLogUpdated": "",
+            "showActionAlert": {
+                "message": "Request updated successfully.",
+                "level": "success"
+            }
         })
+        return response
 
     except AidRequest.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'AidRequest not found.'}, status=404)

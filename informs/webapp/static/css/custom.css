@@ -542,8 +542,8 @@ textarea:not([disabled]) {
 .geocode-details {
     overflow: auto; /* Use auto for both horizontal and vertical scrolling */
     font-size: 0.75rem; /* Smaller font for the dense JSON */
-    background-color: #f8f9fa; /* A slightly different background to differentiate it */
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
+    background-color: var(--bs-light);
+    border: var(--bs-border-width) solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
     padding: 0.5rem;
 }

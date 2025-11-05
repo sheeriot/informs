@@ -1,8 +1,9 @@
 {% load static %}
+{% load bootstrap_icons %}
 
-{% if location.map_filename %}
-    <a href="#" class="preview-map-btn" data-map-url="{{ MEDIA_URL }}maps/{{ location.map_filename }}" title="Click to enlarge map">
-        <img src="{{ MEDIA_URL }}maps/{{ location.map_filename }}" alt="Map of location {{ location.pk }}" class="img-fluid rounded" style="cursor: pointer;">
+{% if location.static_map_url %}
+    <a href="#" class="preview-map-btn" data-map-url="{{ location.static_map_url }}" title="Click to enlarge map">
+        <img src="{{ location.static_map_url }}" alt="Map of location {{ location.pk }}" class="img-fluid rounded" style="cursor: pointer;">
     </a>
 {% else %}
     <div class="text-center text-muted p-3">

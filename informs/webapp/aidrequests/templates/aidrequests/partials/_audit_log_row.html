@@ -1,0 +1,19 @@
+<tr data-log-id="{{ log.pk }}" class="table-info">
+    <td class="text-nowrap">
+        {{ log.timestamp|date:'Y-m-d' }}<br>
+        {{ log.timestamp|date:'H:i:s' }}
+    </td>
+    <td class="text-nowrap">{{ log.actor.get_full_name|default:log.actor.username|default:"System" }}</td>
+    <td class="text-nowrap">{{ log.get_action_display }}</td>
+    <td>
+        {% if log.changes_dict %}
+            <ul class="list-unstyled mb-0">
+            {% for field, values in log.changes_dict.items %}
+                <li><strong>{{ field|title }}</strong>: '{{ values.0|default:"(empty)" }}' &rarr; '{{ values.1|default:"(empty)" }}'</li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            No changes logged.
+        {% endif %}
+    </td>
+</tr>

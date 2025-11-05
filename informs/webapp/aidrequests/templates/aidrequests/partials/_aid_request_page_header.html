@@ -1,0 +1,9 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">
+        {% if aid_request %}
+            Aid Request <a href="{% url 'aid_request_detail_short' pk=aid_request.pk field_op=aid_request.field_op.slug %}">#{{ aid_request.pk }}</a>: <span class="fw-normal" id="aid-type-name-display">{{ aid_request.aid_type.name }}</span>
+        {% else %}
+            Create New Aid Request
+        {% endif %}
+    </h2>
+</div>

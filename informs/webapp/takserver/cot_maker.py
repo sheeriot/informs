@@ -203,7 +203,7 @@ class CotMaker:
             if aid_request.aid_description: remarks.append(f"\nDescription:\n{aid_request.aid_description}")
 
             # Base for this Aid Request marker's own callsign. This can change if aid_type changes.
-            aid_request_callsign_identifier = f"{aid_request.aid_type.slug}.{aid_request.pk}"
+            aid_request_callsign_identifier = f"{field_op.slug}-{aid_request.aid_type.slug}.{aid_request.pk}"
             contact_callsign_for_marker = aid_request_callsign_identifier
             if settings.ENV_NAME and settings.ENV_NAME != 'prod':
                 contact_callsign_for_marker = f"{aid_request_callsign_identifier}.{settings.ENV_NAME}"

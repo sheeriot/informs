@@ -1,5 +1,4 @@
 {% load custom_tags %}
 
-{% if group_size %}
-    <span style="font-size: {{ group_size|hyperbolic_font_size }}; font-weight: bold;">{{ group_size }}</span>
-{% endif %}
+<p class="mb-1"><strong>Group Size</strong></p>
+<p style="font-size: {{ font_size }};">{{ group_size|default:"-" }}</p>

@@ -1,0 +1,43 @@
+{% load crispy_forms_tags %}
+{% load bootstrap_icons %}
+
+<div class="modal-header">
+    <h5 class="modal-title" id="genericEditModalLabel">Edit {{ field_label }}</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+    <form id="generic-edit-form"
+          hx-post="{{ save_url }}"
+          hx-target="#{{ field_name }}_display"
+          hx-swap="innerHTML">
+        {% csrf_token %}
+        {{ form|crispy }}
+    </form>
+</div>
+<div class="modal-footer justify-content-between">
+    <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="edit-confirmation-eyeball" onchange="document.getElementById('generic-save-button').disabled = !this.checked;">
+        <label class="form-check-label" for="edit-confirmation-eyeball">
+            {% bs_icon 'eye-fill' %} Confirm Change
+        </label>
+    </div>
+    <div>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" form="generic-edit-form" id="generic-save-button" class="btn btn-primary" disabled>
+            {% bs_icon 'check-circle-fill' %} Save
+        </button>
+    </div>
+</div>
+
+<script>
+    // Ensure modal content is cleared when it's hidden to prevent stale data
+    (function() {
+        const modal = document.getElementById('genericEditModal');
+        const modalContent = document.getElementById('generic-modal-content');
+        if (modal && modalContent) {
+            modal.addEventListener('hidden.bs.modal', () => {
+                modalContent.innerHTML = '';
+            });
+        }
+    })();
+</script>

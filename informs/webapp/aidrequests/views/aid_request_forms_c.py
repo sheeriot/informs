@@ -12,7 +12,7 @@ from crispy_forms.layout import Layout, Fieldset, Field, Submit, Row, Column, Di
 from crispy_forms.bootstrap import InlineRadios
 
 from ..models import AidRequest, AidType, FieldOp, AidLocation
-from ..forms.layout import MapLayoutObject
+from ..forms.crispy_map_layout import MapLayoutObject
 from ..context_processors import get_field_op_for_form
 import re
 import json

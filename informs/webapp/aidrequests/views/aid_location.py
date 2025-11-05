@@ -1,7 +1,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy, reverse
 from django.views.generic import CreateView, UpdateView, DeleteView
 from django.views.decorators.http import require_POST
@@ -9,6 +9,10 @@ from django.contrib.auth.decorators import login_required
 from django.template.loader import render_to_string
 import logging
 import json
+from django.http import HttpResponse
+from icecream import ic
+from django.conf import settings
+from django.http import HttpResponseBadRequest
 
 from ..models import AidLocation, AidRequest, ActionLog
 from .aid_location_forms import AidLocationCreateForm
@@ -22,11 +26,20 @@ class AidLocationCreateView(LoginRequiredMixin, CreateView):
     template_name = 'aidrequests/aid_location_form.html'
 
     def get_success_url(self):
-        return reverse('aid_request_detail', kwargs={'pk': self.object.aid_request.pk, 'fieldop_slug': self.object.aid_request.field_op.slug})
+        return reverse('aid_request_detail', kwargs={'pk': self.object.aid_request.pk, 'field_op': self.object.aid_request.field_op.slug})
 
     def form_valid(self, form):
         response = super().form_valid(form)
         create_static_map(self.object)
+        if self.request.htmx:
+            headers = {
+                'HX-Trigger': json.dumps({
+                    'locationListUpdated': {
+                        'new': self.object.pk
+                    }
+                })
+            }
+            return HttpResponse(status=204, headers=headers)
         return response
 
 class AidLocationUpdateView(LoginRequiredMixin, UpdateView):
@@ -42,59 +55,63 @@ class AidLocationDeleteView(LoginRequiredMixin, DeleteView):
 
 @require_POST
 @login_required
-def aid_location_status_update(request, field_op, location_pk):
-    location = get_object_or_404(AidLocation, pk=location_pk)
-    aid_request = location.aid_request
-
+def aid_location_status_update(request, field_op, pk):
+    """
+    Update the status of an AidLocation (e.g., confirm, reject).
+    This view is called via HTMX from a modal confirmation.
+    """
+    ic("In aid_location_status_update")
     try:
         data = json.loads(request.body)
-        action = data.get('action')
-        note = data.get('note', '')
-        note_is_markdown = data.get('note_markdown', False)
-
-        if action == 'confirm':
-            location.status = 'confirmed'
-            location.save(note=note, note_markdown=note_is_markdown)
-            aid_request.locations.exclude(pk=location.pk).filter(status='confirmed').update(status='new')
-            event_name = "Location Confirmed"
-            event_text = f"Location #{location.pk} confirmed."
-
-        elif action == 'reject':
-            location.status = 'rejected'
-            location.save(note=note, note_markdown=note_is_markdown)
-            event_name = "Location Rejected"
-            event_text = f"Location #{location.pk} rejected."
-
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Invalid action.'}, status=400)
-
-        aid_request.refresh_from_db()
-        # Prepare context for rendering partials
-        locations = aid_request.locations.all().order_by('-created_at')
-
-        context = {
-            'object': aid_request,
-            'aid_request': aid_request,
-            'location': location,
-            'locations': locations,
-            'confirmed': aid_request.location_status == 'confirmed'
-        }
-
-        card_html = render_to_string('aidrequests/partials/_aid_location_card.html', context, request=request)
-        header_html = render_to_string('aidrequests/partials/aid_request_header.html', context, request=request)
-
-        return JsonResponse({
-            'status': 'success',
-            'location_pk': location.pk,
-            'card_html': card_html,
-            'header_html': header_html,
-        })
-
+        ic(data)
     except json.JSONDecodeError:
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON.'}, status=400)
-    except Exception as e:
-        logger.error(f"Error updating location status for pk {location_pk}: {e}")
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        return HttpResponseBadRequest("Invalid JSON")
+
+    location = get_object_or_404(AidLocation, pk=pk)
+    aid_request = location.aid_request
+    action = data.get('action')
+    note = data.get('note')
+    note_markdown = data.get('note_markdown', False)
+
+    if action not in ['confirm', 'reject', 'reset']:
+        return HttpResponseBadRequest("Invalid action")
+
+    if action == 'confirm':
+        location.status = 'confirmed'
+        # The ActionLog is now created inside the AidLocation.save() method
+        # for better consistency and to handle auto-rejection logging.
+    elif action == 'reject':
+        location.status = 'rejected'
+        # The ActionLog is now created inside the AidLocation.save() method.
+    elif action == 'reset':
+        location.status = 'new'
+        # The ActionLog is now created inside the AidLocation.save() method.
+
+    location.updated_by = request.user
+    # Pass the note and user to the save method so it can create the correct log
+    location.save(note=note, note_markdown=note_markdown)
+
+    # Refresh to ensure the locations list is up-to-date
+    aid_request.refresh_from_db()
+
+    # The 'locations' variable needs to be explicitly fetched and sorted
+    locations = aid_request.locations.sorted_for_display()
+
+    response = render(
+        request,
+        'aidrequests/includes/aid_locations_list.html',
+        {'aid_request': aid_request, 'locations': locations}
+    )
+    # Trigger events to update logs and show a success message
+    response['HX-Trigger'] = json.dumps({
+        "showActionAlert": {
+            "message": f"Location {location.pk} status updated to {location.status}.",
+            "level": "success"
+        },
+        "actionLogUpdated": "",
+        "auditLogUpdated": ""
+    })
+    return response
 
 @require_POST
 @login_required

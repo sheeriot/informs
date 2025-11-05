@@ -1,0 +1,14 @@
+{% load bootstrap_icons %}
+
+<div id="address-info-section">
+    <div class="d-flex justify-content-between align-items-center">
+        <p class="mb-1"><strong>Address Provided</strong></p>
+        <a data-bs-toggle="modal" href="#genericEditModal"
+           hx-get="{% url 'edit_address_info' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
+           hx-target="#generic-modal-content"
+           title="Edit Address" class="text-warning">
+            <i class="bi bi-pencil-square"></i>
+        </a>
+    </div>
+    <p>{{ aid_request.full_address|default:"-" }}</p>
+</div>

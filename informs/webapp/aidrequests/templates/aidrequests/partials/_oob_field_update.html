@@ -1,0 +1,9 @@
+{% load django_htmx %}{% if new_value %}
+<div id="{{ display_id|slice:'1:' }}" hx-swap-oob="innerHTML">
+    {{ new_value|linebreaksbr }}
+</div>
+{% else %}
+<div id="{{ display_id|slice:'1:' }}" hx-swap-oob="innerHTML">
+    -
+</div>
+{% endif %}

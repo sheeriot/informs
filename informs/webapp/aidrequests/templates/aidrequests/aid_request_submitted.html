@@ -32,7 +32,7 @@ Aid Request for {{ object.field_op.name }}
             <h1 class="mb-0">
                 Aid Request:
                 {% if user.is_authenticated %}
-                    <a href="{% url 'aid_request_detail' pk=object.pk field_op=object.field_op.slug %}">{{ object.pk }}</a>
+                    <a href="{% url 'aid_request_detail_short' pk=object.pk field_op=object.field_op.slug %}">{{ object.pk }}</a>
                 {% else %}
                     {{ object.pk }}
                 {% endif %}
@@ -53,7 +53,7 @@ Aid Request for {{ object.field_op.name }}
                 <tr>
                     <td class="col-auto">
                         {% if user.is_authenticated %}
-                            <a href="{% url 'aid_request_detail' pk=object.pk field_op=object.field_op.slug %}">{{ object.pk }}</a>
+                            <a href="{% url 'aid_request_detail_short' pk=object.pk field_op=object.field_op.slug %}">{{ object.pk }}</a>
                         {% else %}
                             {{ object.pk }}
                         {% endif %}

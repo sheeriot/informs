@@ -4,7 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.urls import reverse_lazy, reverse
 from django.views.generic import CreateView, UpdateView
 from django.conf import settings
-from django.http import Http404, HttpResponseRedirect, JsonResponse
+from django.http import Http404, HttpResponseRedirect, JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import user_passes_test
 
@@ -27,6 +27,15 @@ from .aid_request_forms_c import AidRequestCreateFormC
 from .aid_location_forms import AidLocationCreateForm
 from ..context_processors import get_field_op_from_kwargs
 
+
+def get_client_ip(request):
+    """Get client IP address from request."""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
 
 # Create View for AidRequest
 class AidRequestCreateView(CreateView):
@@ -98,7 +107,8 @@ class AidRequestCreateView(CreateView):
         if self.object.field_op.aid_types.count() == 1 and not self.object.aid_type:
             self.object.aid_type = self.object.field_op.aid_types.first()
 
-        self.object.save()
+        source_ip = get_client_ip(self.request)
+        self.object.save(source_ip=source_ip)
 
         latitude = form.cleaned_data.get('latitude')
         longitude = form.cleaned_data.get('longitude')
@@ -143,67 +153,67 @@ class AidRequestCreateView(CreateView):
         return super().form_invalid(form)
 
 
-# Update View for AidRequest
-class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
-    model = AidRequest
-    form_class = RequesterInformationForm  # Default form, though we use multiple
-    permission_required = 'aidrequests.change_aidrequest'
-    template_name = 'aidrequests/aid_request_update.html'
+# Update View for AidRequest is now handled by AidRequestDetailView
+# class AidRequestUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+#     model = AidRequest
+#     form_class = RequesterInformationForm  # Default form, though we use multiple
+#     permission_required = 'aidrequests.change_aidrequest'
+#     template_name = 'aidrequests/aid_request_update.html'
 
-    def dispatch(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        self.field_op = self.object.field_op
-        self.fieldop_slug = self.field_op.slug
-        return super().dispatch(request, *args, **kwargs)
+#     def dispatch(self, request, *args, **kwargs):
+#         self.object = self.get_object()
+#         self.field_op = self.object.field_op
+#         self.fieldop_slug = self.field_op.slug
+#         return super().dispatch(request, *args, **kwargs)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['field_op'] = self.field_op
-        context['aid_request'] = self.object  # Add this for consistency with DetailView
-        context['MEDIA_URL'] = settings.MEDIA_URL
-        context['AZURE_MAPS_KEY'] = settings.AZURE_MAPS_KEY
+#     def get_context_data(self, **kwargs):
+#         context = super().get_context_data(**kwargs)
+#         context['field_op'] = self.field_op
+#         context['aid_request'] = self.object  # Add this for consistency with DetailView
+#         context['MEDIA_URL'] = settings.MEDIA_URL
+#         context['AZURE_MAPS_KEY'] = settings.AZURE_MAPS_KEY
 
-        # Get locations and sort them
-        all_locations = self.object.locations.all()
-        status_order = {'confirmed': 0, 'new': 1, 'candidate': 2, 'rejected': 3, 'other': 4}
-        sorted_locations = sorted(
-            all_locations,
-            key=lambda loc: (status_order.get(loc.status, 99), -loc.created_at.timestamp())
-        )
-        context['locations'] = sorted_locations
+#         # Get locations and sort them
+#         all_locations = self.object.locations.all()
+#         status_order = {'confirmed': 0, 'new': 1, 'candidate': 2, 'rejected': 3, 'other': 4}
+#         sorted_locations = sorted(
+#             all_locations,
+#             key=lambda loc: (status_order.get(loc.status, 99), -loc.created_at.timestamp())
+#         )
+#         context['locations'] = sorted_locations
 
-        # Add Location Form
-        context['add_location_form'] = AidLocationCreateForm(
-            field_op_obj=self.field_op,
-            aid_request_obj=self.object,
-            initial={
-                'field_op': self.fieldop_slug,
-                'aid_request': self.object.pk,
-                'country': self.field_op.country,
-                'status': 'new',
-                'source': 'manual'
-            }
-        )
+#         # Add Location Form
+#         context['add_location_form'] = AidLocationCreateForm(
+#             field_op_obj=self.field_op,
+#             aid_request_obj=self.object,
+#             initial={
+#                 'field_op': self.fieldop_slug,
+#                 'aid_request': self.object.pk,
+#                 'country': self.field_op.country,
+#                 'status': 'new',
+#                 'source': 'manual'
+#             }
+#         )
 
-        instance = self.object
-        context['requester_form'] = RequesterInformationForm(instance=instance)
-        context['location_form'] = LocationInformationForm(instance=instance)
-        context['details_form'] = RequestDetailsForm(instance=instance)
-        context['status_form'] = RequestStatusForm(instance=instance)
+#         instance = self.object
+#         context['requester_form'] = RequesterInformationForm(instance=instance)
+#         context['location_form'] = LocationInformationForm(instance=instance)
+#         context['details_form'] = RequestDetailsForm(instance=instance)
+#         context['status_form'] = RequestStatusForm(instance=instance)
 
-        if self.request.user.is_superuser:
-            context['aid_types'] = self.field_op.aid_types.all()
+#         if self.request.user.is_superuser:
+#             context['aid_types'] = self.field_op.aid_types.all()
 
-        return context
+#         return context
 
-    def get_success_url(self):
-        return reverse_lazy('aid_request_update', kwargs={'pk': self.object.pk, 'field_op': self.object.field_op.slug})
+#     def get_success_url(self):
+#         return reverse_lazy('aid_request_update', kwargs={'pk': self.object.pk, 'field_op': self.object.field_op.slug})
 
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs.setdefault('initial', {})
-        kwargs['initial']['fieldop_slug'] = self.fieldop_slug
-        return kwargs
+#     def get_form_kwargs(self):
+#         kwargs = super().get_form_kwargs()
+#         kwargs.setdefault('initial', {})
+#         kwargs['initial']['fieldop_slug'] = self.fieldop_slug
+#         return kwargs
 
 
 class ActionLogCreateView(LoginRequiredMixin, CreateView):
@@ -259,40 +269,66 @@ class ActionLogCreateView(LoginRequiredMixin, CreateView):
         return kwargs
 
 
+class ActionLogAddView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    model = ActionLog
+    form_class = ActionLogForm
+    permission_required = 'aidrequests.add_actionlog'
+
+    def form_valid(self, form):
+        self.object = form.save(commit=False)
+        self.object.aid_request = get_object_or_404(AidRequest, pk=self.kwargs['pk'])
+        self.object.created_by = self.request.user
+        self.object.agent_name = self.request.user.username
+        self.object.log_type = 'user'
+        self.object.save()
+        return render(self.request, 'aidrequests/partials/_action_log_row.html', {'log': self.object})
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['initial'] = {
+            'aid_request': self.aid_request.pk,
+            'fieldop_slug': self.fieldop_slug
+        }
+        return kwargs
+
+
 @require_POST
 @user_passes_test(lambda u: u.is_superuser)
 def change_aid_request_type(request, field_op, pk):
+    ic("Entering change_aid_request_type view")
+    ic(request.POST)
     try:
         aid_request = get_object_or_404(AidRequest, pk=pk, field_op__slug=field_op)
+        ic(aid_request)
         new_aid_type_id = request.POST.get('aid_type')
+        ic(new_aid_type_id)
 
         if not new_aid_type_id:
+            ic("new_aid_type_id is missing")
             return JsonResponse({'status': 'error', 'message': 'Aid Type not provided.'}, status=400)
 
         new_aid_type = get_object_or_404(AidType, pk=new_aid_type_id)
+        ic(new_aid_type)
 
         original_aid_type_name = aid_request.aid_type.name
         aid_request.aid_type = new_aid_type
         aid_request.save()
 
         # Add a log entry for this change
-        message_data = {
-            "event_name": "Aid Type Change",
-            "event_text": f"Aid Type changed from '{original_aid_type_name}' to '{new_aid_type.name}'.",
-            "agent": request.user.username
-        }
         ActionLog.objects.create(
             aid_request=aid_request,
-            created_by=request.user,
             log_type='system',
-            message=json.dumps(message_data)
+            event_name="Aid Type Changed",
+            event_text=f"Aid type changed from '{original_aid_type_name}' to '{new_aid_type.name}'.",
+            created_by=request.user,
+            agent_name=request.user.username,
         )
 
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Aid Type updated successfully.',
-            'new_aid_type_name': new_aid_type.name
-        })
+        response_html = f'<span id="aid-type-display" class="fw-normal" hx-swap-oob="true">{new_aid_type.name}</span>'
+        response = HttpResponse(response_html)
+        response['HX-Trigger'] = 'actionLogUpdated, auditLogUpdated'
+        return response
 
     except Exception as e:
+        ic(e)
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

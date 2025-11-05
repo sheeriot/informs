@@ -4,7 +4,7 @@ from ..views.field_op_list import FieldOpListView
 from ..views.field_op import FieldOpDetailView
 from ..views.aid_request_list import AidRequestListView
 from ..views.aid_request_detail import AidRequestDetailView
-from ..views.aid_request import AidRequestCreateView, AidRequestUpdateView
+from ..views.aid_request import AidRequestCreateView # AidRequestUpdateView
 
 
 class TestUrls(SimpleTestCase):
@@ -37,11 +37,3 @@ class TestUrls(SimpleTestCase):
         """Test aid_request_create URL pattern."""
         url = reverse('aid_request_create', kwargs={'field_op': 'test-op'})
         self.assertEqual(resolve(url).func.view_class, AidRequestCreateView)
-
-    def test_aid_request_update_url_resolves(self):
-        """Test aid_request_update URL pattern."""
-        url = reverse('aid_request_update', kwargs={
-            'field_op': 'test-op',
-            'pk': 1
-        })
-        self.assertEqual(resolve(url).func.view_class, AidRequestUpdateView)

@@ -4,7 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.urls import reverse
 from django.views.generic import DetailView
 from django_q.tasks import async_task
-import logging
+# import logging
 from django.db.models import Case, When
 from django.template import Template
 from django.template.context import Context
@@ -12,7 +12,10 @@ from auditlog.models import LogEntry
 from django.contrib.contenttypes.models import ContentType
 
 from ..models import AidRequest, FieldOp, ActionLog
-from ..forms import ActionLogForm, RequestStatusForm
+from ..forms import (
+    ActionLogForm, RequestStatusForm, RequesterInformationForm,
+    LocationInformationForm, RequestDetailsForm
+)
 from .aid_location_forms import AidLocationStatusForm, AidLocationCreateForm
 from .maps import staticmap_aid
 from ..geocoder import get_azure_geocode, geocode_save
@@ -22,7 +25,7 @@ from datetime import datetime
 # from time import perf_counter as timer
 from icecream import ic
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 
 def has_location_status(aid_request, status):
@@ -90,19 +93,9 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
         self.field_op = get_object_or_404(FieldOp, slug=kwargs['field_op'])
         self.aid_request = get_object_or_404(AidRequest, pk=kwargs['pk'])
 
-        location_confirmed, locs_confirmed = has_location_status(self.aid_request, 'confirmed')
-        location_new, locs_new = has_location_status(self.aid_request, 'new')
-
-        if location_confirmed:
-            self.aid_location_confirmed = locs_confirmed.first()
-            self.aid_location = self.aid_location_confirmed
-        elif location_new:
-            self.aid_location_new = locs_new.first()
-            self.aid_location = self.aid_location_new
-        else:
-            # If no location is found, it means post_save hasn't run or completed yet.
-            # This can happen on a quick redirect. We should wait and not create a new one.
-            self.aid_location = self.aid_request.locations.all().first()
+        # This determines the primary location to be shown as expanded.
+        # The logic is: confirmed > new > anything else.
+        self.aid_location = self.aid_request.location
 
         # Ensure the location has a map
         if self.aid_location and not self.aid_location.map_filename:
@@ -131,6 +124,7 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
 
             context['field_op'] = self.field_op
             context['aid_request'] = self.aid_request
+            context['current_location'] = self.aid_location
 
             # Custom sort order for locations
             status_order = Case(
@@ -165,17 +159,22 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
             context['MEDIA_URL'] = settings.MEDIA_URL
             context['status_form'] = RequestStatusForm(instance=self.aid_request)
 
+            # Add forms for inline editing
+            context['requester_form'] = RequesterInformationForm(instance=self.aid_request)
+            context['location_form'] = LocationInformationForm(instance=self.aid_request)
+            context['details_form'] = RequestDetailsForm(instance=self.aid_request)
+
             # URLs for javascript actions
             context['url_partial_update'] = reverse('aid_request_ajax_update', kwargs={'field_op': self.field_op.slug, 'pk': self.aid_request.pk})
             context['url_regenerate_map'] = reverse('static_map_regenerate', kwargs={'field_op': self.field_op.slug, 'location_pk': 0})
-            context['url_delete_location'] = reverse('api_aid_location_delete', kwargs={'field_op': self.field_op.slug, 'location_pk': 0})
-            context['url_update_location_status'] = reverse('aid_location_status_update', kwargs={'field_op': self.field_op.slug, 'location_pk': 0})
-            context['url_check_map_status'] = reverse('check_map_status', kwargs={'field_op': self.field_op.slug, 'location_pk': 0})
+            context['url_delete_location'] = reverse('api_aid_location_delete', kwargs={'field_op': self.field_op.slug, 'pk': 0})
+            context['url_update_location_status'] = reverse('aid_location_status_update', kwargs={'field_op': self.field_op.slug, 'pk': 0})
             context['url_add_location'] = reverse('add_location', kwargs={'field_op': self.field_op.slug, 'pk': self.aid_request.pk})
 
             return context
         except Exception as e:
-            logger.error(f"Error getting context data: {e}")
+            ic(e)
+            # It's better to raise the exception in debug, or handle it gracefully
             raise
 
     def get_object(self, queryset=None):

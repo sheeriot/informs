@@ -1,0 +1,3 @@
+{% for log in audit_logs %}
+    {% include 'aidrequests/partials/_audit_log_row.html' with log=log %}
+{% endfor %}

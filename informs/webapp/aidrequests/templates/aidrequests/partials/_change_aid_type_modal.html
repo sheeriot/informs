@@ -1,0 +1,54 @@
+{% if request.user.is_superuser %}
+<!-- Change Aid Type Modal -->
+<div class="modal fade" id="changeAidTypeModal" tabindex="-1" aria-labelledby="changeAidTypeModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="changeAidTypeModalLabel">Change Aid Type for Request #{{ aid_request.pk }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="change-aid-type-form" hx-post="{% url 'change_aid_request_type' aid_request.field_op.slug aid_request.pk %}" hx-swap="none">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div id="change-aid-type-alert"></div>
+          <div class="mb-3">
+              <div class="row">
+                  <div class="col-md-6">
+                      <label class="form-label">Current Aid Type:</label>
+                      <div class="form-control bg-light">{{ aid_request.aid_type.name }}</div>
+                  </div>
+                  <div class="col-md-6">
+                      <label for="id_aid_type" class="form-label">New Aid Type:</label>
+                      <select name="aid_type" id="id_aid_type" class="form-select">
+                        {% for type in aid_request.field_op.aid_types.all %}
+                          {% if type.pk != aid_request.aid_type.pk %}
+                            <option value="{{ type.pk }}">{{ type.name }}</option>
+                          {% endif %}
+                        {% endfor %}
+                      </select>
+                  </div>
+              </div>
+          </div>
+          <div class="mb-3">
+            <label for="confirmation-text" class="form-label">To confirm, type the full name of the requester:</label>
+            <div class="ms-3 mb-1">
+                <code id="requester-name-confirm" class="confirm-text-fs">{{ aid_request.requester_full_name }}</code>
+            </div>
+            <div class="input-group">
+                <input type="text" id="confirmation-text" class="form-control" autocomplete="off">
+                <div class="btn-group btn-group-sm ms-2" role="group">
+                    <button type="button" class="btn btn-secondary text-nowrap" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-warning text-nowrap" id="confirm-aid-type-change">
+                        <i class="bi bi-wrench"></i> Change
+                    </button>
+                </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
