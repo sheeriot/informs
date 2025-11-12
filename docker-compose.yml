@@ -1,4 +1,4 @@
-# Base docker-compose file. Use docker-compose.override.yml files as needed.
+# Base docker-compose file.
 
 services:
 
@@ -11,7 +11,6 @@ services:
     # entrypoint: export static_files, migrate DB, then run "command"
     entrypoint: /opt/app/docker-entrypoint.sh
     command: gunicorn --bind=0.0.0.0:8000 --workers=${WORKERS:-3} informs.wsgi
-    # command: gunicorn --bind 0.0.0.0:8000 informs.asgi:application -w 3 -k uvicorn.workers.UvicornWorker
     restart: unless-stopped
     ports:
      - 8000:8000
@@ -30,6 +29,18 @@ services:
       - informs_staticfiles:/opt/app/static_files
       - local-db:/opt/app/db
       - certs:/opt/app/certs:z
+
+  test:
+    build:
+      context: ./informs
+    env_file:
+      - informs/env/django-test.env
+    # The RUN_TESTS variable is now set in the env_file.
+    # The entrypoint path is consistent because the script now handles the switch.
+    entrypoint: /opt/app/docker-entrypoint.sh
+    # This service is for running tests. It has no volumes and is fully isolated.
+    # Arguments passed to 'docker compose run' are appended to the 'python manage.py test' command.
+    command: python manage.py runserver 0.0.0.0:8800
 
 volumes:
   local-db:

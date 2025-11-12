@@ -31,6 +31,9 @@ from icecream import ic
 from django.template.defaultfilters import linebreaks
 from django.utils.html import escape
 from django.urls import NoReverseMatch
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -240,11 +243,8 @@ def save_detail_field(request, field_op, pk, field_name):
             note_markdown=note_markdown
         )
 
-        # Manually escape and replace newlines with <br> to create valid, safe HTML.
-        # This avoids the aggressive <p> tags from the `linebreaks` filter.
-        # Provide a default '-' if the new value is empty.
-        escaped_value = escape(new_value)
-        processed_value = escaped_value.replace('\n', '<br>') if new_value else '-'
+        # The <pre> tag on the front end will handle newlines, so we just need to escape.
+        processed_value = escape(new_value) if new_value else '-'
 
         # ic(f"HTMX Response for '{field_name}':", processed_value)
 
@@ -434,29 +434,22 @@ def serve_map_file(request, field_op, aid_request_pk, filename):
     Serves a static map image after performing a security check.
     Sets long-term cache headers as the map files are immutable.
     """
-    # ic(f"serve_map_file: Request for map '{filename}' in field_op '{field_op}', aid_request '{aid_request_pk}'.")
-    # Security check: Ensure the requested map belongs to the aid request and field op.
     try:
-        # ic("serve_map_file: Performing security check...")
         AidLocation.objects.get(
             map_filename=filename,
             aid_request__pk=aid_request_pk,
             aid_request__field_op__slug=field_op
         )
-        # ic("serve_map_file: Security check passed.")
     except AidLocation.DoesNotExist:
-        ic(f"serve_map_file: Security check FAILED for map '{filename}'. No matching AidLocation found.")
+        logger.warning(f"Map Access Denied: Security check FAILED for map '{filename}'.")
         raise Http404("Map file not found or permission denied.")
 
     file_path = os.path.join(settings.MEDIA_ROOT, 'maps', filename)
-    # ic(f"serve_map_file: Constructed file path: {file_path}")
 
     if os.path.exists(file_path):
-        # ic(f"serve_map_file: File found at '{file_path}'. Serving file.")
         response = FileResponse(open(file_path, 'rb'))
-        # Cache for 1 year, and mark as immutable
         response['Cache-Control'] = 'public, max-age=31536000, immutable'
         return response
     else:
-        ic(f"serve_map_file: File NOT found at '{file_path}'. Returning 404.")
+        logger.error(f"Map File Not Found on Disk at path: {file_path}")
         raise Http404("Map file does not exist on disk.")

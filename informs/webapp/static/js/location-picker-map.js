@@ -2,7 +2,7 @@
     'use strict';
 
     const locationPickerConfig = {
-        debug: true,
+        debug: false,
     };
 
     // Helper to update a field's value.
@@ -13,15 +13,19 @@
         }
     }
 
-    // Make this function globally available to be called from other scripts
-    window.initializeLocationPicker = function(mapContainerId) {
+    function initializeLocationPicker(mapContainerId) {
         return new Promise((resolve) => {
-            if (locationPickerConfig.debug) console.log(`[LocationPicker] Initializing for map container #${mapContainerId}`);
+            if (locationPickerConfig.debug) console.log(`[LocationPicker] Initializing for map ID: ${mapContainerId}`);
 
             const mapContainer = document.getElementById(mapContainerId);
             if (!mapContainer) {
-                if (locationPickerConfig.debug) console.error(`[LocationPicker] Map container #${mapContainerId} not found in the DOM.`);
+                console.error(`[LocationPicker] Map container with ID '${mapContainerId}' not found.`);
+                resolve(); // Resolve promise even if map not found to avoid blocking
                 return;
+            }
+
+            if(locationPickerConfig.debug) {
+                console.log('[LocationPicker] Map container dataset:', mapContainer.dataset);
             }
 
             const formContainer = mapContainer.closest('form');
@@ -78,6 +82,12 @@
             // Only the key and the core lat/lon inputs are absolutely required.
             if (!subscriptionKey || !latInput || !lonInput) {
                 console.error('[LocationPicker] Critical data or element missing. Check for a valid Azure Maps key and lat/lon input field IDs.');
+                if (locationPickerConfig.debug) {
+                    console.log('[LocationPicker] Failing condition details:');
+                    console.log(`  - subscriptionKey: ${subscriptionKey}`);
+                    console.log(`  - latInput:`, latInput);
+                    console.log(`  - lonInput:`, lonInput);
+                }
                 return;
             }
 
@@ -585,7 +595,7 @@
                         }
                     });
                 } else {
-                    if (locationPickerConfig.debug) console.warn(`[LocationPicker] Device location button not found (#${mapContainer.dataset.getLocationButtonId})`);
+                    if (locationPickerConfig.debug) console.log(`[LocationPicker] Device location button not found (#${mapContainer.dataset.getLocationButtonId})`);
                 }
 
                 // Initial setup
@@ -596,5 +606,9 @@
                 resolve(); // Resolve the promise now that the map is fully ready
             });
         });
-    };
-})();
+    }
+
+    // Expose the initialization function to the global scope
+    window.initializeLocationPicker = initializeLocationPicker;
+
+})(); // End of IIFE

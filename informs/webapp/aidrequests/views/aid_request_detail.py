@@ -17,7 +17,7 @@ from ..forms import (
     LocationInformationForm, RequestDetailsForm
 )
 from .aid_location_forms import AidLocationStatusForm, AidLocationCreateForm
-from .maps import staticmap_aid
+from .maps import staticmap_aid, create_static_map
 from ..geocoder import get_azure_geocode, geocode_save
 from ..tasks import send_cot_task
 
@@ -65,15 +65,36 @@ class AidRequestSubmittedView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['field_op'] = get_object_or_404(FieldOp, slug=self.kwargs['field_op'])
+        # self.object is the aid_request, so it's already in the context.
+        # We just need to ensure our other context variables are also set correctly.
+        context['aid_request'] = self.object
+        context['field_op'] = self.object.field_op
         context['azure_maps_key'] = settings.AZURE_MAPS_KEY
         context['hide_auth_header_items'] = True
 
         # Get the most recent location, which should have been created by the post_save task.
         aid_location = self.object.locations.order_by('-created_at').first()
         context['aid_location'] = aid_location
+        context['map_ready'] = False  # Default to false
+        test_mode = 'test_map_timeout' in self.request.GET
+
         if aid_location:
-            context['url_check_map_status'] = reverse('check_map_status', kwargs={'field_op': self.kwargs['field_op'], 'location_pk': aid_location.pk})
+            # If not in test mode, check if the map already exists.
+            if not test_mode and aid_location.map_filename:
+                context['map_ready'] = True
+            else:
+                # Either in test mode or the map is genuinely missing.
+                # We'll wait up to 1 second, unless a test flag is set.
+                timeout_ms = 1 if test_mode else 1000
+                ic("SubmittedView: Test flag 'test_map_timeout' detected?", test_mode)
+                ic(f"SubmittedView: Location is missing or in test mode, waiting up to {timeout_ms}ms for generation.")
+                map_was_generated = create_static_map(aid_location, wait_with_timeout=timeout_ms)
+
+                if map_was_generated:
+                    aid_location.refresh_from_db()
+                    if aid_location.map_filename:
+                        context['map_ready'] = True
+
             context['MEDIA_URL'] = settings.MEDIA_URL
 
         return context
@@ -102,7 +123,6 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
             ic(f"AR-{self.aid_request.pk}: Location {self.aid_location.pk} is missing a map. Generating one now.")
             staticmap_data = staticmap_aid(
                 width=600, height=600,
-                fieldop_lat=self.aid_request.field_op.latitude,
                 fieldop_lon=self.aid_request.field_op.longitude,
                 aid1_lat=self.aid_location.latitude,
                 aid1_lon=self.aid_location.longitude,

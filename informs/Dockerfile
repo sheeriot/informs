@@ -24,6 +24,7 @@ RUN mkdir -p /opt/app/informs/
 # setup files
 COPY --chown=web:web app_version.txt /opt/app/version.txt
 COPY --chown=web:web requirements.txt /opt/app/
+
 COPY docker-entrypoint.sh /opt/app/
 RUN chmod +x /opt/app/docker-entrypoint.sh
 

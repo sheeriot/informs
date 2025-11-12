@@ -62,6 +62,7 @@ def email_creator_html(aid_request, aid_location, notify, map_file):
             <td style="font-weight: bold;">{aid_request.status}</td>
             <td style="font-weight: bold;">{aid_request.priority}</td>
         </tr>
+
         <tr><th colspan="5" style="font-weight: normal;">Address Provided</th></tr>
         <tr>
             <td colspan="5" style="font-weight: bold;">

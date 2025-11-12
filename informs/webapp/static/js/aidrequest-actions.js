@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('[AidRequest Actions] Script version 0.0.14 loaded. STANDBY FOR MODAL LOGS.');
+    console.log('AidRequest Actions Script v 0.0.14');
     const scriptConfig = {
-        debug: false, // Master debug switch for this script
+        debug: true, // Master debug switch for this script
     };
 
     // For debugging htmx swaps
@@ -34,11 +34,31 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add event listener to handle ARIA warning on modal close
     const genericEditModal = document.getElementById('genericEditModal');
     if (genericEditModal) {
+        const modalContent = document.getElementById('generic-modal-content');
+
+        // When the modal is about to be shown, clear its content to a loading state
+        // to prevent flashing old content.
+        genericEditModal.addEventListener('show.bs.modal', function() {
+            if (modalContent) {
+                modalContent.innerHTML = `
+                    <div class="d-flex justify-content-center p-5">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
         genericEditModal.addEventListener('hide.bs.modal', function () {
             // When the modal is about to be hidden, check if the currently focused element
             // is inside this modal. If so, blur it to prevent the ARIA warning.
             if (document.activeElement && genericEditModal.contains(document.activeElement)) {
                 document.activeElement.blur();
+            }
+            // Also, clear the content after hiding to prevent any stale data.
+            if (modalContent) {
+                modalContent.innerHTML = '';
             }
         });
     }
@@ -67,20 +87,20 @@ document.addEventListener('DOMContentLoaded', function() {
      *   JSON payload to the server (e.g., `data-action="confirm"` becomes `{"action": "confirm"}`).
      */
     document.body.addEventListener('show.bs.modal', function(event) {
-        console.log('--- [MODAL EVENT] --- show.bs.modal listener FIRED. ---');
+        if (scriptConfig.debug) console.log('--- [MODAL EVENT] --- show.bs.modal listener FIRED. ---');
         const modal = event.target;
         const triggerButton = event.relatedTarget;
 
-        console.log('[Modal Action] Event Target (the modal):', modal);
-        console.log('[Modal Action] Event Related Target (the button):', triggerButton);
+        if (scriptConfig.debug) console.log('[Modal Action] Event Target (the modal):', modal);
+        if (scriptConfig.debug) console.log('[Modal Action] Event Related Target (the button):', triggerButton);
 
 
         if (!triggerButton) {
-            console.log('[Modal Action] No trigger button found. Bailing out.');
+            if (scriptConfig.debug) console.log('[Modal Action] No trigger button found. Bailing out.');
             return;
         }
 
-        console.log('[Modal Action] Trigger button dataset:', triggerButton.dataset);
+        if (scriptConfig.debug) console.log('[Modal Action] Trigger button dataset:', triggerButton.dataset);
 
         const modalInstance = bootstrap.Modal.getInstance(modal);
 
@@ -372,7 +392,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 fieldset.disabled = isDisabling;
 
                 const icon = this.querySelector('i');
-                const saveCancelButtons = fieldset.querySelector('.d-flex.justify-content-end');
+                const saveCancelContainer = fieldset.querySelector('.d-flex.justify-content-end');
+                const saveButton = saveCancelContainer ? saveCancelContainer.querySelector('button[type="submit"]') : null;
+                const cancelButton = saveCancelContainer ? saveCancelContainer.querySelector('button[type="button"]') : null;
 
                 if (isDisabling) {
                     // Re-locking the section
@@ -380,8 +402,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     this.classList.add('btn-outline-danger');
                     icon.classList.remove('bi-unlock-fill');
                     icon.classList.add('bi-lock-fill');
-                    if (saveCancelButtons) {
-                        saveCancelButtons.classList.add('d-none');
+                    if (saveButton) {
+                        saveButton.disabled = true;
+                        saveButton.innerHTML = '<span class="text-nowrap"><i class="bi bi-lock-fill"></i> Unlock to Save</span>';
+                    }
+                    if (cancelButton) {
+                        cancelButton.disabled = true;
                     }
                 } else {
                     // Unlocking the section
@@ -389,8 +415,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     this.classList.add('btn-outline-success');
                     icon.classList.remove('bi-lock-fill');
                     icon.classList.add('bi-unlock-fill');
-                    if (saveCancelButtons) {
-                        saveCancelButtons.classList.remove('d-none');
+                    if (saveButton) {
+                        saveButton.disabled = false;
+                        saveButton.innerHTML = '<span class="text-nowrap"><i class="bi bi-check-circle-fill"></i> Save Changes</span>';
+                    }
+                    if (cancelButton) {
+                        cancelButton.disabled = false;
                     }
                 }
             }
@@ -692,14 +722,41 @@ document.addEventListener('DOMContentLoaded', function() {
     // by direct HTML swaps from the server, not by a secondary trigger.
     // document.body.addEventListener('locationListUpdated', function(evt) { ... });
 
+    // --- Modal Confirmation Toggles ---
+    document.body.addEventListener('change', function(event) {
+        // For the generic detail field modal (Description, etc.)
+        if (event.target.id === 'edit-confirmation-toggle') {
+            const saveButton = document.getElementById('generic-save-button');
+            if (saveButton) {
+                saveButton.classList.toggle('d-none', !event.target.checked);
+            }
+        }
+
+        // For the address edit modal
+        if (event.target.id === 'edit-confirmation-eyeball') {
+            const saveButton = document.getElementById('address-save-button');
+            if (saveButton) {
+                saveButton.classList.toggle('d-none', !event.target.checked);
+            }
+        }
+
+        // For the requester info inline form
+        if (event.target.id === 'requester-info-confirm-toggle') {
+            const saveButton = document.getElementById('requester-info-save-button');
+            if (saveButton) {
+                saveButton.classList.toggle('d-none', !event.target.checked);
+            }
+        }
+    });
 });
 
 function copyCoords(elementId) {
     const coordsElement = document.getElementById(elementId);
     if (coordsElement) {
-        navigator.clipboard.writeText(coordsElement.innerText)
+        const coordsText = coordsElement.innerText;
+        navigator.clipboard.writeText(coordsText)
             .then(() => {
-                showActionAlert('Coordinates copied to clipboard!', 'success');
+                showActionAlert(`Copied: ${coordsText}`, 'success');
             })
             .catch(err => {
                 console.error('Failed to copy coordinates: ', err);

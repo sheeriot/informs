@@ -107,6 +107,8 @@ class AidType(models.Model):
     COT_ICON_CHOICES = [(key, key) for key in settings.COT_ICONS.keys()]
     cot_icon = models.CharField(max_length=50, blank=True, null=True)
 
+    bs_icon = models.CharField(max_length=50, blank=True, null=True, help_text="Name of the Bootstrap icon to use.")
+
     class Meta:
         verbose_name = 'Aid Type'
         verbose_name_plural = 'Aid Types'
@@ -120,12 +122,20 @@ class FieldOp(TimeStampedModel):
     slug = models.SlugField(unique=True)
     name = models.CharField(max_length=50)
     country = CountryField(default='US', help_text="Default country for new aid requests.")
-    latitude = models.DecimalField(max_digits=7, decimal_places=5)
-    longitude = models.DecimalField(max_digits=8, decimal_places=5)
+    latitude = models.DecimalField(
+        max_digits=8,
+        decimal_places=5,
+        help_text="Maximum 5 decimal places.",
+        validators=[MinValueValidator(-90), MaxValueValidator(90)]
+    )
+    longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=5,
+        help_text="Maximum 5 decimal places.",
+        validators=[MinValueValidator(-180), MaxValueValidator(180)]
+    )
     ring_size = models.PositiveIntegerField(
-        null=True,
-        blank=True,
-        default=None,
+        default=1,
         help_text='kilometers'
     )
 
@@ -198,7 +208,7 @@ class AidRequest(TimeStampedModel):
         if is_new:
             return 'new'
 
-        ic(f"AidRequest #{self.pk}: returning None")
+        # ic(f"AidRequest #{self.pk}: returning None")
         return None
 
     @property
@@ -346,7 +356,7 @@ class AidRequest(TimeStampedModel):
         verbose_name_plural = 'Aid Requests'
 
     def __str__(self):
-        return str(self.id)
+        return f"Request for {self.requester_full_name} - {self.aid_type.name} ({self.pk})"
 
     def save(self, *args, **kwargs):
         """
@@ -409,10 +419,23 @@ class AidRequest(TimeStampedModel):
                     old_value = getattr(original, field)
                     new_value = getattr(self, field)
                     if old_value != new_value:
-                        old_display = getattr(original, f'get_{field}_display', lambda: old_value)()
+                        old_display = getattr(original, f'get_{field}_display', lambda: old_value)() or 'None'
                         new_display = getattr(self, f'get_{field}_display', lambda: new_value)()
-                        changes.append(f"{field.replace('_', ' ').title()}: '{old_display}' → '{new_display}'")
-                final_event_text = "\n".join(changes)
+
+                        # Indent every line of the value after the first to align with the start of the value
+                        indented_old = str(old_display).replace('\n', '\n' + ' ' * 7)
+                        indented_new = str(new_display).replace('\n', '\n' + ' ' * 7)
+
+                        field_title = field.replace('_', ' ').title()
+                        # Format with right-aligned labels and indented values
+                        change_str = (
+                            f"{field_title}:\n"
+                            f" from: {indented_old}\n"
+                            f"   to: {indented_new}"
+                        )
+                        changes.append(change_str)
+
+                final_event_text = "\n\n".join(changes)
 
             final_event_name = event_name or "Aid Request Updated"
 
@@ -578,11 +601,12 @@ class AidLocation(TimeStampedModel):
 
         if is_new:
             # Now that the instance is saved and has a PK, generate the map
-            create_static_map(self, synchronous=True)
+            # Wait up to 1 second for the map to be generated.
+            create_static_map(self, wait_with_timeout=1000)
             self.refresh_from_db() # Refresh to get the map_filename
 
             log_text = render_to_string(
-                'aidrequests/logs/location_created_log.md',
+                'aidrequests/logs/location_created_log.txt',
                 {'location': self}
             )
             ActionLog.objects.create(
@@ -590,7 +614,6 @@ class AidLocation(TimeStampedModel):
                 log_type='location',
                 event_name=f"Location #{self.pk} Created",
                 event_text=log_text,
-                text_markdown=True,
                 agent_name=self.created_by.username if self.created_by else "System",
                 created_by=self.created_by
             )
@@ -617,7 +640,7 @@ class AidLocation(TimeStampedModel):
                 event_name = f"Location #{self.pk} Updated"
 
             log_text = render_to_string(
-                'aidrequests/logs/location_status_change_log.md',
+                'aidrequests/logs/location_status_change_log.txt',
                 {
                     'location': self,
                     'old_status': old_status,
@@ -629,7 +652,6 @@ class AidLocation(TimeStampedModel):
                 log_type='location',
                 event_name=event_name,
                 event_text=log_text,
-                text_markdown=True,
                 agent_name=self.updated_by.username if self.updated_by else "System",
                 created_by=self.updated_by,
                 note=note,
@@ -666,8 +688,7 @@ class ActionLog(TimeStampedModel):
     # New structured fields
     event_name = models.CharField(max_length=255, blank=True)
     event_text = models.TextField(blank=True)
-    note = models.TextField(blank=True)
-    text_markdown = models.BooleanField(default=False, help_text="Flag for event_text markdown")
+    note = models.TextField(blank=True, null=True)
     note_markdown = models.BooleanField(default=False, help_text="Flag for note markdown")
     agent_name = models.CharField(max_length=150, blank=True)
 
