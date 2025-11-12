@@ -248,20 +248,20 @@ class ActionLogAddView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
 @require_POST
 @user_passes_test(lambda u: u.is_superuser)
 def change_aid_request_type(request, field_op, pk):
-    ic("Entering change_aid_request_type view")
-    ic(request.POST)
+    # ic("Entering change_aid_request_type view")
+    # ic(request.POST)
     try:
         aid_request = get_object_or_404(AidRequest, pk=pk, field_op__slug=field_op)
-        ic(aid_request)
+        # ic(aid_request)
         new_aid_type_id = request.POST.get('aid_type')
-        ic(new_aid_type_id)
+        # ic(new_aid_type_id)
 
         if not new_aid_type_id:
             ic("new_aid_type_id is missing")
             return JsonResponse({'status': 'error', 'message': 'Aid Type not provided.'}, status=400)
 
         new_aid_type = get_object_or_404(AidType, pk=new_aid_type_id)
-        ic(new_aid_type)
+        # ic(new_aid_type)
 
         original_aid_type_name = aid_request.aid_type.name
         aid_request.aid_type = new_aid_type

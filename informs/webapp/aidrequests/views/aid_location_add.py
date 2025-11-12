@@ -146,6 +146,7 @@ def delete_aid_location(request, field_op, pk):
     Deletes an AidLocation.
     This view is called via HTMX from a modal confirmation.
     """
+    # ic(f"DELETE request received for location pk={pk} in field_op='{field_op}'")
     try:
         location = get_object_or_404(AidLocation, pk=pk)
         aid_request = location.aid_request
@@ -164,7 +165,7 @@ def delete_aid_location(request, field_op, pk):
 
         # Render the details of the location BEFORE deleting it for the log
         log_text = render_to_string(
-            'aidrequests/logs/location_deleted_log.md',
+            'aidrequests/logs/location_deleted_log.txt',
             {'location': location}
         )
 
@@ -175,13 +176,13 @@ def delete_aid_location(request, field_op, pk):
             log_type='location',
             event_name=f"Location #{location_id} Deleted",
             event_text=log_text,
-            text_markdown=True, # The event_text is now markdown
             note=note,
             note_markdown=note_markdown,
             agent_name=request.user.username,
         )
 
         location.delete()
+        # ic(f"Successfully deleted location pk={location_id}")
 
         # After deleting, trigger a CoT update for the parent aid request
         # to ensure the map marker reflects the new primary location.
@@ -215,6 +216,7 @@ def delete_aid_location(request, field_op, pk):
     except AidLocation.DoesNotExist:
         return HttpResponseNotFound("The requested location does not exist.")
     except Exception as e:
+        ic(f"ERROR deleting location pk={pk}: {e}")
         # logger.error(f"Error deleting location: {e}") # This line was not in the original file, so it's not added.
         # In case of an error, you might want to return an error message to the user
         # For simplicity, returning a generic server error here.

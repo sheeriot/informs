@@ -23,19 +23,24 @@ It's swapped into the #requester-info-section div.
             </label>
         </div>
 
-        <div class="mb-3">
-            <p class="mb-1"><strong>Address Provided (Read-Only)</strong></p>
-            <p class="form-control-plaintext">{{ aid_request.full_address|default:"-" }}</p>
-        </div>
-
         <hr>
-        <div class="d-flex justify-content-end">
-            <button type="button" class="btn btn-secondary me-2" hx-get="{% url 'get_requester_info' field_op=aid_request.field_op.slug pk=aid_request.pk %}" hx-target="#requester-info-section" hx-swap="outerHTML">
-                Cancel
-            </button>
-            <button type="submit" class="btn btn-primary">
-                {% bs_icon 'check-circle-fill' %} Save Changes
-            </button>
+        <div class="modal-footer justify-content-between">
+            <div class="d-flex align-items-center">
+                <div class="form-check form-switch me-3">
+                    <input class="form-check-input" type="checkbox" role="switch" id="requester-info-confirm-toggle">
+                    <label class="form-check-label" for="requester-info-confirm-toggle">
+                        {% bs_icon 'eye-fill' %} Confirm Change
+                    </label>
+                </div>
+                <button type="button" class="btn btn-secondary me-2" hx-get="{% url 'get_requester_info' field_op=aid_request.field_op.slug pk=aid_request.pk %}" hx-target="#requester-info-section" hx-swap="outerHTML">
+                    <span class="text-nowrap">{% bs_icon 'x-circle' %} Cancel</span>
+                </button>
+            </div>
+            <div>
+                <button type="submit" id="requester-info-save-button" class="btn btn-primary d-none">
+                    <span class="text-nowrap">{% bs_icon 'check-circle-fill' %} Save Changes</span>
+                </button>
+            </div>
         </div>
     </form>
 </div>

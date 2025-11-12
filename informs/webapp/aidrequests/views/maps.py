@@ -1,23 +1,22 @@
-from django.conf import settings
-import httpx
-from icecream import ic
-from geopy.distance import geodesic
-from django_q.tasks import async_task, result
-from urllib.parse import urlencode, quote
-from django.core.files.base import ContentFile
-from datetime import datetime
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from django.template.loader import render_to_string
-from django.contrib.auth.decorators import login_required
 import os
-from ..models import AidLocation, AidRequest, FieldOp
+import logging
+import httpx
+from datetime import datetime
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from django.http import Http404, JsonResponse, FileResponse
+from django_q.tasks import async_task, fetch, result
+from geopy.distance import geodesic
+from icecream import ic
+
+from ..models import AidRequest, AidLocation
+
+logger = logging.getLogger(__name__)
+
 
 def staticmap_aid(width=600, height=400,
                   fieldop_lat=0.0, fieldop_lon=0.0,
                   aid1_lat=0.0, aid1_lon=0.0):
-
-    # ic("build staticmap_aid")
 
     # --- Calculate Center Point ---
     center_lon = (float(fieldop_lon) + float(aid1_lon)) / 2
@@ -31,13 +30,13 @@ def staticmap_aid(width=600, height=400,
 
     zoom = calculate_zoom(distance_km)
 
-    # Correct Pin Format: style|modifiers||'label'lon lat (no space after label)
+    # Correct Pin Format
     pin1 = f"default|co008000|lcFFFFFF||'OP'{fieldop_lon} {fieldop_lat}"
-    pin2 = f"default|coFFFF00|lc000000||'AID'{aid1_lon} {aid1_lat}"
+    pin2 = f"default|coFF0000|lcFFFFFF||'AID'{aid1_lon} {aid1_lat}"
 
     raw_path = f"lcFF1493||{fieldop_lon} {fieldop_lat}|{aid1_lon} {aid1_lat}"
 
-    url = settings.AZURE_MAPS_STATIC_URL
+    url = "https://atlas.microsoft.com/map/static"
 
     params = [
         ('subscription-key', settings.AZURE_MAPS_KEY),
@@ -52,25 +51,21 @@ def staticmap_aid(width=600, height=400,
         ('path', raw_path)
     ]
     try:
-        # Pass the list of tuples directly to httpx to handle encoding.
-        # This avoids double-encoding issues.
-        # ic("[API Call] Calling Azure Maps Static API for Aid Request...")
         response = httpx.get(url, params=params)
-        # ic("Final URL:", response.url)
         response.raise_for_status()
     except httpx.HTTPStatusError as e:
-        ic(f"Error making static map request: {e}")
-        ic("Response status:", e.response.status_code)
-        ic("Response body:", e.response.text)
+        logger.error(f"Error making static map request: {e}")
+        logger.error(f"Response status: {e.response.status_code}")
+        logger.error(f"Response body: {e.response.text}")
         return None
     except Exception as e:
-        ic(f"An unexpected error occurred: {e}")
+        logger.error(f"An unexpected error occurred: {e}")
         return None
 
     if response.content.startswith(b'\x89PNG'):
         return response.content
     else:
-        ic("Non-PNG response from Azure Maps:", response.text)
+        logger.warning(f"Non-PNG response from Azure Maps: {response.text}")
         return None
 
 
@@ -99,13 +94,11 @@ def calculate_zoom(distance_km):
     else:
         return 4
 
-def staticmap_fieldop(width=600, height=400, latitude=0.0, longitude=0.0, zoom=12):
+def staticmap_fieldop(width=600, height=400, latitude=0.0, longitude=0.0, zoom=12, ring_size=None):
     """Generate a static map for a single field op location."""
-    pin_instances = [
-        f"default|co008000|lcFFFFFF|OP|{longitude} {latitude}"
-    ]
+    pin_instances = f"default|co008000|lcFFFFFF||'OP'{longitude} {latitude}"
 
-    url = settings.AZURE_MAPS_STATIC_URL
+    url = "https://atlas.microsoft.com/map/static"
     params = {
         'subscription-key': settings.AZURE_MAPS_KEY,
         'api-version': '2024-04-01',
@@ -117,55 +110,51 @@ def staticmap_fieldop(width=600, height=400, latitude=0.0, longitude=0.0, zoom=1
         'height': height
     }
     try:
-        ic("[API Call] Calling Azure Maps Static API for FieldOp...")
         response = httpx.get(url, params=params)
-        ic("Static map request params:", params)
+        response.raise_for_status()
     except Exception as e:
-        ic(f"Error: {e}")
+        logger.error(f"Error making static map request for FieldOp: {e}")
+        return None
 
     if response.content.startswith(b'\x89PNG'):
         return response.content
     else:
-        ic("Non-PNG response:", response.text)
+        logger.warning(f"Non-PNG response for FieldOp map: {response.text}")
         return None
 
-def create_static_map(location: object, synchronous=False) -> None:
+def create_static_map(location, wait_with_timeout: int = None):
     """
-    Creates a static map for the given location object.
-    Can be run synchronously or asynchronously.
+    Enqueues a task to generate a static map for an AidLocation.
+    Optionally waits for the task to complete and returns the filename.
     """
-    # ic('run create_static_map')
     task_name = f"GenerateMap_L{location.pk}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    async_task(
+        'aidrequests.tasks.generate_static_map_for_location',
+        location.pk,
+        task_name=task_name
+    )
 
-    if synchronous:
-        # Run synchronously and wait for the result
-        from ..tasks import generate_static_map_for_location
-        generate_static_map_for_location(location.pk)
+    if wait_with_timeout:
+        try:
+            task_result_obj = result(task_name, wait=wait_with_timeout)
+            if task_result_obj:
+                ic(f"Map generation task {task_name} result after waiting: {task_result_obj}")
+                return task_result_obj.get('map_filename')
+            else:
+                logger.warning(f"Map generation task for L-{location.pk} did not complete in time.")
+                return None
+        except Exception as e:
+            logger.error(f"Error waiting for map generation task for L-{location.pk}: {e}")
+            return None
     else:
-        # Run asynchronously
-        async_task(
-            'aidrequests.tasks.generate_static_map_for_location',
-            location.pk,
-            task_name=task_name
-        )
+        return None
 
-def update_location_map_filename(task):
-    pass
-
-def check_map_status(request, field_op, location_pk):
-    location = get_object_or_404(AidLocation, pk=location_pk)
-    if location.map_filename:
-        map_file_path = os.path.join(settings.MEDIA_ROOT, 'maps', location.map_filename)
-        if os.path.exists(map_file_path):
-            context = {
-                'location': location,
-                'aid_request': location.aid_request,
-            }
-            map_html = render_to_string(
-                'aidrequests/partials/_location_map_area.html',
-                context,
-                request=request
-            )
-            return JsonResponse({'status': 'ready', 'map_html': map_html})
-
-    return JsonResponse({'status': 'pending'})
+@login_required
+def check_map_status(request, task_id):
+    """
+    Checks the status of a map generation task for polling.
+    """
+    task = fetch(task_id)
+    if task:
+        return JsonResponse({'status': task.status(), 'result': task.result})
+    return JsonResponse({'status': 'UNKNOWN'}, status=404)

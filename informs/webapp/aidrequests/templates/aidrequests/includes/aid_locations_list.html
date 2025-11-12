@@ -15,65 +15,7 @@
         <div class="list-group list-group-flush">
             {% if locations %}
                 {% for location in locations %}
-                     <div class="card mb-1">
-                        <div class="card-header m-0 p-1 {% if location.status == 'confirmed' %}bg-success-subtle{% elif location.status == 'new' %}bg-warning-subtle{% elif location.status == 'rejected' %}bg-danger-subtle{% else %}bg-light{% endif %} text-dark" id="heading-location-{{ location.pk }}">
-                            <h5 class="mb-0">
-                                <button
-                                    class="btn btn-link text-decoration-none w-100 p-0 text-start d-flex justify-content-between align-items-center"
-                                    data-bs-toggle="collapse"
-                                    data-bs-target="#collapse-location-{{ location.pk }}"
-                                    aria-expanded="{% if location == current_location %}true{% else %}false{% endif %}"
-                                    aria-controls="collapse-location-{{ location.pk }}">
-                                    <span>
-                                        <strong>Location #{{ location.pk }}</strong> - {{ location.get_status_display }}
-                                    </span>
-                                    <span class="collapse-icon">
-                                        <i class="bi {% if location == current_location %}bi-chevron-up{% else %}bi-chevron-down{% endif %}"></i>
-                                    </span>
-                                </button>
-                            </h5>
-                        </div>
-                        <div id="collapse-location-{{ location.pk }}"
-                             class="collapse card-body m-0 p-1 {% if location.pk == current_location.pk or location.pk == new_location_id %}show{% endif %}"
-                             aria-labelledby="heading-location-{{ location.pk }}">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div class="flex-grow-1">
-                                    <div class="font-monospace text-break user-select-all bg-light rounded p-1 shadow-sm border d-inline-block" id="coords-{{ location.pk }}">
-                                        <span class="text-nowrap">{{ location.latitude|stringformat:".5f" }},</span><span class="text-nowrap">{{ location.longitude|stringformat:".5f" }}</span>
-                                    </div>
-                                    <button class="btn btn-sm btn-link text-secondary" onclick="copyCoords('coords-{{ location.pk }}')">
-                                        <i class="bi bi-clipboard"></i>
-                                    </button>
-                                </div>
-                                <div class="ms-2 text-nowrap text-center">
-                                    <small class="d-block">Distance</small>
-                                    <strong class="me-1">{{ location.distance }} km</strong>
-                                </div>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div><small><strong>Status:</strong> {{ location.get_status_display }}</small></div>
-                                <div class="d-flex justify-content-end">
-                                    {% include 'aidrequests/partials/_aid_location_action_buttons.html' with location=location aid_request=aid_request %}
-                                </div>
-                            </div>
-                            <div><small><strong>Source:</strong> {{ location.get_source_display }}</small></div>
-                            <div><small><strong>Geocoded Address:</strong> {{ location.free_form_address|default:"Not available" }}</small></div>
-                            <div class="mt-2 text-center">
-                                <div id="map-area-{{ location.pk }}">
-                                    {% if location.map_filename %}
-                                    <img src="{{ location.static_map_url }}" class="img-fluid mt-2" alt="Map of location {{ location.pk }}">
-                                    {% else %}
-                                    <div class="htmx-indicator">
-                                        <div class="spinner-border spinner-border-sm" role="status">
-                                            <span class="visually-hidden">Loading Map...</span>
-                                        </div>
-                                        <small>Map generating...</small>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    {% include 'aidrequests/includes/aid_location_card.html' %}
                 {% endfor %}
             {% else %}
                 <div class="list-group-item" id="no-locations-message">

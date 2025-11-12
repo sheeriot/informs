@@ -7,7 +7,7 @@ window.addEventListener('pageshow', function(event) {
 });
 
 const aidRequestFormCConfig = {
-    debug: true // Master debug switch for this script
+    debug: false // Master debug switch for this script
 };
 
 document.addEventListener('DOMContentLoaded', function() {

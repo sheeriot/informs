@@ -33,7 +33,7 @@
                     <dt class="col-sm-4 text-nowrap d-flex align-items-center"><i class="bi bi-tag text-dark me-2"></i>Slug</dt>
                     <dd class="col-sm-8">{{ object.slug }}</dd>
 
-                    <dt class="col-sm-4 text-nowrap d-flex align-items-center">Coordinates</dt>
+                    <dt class="col-sm-4 text-nowrap d-flex align-items-center"><i class="bi bi-geo-alt text-info me-2"></i>Coordinates</dt>
                     <dd class="col-sm-8">
                         {% include 'aidrequests/partials/_coordinates_display.html' with latitude=object.latitude longitude=object.longitude element_id='coordinates' %}
                     </dd>

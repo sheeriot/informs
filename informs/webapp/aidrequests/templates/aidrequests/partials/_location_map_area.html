@@ -1,22 +1,24 @@
 {% load static %}
 {% load bootstrap_icons %}
 
-{% if location.static_map_url %}
-    <a href="#" class="preview-map-btn" data-map-url="{{ location.static_map_url }}" title="Click to enlarge map">
-        <img src="{{ location.static_map_url }}" alt="Map of location {{ location.pk }}" class="img-fluid rounded" style="cursor: pointer;">
-    </a>
-{% else %}
-    <div class="text-center text-muted p-3">
-        <div class="spinner-border spinner-border-sm text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
+{% if map_ready %}
+    {% if aid_location.map_filename %}
+        <img src="{% url 'serve_map_file' field_op=aid_request.field_op.slug aid_request_pk=aid_request.pk filename=aid_location.map_filename %}" alt="Map of {{ aid_location.free_form_address }}" class="img-fluid">
+    {% else %}
+        <div class="alert alert-secondary text-center">
+            <div class="spinner-border spinner-border-sm" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span class="ms-2">Map image is generating...</span>
         </div>
-        <small class="ms-2">Loading map...</small>
+    {% endif %}
+{% else %}
+    <div class="alert alert-info d-flex align-items-center" role="alert">
+        <div class="flex-grow-1">
+            The location map is being generated. Please refresh the page in a few moments to see it.
+        </div>
+        <button class="btn btn-primary btn-sm ms-3" onclick="window.location.reload();">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
     </div>
 {% endif %}
-
-<div id="map-spinner-{{ location.pk }}" class="spinner-overlay d-none">
-    <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-    </div>
-    <div class="spinner-text">Generating Map...</div>
-</div>

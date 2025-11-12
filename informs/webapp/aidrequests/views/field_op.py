@@ -1,15 +1,33 @@
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.views.generic import DetailView, CreateView, UpdateView
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, HttpResponse
 from django_q.tasks import async_task
 from ..models import FieldOp, AidRequest
 from ..forms import FieldOpForm
 from .utils import prepare_aid_locations_for_map, locations_to_bounds
+from .maps import staticmap_fieldop
 from icecream import ic
 import json
+import base64
 from django.core.serializers.json import DjangoJSONEncoder
+from django.shortcuts import get_object_or_404
+
+
+def field_op_static_map(request, slug):
+    """Generate and return a static map image for a FieldOp."""
+    field_op = get_object_or_404(FieldOp, slug=slug)
+    map_content = staticmap_fieldop(
+        latitude=field_op.latitude,
+        longitude=field_op.longitude,
+        zoom=10  # A reasonable default zoom
+    )
+    if map_content:
+        return HttpResponse(map_content, content_type='image/png')
+    # Return a placeholder or error image if map generation fails
+    return HttpResponse(status=500)
+
 
 class FieldOpDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     permission_required = 'aidrequests.view_fieldop'
@@ -42,6 +60,13 @@ class FieldOpDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
         # Calculate map bounds from aid request locations
         context['map_bounds'] = locations_to_bounds(aid_locations)
 
+        ic("FieldOpDetailView map config:", {
+            'azure_maps_key': bool(context.get('azure_maps_key')),
+            'center_lat': context.get('center_lat'),
+            'center_lon': context.get('center_lon'),
+            'ring_size': context.get('ring_size'),
+        })
+
         return context
 
 class FieldOpCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
@@ -58,7 +83,7 @@ class FieldOpCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
         return context
 
     def get_success_url(self):
-        return reverse_lazy('field_op_detail', kwargs={'slug': self.object.slug})
+        return reverse_lazy('field_op_detail', kwargs={'field_op': self.object.slug})
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -99,9 +124,25 @@ class FieldOpUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        field_op = self.get_object()
         context.update({
             'azure_maps_key': settings.AZURE_MAPS_KEY,
+            'geocode_url': reverse('geocode_address', kwargs={'field_op': field_op.slug}),
         })
+
+        # For the update view, generate a static map of the current location
+        map_png_data = staticmap_fieldop(
+            latitude=field_op.latitude,
+            longitude=field_op.longitude,
+            zoom=12
+        )
+        # ic("FieldOpUpdateView: staticmap_fieldop returned image data?", bool(map_png_data))
+
+        if map_png_data:
+            context['static_map_url'] = f"data:image/png;base64,{base64.b64encode(map_png_data).decode('utf-8')}"
+
+        # ic("FieldOpUpdateView: static_map_url is set?", 'static_map_url' in context)
+
         return context
 
     def get_success_url(self):

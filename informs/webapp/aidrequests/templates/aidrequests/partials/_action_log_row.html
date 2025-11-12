@@ -15,11 +15,7 @@
     <td class="col">
         <div class="text-break">
             <strong>{{ log.event_name }}</strong>
-            {% if log.text_markdown %}
-                {{ log.event_text|markdownify|safe }}
-            {% else %}
-                <pre class="mb-0 font-sans-serif text-wrap">{{ log.event_text }}</pre>
-            {% endif %}
+            <pre class="mb-0">{{ log.event_text }}</pre>
 
             {% if log.note %}
                 <div class="mt-2">

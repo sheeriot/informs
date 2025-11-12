@@ -136,11 +136,14 @@ urlpatterns = [
     path('fieldops/', FieldOpListView.as_view(), name='field_op_list'),
     path('fieldops/new/', FieldOpCreateView.as_view(), name='field_op_create'),
     path('fieldop/<slug:slug>/update/', FieldOpUpdateView.as_view(), name='field_op_update'),
+
+    # New URLs for FieldOp Detail View per user request
+    path('fieldop/<slug:field_op>/', FieldOpDetailView.as_view(), name='field_op_detail_long'),
+    path('<slug:field_op>/view/', FieldOpDetailView.as_view(), name='field_op_detail'),
+
     path('<slug:field_op>/requests/', AidRequestListView.as_view(), name='aid_request_list'),
-    path('<slug:field_op>/requests/new/', AidRequestCreateView.as_view(), name='aid_request_create'),
     path('<slug:field_op>/aidrequests/<str:status_group>/', AidRequestListView.as_view(), name='aid_request_list_by_status'),
     path('<slug:field_op>/aidrequest/<int:pk>/', AidRequestDetailView.as_view(), name='aid_request_detail'),
-    # path('<slug:field_op>/aidrequest/<int:pk>/update/', AidRequestUpdateView.as_view(), name='aid_request_update'),
     path('<slug:field_op>/aidrequest/<int:pk>/notify/', AidRequestNotifyView.as_view(), name='aid_request_notify'),
     path('<slug:field_op>/aidrequest/<int:pk>/submitted/', AidRequestSubmittedView.as_view(), name='aid_request_submitted'),
     path('<slug:field_op>/aidrequest/<int:pk>/add-location/', add_location, name='add_location'),
@@ -155,8 +158,9 @@ urlpatterns = [
     path('<slug:field_op>/<int:pk>/change_type/',
         change_aid_request_type, name='change_aid_request_type'),
     path('<slug:field_op>/<int:aid_request_pk>/map/<str:filename>', serve_map_file, name='serve_map_file'),
-    # This MUST be last of the slug patterns
-    path('<slug:field_op>/', FieldOpDetailView.as_view(), name='field_op_detail'),
+
+    # This MUST be last of the slug patterns. Per user request, this is now the short URL to CREATE an aid request.
+    path('<slug:field_op>/', AidRequestCreateView.as_view(), name='aid_request_create'),
 ]
 
 urlpatterns += api_patterns

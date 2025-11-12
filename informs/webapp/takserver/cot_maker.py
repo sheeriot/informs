@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 import pytak
 import platform
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -191,15 +192,33 @@ class CotMaker:
     async def build_aid_request_message(self, aid_request, field_op, full_client_uid, field_op_cot_type, location_obj):
         """Build COT message for an aid request, linked to the field_op marker."""
         try:
-            remarks = [
-                f"Aid Request #{aid_request.pk}",
+            remarks = []
+            if aid_request.requester_full_name:
+                remarks.append(f"Requester: {aid_request.requester_full_name}")
+
+            remarks.extend([
+                f"Aid Request: #{aid_request.pk}",
+                f"Created: {aid_request.created_at.strftime('%Y-%m-%d %H:%M:%S')} UTC",
                 f"Field Op: {field_op.name} ({field_op.slug})",
-                f"Type: {aid_request.aid_type.name}",
-                f"Status: {aid_request.status.upper()}"
-            ]
-            if aid_request.priority: remarks.append(f"Priority: {aid_request.priority.upper()}")
-            remarks.append(f"Location Status: {location_obj.status.upper()}")
+                f"Aid Type: {aid_request.aid_type.name}",
+                f"Status: {aid_request.get_status_display()}",
+                f"Priority: {aid_request.get_priority_display()}",
+            ])
+
+            if aid_request.group_size: remarks.append(f"Group Size: {aid_request.group_size}")
+
+            if aid_request.full_address: remarks.append(f"Provided Address: {aid_request.full_address}")
+
+            remarks.append("") # Add a blank line for spacing
+            remarks.extend([
+                f"Location Status: {location_obj.status.upper()}",
+                f"Coordinates: {location_obj.longitude},{location_obj.latitude}"
+            ])
+
+            if location_obj.free_form_address: remarks.append(f"Geocoded Address: {location_obj.free_form_address}")
+
             if location_obj.note: remarks.append(f"Location Note: {location_obj.note}")
+
             if aid_request.aid_description: remarks.append(f"\nDescription:\n{aid_request.aid_description}")
 
             # Add the new fields to the remarks
@@ -207,6 +226,13 @@ class CotMaker:
             if aid_request.medical_needs: remarks.append(f"\nMedical Needs:\n{aid_request.medical_needs}")
             if aid_request.welfare_check_info: remarks.append(f"\nWelfare Check:\n{aid_request.welfare_check_info}")
             if aid_request.additional_info: remarks.append(f"\nAdditional Info:\n{aid_request.additional_info}")
+
+            if location_obj.geocode_json:
+                try:
+                    geocode_str = json.dumps(location_obj.geocode_json, indent=2)
+                    remarks.append(f"\n--- Geocode Result ---\n{geocode_str}")
+                except (TypeError, AttributeError):
+                    remarks.append(f"\n--- Geocode Result ---\n{str(location_obj.geocode_json)}")
 
             # Base for this Aid Request marker's own callsign. This can change if aid_type changes.
             aid_request_callsign_identifier = f"{field_op.slug}.{aid_request.aid_type.slug}.{aid_request.pk}"

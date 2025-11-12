@@ -1,12 +1,12 @@
 /**
  * tak-alert.js - Handles TAK alert functionality for aid requests
- * Version: 0.1.1
+ * Version: 0.1.2
  */
 
 if (typeof window.takAlertConfig === 'undefined') {
     window.takAlertConfig = {
         debug: false,
-        version: '0.1.1',
+        version: '0.1.2',
         pollInterval: 2000,
         maxPollAttempts: 30
     };
@@ -137,16 +137,22 @@ function cleanupStatusDisplay() {
     if (!statusWrapper) {
         if (window.takAlertConfig.debug) console.warn('[TAK] Status wrapper not found, creating one');
 
-        // Find the TAK alert button
+        // Find the TAK alert button to locate the card context
         const takAlertButton = document.getElementById('tak-alert-button');
-        if (takAlertButton && takAlertButton.parentElement) {
-            // Create and insert the wrapper after the button's parent
+        if (takAlertButton) {
+            const card = takAlertButton.closest('.card');
+            const cardHeader = card ? card.querySelector('.card-header') : null;
+
+            if (card && cardHeader) {
+                // Create the wrapper
             statusWrapper = document.createElement('div');
             statusWrapper.id = 'tak-status-wrapper';
-            statusWrapper.className = 'd-flex align-items-center ms-2 py-1';
+                // Add padding to align with card content
+                statusWrapper.className = 'px-3 py-1';
 
-            // Insert after the button parent
-            takAlertButton.parentElement.parentElement.appendChild(statusWrapper);
+                // Insert it directly after the header for a clean new line
+                cardHeader.after(statusWrapper);
+            }
         }
     }
 
@@ -170,7 +176,7 @@ function cleanupStatusDisplay() {
 // Get visible aid request IDs from either list or detail view
 function getVisibleAidRequestIds() {
     const tableBody = document.querySelector('#aid-request-list-body');
-    const singleAidRequestId = document.getElementById('aidrequest_id');
+    const configElement = document.getElementById('aid-request-config');
     let aidRequestIds = [];
 
     if (tableBody) {
@@ -179,9 +185,9 @@ function getVisibleAidRequestIds() {
             .filter(row => !row.classList.contains('d-none') && row.id !== 'aid-request-empty-row')
             .map(row => row.getAttribute('data-id'))
             .filter(id => id);
-    } else if (singleAidRequestId) {
-        // Detail view - single aid request
-        aidRequestIds = [singleAidRequestId.value];
+    } else if (configElement && configElement.dataset.aidRequestId) {
+        // Detail view - get from config element
+        aidRequestIds = [configElement.dataset.aidRequestId];
     }
 
     return aidRequestIds;

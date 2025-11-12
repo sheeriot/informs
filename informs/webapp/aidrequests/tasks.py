@@ -22,6 +22,7 @@ from django_q.tasks import async_task
 import logging
 import os
 import json
+import time
 from icecream import ic
 
 # Get the main application logger
@@ -43,6 +44,7 @@ def generate_static_map_for_location(location_pk):
         logger.error(f"GenerateMapTask: AidLocation with pk={location_pk} not found.")
         return {'status': 'error', 'message': 'Location not found.'}
 
+    start_time = time.perf_counter()
     staticmap_data = staticmap_aid(
         width=600, height=600,
         fieldop_lat=aid_request.field_op.latitude,
@@ -50,6 +52,8 @@ def generate_static_map_for_location(location_pk):
         aid1_lat=location.latitude,
         aid1_lon=location.longitude,
     )
+    end_time = time.perf_counter()
+    duration_ms = (end_time - start_time) * 1000
 
     if staticmap_data:
         timestamp = datetime.now().strftime("%y%m%d%H%M%S")
@@ -75,7 +79,7 @@ def generate_static_map_for_location(location_pk):
             location.map_filename = map_filename
             location.save(update_fields=['map_filename'])
             logger.info(f"AR-{aid_request.pk}: Updated Location-{location.pk} with new map filename: {map_filename}")
-            return {'status': 'success', 'map_filename': map_filename}
+            return {'status': 'success', 'map_filename': map_filename, 'duration_ms': duration_ms}
         except Exception as e:
             logger.error(f"Error saving map filename to AidLocation {location.pk}: {e}")
             return {'status': 'error', 'message': str(e)}
@@ -152,7 +156,7 @@ def aid_request_postsave(aid_request_pk, **kwargs):
             log_type='system',
             event_name=event_name,
             event_text=log_text,
-            text_markdown=text_markdown,
+            note_markdown=text_markdown,
             agent_name="System"
         )
 
@@ -507,17 +511,17 @@ def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests
                     aid_request_obj = AidRequest.objects.get(pk=aidrequest)
                     tak_server_name = aid_request_obj.field_op.tak_server.dns_name if aid_request_obj.field_op.tak_server else "N/A"
 
-                    log_text = render_to_string('aidrequests/logs/cot_sent_log.md', {
-                        'tak_server_name': tak_server_name,
-                        'cot_summary': success_msg,
-                    })
+                    log_text = (
+                        f"TAK Server: {tak_server_name}\n"
+                        f"Summary: {success_msg}"
+                    )
 
                     ActionLog.objects.create(
                         aid_request=aid_request_obj,
                         log_type='system',
                         event_name='CoT Sent',
                         event_text=log_text,
-                        text_markdown=True,
+                        note_markdown=False,
                         agent_name='System'
                     )
                 except AidRequest.DoesNotExist:
