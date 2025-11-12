@@ -60,12 +60,12 @@ class FieldOpDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
         # Calculate map bounds from aid request locations
         context['map_bounds'] = locations_to_bounds(aid_locations)
 
-        ic("FieldOpDetailView map config:", {
-            'azure_maps_key': bool(context.get('azure_maps_key')),
-            'center_lat': context.get('center_lat'),
-            'center_lon': context.get('center_lon'),
-            'ring_size': context.get('ring_size'),
-        })
+        # ic("FieldOpDetailView map config:", {
+        #     'azure_maps_key': bool(context.get('azure_maps_key')),
+        #     'center_lat': context.get('center_lat'),
+        #     'center_lon': context.get('center_lon'),
+        #     'ring_size': context.get('ring_size'),
+        # })
 
         return context
 

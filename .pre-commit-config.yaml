@@ -29,7 +29,7 @@ repos:
     hooks:
     -   id: django-tests
         name: Run Django Tests
-        entry: docker compose exec -T informs ./manage.py test aidrequests
+        entry: docker compose run --build --rm test
         language: system
         pass_filenames: false
         always_run: true
