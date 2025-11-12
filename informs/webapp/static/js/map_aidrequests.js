@@ -985,9 +985,10 @@ async function initializeAidRequestLayer() {
         const validRequests = mapRequestsConfig.aidLocations
             .filter(request =>
                 request.aid_type.slug === slug &&
-                request.location &&
-                typeof request.location.latitude === 'number' &&
-                typeof request.location.longitude === 'number');
+                request.location && // Ensure location object exists
+                typeof request.location.latitude === 'number' && !isNaN(request.location.latitude) &&
+                typeof request.location.longitude === 'number' && !isNaN(request.location.longitude)
+            );
 
         if (mapRequestsConfig.debug) {
             console.log(`Processing ${slug} layer:`, {

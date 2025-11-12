@@ -148,7 +148,7 @@ class FieldOpUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
     def get_success_url(self):
         # First try to get the next URL from POST or GET
         next_url = self.request.POST.get('next') or self.request.GET.get('next')
-        ic("get_success_url - next:", next_url)
+        # ic("get_success_url - next:", next_url)
 
         # If we have a next URL and it's not empty, use it
         if next_url and next_url.strip():
@@ -179,14 +179,14 @@ class FieldOpUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
         ic("Processing POST request")
 
         if form.is_valid():
-            ic("Form is valid, saving...")
+            # ic("Form is valid, saving...")
             return self.form_valid(form)
         else:
             ic("Form is invalid:", form.errors)
             return self.form_invalid(form)
 
     def form_valid(self, form):
-        ic("form_valid called")
+        # ic("form_valid called")
         user = self.request.user
         if user.is_authenticated:
             form.instance.updated_by = user
@@ -201,5 +201,5 @@ class FieldOpUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
             )
 
         success_url = self.get_success_url()
-        ic("Redirecting to:", success_url)
+        # ic("Redirecting to:", success_url)
         return HttpResponseRedirect(success_url)

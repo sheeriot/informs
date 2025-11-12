@@ -117,7 +117,7 @@ class FieldOpForm(forms.ModelForm):
         buttons = []
         if self.action == 'update':
             if next_url:
-                ic("Rendering Cancel button, next_url is available.")
+                # ic("Rendering Cancel button, next_url is available.")
                 buttons.append(HTML(f'<a href="{next_url}" class="btn btn-secondary"><i class="bi bi-x-circle"></i> Cancel</a>'))
             else:
                 # ic("NOT rendering Cancel button, next_url is MISSING.")

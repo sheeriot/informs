@@ -4,47 +4,41 @@
     </div>
     <div class="card-body">
         <dl class="row mb-0">
-            <div class="col-md-6">
-                <div class="row">
-                    <dt class="col-sm-4 text-nowrap d-flex align-items-center"><i class="bi bi-card-heading text-dark me-2"></i>Name</dt>
-                    <dd class="col-sm-8">{{ object.name }}</dd>
+            <!-- Name and Slug -->
+            <dt class="col-md-2 text-nowrap d-flex align-items-center"><i class="bi bi-card-heading text-dark me-2"></i>Name</dt>
+            <dd class="col-md-4">{{ object.name }}</dd>
+            <dt class="col-md-2 text-nowrap d-flex align-items-center"><i class="bi bi-tag text-dark me-2"></i>Slug</dt>
+            <dd class="col-md-4">{{ object.slug }}</dd>
 
-                    <dt class="col-sm-4 text-nowrap d-flex align-items-center"><i class="bi bi-globe text-dark me-2"></i>Country</dt>
-                    <dd class="col-sm-8">{{ object.country.name }}</dd>
+            <!-- Country -->
+            <dt class="col-md-2 text-nowrap d-flex align-items-center mt-2"><i class="bi bi-globe text-dark me-2"></i>Country</dt>
+            <dd class="col-md-10 mt-2">{{ object.country.name }}</dd>
 
-                    <dt class="col-sm-4 text-nowrap d-flex align-items-center"><i class="bi bi-circle text-primary me-2"></i>Ring Size</dt>
-                    <dd class="col-sm-8">{{ object.ring_size }} km</dd>
+            <!-- Coordinates and Ring Size -->
+            <dt class="col-md-2 text-nowrap d-flex align-items-center mt-2"><i class="bi bi-geo-alt text-info me-2"></i>Coordinates</dt>
+            <dd class="col-md-4 mt-2">
+                {% include 'aidrequests/partials/_coordinates_display.html' with latitude=object.latitude longitude=object.longitude element_id='coordinates' %}
+            </dd>
+            <dt class="col-md-2 text-nowrap d-flex align-items-center mt-2"><i class="bi bi-circle text-primary me-2"></i>Ring Size</dt>
+            <dd class="col-md-4 mt-2">{{ object.ring_size }} km</dd>
 
-                    <dt class="col-sm-4 text-nowrap d-flex align-items-center">
-                        <i class="bi bi-power {% if object.disable_cot %}text-secondary{% else %}text-success{% endif %} me-2"></i>COT Status
-                    </dt>
-                    <dd class="col-sm-8">
-                       {% if object.disable_cot %}
-                           <span class="text-secondary">Disabled</span>
-                       {% else %}
-                           <span class="text-success">Enabled</span>
-                       {% endif %}
-                    </dd>
-                </div>
-            </div>
+            <!-- TAK Server and COT Status -->
+            <dt class="col-md-2 text-nowrap d-flex align-items-center mt-2">
+                <i class="bi bi-hdd-rack tak-server-icon"></i><i class="bi bi-plus-circle me-2 tak-server-icon"></i>TAK Server
+            </dt>
+            <dd class="col-md-4 mt-2">{{ object.tak_server.name|default:"Not set" }}</dd>
+            <dt class="col-md-2 text-nowrap d-flex align-items-center mt-2">
+                <i class="bi bi-power {% if object.disable_cot %}text-secondary{% else %}text-success{% endif %} me-2"></i>COT Status
+            </dt>
+            <dd class="col-md-4 mt-2">
+                {% if object.disable_cot %}
+                    <span class="text-secondary">Disabled</span>
+                {% else %}
+                    <span class="text-success">Enabled</span>
+                {% endif %}
+            </dd>
 
-            <div class="col-md-6">
-                <div class="row">
-                    <dt class="col-sm-4 text-nowrap d-flex align-items-center"><i class="bi bi-tag text-dark me-2"></i>Slug</dt>
-                    <dd class="col-sm-8">{{ object.slug }}</dd>
-
-                    <dt class="col-sm-4 text-nowrap d-flex align-items-center"><i class="bi bi-geo-alt text-info me-2"></i>Coordinates</dt>
-                    <dd class="col-sm-8">
-                        {% include 'aidrequests/partials/_coordinates_display.html' with latitude=object.latitude longitude=object.longitude element_id='coordinates' %}
-                    </dd>
-
-                    <dt class="col-sm-4 text-nowrap d-flex align-items-center">
-                        <i class="bi bi-hdd-rack tak-server-icon"></i><i class="bi bi-plus-circle me-2 tak-server-icon"></i>TAK Server
-                    </dt>
-                    <dd class="col-sm-8">{{ object.tak_server.name|default:"Not set" }}</dd>
-                </div>
-            </div>
-
+            <!-- Aid Types (Full Width) -->
             <div class="col-12 mt-3">
                 <div class="row">
                     <dt class="col-12"><i class="bi bi-life-preserver text-danger me-2"></i>Aid Types</dt>
@@ -58,6 +52,7 @@
                 </div>
             </div>
 
+            <!-- Notify (Full Width) -->
             <div class="col-12 mt-3">
                 <div class="row">
                     <dt class="col-12"><i class="bi bi-bell text-info me-2"></i>Notify</dt>

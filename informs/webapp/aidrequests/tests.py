@@ -419,6 +419,17 @@ class TestViews(TestCase):
         self.assertTemplateUsed(response, 'aidrequests/field_op_detail.html')
         self.assertContains(response, 'Test Operation')
 
+    def test_field_op_create_view_renders(self):
+        """
+        Test that the FieldOp creation page renders correctly without syntax errors.
+        This test would have caught the duplicate block tag issue.
+        """
+        self.client.force_login(self.user)
+        url = reverse('field_op_create')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'aidrequests/field_op_form.html')
+
     def test_aid_request_list_GET_authenticated(self):
         """Test authenticated access to aid_request_list view."""
         self.client.force_login(self.user)

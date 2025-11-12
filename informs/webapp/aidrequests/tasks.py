@@ -140,13 +140,9 @@ def aid_request_postsave(aid_request_pk, **kwargs):
                 logger.error(f"Error enqueuing email task for {notify.name}: {e}")
 
         if sent_to:
-            log_text = render_to_string('aidrequests/logs/email_notifications_sent_log.md', {
-                'aid_request': aid_request,
-                'recipients': sent_to,
-                'email_body': email_body_html,
-            })
+            log_text = f"Email notifications sent to: {', '.join(sent_to)}"
             event_name = "Email Notifications Sent"
-            text_markdown = True
+            text_markdown = False
         else:
             log_text = "No email recipients were configured for this Field Operation. No notifications were sent."
             event_name = "Email Notifications Skipped"
