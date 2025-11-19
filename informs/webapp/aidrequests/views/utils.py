@@ -1,5 +1,8 @@
 import json
 from django.core.serializers.json import DjangoJSONEncoder
+from geopy.distance import distance
+from geopy.point import Point
+
 
 def prepare_aid_locations_for_map(aid_requests_queryset):
     """
@@ -35,19 +38,39 @@ def prepare_aid_locations_for_map(aid_requests_queryset):
             })
     return aid_locations
 
-def locations_to_bounds(aid_locations):
+
+def get_circle_bounds(center_lat, center_lon, radius_km):
     """
-    Calculates the bounding box from a list of aid locations.
-    Returns a list [min_lon, min_lat, max_lon, max_lat] or a
-    fallback for the javascript if not enough points are available.
+    Calculates the bounding box for a circle defined by a center and radius.
+    Returns a list [west, south, east, north].
     """
-    locations_with_coords = [loc for loc in aid_locations if loc.get('location')]
-    if len(locations_with_coords) > 1:
-        min_lon = min(loc['location']['longitude'] for loc in locations_with_coords)
-        min_lat = min(loc['location']['latitude'] for loc in locations_with_coords)
-        max_lon = max(loc['location']['longitude'] for loc in locations_with_coords)
-        max_lat = max(loc['location']['latitude'] for loc in locations_with_coords)
+    if not all([center_lat, center_lon, radius_km]):
+        return None
+
+    center_point = Point(center_lat, center_lon)
+    dist = distance(kilometers=radius_km)
+
+    # Calculate destination points for northwest and southeast corners
+    nw_point = dist.destination(point=center_point, bearing=315)  # 315 degrees = northwest
+    se_point = dist.destination(point=center_point, bearing=135)  # 135 degrees = southeast
+
+    # [west, south, east, north]
+    return [nw_point.longitude, se_point.latitude, se_point.longitude, nw_point.latitude]
+
+
+def get_points_bounds(locations):
+    """
+    Calculates the bounding box from a list of locations.
+    Returns a list [min_lon, min_lat, max_lon, max_lat] or None.
+    """
+    # Ensure locations have longitude and latitude before processing
+    valid_locations = [loc for loc in locations if 'longitude' in loc and 'latitude' in loc]
+
+    if len(valid_locations) > 0:
+        min_lon = min(loc['longitude'] for loc in valid_locations)
+        min_lat = min(loc['latitude'] for loc in valid_locations)
+        max_lon = max(loc['longitude'] for loc in valid_locations)
+        max_lat = max(loc['latitude'] for loc in valid_locations)
         return [min_lon, min_lat, max_lon, max_lat]
-    else:
-        # Fallback for JS to use center and ring size
-        return [0, 0, 0, 0]
+
+    return None

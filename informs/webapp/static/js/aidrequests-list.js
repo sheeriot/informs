@@ -9,7 +9,7 @@
 
 document.addEventListener('DOMContentLoaded', function() {
     const scriptConfig = {
-        debug: true,
+        debug: false,
         version: '0.0.14',
         fieldOpSlug: document.body.dataset.fieldOpSlug,
         urls: {

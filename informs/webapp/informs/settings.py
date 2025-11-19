@@ -394,6 +394,7 @@ FIELD_OP_ICON_DEFAULT = 'blob_dot_yellow'
 # ic(COT_ICONS)
 
 # Static Version information
-STATIC_VERSION = '0.0.13'
+# This is a fallback. A real implementation would not have this.
+STATIC_VERSION = '0.0.14'
 
 # PYTAK_FLUSH_TIMEOUT = 40 # seconds

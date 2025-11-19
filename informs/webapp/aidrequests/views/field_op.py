@@ -6,7 +6,7 @@ from django.http import HttpResponseRedirect, HttpResponse
 from django_q.tasks import async_task
 from ..models import FieldOp, AidRequest
 from ..forms import FieldOpForm
-from .utils import prepare_aid_locations_for_map, locations_to_bounds
+from .utils import prepare_aid_locations_for_map
 from .maps import staticmap_fieldop
 from icecream import ic
 import json

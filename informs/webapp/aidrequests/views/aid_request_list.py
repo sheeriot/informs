@@ -24,7 +24,7 @@ from django_filters.views import FilterView
 from django.utils.timesince import timesince
 
 from ..models import FieldOp, AidRequest, AidType, AidLocation
-from .utils import prepare_aid_locations_for_map, locations_to_bounds
+from .utils import prepare_aid_locations_for_map, get_points_bounds, get_circle_bounds
 
 
 logger = logging.getLogger(__name__)
@@ -111,6 +111,14 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         all_aid_requests = self.get_queryset()
 
+        # Prepare aid_type counts for the filter interface
+        aid_types_data = []
+        for at_data in self.field_op.aid_types.values('id', 'name', 'slug', 'icon_name', 'icon_color', 'icon_scale').distinct():
+            # Ensure icon_scale has a default value to prevent javascript errors
+            if at_data['icon_scale'] is None:
+                at_data['icon_scale'] = 1.0
+            aid_types_data.append(at_data)
+
         total_count = all_aid_requests.count()
 
         # Prepare status counts for the filter interface
@@ -146,7 +154,6 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         context['priority_counts'] = priority_counts
 
         # Prepare aid_type counts for the filter interface
-        aid_types_data = list(self.field_op.aid_types.values('id', 'name', 'slug', 'icon_name', 'icon_color', 'icon_scale').distinct())
         aid_type_counts = {}
         for at_data in aid_types_data:
             slug = at_data['slug']
@@ -176,16 +183,57 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
             'status_choices_json': json.dumps(list(AidRequest.STATUS_CHOICES)),
             'priority_choices_json': json.dumps(list(AidRequest.PRIORITY_CHOICES)),
             'all_aid_requests_json': json.dumps([req.to_dict() for req in all_aid_requests], cls=DecimalEncoder),
-            'aid_locations_json': self.get_aid_locations_json(all_aid_requests),
         })
 
-        bounds = locations_to_bounds(json.loads(context['aid_locations_json']))
-        if bounds != [0,0,0,0]:
-             context['min_lon'], context['min_lat'], context['max_lon'], context['max_lat'] = bounds
+        # Prepare data for map component
+        aid_locations = json.loads(self.get_aid_locations_json(all_aid_requests))
+        context['aid_locations_json'] = json.dumps(aid_locations)
+
+        # Start of new bounding box calculation logic
+        final_bounds = None
+
+        # 1. Calculate bounds for all aid requests
+        aid_requests_bounds = get_points_bounds(aid_locations)
+
+        # 2. Calculate bounds for the Field Op area (2x radius)
+        field_op_bounds = None
+        if self.field_op.ring_size and self.field_op.ring_size > 0:
+            radius_km = float(self.field_op.ring_size) * 2 * 1.60934  # 2x radius in km
+            field_op_bounds = get_circle_bounds(
+                center_lat=self.field_op.latitude,
+                center_lon=self.field_op.longitude,
+                radius_km=radius_km
+            )
+
+        # 3. Merge the two bounding boxes
+        if aid_requests_bounds and field_op_bounds:
+            # Merge by taking the min of lower corners and max of upper corners
+            final_bounds = [
+                min(aid_requests_bounds[0], field_op_bounds[0]),
+                min(aid_requests_bounds[1], field_op_bounds[1]),
+                max(aid_requests_bounds[2], field_op_bounds[2]),
+                max(aid_requests_bounds[3], field_op_bounds[3]),
+            ]
+        elif aid_requests_bounds:
+            final_bounds = aid_requests_bounds
+        elif field_op_bounds:
+            final_bounds = field_op_bounds
         else:
-            # Fallback to field op location if no valid bounds
-            context['min_lon'] = context['max_lon'] = self.field_op.longitude
-            context['min_lat'] = context['max_lat'] = self.field_op.latitude
+            # Fallback if no locations and no radius: create a 10km box around the field op center
+            final_bounds = get_circle_bounds(self.field_op.latitude, self.field_op.longitude, 10)
+
+        # 4. Ensure the bounds are not a single point or a line
+        if final_bounds and (final_bounds[0] == final_bounds[2] or final_bounds[1] == final_bounds[3]):
+            padding = 0.01  # degrees
+            final_bounds = [
+                final_bounds[0] - padding,
+                final_bounds[1] - padding,
+                final_bounds[2] + padding,
+                final_bounds[3] + padding
+            ]
+
+        context['initial_bounds_json'] = json.dumps(final_bounds)
+        # End of new bounding box calculation logic
 
         return context
 
