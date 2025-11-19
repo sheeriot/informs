@@ -36,6 +36,7 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
             {% include 'aidrequests/partials/_aid_request_header.html' %}
         </div>
         {% include 'aidrequests/partials/_field_op_badge.html' %}
+        {% include 'aidrequests/partials/_aid_requests_badge.html' %}
     </div>
     <div class="row">
         <!-- Left column for details -->
@@ -78,6 +79,12 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
 {# The two modals below are now replaced by the single, generic _action_confirmation_modal #}
 {# {% include 'aidrequests/partials/_delete_location_modal.html' %} #}
 {% include 'aidrequests/partials/_action_confirmation_modal.html' %}
+<button id="status-priority-change-trigger"
+        class="d-none"
+        data-bs-toggle="modal"
+        data-bs-target="#actionConfirmationModal"
+        data-action-url="{% url 'aid_request_ajax_update' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
+></button>
 {# {% include 'aidrequests/partials/_location_status_change_modal.html' %} #}
 {% if request.user.is_superuser %}
     {% include 'aidrequests/partials/_change_aid_type_modal.html' with aid_request=object %}
@@ -105,11 +112,9 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
 <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
 <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
 <script src="{% static 'js/htmx-helpers.js' %}?v={{ app_version }}"></script>
-<script src="{% static 'js/alert.js' %}?v={{ app_version }}"></script>
 <script src="{% static 'js/location-picker-map.js' %}?v={{ app_version }}"></script>
 <script src="{% static 'js/map-poller.js' %}?v={{ app_version }}"></script>
 <script src="{% static 'js/tak-alert.js' %}?v={{ app_version }}"></script>
-<script src="{% static 'js/aidrequest-cot.js' %}?v={{ app_version }}"></script>
 <script src="{% static 'js/aidrequest-actions.js' %}?v={{ app_version }}"></script>
 <script src="{% static 'js/movable-modal.js' %}?v={{ app_version }}"></script>
 {% endblock extra_js %}

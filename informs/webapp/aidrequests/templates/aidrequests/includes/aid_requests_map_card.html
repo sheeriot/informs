@@ -1,17 +1,19 @@
-<div class="col-6">
-    <div class="card shadow-sm me-1">
-        <div class="card-header d-flex justify-content-between align-items-center p-2">
-            <div class="d-flex align-items-center">
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center p-2">
+        <div class="d-flex align-items-center">
                 <h5 class="mb-0">Map</h5>
                 <button class="btn btn-sm btn-outline-secondary ms-2" data-bs-toggle="modal" data-bs-target="#mapModal" title="Expand Map">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
             </div>
-            <div id="map-filter-summary" class="small text-muted"></div>
+            <div class="d-flex align-items-center">
+                {% include 'aidrequests/partials/_coordinates_display.html' with latitude=field_op.latitude longitude=field_op.longitude element_id='header-coordinates' %}
+                <div id="map-filter-summary" class="small text-muted ms-3"></div>
+            </div>
         </div>
         <div class="card-body p-0">
             <!-- Map container with data attributes -->
-            <div id="aid-request-map" class="position-relative w-100 map-container-shared"
+            <div id="aid-request-map-container" class="position-relative w-100 map-container-shared"
                 data-azure-maps-key="{{ azure_maps_key }}"
                 data-center-lat="{{ field_op.latitude|stringformat:".6f"|default:"0" }}"
                 data-center-lon="{{ field_op.longitude|stringformat:".6f"|default:"0" }}"
@@ -25,4 +27,3 @@
             </div>
         </div>
     </div>
-</div>

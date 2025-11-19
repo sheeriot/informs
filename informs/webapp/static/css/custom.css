@@ -431,12 +431,10 @@ textarea:not([disabled]) {
 
 .coordinates-input-group #id_latitude {
     border-right: none;
-    max-width: 10ch;
 }
 
 .coordinates-input-group #id_longitude {
     border-left: none;
-    max-width: 12ch;
 }
 
 /* Hide number input spinners */
@@ -546,4 +544,21 @@ textarea:not([disabled]) {
     border: var(--bs-border-width) solid var(--bs-border-color);
     border-radius: var(--bs-border-radius);
     padding: 0.5rem;
+}
+
+.border-left {
+    border-left: 1px solid #dee2e6; /* Adjust color as needed */
+}
+
+/* HTMX indicator styles for buttons */
+.htmx-indicator {
+    display: none;
+}
+
+.htmx-request .htmx-indicator {
+    display: inline-block;
+}
+
+.htmx-request.btn .btn-content {
+    display: none;
 }

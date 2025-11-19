@@ -1,0 +1,7 @@
+{% for aid_request in aid_requests %}
+    {% include "aidrequests/partials/_aid_request_row.html" %}
+{% empty %}
+<tr id="aid-request-empty-row">
+    <td colspan="10" class="text-center py-4 text-muted">No aid requests match the current filters.</td>
+</tr>
+{% endfor %}

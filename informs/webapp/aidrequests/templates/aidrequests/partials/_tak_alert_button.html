@@ -1,0 +1,17 @@
+<button id="tak-alert-button"
+        class="btn btn-danger me-1 {{ button_size_class|default:'btn-sm' }}"
+        data-action="{{ action|default:'field_op_only' }}"
+        hx-post="{% url 'htmx_send_tak_alert' field_op=slug %}"
+        hx-target="#send-cot-status"
+        hx-swap="innerHTML"
+        hx-indicator="#tak-alert-button"
+        hx-vals='{"action": "{{ action|default:"field_op_only" }}"}'
+        {% if disabled %}disabled{% endif %}>
+    <span class="htmx-indicator">
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+    </span>
+    <span class="btn-content">
+        <i class="bi bi-bullseye me-1"></i>
+        <span>Alert TAK</span>
+    </span>
+</button>

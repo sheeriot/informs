@@ -56,7 +56,10 @@ from aidrequests.views.htmx_views import (
     get_action_log_edit_form, update_action_log, get_action_log_row,
     get_locations_list_partial, serve_map_file,
     get_aid_request_header_partial, get_audit_logs_partial,
-    edit_address_info, save_address_info
+    edit_address_info, save_address_info,
+    get_aid_request_row, get_filter_counts,
+    htmx_send_tak_alert, htmx_check_tak_status,
+    aid_request_list_partial
 )
 
 from .views import home
@@ -107,6 +110,8 @@ api_patterns = [
     # API URLs from previous version
     path('api/<slug:field_op>/requests/', get_aid_requests_json, name='get_aid_requests_json'),
     path('api/<slug:field_op>/request/<int:pk>/update/', update_aid_request, name='aid_request_ajax_update'),
+    path('api/<slug:field_op>/request/<int:pk>/row/', get_aid_request_row, name='get_aid_request_row'),
+    path('api/<slug:field_op>/filter-counts/', get_filter_counts, name='get_filter_counts'),
     path('api/<slug:field_op>/toggle-cot/', toggle_cot, name='toggle_cot'),
     path('api/<slug:field_op>/send-cot/', send_cot, name='send_cot'),
     path('api/<slug:field_op>/sendcot-aidrequest/', send_cot, name='sendcot_aidrequest'),
@@ -122,6 +127,9 @@ api_patterns = [
     path('api/<slug:field_op>/aidrequest/<int:pk>/locations-list/', get_locations_list_partial, name='get_locations_list_partial'),
     path('api/<slug:field_op>/aidrequest/<int:aid_request_pk>/action-log/<int:pk>/edit/', get_action_log_edit_form, name='get_action_log_edit_form'),
     path('api/<slug:field_op>/aidrequest/<int:pk>/header/', get_aid_request_header_partial, name='get_aid_request_header'),
+    # HTMX for TAK Alert
+    path('api/<slug:field_op>/htmx/send-tak-alert/', htmx_send_tak_alert, name='htmx_send_tak_alert'),
+    path('api/<slug:field_op>/htmx/check-tak-status/<str:task_id>/', htmx_check_tak_status, name='htmx_check_tak_status'),
 ]
 
 urlpatterns = [
@@ -142,6 +150,7 @@ urlpatterns = [
     path('<slug:field_op>/view/', FieldOpDetailView.as_view(), name='field_op_detail'),
 
     path('<slug:field_op>/requests/', AidRequestListView.as_view(), name='aid_request_list'),
+    path('<slug:field_op>/requests/partial/', aid_request_list_partial, name='aid_request_list_partial'),
     path('<slug:field_op>/aidrequests/<str:status_group>/', AidRequestListView.as_view(), name='aid_request_list_by_status'),
     path('<slug:field_op>/aidrequest/<int:pk>/', AidRequestDetailView.as_view(), name='aid_request_detail'),
     path('<slug:field_op>/aidrequest/<int:pk>/notify/', AidRequestNotifyView.as_view(), name='aid_request_notify'),

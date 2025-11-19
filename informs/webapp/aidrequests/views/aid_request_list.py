@@ -16,8 +16,14 @@ from icecream import ic
 # from django_q.tasks import async_task
 # from .aid_request_forms_a import RequestStatusForm
 # from ..forms import AidRequestStatusUpdateForm, AidRequestPriorityUpdateForm
+from django.db.models import Prefetch, Case, When, Value, IntegerField
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.views.generic import CreateView, DetailView, ListView, UpdateView
+from django_filters.views import FilterView
+from django.utils.timesince import timesince
 
-from ..models import FieldOp, AidRequest, AidType
+from ..models import FieldOp, AidRequest, AidType, AidLocation
 from .utils import prepare_aid_locations_for_map, locations_to_bounds
 
 
@@ -72,40 +78,108 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         """Initialize common attributes used by all view methods"""
         super().setup(request, *args, **kwargs)
         self.field_op = get_object_or_404(FieldOp, slug=kwargs.get('field_op'))
-        self.aid_requests = self.field_op.aid_requests.all().select_related('aid_type').prefetch_related('locations')
-        self.status = kwargs.get('status')
         self.status_group = kwargs.get('status_group', 'active')
 
     def get_queryset(self):
-        """Return all aid requests - filtering handled by template visibility"""
-        return self.aid_requests
+        """
+        Return all AidRequest objects for the current field operation,
+        with related data efficiently pre-fetched.
+        """
+        # Prefetch sorted locations to avoid N+1 queries later.
+        # This replicates the logic from the AidRequest.location property.
+        prefetch_locations = Prefetch(
+            'locations',
+            queryset=AidLocation.objects.order_by(
+                Case(
+                    When(status='confirmed', then=Value(1)),
+                    When(status='new', then=Value(2)),
+                    default=Value(3),
+                    output_field=IntegerField()
+                ),
+                'created_at'  # oldest of the highest-precedence status
+            ),
+            to_attr='sorted_locations'
+        )
+
+        qs = AidRequest.objects.filter(
+            field_op=self.field_op
+        ).select_related('aid_type').prefetch_related(prefetch_locations).order_by('-updated_at')
+
+        return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        all_aid_requests = self.get_queryset()
+
+        total_count = all_aid_requests.count()
+
+        # Prepare status counts for the filter interface
+        all_statuses = AidRequest.STATUS_CHOICES
+        status_counts = {}
+        active_total_count = 0
+        inactive_total_count = 0
+        for status_code, status_name in all_statuses:
+            count = all_aid_requests.filter(status=status_code).count()
+            status_counts[status_name] = {
+                'count': count,
+                'total': count
+            }
+            if status_code in AidRequest.ACTIVE_STATUSES:
+                active_total_count += count
+            else:
+                inactive_total_count += count
+        context['status_counts'] = status_counts
+        context['status_group_counts'] = {
+            'active': active_total_count,
+            'inactive': inactive_total_count
+        }
+
+        # Prepare priority counts for the filter interface
+        all_priorities = AidRequest.PRIORITY_CHOICES
+        priority_counts = {}
+        for code, name in all_priorities:
+            count = all_aid_requests.filter(priority=code).count()
+            priority_counts[name] = {
+                'value': code if code is not None else 'none',
+                'count': count,
+            }
+        context['priority_counts'] = priority_counts
+
+        # Prepare aid_type counts for the filter interface
+        aid_types_data = list(self.field_op.aid_types.values('id', 'name', 'slug', 'icon_name', 'icon_color', 'icon_scale').distinct())
+        aid_type_counts = {}
+        for at_data in aid_types_data:
+            slug = at_data['slug']
+            name = at_data['name']
+            count = all_aid_requests.filter(aid_type__slug=slug).count()
+            aid_type_counts[name] = {
+                'value': slug,
+                'count': count,
+            }
+        context['aid_type_counts'] = aid_type_counts
 
         context.update({
             'field_op': self.field_op,
-            'current_status_group': self.status_group,
+            'aid_requests': all_aid_requests,
+            'total_count': total_count,
+            'active_total_count': active_total_count,
+            'inactive_total_count': inactive_total_count,
             'azure_maps_key': settings.AZURE_MAPS_KEY,
             'status_groups': {
                 'active': AidRequest.ACTIVE_STATUSES,
                 'inactive': AidRequest.INACTIVE_STATUSES
-            }
+            },
+            'status_choices_list': AidRequest.STATUS_CHOICES,
+            'priority_choices_list': AidRequest.PRIORITY_CHOICES,
+            'aid_types_list': aid_types_data,
+            'aid_types_json': json.dumps(aid_types_data, cls=DecimalEncoder),
+            'status_choices_json': json.dumps(list(AidRequest.STATUS_CHOICES)),
+            'priority_choices_json': json.dumps(list(AidRequest.PRIORITY_CHOICES)),
+            'all_aid_requests_json': json.dumps([req.to_dict() for req in all_aid_requests], cls=DecimalEncoder),
+            'aid_locations_json': self.get_aid_locations_json(all_aid_requests),
         })
 
-        context['status_choices_list'] = AidRequest.STATUS_CHOICES
-        context['priority_choices_list'] = AidRequest.PRIORITY_CHOICES
-
-        # Prepare data for all components
-        all_aid_requests = self.aid_requests
-        aid_locations = prepare_aid_locations_for_map(all_aid_requests)
-        context['aid_requests_json'] = json.dumps(aid_locations, cls=DecimalEncoder)
-
-        # Create a new unfiltered JSON object for the filter and list
-        all_aid_requests_data = [req.to_dict() for req in all_aid_requests]
-        context['all_aid_requests_json'] = json.dumps(all_aid_requests_data, cls=DecimalEncoder)
-
-        bounds = locations_to_bounds(aid_locations)
+        bounds = locations_to_bounds(json.loads(context['aid_locations_json']))
         if bounds != [0,0,0,0]:
              context['min_lon'], context['min_lat'], context['max_lon'], context['max_lat'] = bounds
         else:
@@ -113,106 +187,25 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
             context['min_lon'] = context['max_lon'] = self.field_op.longitude
             context['min_lat'] = context['max_lat'] = self.field_op.latitude
 
-        # Prepare choices for filter controls
-        aid_types_data = list(self.field_op.aid_types.values('id', 'name', 'slug', 'icon_name', 'icon_color', 'icon_scale').distinct())
-        context['aid_types_json'] = json.dumps(aid_types_data, cls=DecimalEncoder)
-        context['aid_types_list'] = aid_types_data
-
-        status_choices = [[s[0], s[1]] for s in AidRequest.STATUS_CHOICES]
-        priority_choices = [[p[0], p[1]] for p in AidRequest.PRIORITY_CHOICES]
-        context['status_choices_json'] = json.dumps(status_choices)
-        context['priority_choices_json'] = json.dumps(priority_choices)
-
-        # Build DataFrame for counts and perform detailed calculations
-        aid_request_values = all_aid_requests.values(
-            'status', 'priority', 'aid_type__slug', 'aid_type__name'
-        )
-        df = pd.DataFrame(list(aid_request_values))
-
-        if not df.empty:
-            df.rename(columns={'aid_type__slug': 'aid_type_slug', 'aid_type__name': 'aid_type_name'}, inplace=True)
-            active_mask = df['status'].isin(AidRequest.ACTIVE_STATUSES)
-            inactive_mask = df['status'].isin(AidRequest.INACTIVE_STATUSES)
-
-            active_total_count = int(active_mask.sum())
-            inactive_total_count = int(inactive_mask.sum())
-
-            context.update({
-                'active_total_count': active_total_count,
-                'inactive_total_count': inactive_total_count,
-                'total_count': len(df),
-            })
-
-            # Base dataframes for active/inactive requests
-            df_active = df[active_mask]
-
-            # Determine which dataframe to use for current counts
-            # On initial load, we only care about the active requests for counts per type/priority
-            df_current = df_active
-
-            # --- Calculate Counts ---
-            status_counts = {}
-            for code, name in AidRequest.STATUS_CHOICES:
-                is_active = code in AidRequest.ACTIVE_STATUSES
-                status_counts[name] = {
-                    'value': code,
-                    # On initial load, only active statuses have a count > 0
-                    'count': (df_active['status'] == code).sum() if is_active and not df_active.empty else 0,
-                    'total': (df['status'] == code).sum()
-                }
-            context['status_counts'] = status_counts
-
-            priority_counts = {}
-            for code, name in AidRequest.PRIORITY_CHOICES:
-                # Handle 'None' priority from choices which is None/null in DB
-                if code is None:
-                    count = df_current['priority'].isnull().sum() if not df_current.empty else 0
-                else:
-                    count = (df_current['priority'] == code).sum() if not df_current.empty else 0
-
-                # The value for the checkbox needs to be a string, 'none' for the None type
-                # so it can be used in the HTML data-filter-value attribute.
-                priority_counts[name] = {
-                    'value': code if code is not None else 'none',
-                    'count': count,
-                }
-            context['priority_counts'] = priority_counts
-
-            aid_type_counts = {}
-            for at_data in aid_types_data:
-                slug = at_data['slug']
-                name = at_data['name']
-                aid_type_counts[name] = {
-                    'value': slug,
-                    'count': (df_current['aid_type_slug'] == slug).sum() if not df_current.empty else 0,
-                }
-            context['aid_type_counts'] = aid_type_counts
-
-        else:
-             context.update({
-                'active_total_count': 0, 'inactive_total_count': 0, 'total_count': 0,
-                'status_counts': {s[1]: {'value': s[0], 'count': 0, 'total': 0} for s in AidRequest.STATUS_CHOICES},
-                'priority_counts': {p[1]: {'value': p[0], 'count': 0} for p in AidRequest.PRIORITY_CHOICES},
-                'aid_type_counts': {at['name']: {'value': at['slug'], 'count': 0} for at in aid_types_data},
-            })
-
-        context['initial_filter_state'] = json.dumps({
-            'statusGroup': self.status_group,
-            'activeCount': context.get('active_total_count', 0),
-            'inactiveCount': context.get('inactive_total_count', 0),
-            'totalCount': context.get('total_count', 0)
-        })
-
-        # Prepare initial summary for the list view
-        status_dict = dict(AidRequest.STATUS_CHOICES)
-        active_status_labels = [status_dict.get(s, s.capitalize()) for s in AidRequest.ACTIVE_STATUSES]
-        status_summary = f"Status: {', '.join(active_status_labels)}"
-        initial_summary_html = f"""
-<div class="small text-muted lh-1">
-    <div class="mb-1">{context['active_total_count']} of {context['total_count']} requests</div>
-    <div class="mb-1">{status_summary}</div>
-</div>
-"""
-        context['initial_list_summary_html'] = initial_summary_html
-
         return context
+
+    def get_aid_locations_json(self, aid_requests):
+        locations = []
+        for request in aid_requests:
+            if request.sorted_locations:
+                primary_location = request.sorted_locations[0]
+                locations.append({
+                    'id': request.id,
+                    'full_address': request.full_address,
+                    'requester_full_name': request.requester_full_name,
+                    'status': request.status,
+                    'status_display': request.get_status_display(),
+                    'priority': request.priority,
+                    'priority_display': request.get_priority_display(),
+                    'aid_type': request.aid_type.slug,
+                    'updated_at_human': f"{timesince(request.updated_at)} ago",
+                    'longitude': float(primary_location.longitude),
+                    'latitude': float(primary_location.latitude),
+                    'group_size': request.group_size
+                })
+        return json.dumps(locations)

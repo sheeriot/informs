@@ -358,6 +358,112 @@ class AidRequest(TimeStampedModel):
     def __str__(self):
         return f"Request for {self.requester_full_name} - {self.aid_type.name} ({self.pk})"
 
+    @staticmethod
+    def get_filtered_counts(base_queryset, statuses, priorities, aid_types):
+        """
+        A static method to calculate counts based on a base queryset and filter criteria.
+        """
+        # Overall counts for the entire field_op (ignoring filters)
+        total_requests = base_queryset.count()
+        active_requests_count = base_queryset.filter(status__in=AidRequest.ACTIVE_STATUSES).count()
+        inactive_requests_count = base_queryset.filter(status__in=AidRequest.INACTIVE_STATUSES).count()
+
+        # Build the filtered queryset
+        filtered_qs = base_queryset
+        if statuses and statuses != 'all':
+            filtered_qs = filtered_qs.filter(status__in=statuses)
+        if priorities and priorities != 'all':
+            # Handle 'none' as a string from JS, which corresponds to NULL in the DB
+            if 'none' in priorities:
+                priorities.remove('none')
+                q_objects = models.Q(priority__in=priorities) | models.Q(priority__isnull=True)
+                filtered_qs = filtered_qs.filter(q_objects)
+            else:
+                filtered_qs = filtered_qs.filter(priority__in=priorities)
+        if aid_types and aid_types != 'all':
+            filtered_qs = filtered_qs.filter(aid_type__slug__in=aid_types)
+
+        # Total number of requests that match the current filters
+        matched_count = filtered_qs.count()
+
+        # Initialize counts dictionary
+        counts = {
+            'total': total_requests,
+            'matched': matched_count,
+            'groups': {
+                'active': {'total': active_requests_count, 'filtered': 0},
+                'inactive': {'total': inactive_requests_count, 'filtered': 0}
+            },
+            'byStatus': {},
+            'byAidType': {},
+            'byPriority': {},
+        }
+
+        # Calculate counts for each category based on the *base* queryset
+        # This shows the total items in each category, which is more useful for the filter UI
+
+        # Status counts (within the filtered set)
+        status_counts = filtered_qs.values('status').annotate(count=models.Count('id'))
+        for item in status_counts:
+            if item['status'] in AidRequest.ACTIVE_STATUSES:
+                counts['groups']['active']['filtered'] += item['count']
+            elif item['status'] in AidRequest.INACTIVE_STATUSES:
+                counts['groups']['inactive']['filtered'] += item['count']
+
+        # To show counts for each status even if it's zero within the current filter
+        all_status_counts = base_queryset.values('status').annotate(total=models.Count('id'))
+        status_map = {item['status']: item['total'] for item in all_status_counts}
+
+        for status_code, status_name in AidRequest.STATUS_CHOICES:
+            # We want the count of items that would appear if only this status was selected,
+            # keeping other filters (priority, aid_type) constant.
+            temp_qs = base_queryset
+            if priorities and priorities != 'all':
+                if 'none' in priorities:
+                    priorities.remove('none')
+                    q_objects = models.Q(priority__in=priorities) | models.Q(priority__isnull=True)
+                    temp_qs = temp_qs.filter(q_objects)
+                else:
+                    temp_qs = temp_qs.filter(priority__in=priorities)
+
+            if aid_types and aid_types != 'all':
+                temp_qs = temp_qs.filter(aid_type__slug__in=aid_types)
+
+            counts['byStatus'][status_code] = temp_qs.filter(status=status_code).count()
+
+        # Aid Type and Priority counts
+        from .models import AidType # Local import to avoid circular dependency
+        all_aid_types = AidType.objects.filter(field_ops=base_queryset.first().field_op)
+
+        # Calculate counts for each aid type
+        for at in all_aid_types:
+            temp_qs = base_queryset
+            if statuses and statuses != 'all':
+                temp_qs = temp_qs.filter(status__in=statuses)
+            if priorities and priorities != 'all':
+                if 'none' in priorities:
+                    priorities.remove('none')
+                    q_objects = models.Q(priority__in=priorities) | models.Q(priority__isnull=True)
+                    temp_qs = temp_qs.filter(q_objects)
+                else:
+                    temp_qs = temp_qs.filter(priority__in=priorities)
+            counts['byAidType'][at.slug] = temp_qs.filter(aid_type=at).count()
+
+        # Calculate counts for each priority
+        for prio_code, prio_name in AidRequest.PRIORITY_CHOICES:
+            temp_qs = base_queryset
+            if statuses and statuses != 'all':
+                temp_qs = temp_qs.filter(status__in=statuses)
+            if aid_types and aid_types != 'all':
+                temp_qs = temp_qs.filter(aid_type__slug__in=aid_types)
+
+            if prio_code is None:
+                counts['byPriority']['none'] = temp_qs.filter(priority__isnull=True).count()
+            else:
+                counts['byPriority'][prio_code] = temp_qs.filter(priority=prio_code).count()
+
+        return counts
+
     def save(self, *args, **kwargs):
         """
         Custom save method to trigger CoT updates and log all changes.
@@ -405,6 +511,8 @@ class AidRequest(TimeStampedModel):
             )
         elif original: # For existing requests, log the updates
             changes = []
+            log_type = 'system'  # Default log type
+
             if event_text: # If the view provided event_text, use it
                 final_event_text = event_text
             else: # Otherwise, auto-detect changes
@@ -419,6 +527,11 @@ class AidRequest(TimeStampedModel):
                     old_value = getattr(original, field)
                     new_value = getattr(self, field)
                     if old_value != new_value:
+                        if field == 'status':
+                            log_type = 'status'
+                        elif field == 'priority':
+                            log_type = 'priority'
+
                         old_display = getattr(original, f'get_{field}_display', lambda: old_value)() or 'None'
                         new_display = getattr(self, f'get_{field}_display', lambda: new_value)()
 
@@ -442,7 +555,7 @@ class AidRequest(TimeStampedModel):
             if final_event_text:  # Only create a log if something actually changed
                 log_entry = ActionLog(
                     aid_request=self,
-                    log_type='system',
+                    log_type=log_type,
                     event_name=final_event_name,
                     event_text=final_event_text,
                     created_by=getattr(self, 'updated_by', None),
@@ -679,6 +792,9 @@ class ActionLog(TimeStampedModel):
         ('user', 'User'),
         ('system', 'System'),
         ('location', 'Location'),
+        ('status', 'Status'),
+        ('priority', 'Priority'),
+        ('alert', 'Alert'),
     ]
 
     aid_request = models.ForeignKey(AidRequest, on_delete=models.CASCADE, related_name='action_logs')

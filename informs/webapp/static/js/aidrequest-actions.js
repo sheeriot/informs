@@ -1,11 +1,14 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('AidRequest Actions Script v 0.0.14');
     const scriptConfig = {
-        debug: true, // Master debug switch for this script
+        debug: false, // Master debug switch for this script
     };
 
     // For debugging htmx swaps
     document.body.addEventListener('htmx:beforeSwap', function(evt) {
+        if (scriptConfig.debug) {
+            htmx.logAll(); // Enable full HTMX logging if debug is on
+        }
         const targetIdsToLog = [
             'aid_description_display',
             'supplies_needed_display',
@@ -517,7 +520,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // --- Centralized Event Handling for Log and Location Updates ---
+    // --- TAK Alert HTMX Logic ---
+
     // This listener intercepts any htmx request and adds the `since_id` parameter
     // if it's a request for action or audit logs. It dynamically finds the latest
     // log ID from the DOM, making the process stateless and robust.
@@ -749,18 +753,3 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
-
-function copyCoords(elementId) {
-    const coordsElement = document.getElementById(elementId);
-    if (coordsElement) {
-        const coordsText = coordsElement.innerText;
-        navigator.clipboard.writeText(coordsText)
-            .then(() => {
-                showActionAlert(`Copied: ${coordsText}`, 'success');
-            })
-            .catch(err => {
-                console.error('Failed to copy coordinates: ', err);
-                showActionAlert('Failed to copy coordinates.', 'danger');
-            });
-    }
-}

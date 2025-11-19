@@ -1,9 +1,13 @@
 // htmx-helpers.js
 
+const htmxHelpersConfig = {
+    debug: false, // Set to true to enable console logging for this script
+};
+
 function getLatestTimestamp(tableBodyId) {
     const tableBody = document.getElementById(tableBodyId);
     if (!tableBody) {
-        console.error(`Table body with ID #${tableBodyId} not found.`);
+        if (htmxHelpersConfig.debug) console.error(`Table body with ID #${tableBodyId} not found.`);
         return null;
     }
 
@@ -14,7 +18,7 @@ function getLatestTimestamp(tableBodyId) {
     }
 
     const timestamp = firstRow.dataset.timestamp;
-    console.log(`Found latest timestamp for #${tableBodyId}: ${timestamp}`);
+    if (htmxHelpersConfig.debug) console.log(`Found latest timestamp for #${tableBodyId}: ${timestamp}`);
     return timestamp;
 }
 
@@ -45,9 +49,42 @@ function getLatestLogId() {
     return '0';
 }
 
+/**
+ * Displays a dismissible alert at the top of the page.
+ * @param {string} message - The message to display in the alert.
+ * @param {string} type - The Bootstrap alert type (e.g., 'success', 'danger', 'warning').
+ */
+function showActionAlert(message, type = 'success') {
+    const container = document.getElementById('action-alert-container');
+    if (!container) {
+        if (htmxHelpersConfig.debug) console.error('Alert container not found.');
+        return;
+    }
+
+    const alertId = `alert-${Date.now()}`;
+    const alertHTML = `
+        <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+
+    container.innerHTML = alertHTML;
+
+    // Optional: Automatically dismiss the alert after a few seconds
+    setTimeout(() => {
+        const alertElement = document.getElementById(alertId);
+        if (alertElement) {
+            const bsAlert = new bootstrap.Alert(alertElement);
+            bsAlert.close();
+        }
+    }, 5000); // 5 seconds
+}
+
+
 // Listener to close a modal when triggered by a server response
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('[HTMX Helpers] Script version 0.0.13 loaded.');
+    if (htmxHelpersConfig.debug) console.log('[HTMX Helpers] Script version: ' + htmxHelpersConfig.version + ' loaded.');
 
     document.body.addEventListener('closeModal', function (evt) {
         let modalId = null;
@@ -66,16 +103,16 @@ document.addEventListener('DOMContentLoaded', function () {
             if (modalElement) {
                 const modalInstance = bootstrap.Modal.getInstance(modalElement);
                 if (modalInstance) {
-                    console.log(`[closeModal] Closing modal: ${modalId}`);
+                    if (htmxHelpersConfig.debug) console.log(`[closeModal] Closing modal: ${modalId}`);
                     modalInstance.hide();
                 } else {
-                    console.error(`[closeModal] No Bootstrap modal instance found for: ${modalId}`);
+                    if (htmxHelpersConfig.debug) console.error(`[closeModal] No Bootstrap modal instance found for: ${modalId}`);
                 }
             } else {
-                console.error(`[closeModal] Modal element not found for selector: ${modalId}`);
+                if (htmxHelpersConfig.debug) console.error(`[closeModal] Modal element not found for selector: ${modalId}`);
             }
         } else {
-            console.error('[closeModal] No modalId specified in event detail.', evt.detail);
+            if (htmxHelpersConfig.debug) console.error('[closeModal] No modalId specified in event detail.', evt.detail);
         }
     });
 

@@ -1,4 +1,4 @@
-<div class="card col-6 shadow-sm">
+<div class="card shadow-sm" id="aid-request-list-card">
     <div class="card-header py-2">
         <div class="d-flex align-items-center">
             <div class="btn-group">
@@ -22,26 +22,34 @@
             <thead class="table-light">
                 <tr>
                     <th scope="col" class="py-1">#</th>
-                    <th scope="col" class="py-1">Requester</th>
-                    <th scope="col" class="py-1">Type</th>
+                    <th scope="col" class="py-1 d-none d-md-table-cell">Requester</th>
                     <th scope="col" class="py-1">Status</th>
                     <th scope="col" class="py-1">Priority</th>
-                    <th scope="col" class="py-1">Size</th>
-                    <th scope="col" class="py-1"><i class="bi bi-geo-alt"></i></th>
-                    <th scope="col" class="py-1">Address</th>
-                    <th scope="col" class="py-1">Last Update</th>
-                    <th scope="col" class="py-1">Age</th>
+                    <th scope="col" class="py-1 d-none d-lg-table-cell">Size</th>
+                    <th scope="col" class="py-1 d-none d-lg-table-cell">
+                        <i class="bi bi-geo-alt"></i>
+                        <span class="d-none d-xl-inline">Address</span>
+                    </th>
+                    <th scope="col" class="py-1 d-none d-xl-table-cell">
+                        <div class="d-flex flex-column" style="line-height: 1; font-size: 0.75rem;">
+                            <span>Updated</span>
+                            <span class="text-muted">Age</span>
+                        </div>
+                    </th>
                 </tr>
             </thead>
             <tbody id="aid-request-list-body">
-                {% for aid_request in aid_requests %}
-                    {% include "aidrequests/partials/aid_request_row.html" %}
-                {% empty %}
-                <tr id="aid-request-empty-row" {% if aid_requests %}class="d-none"{% endif %}>
-                    <td colspan="10" class="text-center py-4 text-muted">No aid requests found</td>
-                </tr>
-                {% endfor %}
+                {% include "aidrequests/partials/_aid_request_list_rows.html" %}
             </tbody>
         </table>
     </div>
 </div>
+<script type="application/json" id="status-choices-data">
+    {{ status_choices_json|safe }}
+</script>
+<script type="application/json" id="priority-choices-data">
+    {{ priority_choices_json|safe }}
+</script>
+<script type="application/json" id="all-aid-requests-data">
+    {{ all_aid_requests_json|safe }}
+</script>

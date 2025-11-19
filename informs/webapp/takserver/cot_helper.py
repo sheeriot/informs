@@ -26,6 +26,7 @@ def aidrequest_locationstatus(locations=None):
 
 
 def make_cot(cot_icon=None,
+             cot_type=None,
              lat=0.0, lon=0.0,
              uuid=None, # Unique ID for data markers (e.g., AidRequest.1), fully suffixed
              name=None,  # Base callsign for data markers (e.g., AR1), fully suffixed
@@ -64,12 +65,16 @@ def make_cot(cot_icon=None,
 
     event_actual_uid = uuid
 
-    cot_type_from_icon = settings.COT_ICONS.get(cot_icon, 'a-n-G') # Default to Neutral Generic
+    # Prioritize direct cot_type if provided; otherwise, look up the icon.
+    if cot_type:
+        final_cot_type = cot_type
+    else:
+        final_cot_type = settings.COT_ICONS.get(cot_icon, 'a-n-G') # Default to Neutral Generic
 
     event = ET.Element("event")
     event.set("version", "2.0")
     event.set("uid", event_actual_uid)
-    event.set("type", cot_type_from_icon)
+    event.set("type", final_cot_type)
     event.set('how', 'h-e') # h-e for human created, estimated.
     cot_time = pytak.cot_time()
     event.set("time", cot_time)

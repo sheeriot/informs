@@ -9,32 +9,23 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center">
             <h2 class="mb-0 me-2">Aid Requests List</h2>
-            <a class="btn btn-info" href="{% url 'field_op_detail' field_op=field_op.slug %}">
-                <i class="bi bi-truck"></i>
-                {{ field_op.name }}
-            </a>
+            {% include 'aidrequests/partials/_field_op_badge.html' %}
         </div>
-        <div class="d-flex align-items-center font-monospace text-muted small">
-            <span class="me-2">Refresh in <span id="countdown-timer">300</span>s</span>
-            <a href="#" id="manual-refresh-link" class="text-reset" title="Refresh Now">
-                <i class="bi bi-arrow-clockwise"></i>
-            </a>
+        <div class="d-flex align-items-center flex-wrap justify-content-end">
+            <div id="send-cot-status" class="small text-nowrap rounded px-2 py-1 transition-opacity me-2"></div>
+            {% include 'aidrequests/partials/_tak_alert_button.html' with slug=field_op.slug action='aid_request_list' disabled=field_op.disable_cot button_size_class='' %}
         </div>
     </div>
 
-    <!-- Include Field Op Key Data from partial -->
-    {% include "aidrequests/partials/aid_request_list_header.html" %}
-
     <!-- Aid Requests Filter section -->
-    {% include "aidrequests/includes/aid_requests_filter.html" %}
+    {% include "aidrequests/includes/aid_requests_filter_card.html" %}
 
     <!-- Aid Requests Map and List sections -->
-    <div class="row g-0">
+    <div class="row">
         <!-- Aid Requests Map Section -->
-        {% include "aidrequests/includes/aid_requests_map.html" %}
-
+        <div id="aid-request-map-col" class="col-12 col-lg-6 mb-3 mb-lg-0">{% include "aidrequests/includes/aid_requests_map_card.html" %}</div>
         <!-- Aid Requests List/Table -->
-        {% include "aidrequests/includes/aid_requests_table.html" %}
+        <div id="aid-request-list-col" class="col-12 col-lg-6">{% include "aidrequests/includes/aid_requests_list_card.html" %}</div>
     </div>
 
 </div>
@@ -56,21 +47,27 @@
   </div>
 </div>
 
+{% include 'aidrequests/partials/_action_confirmation_modal.html' %}
+
+<!--
+  This hidden button is used as a generic trigger for the action confirmation modal,
+  especially for actions that aren't initiated by a direct button click on the modal's
+  final target, like the status/priority radio buttons. The JavaScript will find this
+  button, populate its data attributes, and then programmatically click it to show the modal.
+-->
+<button id="status-priority-change-trigger"
+        class="d-none"
+        data-bs-toggle="modal"
+        data-bs-target="#actionConfirmationModal"
+        data-action-url=""
+></button>
+
+
 <!-- Data Section -->
 <div class="d-none">
     <!-- Aid requests data - Combined format for both map and list -->
     <script id="aid-locations-data" type="application/json">
-        {{ aid_requests_json|safe }}
-    </script>
-
-    <!-- All aid requests data for filter/list -->
-    <script id="all-aid-requests-data" type="application/json">
-        {{ all_aid_requests_json|safe }}
-    </script>
-
-    <!-- Initial filter state -->
-    <script id="filter-state-initial" type="application/json">
-        {{ initial_filter_state|safe }}
+        {{ aid_locations_json|safe }}
     </script>
 
     <!-- Filter data -->
@@ -97,13 +94,14 @@
 <!-- Azure Maps Layer Legend -->
 <script src="{% static 'js/azure-maps-layer-legend.js' %}?v={{static_version}}"></script>
 <!-- Application JavaScript -->
-<script src="{% static 'js/aidrequests-filter.js' %}?v={{static_version}}"></script>
+<script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+
+<script src="{% static 'js/alert.js' %}?v={{static_version}}"></script>
+<script src="{% static 'js/htmx-helpers.js' %}?v={{static_version}}"></script>
+<script src="{% static 'js/tak-alert-htmx.js' %}?v={{static_version}}"></script>
+
 <script src="{% static 'js/aidrequests-list.js' %}?v={{static_version}}"></script>
+<script src="{% static 'js/aidrequests-filter.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/map_aidrequests.js' %}?v={{static_version}}"></script>
-<script src="{% static 'js/aidrequests-ajax.js' %}?v={{static_version}}"></script>
-<script src="{% static 'js/aidrequests-refresh.js' %}?v={{static_version}}"></script>
-<script src="{% static 'js/tak-alert.js' %}?v={{static_version}}"></script>
-<script>
-    document.body.dataset.fieldOpSlug = "{{ field_op.slug }}";
-</script>
+
 {% endblock %}

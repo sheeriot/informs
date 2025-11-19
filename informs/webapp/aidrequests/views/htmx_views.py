@@ -5,8 +5,9 @@ from django.utils import timezone
 import json
 from django.db.models import Case, When, Value
 from icecream import ic
+from django_q.tasks import async_task, fetch
 
-from ..models import AidRequest, ActionLog
+from ..models import AidRequest, ActionLog, FieldOp
 from ..forms import (
     RequesterInformationForm, LocationInformationForm, RequestDetailsForm,
     ActionLogForm
@@ -32,6 +33,8 @@ from django.template.defaultfilters import linebreaks
 from django.utils.html import escape
 from django.urls import NoReverseMatch
 import logging
+from django.contrib.auth.decorators import permission_required
+from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
 
@@ -453,3 +456,171 @@ def serve_map_file(request, field_op, aid_request_pk, filename):
     else:
         logger.error(f"Map File Not Found on Disk at path: {file_path}")
         raise Http404("Map file does not exist on disk.")
+
+
+@require_POST
+@login_required
+def htmx_send_tak_alert(request, field_op):
+    """
+    Receives a POST request from an HTMX button to send a TAK alert.
+    Dispatches an async task and returns a partial that polls for status.
+    """
+    ic.enable()
+    action = request.POST.get('action', 'field_op_only')
+    field_op_obj = get_object_or_404(FieldOp, slug=field_op)
+    ic(f"HTMX send_tak_alert for '{field_op_obj.name}' received for action: {action}")
+
+    task_id = None
+    context = {'slug': field_op}
+
+    if action == 'field_op_only':
+        ic(f"Creating send_cot_task for FieldOp {field_op_obj.slug}")
+        task_id = async_task(
+            'aidrequests.tasks.send_cot_task',
+            field_op_slug=field_op_obj.slug,
+            mark_type='field',
+            aid_request_ids=None
+        )
+    elif action == 'aid_request_list':
+        aid_request_ids_json = request.POST.get('aidrequests', '[]')
+        aid_request_ids = json.loads(aid_request_ids_json)
+        ic(f"Creating send_cot_task for FieldOp {field_op_obj.slug} and {len(aid_request_ids)} Aid Requests")
+        task_id = async_task(
+            'aidrequests.tasks.send_cot_task',
+            field_op_slug=field_op_obj.slug,
+            mark_type='aid',
+            aid_request_ids=aid_request_ids
+        )
+
+    if task_id:
+        context['task_id'] = task_id
+        return render(request, 'aidrequests/partials/_tak_polling_status.html', context)
+    else:
+        # Handle case where no task was created
+        return HttpResponse("Could not create task.", status=500)
+
+
+@login_required
+def htmx_check_tak_status(request, field_op, task_id):
+    """
+    Checks the status of a Django Q task and returns a partial with the result.
+    If the task is still running, it returns the polling partial again.
+    """
+    ic.enable()
+    task = fetch(task_id)
+    context = {'task_id': task_id, 'slug': field_op}
+
+    if task:
+        ic(f"Checking status for task {task_id}: {task.result}")
+        if task.success:
+            context['status_message'] = "TAK Alert Sent Successfully"
+            context['status_class'] = 'bg-success-subtle'
+            response = render(request, 'aidrequests/partials/_tak_final_status.html', context)
+            response['HX-Trigger'] = 'takStatusFinal'
+            return response
+        elif task.result is not None:  # Task failed
+            context['status_message'] = f"Error: {task.result}"
+            context['status_class'] = 'bg-danger-subtle'
+            response = render(request, 'aidrequests/partials/_tak_final_status.html', context)
+            response['HX-Trigger'] = 'takStatusFinal'
+            return response
+
+    # Task is still running or not found, continue polling
+    return render(request, 'aidrequests/partials/_tak_polling_status.html', context)
+
+
+@login_required
+@permission_required('aidrequests.view_aidrequest', raise_exception=True)
+def get_aid_request_row(request, field_op, pk):
+    """
+    HTMX partial view to return a single aid request table row.
+    """
+    field_op_obj = get_object_or_404(FieldOp, slug=field_op)
+    aid_request = get_object_or_404(
+        AidRequest,
+        pk=pk,
+        field_op=field_op_obj
+    )
+
+    context = {
+        'field_op': field_op_obj,
+        'aid_request': aid_request,
+        'status_choices_list': AidRequest.STATUS_CHOICES,
+        'priority_choices_list': AidRequest.PRIORITY_CHOICES,
+    }
+    return render(request, 'aidrequests/partials/_aid_request_row.html', context)
+
+
+@login_required
+def get_filter_counts(request, field_op):
+    """
+    Given a filter state via POST, returns updated counts for all filterable fields.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method is allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        statuses = data.get('statuses')
+        priorities = data.get('priorities')
+        aid_types = data.get('aid_types')
+
+        field_op_obj = get_object_or_404(FieldOp, slug=field_op)
+        base_queryset = AidRequest.objects.filter(field_op=field_op_obj)
+
+        # Calculate counts
+        counts = AidRequest.get_filtered_counts(base_queryset, statuses, priorities, aid_types)
+
+        return JsonResponse(counts)
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.error(f"Error in get_filter_counts: {e}")
+        return JsonResponse({'error': 'An unexpected error occurred'}, status=500)
+
+
+@login_required
+@permission_required('aidrequests.view_aidrequest', raise_exception=True)
+def aid_request_list_partial(request, field_op):
+    """
+    HTMX partial view to return the filtered list of aid request table rows.
+    """
+    field_op = get_object_or_404(FieldOp, slug=field_op)
+
+    aid_requests = field_op.aid_requests.all().select_related('aid_type').prefetch_related('locations')
+
+    status_filter = request.GET.getlist('status')
+    if status_filter:
+        aid_requests = aid_requests.filter(status__in=status_filter)
+
+    priority_filter = request.GET.getlist('priority')
+    if priority_filter:
+        aid_requests = aid_requests.filter(priority__in=priority_filter)
+
+    aid_type_filter = request.GET.getlist('aid_type')
+    if aid_type_filter:
+        aid_requests = aid_requests.filter(aid_type__slug__in=aid_type_filter)
+
+    context = {
+        'field_op': field_op,
+        'aid_requests': aid_requests,
+        'status_choices_list': AidRequest.STATUS_CHOICES,
+        'priority_choices_list': AidRequest.PRIORITY_CHOICES,
+    }
+
+    filter_state_for_map = {
+        'statuses': request.GET.getlist('status'),
+        'priorities': request.GET.getlist('priority'),
+        'aid_types': request.GET.getlist('aid_type'),
+    }
+
+    response = render(request, 'aidrequests/partials/_aid_request_list_rows.html', context)
+    response['HX-Trigger'] = json.dumps({
+        "aidRequestsFiltered": {
+            "filterState": filter_state_for_map,
+            "counts": {"matched": aid_requests.count(), "total": field_op.aid_requests.count()}
+        }
+    })
+
+    return response

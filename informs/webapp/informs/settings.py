@@ -390,9 +390,10 @@ SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
 icons_config = configparser.ConfigParser()
 icons_config.read(os.path.join(BASE_DIR, 'takserver/cot_icons.ini'))
 COT_ICONS = {key: value for key, value in icons_config.items('Icons')}
+FIELD_OP_ICON_DEFAULT = 'blob_dot_yellow'
 # ic(COT_ICONS)
 
 # Static Version information
-STATIC_VERSION = '0.0.12'
+STATIC_VERSION = '0.0.13'
 
 # PYTAK_FLUSH_TIMEOUT = 40 # seconds

@@ -42,30 +42,6 @@ class FieldOpDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
 
         # Map data
         context['azure_maps_key'] = settings.AZURE_MAPS_KEY
-        context['field_op_name'] = field_op.name
-        context['field_op_slug'] = field_op.slug
-        context['center_lat'] = field_op.latitude
-        context['center_lon'] = field_op.longitude
-        context['ring_size'] = field_op.ring_size
-
-        # Fetch related aid requests for the map
-        aid_requests = AidRequest.objects.filter(field_op=field_op)
-        aid_locations = prepare_aid_locations_for_map(aid_requests)
-        context['aid_locations_json'] = json.dumps(aid_locations, cls=DjangoJSONEncoder)
-
-        # We need to provide the aid types for the field op
-        aid_types_data = list(field_op.aid_types.values('slug', 'name', 'description'))
-        context['aid_types_json'] = json.dumps(aid_types_data)
-
-        # Calculate map bounds from aid request locations
-        context['map_bounds'] = locations_to_bounds(aid_locations)
-
-        # ic("FieldOpDetailView map config:", {
-        #     'azure_maps_key': bool(context.get('azure_maps_key')),
-        #     'center_lat': context.get('center_lat'),
-        #     'center_lon': context.get('center_lon'),
-        #     'ring_size': context.get('ring_size'),
-        # })
 
         return context
 
@@ -105,10 +81,11 @@ class FieldOpCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
         response = super().form_valid(form)
 
         if not self.object.disable_cot:
+            ic(f"Creating send_cot_task for FieldOp {self.object.slug}")
             async_task(
-                'aidrequests.tasks.send_cot_task',
+                'informs.webapp.aidrequests.tasks.send_cot_task',
                 field_op_slug=self.object.slug,
-                mark_type='field_op',
+                mark_type='field',
                 task_name=f"Send_CoT_FieldOp_{self.object.slug}"
             )
 
@@ -193,10 +170,11 @@ class FieldOpUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
         form.save()
 
         if not self.object.disable_cot:
+            ic(f"Creating send_cot_task for updated FieldOp {self.object.slug}")
             async_task(
-                'aidrequests.tasks.send_cot_task',
+                'informs.webapp.aidrequests.tasks.send_cot_task',
                 field_op_slug=self.object.slug,
-                mark_type='field_op',
+                mark_type='field',
                 task_name=f"Send_CoT_FieldOp_{self.object.slug}"
             )
 

@@ -5,406 +5,532 @@
  * Provides dynamic filtering and searching functionality
  */
 
-// Configuration
-const listConfig = {
-    debug: false,  // Set to false in production
-    initialized: false,
-    performance: {
-        loadStart: null,
-        configLoaded: null,
-        fullyReady: null
-    }
-};
+// This script needs to be loaded after the data blocks in the HTML.
 
-// Main initialization
-function initialize() {
-    if (listConfig.debug) {
-        console.time('[AidRequestList] Initialization');
-    }
-
-    try {
-        // Get filter state from store first
-        if (window.aidRequestsStore?.currentState?.filterState) {
-            validateFilterState(window.aidRequestsStore.currentState.filterState);
-            validateTableElements();
-            validateInitialRowStates(window.aidRequestsStore.currentState.filterState);
-
-            // Listen for filter change events
-            document.addEventListener('aidRequestsFiltered', handleFilterChange);
-            return;
+document.addEventListener('DOMContentLoaded', function() {
+    const scriptConfig = {
+        debug: true,
+        version: '0.0.14',
+        fieldOpSlug: document.body.dataset.fieldOpSlug,
+        urls: {
+            getFilterCounts: `/api/${document.body.dataset.fieldOpSlug}/filter-counts/`
         }
+    };
 
-        // Fallback to initial state from template
-        const filterStateInitialElement = document.getElementById('filter-state-initial');
-        if (!filterStateInitialElement) {
-            throw new Error('Filter state element missing from template');
-        }
+    if (!scriptConfig.fieldOpSlug) {
+        console.error("[List Script] Field Op slug not found in body dataset. Aborting.");
+        return;
+    }
 
-        const initialState = JSON.parse(filterStateInitialElement.textContent);
-        const filterState = {
-            statuses: initialState.statusGroup === 'inactive' ?
-                     window.aidRequestsStore.statusGroups.inactive :
-                     window.aidRequestsStore.statusGroups.active,
-            aid_types: 'all',
-            priorities: 'all'
-        };
+    if (scriptConfig.debug) {
+        console.log(`[List Script] Version ${scriptConfig.version} initialized for FieldOp: ${scriptConfig.fieldOpSlug}`);
+    }
 
-        validateFilterState(filterState);
-        validateTableElements();
-        validateInitialRowStates(filterState);
+    const componentsReady = {
+        map: false,
+        filter: false,
+        list: false // This script itself
+    };
+    let initialFilterApplied = false;
 
-        // Listen for filter change events
-        document.addEventListener('aidRequestsFiltered', handleFilterChange);
+    function checkAllComponentsReady() {
+        if (initialFilterApplied) return; // Only run once
 
-    } catch (error) {
-        console.error('[AidRequestList] Initialization failed:', error);
-        throw error;
-    } finally {
-        if (listConfig.debug) {
-            console.timeEnd('[AidRequestList] Initialization');
+        if (componentsReady.map && componentsReady.filter && componentsReady.list) {
+            if (scriptConfig.debug) {
+                console.log('[List Script] All components ready. Triggering initial filter application.');
+            }
+            initialFilterApplied = true;
+            runFilterAndUpdates();
+        } else {
+            if (scriptConfig.debug) {
+                console.log('[List Script] Waiting for components...', componentsReady);
+            }
         }
     }
-}
 
-// Main initialization check
-if (window.aidRequestsStore?.initialized) {
-    if (listConfig.debug) {
-        console.table({
-            'Filter State': window.aidRequestsStore.currentState,
-            'Status Groups': window.aidRequestsStore.statusGroups
-        });
-    }
-    try {
-        initialize();
-    } catch (error) {
-        console.error('[AidRequestList] Failed to initialize:', error);
-    }
-} else if (window.aidRequestsStore?.initError) {
-    console.error('[AidRequestList] Filter initialization failed:', window.aidRequestsStore.initError);
-} else {
-    if (listConfig.debug) console.log('[AidRequestList] Waiting for filter initialization...');
-
-    document.addEventListener('aidRequestsFilterReady', function(event) {
-        if (listConfig.debug) {
-            console.table({
-                'Event Type': 'Filter Ready',
-                'Filter State': event.detail.filterState,
-                'Initial Counts': event.detail.counts
-            });
-        }
-        try {
-            initialize();
-        } catch (error) {
-            console.error('[AidRequestList] Failed to initialize with filter event:', error);
+    document.body.addEventListener('componentReady', (e) => {
+        const componentName = e.detail?.name;
+        if (componentName && componentsReady.hasOwnProperty(componentName)) {
+            componentsReady[componentName] = true;
+            if (scriptConfig.debug) {
+                console.log(`[List Script] Received ready signal from: ${componentName}`);
+            }
+            checkAllComponentsReady();
         }
     });
-}
 
-// Validation Functions
-function validateFilterState(initialFilterState) {
-    const expectedKeys = ['statuses', 'aid_types', 'priorities'];
-    const missingKeys = expectedKeys.filter(key => !(key in initialFilterState));
-    if (missingKeys.length > 0) {
-        if (listConfig.debug) {
-            console.table({
-                'Validation': 'Missing Keys',
-                'Expected': expectedKeys.join(', '),
-                'Found': Object.keys(initialFilterState).join(', '),
-                'Missing': missingKeys.join(', ')
-            });
+    // Listener for row updates
+    document.body.addEventListener('click', function(event) {
+        const statusTarget = event.target.closest('.status-option');
+        const priorityTarget = event.target.closest('.priority-option');
+        const copyTarget = event.target.closest('.copy-address-icon');
+
+        // Handle Status or Priority change from dropdown
+        if (statusTarget || priorityTarget) {
+            event.preventDefault();
+            const target = statusTarget || priorityTarget;
+            const dropdown = target.closest('.dropdown-menu');
+            const triggerButton = document.getElementById('status-priority-change-trigger');
+
+            if (dropdown) bootstrap.Dropdown.getInstance(dropdown.previousElementSibling)?.hide();
+
+            const row = target.closest('.aid-request-row');
+            const updateUrl = row.dataset.urlUpdate;
+            const fieldOpName = document.querySelector('[data-field-op-name]')?.dataset.fieldOpName || '';
+            const aidRequestId = row.dataset.id;
+            const requesterName = row.querySelector('.d-none.d-md-table-cell')?.textContent || '';
+
+            const fieldName = statusTarget ? 'status' : 'priority';
+            const newValue = target.dataset[fieldName];
+            const oldValue = row.dataset[fieldName];
+            const newValueDisplay = target.textContent.trim();
+            const oldValueDisplay = row.querySelector(`.${fieldName}-button`).textContent.trim();
+
+            if (newValue === oldValue) {
+                return; // Do nothing if the value hasn't changed
+            }
+
+            triggerButton.dataset.actionUrl = updateUrl;
+            triggerButton.dataset.fieldOpName = fieldOpName;
+            triggerButton.dataset.aidRequestId = aidRequestId;
+            triggerButton.dataset.requesterFullName = requesterName;
+
+            const capitalizedFieldName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+            triggerButton.dataset.actionName = `Change ${capitalizedFieldName}`;
+            triggerButton.dataset.oldValue = oldValueDisplay;
+            triggerButton.dataset.newValue = newValueDisplay;
+
+            // Icon and class mapping
+            const styleMap = {
+                'high': { icon: 'exclamation-diamond-fill', btnClass: 'btn-danger' },
+                'medium': { icon: 'exclamation-triangle-fill', btnClass: 'btn-warning' },
+                'low': { icon: 'info-circle-fill', btnClass: 'btn-primary' },
+                'new': { icon: 'download', btnClass: 'btn-primary' },
+                'assigned': { icon: 'person-check-fill', btnClass: 'btn-primary' },
+                'resolved': { icon: 'hand-thumbs-up-fill', btnClass: 'btn-success' },
+                'closed': { icon: 'door-closed-fill', btnClass: 'btn-dark' },
+                'rejected': { icon: 'x-circle-fill', btnClass: 'btn-danger' },
+                'other': { icon: 'question-circle-fill', btnClass: 'btn-secondary' },
+                'default': { icon: 'question-circle-fill', btnClass: 'btn-primary' }
+            };
+            const styles = styleMap[newValue] || styleMap['default'];
+
+            triggerButton.dataset.confirmButtonText = `Change to ${newValueDisplay}`;
+            triggerButton.dataset.confirmButtonIcon = styles.icon;
+            triggerButton.dataset.confirmButtonClass = styles.btnClass;
+
+            delete triggerButton.dataset.status;
+            delete triggerButton.dataset.priority;
+            triggerButton.dataset[fieldName] = newValue;
+
+            const modalEl = document.querySelector(triggerButton.dataset.bsTarget);
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show(triggerButton);
+
+            // Revert dropdown if modal is cancelled
+            modalEl.addEventListener('hide.bs.modal', (e) => {
+                const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                if (!modalInstance.isConfirmed) {
+                    // This part is tricky because we are not using radio buttons.
+                    // For now, we will just let it be. Re-selecting the old value is not trivial.
+                }
+            }, { once: true });
         }
-    }
-}
+        // Handle copy-to-clipboard
+        else if (copyTarget) {
+            const address = copyTarget.getAttribute('data-address');
+            if (address) {
+                navigator.clipboard.writeText(address).then(() => {
+                    const originalIcon = copyTarget.className;
+                    const tooltip = bootstrap.Tooltip.getInstance(copyTarget);
+                    const originalTitle = copyTarget.getAttribute('title');
 
-function validateTableElements() {
-    const tableBody = document.querySelector('#aid-request-list-body');
-    if (!tableBody) {
-        throw new Error('Table body element missing from template');
-    }
-    return tableBody;
-}
-
-function validateInitialRowStates(initialFilterState) {
-    const tableBody = validateTableElements();
-    const initialRows = Array.from(tableBody.getElementsByTagName('tr'));
-    const rowAnalysis = initialRows
-        .filter(row => row.id !== 'aid-request-empty-row')
-        .map(row => ({
-            id: row.getAttribute('data-id'),
-            status: row.getAttribute('data-status'),
-            aidType: row.getAttribute('data-aid-type'),
-            priority: row.getAttribute('data-priority'),
-            isHidden: row.classList.contains('d-none'),
-            shouldBeHidden: !matchesFilterState(row, initialFilterState)
-        }));
-
-    validateVisibilityMismatches(rowAnalysis);
-    validateEmptyRowState(rowAnalysis);
-    logInitialState(rowAnalysis);
-}
-
-function validateVisibilityMismatches(rowAnalysis) {
-    const visibilityMismatches = rowAnalysis.filter(row => row.isHidden !== row.shouldBeHidden);
-    if (visibilityMismatches.length > 0) {
-        if (listConfig.debug) {
-            console.log('[AidRequestList] Row visibility mismatches found:');
-            console.table(visibilityMismatches.map(row => ({
-                'Row ID': row.id,
-                'Status': row.status,
-                'Currently Hidden': row.isHidden,
-                'Should Be Hidden': row.shouldBeHidden,
-                'Mismatch Type': row.isHidden ? 'Hidden but should show' : 'Shown but should hide'
-            })));
-        }
-    }
-}
-
-function validateEmptyRowState(rowAnalysis) {
-    const emptyRow = document.getElementById('aid-request-empty-row');
-    const visibleRows = rowAnalysis.filter(row => !row.shouldBeHidden);
-    if (emptyRow) {
-        const emptyRowVisible = !emptyRow.classList.contains('d-none');
-        const shouldShowEmpty = visibleRows.length === 0;
-        if (emptyRowVisible !== shouldShowEmpty) {
-            if (listConfig.debug) {
-                console.table({
-                    'Empty Row': {
-                        'Currently Visible': emptyRowVisible,
-                        'Should Be Visible': shouldShowEmpty,
-                        'Visible Row Count': visibleRows.length
+                    // Provide feedback
+                    copyTarget.className = 'bi bi-check-lg text-success';
+                    if (tooltip) {
+                        tooltip.setContent({ '.tooltip-inner': 'Copied!' });
+                        tooltip.show();
                     }
+
+                    // Revert after a delay
+                    setTimeout(() => {
+                        copyTarget.className = originalIcon;
+                        if (tooltip) {
+                            tooltip.setContent({ '.tooltip-inner': originalTitle });
+                            tooltip.hide();
+                        }
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy address: ', err);
                 });
             }
         }
-    }
-}
+    });
 
-function logInitialState(rowAnalysis) {
-    if (listConfig.debug) {
-        console.table({
-            'Initial State': {
-                'Total Rows': rowAnalysis.length,
-                'Visible Rows': rowAnalysis.filter(row => !row.shouldBeHidden).length,
-                'Hidden Rows': rowAnalysis.filter(row => row.shouldBeHidden).length,
-                'Empty Row Present': !!document.getElementById('aid-request-empty-row')
-            }
-        });
-    }
-}
+    document.body.addEventListener('show.bs.modal', function(event) {
+        const modal = event.target;
+        if (modal.id !== 'actionConfirmationModal') return;
 
-// Event Handlers
-function handleFilterChange(event) {
-    if (!event.detail?.filterState) {
-        console.error('[AidRequestList] Invalid filter event - missing filterState:', event);
-        return;
-    }
-
-    if (listConfig.debug) {
-        console.log('[AidRequestList] Filter change event:', event.detail);
-    }
-
-    // Update visibility and summary based on new filter state
-    updateRowVisibility(event.detail.filterState);
-    updateListSummary(event.detail.filterState, event.detail.counts);
-}
-
-// Helper Functions
-function matchesFilterState(row, filterState) {
-    const status = row.getAttribute('data-status');
-    const aidType = row.getAttribute('data-aid-type');
-    const priority = row.getAttribute('data-priority');
-
-    const matchesStatus = filterState.statuses === 'all' ||
-                         (Array.isArray(filterState.statuses) && filterState.statuses.includes(status));
-    const matchesAidType = filterState.aid_types === 'all' ||
-                          (Array.isArray(filterState.aid_types) && filterState.aid_types.includes(aidType));
-
-    // Handle priority matching with null/none values
-    const matchesPriority = filterState.priorities === 'all' ||
-                           (Array.isArray(filterState.priorities) && filterState.priorities.some(p => {
-                               // Convert both to null for comparison if they represent "no priority"
-                               const rowPriority = (priority === 'none' || priority === 'null' || !priority) ? null : priority;
-                               const filterPriority = (p === 'none' || p === 'null' || !p) ? null : p;
-
-                               if (listConfig.debug) {
-                                   console.log('[List] Priority comparison:', {
-                                       rowId: row.getAttribute('data-id'),
-                                       rawRowPriority: priority,
-                                       normalizedRowPriority: rowPriority,
-                                       rawFilterPriority: p,
-                                       normalizedFilterPriority: filterPriority,
-                                       matches: rowPriority === filterPriority
-                                   });
-                               }
-
-                               return rowPriority === filterPriority;
-                           }));
-
-    if (listConfig.debug) {
-        console.log('[List] Row match check:', {
-            rowId: row.getAttribute('data-id'),
-            status: { value: status, matches: matchesStatus },
-            aidType: { value: aidType, matches: matchesAidType },
-            priority: {
-                value: priority,
-                matches: matchesPriority,
-                filterValues: filterState.priorities
-            }
-        });
-    }
-
-    return matchesStatus && matchesAidType && matchesPriority;
-}
-
-// Update Functions
-function updateRowVisibility(filterState) {
-    if (!filterState) {
-        console.error('[List] Cannot update visibility - no filter state provided');
-        return;
-    }
-
-    if (listConfig.debug) {
-        console.log('[List] Updating row visibility with filter state:', {
-            statuses: filterState.statuses,
-            aid_types: filterState.aid_types,
-            priorities: filterState.priorities
-        });
-    }
-
-    const tableBody = document.querySelector('#aid-request-list-body');
-    if (!tableBody) {
-        console.error('[List] Cannot update visibility - table body not found');
-        return;
-    }
-
-    const rows = Array.from(tableBody.getElementsByTagName('tr'));
-    let visibleCount = 0;
-    let hiddenCount = 0;
-
-    rows.forEach(row => {
-        if (row.id === 'aid-request-empty-row') return;
-
-        const shouldBeVisible = matchesFilterState(row, filterState);
-        const wasVisible = !row.classList.contains('d-none');
-        row.classList.toggle('d-none', !shouldBeVisible);
-
-        if (shouldBeVisible) {
-            visibleCount++;
-        } else {
-            hiddenCount++;
+        const triggerButton = event.relatedTarget;
+        if (!triggerButton || !triggerButton.dataset.actionUrl) {
+            return;
         }
 
-        if (listConfig.debug && wasVisible !== shouldBeVisible) {
-            console.log(`[List] Row visibility changed:`, {
-                rowId: row.getAttribute('data-id'),
-                status: row.getAttribute('data-status'),
-                aidType: row.getAttribute('data-aid-type'),
-                priority: row.getAttribute('data-priority'),
-                wasVisible,
-                shouldBeVisible
+        const modalInstance = bootstrap.Modal.getInstance(modal);
+        if (!modalInstance) return;
+
+        modalInstance.isConfirmed = false;
+
+        const modalTitle = modal.querySelector('.modal-title');
+        const modalBody = modal.querySelector('.modal-body-dynamic');
+        const confirmBtn = modal.querySelector('.confirm-action-btn');
+
+        // --- Title Logic ---
+        const aidRequestId = triggerButton.dataset.aidRequestId || '';
+        const requesterName = triggerButton.dataset.requesterFullName || '';
+
+        const newTitle = `
+            <div class="d-flex flex-column">
+                <small>Aid Request #${aidRequestId}: ${requesterName}</small>
+            </div>`;
+        if (modalTitle) {
+            modalTitle.innerHTML = newTitle;
+    }
+
+        // --- Body Logic ---
+        const actionName = triggerButton.dataset.actionName || "perform this action";
+        const oldValue = triggerButton.dataset.oldValue;
+        const newValue = triggerButton.dataset.newValue;
+
+        modalBody.innerHTML = `
+            <h5 class="mb-3">${actionName}</h5>
+            <div class="ms-3">
+                 <p class="mb-1"><strong>From:</strong> <span class="text-muted">${oldValue}</span></p>
+                 <p class="mb-0"><strong>To:</strong> <span class="fs-5">${newValue}</span></p>
+            </div>`;
+
+        // --- Clear Stale Form Data ---
+        const noteTextarea = modal.querySelector('.action-note-textarea');
+        const markdownCheckbox = modal.querySelector('.action-markdown-checkbox');
+        if (noteTextarea) noteTextarea.value = '';
+        if (markdownCheckbox) markdownCheckbox.checked = false;
+
+        // --- Configure Confirm Button ---
+        if (confirmBtn) {
+            // Apply custom styles from trigger button
+            const btnClass = triggerButton.dataset.confirmButtonClass || 'btn-primary';
+            const btnIcon = triggerButton.dataset.confirmButtonIcon;
+            const btnText = triggerButton.dataset.confirmButtonText || 'Confirm';
+
+            confirmBtn.className = 'btn confirm-action-btn'; // Reset classes
+            confirmBtn.classList.add(btnClass);
+
+            let iconHTML = '';
+            if (btnIcon) {
+                iconHTML = `<i class="bi bi-${btnIcon} me-2"></i>`;
+            }
+            confirmBtn.innerHTML = `${iconHTML}${btnText}`;
+
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+            newConfirmBtn.addEventListener('click', function() {
+                modalInstance.isConfirmed = true;
+                const note = noteTextarea ? noteTextarea.value : '';
+                const isMarkdown = markdownCheckbox ? markdownCheckbox.checked : false;
+                const payload = { ...triggerButton.dataset };
+                payload.note = note;
+                payload.note_markdown = isMarkdown;
+
+                // Clean up unnecessary data from payload
+                Object.keys(payload).forEach(key => {
+                    if (key.startsWith('bs') || ['actionName', 'oldValue', 'newValue', 'requesterFullName', 'fieldOpName', 'confirmButtonClass', 'confirmButtonIcon', 'confirmButtonText'].includes(key)) {
+                        delete payload[key];
+                    }
+                });
+
+                const url = triggerButton.dataset.actionUrl;
+                const method = triggerButton.dataset.httpMethod || 'POST';
+
+                fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(response => {
+                    if (response.ok) {
+                        modalInstance.hide();
+
+                        const aidRequestId = payload.aidRequestId;
+                        htmx.trigger('body', `update-row-${aidRequestId}`, {});
+
+                        // Update the local data store, which will trigger count and map updates
+                        // This part is now handled by the backend updateFilterCounts event
+                        // if (window.aidRequestsStore && window.aidRequestsStore.updateAidRequest) {
+                        //     const updates = {};
+                        //     if (payload.status) {
+                        //         updates.status = payload.status;
+                        //     }
+                        //     if (payload.priority) {
+                        //         updates.priority = payload.priority;
+                        //     }
+                        //     window.aidRequestsStore.updateAidRequest(aidRequestId, updates);
+                        // }
+
+                    } else {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('[Actions] There was a problem with the fetch operation:', error);
+                });
             });
         }
     });
 
-    // Update empty row visibility
-    const emptyRow = document.getElementById('aid-request-empty-row');
-    if (emptyRow) {
-        const showEmpty = visibleCount === 0;
-        emptyRow.classList.toggle('d-none', !showEmpty);
-        if (listConfig.debug) {
-            console.log('[List] Empty row visibility:', {
-                visible: showEmpty,
-                visibleCount,
-                hiddenCount
-            });
+    // After a row is updated and swapped by HTMX, we need to re-run the counts.
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        // Check if the swap happened on one of our rows
+        if (event.target.matches('.aid-request-row')) {
+            if (scriptConfig.debug) {
+                console.log('[List Script] Row updated via HTMX. Triggering map point update and filter counts.');
+            }
+
+            // Trigger the map to update the specific point
+            document.body.dispatchEvent(new CustomEvent('mapPointShouldUpdate', {
+                detail: { rowElement: event.target }
+            }));
+
+            // After a row changes, refetch the counts and update filters
+            runFilterAndUpdates();
+        }
+    });
+
+    // Listen for the custom event from the filter script
+    document.body.addEventListener('filterStateChange', function() {
+        if (scriptConfig.debug) {
+            console.log('[List Script] Received filterStateChange event.');
+        }
+        runFilterAndUpdates();
+    });
+
+    initializeTooltips();
+
+    // Signal that this script is ready and check if all others are too.
+    componentsReady.list = true;
+    checkAllComponentsReady();
+
+    function runFilterAndUpdates() {
+        const filterState = getFilterStateFromDOM();
+
+        if (scriptConfig.debug) {
+            console.log('[List Script] Running filter and updates with state:', filterState);
+        }
+
+        applyListFilter(filterState);
+        document.body.dispatchEvent(new CustomEvent('updateMapLayer', { detail: { filterState: filterState } }));
+        fetchFilterCounts(scriptConfig, filterState);
+    }
+
+    function applyListFilter(filterState) {
+        const rows = document.querySelectorAll('#aid-request-list-body tr.aid-request-row');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const status = row.dataset.status;
+            const priority = row.dataset.priority || 'none';
+            const aidType = row.dataset.aidType;
+
+            const statusMatch = filterState.statuses.length === 0 || filterState.statuses.includes(status);
+
+            let priorityMatch = true;
+            if (filterState.priorities !== 'all') {
+                priorityMatch = filterState.priorities.includes(priority);
+            }
+
+            let aidTypeMatch = true;
+            if (filterState.aid_types !== 'all') {
+                aidTypeMatch = filterState.aid_types.includes(aidType);
+            }
+
+            if (statusMatch && priorityMatch && aidTypeMatch) {
+                row.classList.remove('d-none');
+                visibleCount++;
+            } else {
+                row.classList.add('d-none');
+            }
+        });
+
+        if (scriptConfig.debug) {
+            console.log(`[List Script] Applied filter. Visible rows: ${visibleCount}`);
         }
     }
 
-    if (listConfig.debug) {
-        logVisibilityUpdate(rows, visibleCount, filterState);
-    }
-}
-
-function updateListSummary(filterState, counts) {
-    const summaryElement = document.getElementById('list-filter-summary');
-    if (!summaryElement) return;
-
-    const parts = buildSummaryParts(filterState, counts);
-    summaryElement.innerHTML = buildSummaryHTML(parts, counts);
-
-    if (listConfig.debug) {
-        console.table({
-            visibleCount: counts?.matched || 0,
-            totalCount: counts?.total || 0,
-            filters: parts
+    function fetchFilterCounts(config, filterState) {
+        fetch(config.urls.getFilterCounts, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(filterState)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (config.debug) {
+                console.log('[List Script] Received new counts from backend.');
+            }
+            updateFilterUIDisplay(data);
+        })
+        .catch(error => {
+            console.error('[List Script] Error fetching filter counts:', error);
         });
     }
-}
 
-function buildSummaryParts(filterState, counts) {
-    const parts = [];
-    if (filterState.aid_types === null) {
-        parts.push('Type: None selected');
-    } else if (filterState.statuses === null) {
-        parts.push('Status: None selected');
-    } else if (filterState.priorities === null) {
-        parts.push('Priority: None selected');
-    } else {
-        addAidTypePart(parts, filterState);
-        addStatusPart(parts, filterState);
-        addPriorityPart(parts, filterState);
+    function updateFilterUIDisplay(counts) {
+        // Update main results counter
+        const resultsCounter = document.getElementById('results-counter');
+        if (resultsCounter) {
+            resultsCounter.textContent = `${counts.matched} of ${counts.total} requests`;
+        }
+
+        // Update 'All' counters
+        const allAidType = document.querySelector('label[for="aid-type-filter-all"]');
+        if (allAidType) allAidType.innerHTML = `All <span class="text-muted">(${counts.matched})</span>`;
+
+        const allPriority = document.querySelector('label[for="priority-filter-all"]');
+        if (allPriority) allPriority.innerHTML = `All <span class="text-muted">(${counts.matched})</span>`;
+
+
+        // Update status group totals
+        document.getElementById('status-group-filter-active-total').textContent = `(${counts.groups.active.filtered})`;
+        document.getElementById('status-group-filter-inactive-total').textContent = `(${counts.groups.inactive.filtered})`;
+
+        // Update individual status counts
+        for (const [status, count] of Object.entries(counts.byStatus)) {
+            const el = document.getElementById(`status-filter-${status}-count`);
+            if (el) el.textContent = `(${count})`;
+        }
+
+        // Update individual aid type counts
+        for (const [slug, count] of Object.entries(counts.byAidType)) {
+            const el = document.getElementById(`aid-type-${slug}-count`);
+            if (el) el.textContent = `(${count})`;
+        }
+
+        // Update individual priority counts
+        for (const [prio, count] of Object.entries(counts.byPriority)) {
+            const prioId = prio === 'None' ? 'none' : prio;
+            const el = document.getElementById(`priority-${prioId}-count`);
+            if (el) el.textContent = `(${count})`;
+        }
+
+        // Update list card summary
+        const listSummary = document.getElementById('list-filter-summary');
+        if(listSummary) listSummary.textContent = counts.summary_html;
+
+        // --- Disable/Enable filter options based on zero counts ---
+        const updateOption = (id, count) => {
+            const checkbox = document.getElementById(id);
+            if (!checkbox) return;
+
+            const label = checkbox.nextElementSibling;
+            const isDisabled = count === 0;
+
+            checkbox.disabled = isDisabled;
+            if (isDisabled) {
+                checkbox.checked = false; // Also uncheck if count is zero
+                label.classList.add('text-muted');
+            } else {
+                label.classList.remove('text-muted');
+            }
+        };
+
+        // Update statuses
+        for (const [status, count] of Object.entries(counts.byStatus)) {
+            updateOption(`status-filter-${status}`, count);
+        }
+
+        // Update aid types
+        for (const [slug, count] of Object.entries(counts.byAidType)) {
+            updateOption(`aid-type-filter-${slug}`, count);
+        }
+
+        // Update priorities
+        for (const [prio, count] of Object.entries(counts.byPriority)) {
+            const prioId = prio === 'None' ? 'none' : prio;
+            updateOption(`priority-filter-${prioId}`, count);
+        }
+
+        // Handle Status Group Checkboxes
+        if (counts.status_group_counts) {
+            const updateGroupOption = (groupName, count) => {
+                const checkbox = document.getElementById(`status-group-${groupName}`);
+                const label = document.querySelector(`label[for="status-group-${groupName}"]`);
+                if (checkbox && label) {
+                    label.textContent = `${groupName.charAt(0).toUpperCase() + groupName.slice(1)} (${count})`;
+                    const isDisabled = count === 0;
+                    checkbox.disabled = isDisabled;
+                    label.classList.toggle('text-muted', isDisabled);
+                    if (isDisabled) {
+                        checkbox.checked = false;
+                    }
+                }
+            };
+            updateGroupOption('active', counts.status_group_counts.active || 0);
+            updateGroupOption('inactive', counts.status_group_counts.inactive || 0);
+        }
     }
-    return parts;
+
+    function getFilterStateFromDOM() {
+    const filterCard = document.getElementById('aid-request-filter-card');
+    if (!filterCard) return {};
+
+    const getCheckedValues = (selector) =>
+        Array.from(filterCard.querySelectorAll(selector))
+             .filter(cb => cb.checked)
+             .map(cb => cb.dataset.filterValue);
+
+    const isAllChecked = (selector) => {
+        const allCheckbox = filterCard.querySelector(selector);
+        return allCheckbox && allCheckbox.checked;
+    };
+
+    const aidTypes = isAllChecked('#aid-type-filter-all') ? 'all' : getCheckedValues('[data-filter-type="aid_type"]:not([id$="-all"])');
+    const priorities = isAllChecked('#priority-filter-all') ? 'all' : getCheckedValues('[data-filter-type="priority"]:not([id$="-all"])');
+    const statuses = getCheckedValues('[data-filter-type="status"]');
+
+    return {
+        statuses: statuses.length > 0 ? statuses : [], // Use empty array for "match none"
+        priorities: priorities, // This can be 'all' or an array
+        aid_types: aidTypes, // This can be 'all' or an array
+    };
 }
 
-function buildSummaryHTML(parts, counts) {
-    const countText = `${counts?.matched || 0} of ${counts?.total || 0} requests`;
-    return `
-        <div class="small text-muted lh-1">
-            <div class="mb-1">${countText}</div>
-            ${parts.map(part => `<div class="mb-1">${part}</div>`).join('')}
-        </div>
-    `;
-}
 
-function logVisibilityUpdate(rows, visibleCount, filterState) {
-    const finalVisibleRows = rows.filter(row => !row.classList.contains('d-none') && row.id !== 'aid-request-empty-row');
-    console.log('[List] Visibility update complete:', {
-        totalRows: rows.length,
-        expectedVisible: visibleCount,
-        actuallyVisible: finalVisibleRows.length,
-        visibleRowIds: finalVisibleRows.map(row => row.getAttribute('data-id')),
-        filterState
+function initializeTooltips() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 }
 
-// Summary Part Helper Functions
-function addAidTypePart(parts, filterState) {
-    if (filterState.aid_types !== 'all' && Array.isArray(filterState.aid_types) && filterState.aid_types.length > 0) {
-        const typeLabels = filterState.aid_types.map(type => {
-            if (type === null) return 'None';
-            const config = window.aidRequestsStore.data.aidTypes[type];
-            return config ? config.name : type;
-        });
-        parts.push(`Type: ${typeLabels.join(', ')}`);
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
     }
-}
-
-function addStatusPart(parts, filterState) {
-    if (filterState.statuses !== 'all' && Array.isArray(filterState.statuses) && filterState.statuses.length > 0) {
-        const statusLabels = filterState.statuses.map(status =>
-            status.charAt(0).toUpperCase() + status.slice(1)
-        );
-        parts.push(`Status: ${statusLabels.join(', ')}`);
-    }
-}
-
-function addPriorityPart(parts, filterState) {
-    if (filterState.priorities !== 'all' && Array.isArray(filterState.priorities) && filterState.priorities.length > 0) {
-        const priorityLabels = filterState.priorities.map(p => {
-            if (p === null) return 'None';
-            return p.charAt(0).toUpperCase() + p.slice(1);
-        });
-        parts.push(`Priority: ${priorityLabels.join(', ')}`);
-    }
-}
+});

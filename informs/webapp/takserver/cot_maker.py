@@ -75,46 +75,11 @@ class CotMaker:
             else:
                 full_client_uid_for_cot_maker = local_server_name_part
 
-            # Generate and add takPong message first
-            # timestamp_str = datetime.utcnow().strftime("%Y%m%d%H%M%S%f") # Removed
-            # takpong_uid = f"{full_client_uid_for_cot_maker}.{timestamp_str}" # Removed
-
-            # pong_root = ET.Element("event") # Removed
-            # pong_root.set("version", "2.0") # Removed
-            # pong_root.set("type", "t-x-d-d")  # takPong type # Removed
-            # pong_root.set("uid", full_client_uid_for_cot_maker) # Removed
-            # pong_root.set("how", "m-g") # Machine-generated # Removed
-            # current_cot_time = pytak.cot_time() # Removed
-            # pong_root.set("time", current_cot_time) # Removed
-            # pong_root.set("start", current_cot_time) # Removed
-            # pong_root.set("stale", pytak.cot_time(3600)) # 1 hour stale, as per PyTAK example # Removed
-
-            # # Add detail with contact and takv for initial pong EUD registration # Removed
-            # detail_element = ET.SubElement(pong_root, "detail") # Removed
-
-            # # contact_element = ET.SubElement(detail_element, "contact") # Removed
-            # # contact_element.set("callsign", full_client_uid_for_cot_maker) # Stable server callsign, no timestamp # Removed
-
-            # # takv_element = ET.SubElement(detail_element, "takv") # Removed
-            # # takv_element.set("os", platform.system()) # Removed
-            # # takv_element.set("platform", "informs") # Removed
-            # # takv_element.set("version", getattr(settings, 'VERSION', 'unknown')) # Removed
-            # # takv_element.set("device", "informs") # Removed
-
-            # # takpong_message = ET.tostring(pong_root) # Removed
-            # # messages.append(takpong_message) # Removed
-            # # ic(f"Built initial takPong message with event UID and contact callsign: {full_client_uid_for_cot_maker}") # Removed
-
-            # Determine the CoT type for the FieldOp's marker.
-            # This should come from the field_op.cot_icon, resolved to a CoT type string.
-            field_op_icon = getattr(field_op, 'cot_icon', None) or 'blob_dot_yellow'
-            # field_op_cot_type will be the actual <event type="..."> for the FieldOp marker,
-            # and used as link_type for children.
-            # Default to a generic non-presence type.
-            field_op_cot_type = settings.COT_ICONS.get(field_op_icon, 'a-n-G') # Default to Neutral Generic Point
+            # Get the CoT type for the FieldOp's marker from the settings.
+            field_op_cot_type = settings.COT_ICONS.get(settings.FIELD_OP_ICON_DEFAULT, 'a-f-G')
 
             if self.include_field_op_marker:
-                field_op_msg = await self.build_field_op_message(field_op, full_client_uid_for_cot_maker, field_op_icon)
+                field_op_msg = await self.build_field_op_message(field_op, full_client_uid_for_cot_maker, field_op_cot_type)
                 if field_op_msg:
                     messages.append(field_op_msg)
                     # ic(f"Built field op marker for {self.field_op_slug} with client UID {full_client_uid_for_cot_maker}")
@@ -160,7 +125,7 @@ class CotMaker:
             # ic(f"Debug context for error building messages for {self.field_op_slug}: {e}")
             raise
 
-    async def build_field_op_message(self, field_op, full_client_uid, field_op_icon):
+    async def build_field_op_message(self, field_op, full_client_uid, field_op_cot_type):
         """Build COT message for field operation marker."""
 
         # Event UID for the map marker
@@ -180,7 +145,7 @@ class CotMaker:
             contact_callsign_for_marker = f"{field_op.slug.upper()}.{settings.ENV_NAME}"
 
         return make_cot(
-            cot_icon=field_op_icon,
+            cot_type=field_op_cot_type,
             name=contact_callsign_for_marker,         # Contact callsign for this marker
             uuid=field_op_event_uid,                  # Unique event UID for the map marker
             lat=field_op.latitude,
