@@ -113,6 +113,12 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeFieldOpLayer(config);
             initializeAidRequestLayer(config, aidTypesConfig);
 
+            // Now that the layer is initialized, listen for filter changes.
+            document.body.addEventListener('filterStateChange', (e) => {
+                if (mapRequestsConfig.debug) console.log('[Map] filterStateChange event detected.', e.detail);
+                updateMapLayer(e.detail);
+            });
+
             // Signal that the map is fully ready with all layers
             document.body.dispatchEvent(new CustomEvent('componentReady', { detail: { name: 'map' } }));
         });
@@ -120,6 +126,62 @@ document.addEventListener('DOMContentLoaded', () => {
         map.events.add('error', (e) => {
             console.error('[Map] CRITICAL MAP ERROR:', e.error);
         });
+
+        // Listen for filter changes and update the map layer
+        // MOVED inside 'ready' event to prevent race conditions
+        /*
+        document.body.addEventListener('filterStateChange', (e) => {
+            if (mapRequestsConfig.debug) console.log('[Map] filterStateChange event detected.', e.detail);
+            updateMapLayer(e.detail);
+        });
+        */
+
+
+        function updateMapLayer(filterState) {
+            if (!map || !aidRequestLayer) {
+                if (mapRequestsConfig.debug) console.warn('[Map] updateMapLayer called but map or aidRequestLayer not ready.');
+                return;
+            }
+
+            // If filterState is null, clear the filter and show all markers
+            if (!filterState) {
+                if (mapRequestsConfig.debug) console.log('[Map] Null filter state received. Clearing all filters.');
+                try {
+                    aidRequestLayer.setOptions({ filter: null });
+                    if (mapRequestsConfig.debug) console.log('[Map] Layer filter cleared.');
+                } catch (error) {
+                    console.error('[Map] Error clearing layer filter:', error);
+                }
+                return;
+            }
+
+            const filters = ['all'];
+
+            // Handle Status filter
+            if (filterState.status && filterState.status.length > 0) {
+                filters.push(['in', ['get', 'status'], ['literal', filterState.status]]);
+            }
+
+            // Handle Priority filter
+            if (filterState.priority && filterState.priority.length > 0) {
+                filters.push(['in', ['get', 'priority'], ['literal', filterState.priority]]);
+            }
+
+            // Handle Aid Type filter
+            if (filterState.aid_type && filterState.aid_type.length > 0) {
+                filters.push(['in', ['get', 'aid_type'], ['literal', filterState.aid_type]]);
+            }
+
+            if (mapRequestsConfig.debug) console.log('[Map] Constructed layer filter:', JSON.stringify(filters));
+
+            // Apply the filter to the layer
+            try {
+                aidRequestLayer.setOptions({ filter: filters.length > 1 ? filters : null });
+                if (mapRequestsConfig.debug) console.log('[Map] Layer filter applied successfully.');
+            } catch (error) {
+                console.error('[Map] Error applying layer filter:', error);
+            }
+        }
 
 
         function initializeFieldOpLayer(config) {
@@ -350,6 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (mapRequestsConfig.debug) console.log(`[Map] Popup details: aidTypeName='${aidTypeName}', address='${address}'`);
 
                     const copyContent =
+                        `Aid Request #${prop.requestId}\n` +
                         `Requester: ${prop.requester_name}\n` +
                         `Status: ${prop.status}\n` +
                         `Priority: ${prop.priority}\n` +
@@ -370,18 +433,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Create the copy button and add its event listener
                     const copyButton = document.createElement('button');
                     copyButton.textContent = 'Copy Details';
-
-                    // Add event listener for the copy button
-                    copyButton.addEventListener('click', () => {
+                    copyButton.className = 'btn btn-sm btn-outline-secondary mt-2 w-100'; // Bootstrap classes
+                    copyButton.onclick = () => {
                         navigator.clipboard.writeText(copyContent).then(() => {
-                            if (mapRequestsConfig.debug) console.log('Aid request details copied to clipboard.');
-                            // Optionally, show a success message to the user
-                        }).catch(err => {
-                            if (mapRequestsConfig.debug) console.error('Failed to copy aid request details:', err);
-                        });
-                    });
+                            if (mapRequestsConfig.debug) console.log('[Map] Popup details copied to clipboard.');
 
-                    // Append the copy button to the contentDiv
+                            // Provide visual feedback
+                            const originalText = copyButton.textContent;
+                            copyButton.textContent = 'Copied!';
+                            copyButton.classList.remove('btn-outline-secondary');
+                            copyButton.classList.add('btn-success');
+                            copyButton.disabled = true;
+
+                            // Revert the button state after a short delay
+                            setTimeout(() => {
+                                copyButton.textContent = originalText;
+                                copyButton.classList.remove('btn-success');
+                                copyButton.classList.add('btn-outline-secondary');
+                                copyButton.disabled = false;
+                            }, 1500);
+
+                        }).catch(err => {
+                            console.error('[Map] Failed to copy text: ', err);
+                        });
+                    };
                     contentDiv.appendChild(copyButton);
                     if (mapRequestsConfig.debug) console.log('[Map] Popup content created:', contentDiv.innerHTML);
 
@@ -394,6 +469,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (mapRequestsConfig.debug) console.log('[Map] Opening popup...');
                     popup.open(map);
                     if (mapRequestsConfig.debug) console.log('[Map] Popup open command sent.');
+
+                    // Add a mouseleave event to the popup to close it automatically
+                    const popupContainer = popup.getOptions().content.parentElement;
+                    if (popupContainer) {
+                        popupContainer.addEventListener('mouseleave', () => {
+                            if (mapRequestsConfig.debug) console.log('[Map] Mouse left popup, closing.');
+                            popup.close();
+                        }, { once: true }); // Use 'once' to ensure the listener is removed after firing
+                    }
                 }
             });
         }

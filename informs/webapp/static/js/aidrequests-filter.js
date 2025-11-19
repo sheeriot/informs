@@ -7,14 +7,14 @@
  * - Applies this filter state directly to the aid request list by toggling the `d-none` class on table rows.
  * - Dispatches `updateMapLayer` and `updateFilterCounts` events to notify other components of the change.
  */
-document.addEventListener('DOMContentLoaded', function() {
-    const scriptConfig = {
-        debug: true,
-        version: '0.0.14'
-    };
+const requestsFilterConfig = {
+    debug: true,
+    version: '0.0.14'
+};
 
-    if (scriptConfig.debug) {
-        console.log(`[Filter Script] Version ${scriptConfig.version} loaded.`);
+document.addEventListener('DOMContentLoaded', function() {
+    if (requestsFilterConfig.debug) {
+        console.log(`[Filter Script] Version ${requestsFilterConfig.version} loaded.`);
     }
 
     const filterCard = document.getElementById('aid-request-filter-card');
@@ -46,10 +46,35 @@ function handleFilterChange(checkbox) {
     // After handling the checkbox UI, get the definitive state and trigger updates.
     // We use a small timeout to ensure the DOM has been updated by the functions above.
     setTimeout(() => {
-        // The only thing this script should do is fire an event that the filters have changed.
-        // Other scripts will listen for this and decide what to do.
-        document.body.dispatchEvent(new CustomEvent('filterStateChange'));
+        const filterState = getFilterState();
+        if (requestsFilterConfig.debug) console.log('[Filter Script] Firing filterStateChange with state:', filterState);
+        document.body.dispatchEvent(new CustomEvent('filterStateChange', { detail: filterState }));
     }, 50);
+}
+
+function getFilterState() {
+    const filterState = {
+        status: [],
+        priority: [],
+        aid_type: []
+    };
+
+    // Get checked statuses
+    document.querySelectorAll('[data-filter-type="status"]:checked').forEach(cb => {
+        filterState.status.push(cb.dataset.filterValue || cb.value);
+    });
+
+    // Get checked priorities
+    document.querySelectorAll('[data-filter-type="priority"]:checked').forEach(cb => {
+        filterState.priority.push(cb.dataset.filterValue || cb.value);
+    });
+
+    // Get checked aid types
+    document.querySelectorAll('[data-filter-type="aid_type"]:checked').forEach(cb => {
+        filterState.aid_type.push(cb.dataset.filterValue || cb.value);
+    });
+
+    return filterState;
 }
 
 // This function is being moved to aidrequests-list.js
