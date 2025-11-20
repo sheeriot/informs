@@ -182,23 +182,21 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
             'aid_types_json': json.dumps(aid_types_data, cls=DecimalEncoder),
             'status_choices_json': json.dumps(list(AidRequest.STATUS_CHOICES)),
             'priority_choices_json': json.dumps(list(AidRequest.PRIORITY_CHOICES)),
-            'all_aid_requests_json': json.dumps([req.to_dict() for req in all_aid_requests], cls=DecimalEncoder),
+            # This is now the single source of truth for all client-side data
+            'all_requests_data_json': json.dumps([req.to_dict() for req in all_aid_requests], cls=DecimalEncoder),
         })
 
-        # Prepare data for map component
-        aid_locations = json.loads(self.get_aid_locations_json(all_aid_requests))
-        context['aid_locations_json'] = json.dumps(aid_locations)
+        # --- Bounding Box Calculation ---
+        # Use the serialized data as the source for locations
+        aid_locations = [req for req in json.loads(context['all_requests_data_json']) if req.get('latitude') and req.get('longitude')]
 
-        # Start of new bounding box calculation logic
         final_bounds = None
-
-        # 1. Calculate bounds for all aid requests
         aid_requests_bounds = get_points_bounds(aid_locations)
 
-        # 2. Calculate bounds for the Field Op area (2x radius)
+        # 2. Calculate bounds for the Field Op area (2.5x radius for padding)
         field_op_bounds = None
         if self.field_op.ring_size and self.field_op.ring_size > 0:
-            radius_km = float(self.field_op.ring_size) * 2 * 1.60934  # 2x radius in km
+            radius_km = float(self.field_op.ring_size) * 2.5 * 1.60934  # 2.5x radius in km
             field_op_bounds = get_circle_bounds(
                 center_lat=self.field_op.latitude,
                 center_lon=self.field_op.longitude,
@@ -233,7 +231,6 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
             ]
 
         context['initial_bounds_json'] = json.dumps(final_bounds)
-        # End of new bounding box calculation logic
 
         return context
 

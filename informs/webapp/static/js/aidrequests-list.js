@@ -4,61 +4,60 @@
  * Implements filtering for the aid requests table with Bootstrap 5 integration
  * Provides dynamic filtering and searching functionality
  */
-
-// This script needs to be loaded after the data blocks in the HTML.
+let allAidRequests = []; // This will be our single source of truth
+const listScriptConfig = {
+    debug: true,
+    version: '0.0.14',
+    fieldOpSlug: null // Will be populated on DOMContentLoaded
+};
 
 document.addEventListener('DOMContentLoaded', function() {
-    const scriptConfig = {
-        debug: false,
-        version: '0.0.14',
-        fieldOpSlug: document.body.dataset.fieldOpSlug,
-        urls: {
-            getFilterCounts: `/api/${document.body.dataset.fieldOpSlug}/filter-counts/`
-        }
-    };
-
-    if (!scriptConfig.fieldOpSlug) {
+    if (listScriptConfig.debug) console.log(`[List Script] Initializing v${listScriptConfig.version}`);
+    // Populate dynamic configs
+    listScriptConfig.fieldOpSlug = document.body.dataset.fieldOpSlug;
+    if (document.getElementById('script-config')?.dataset.debug === 'true') {
+        listScriptConfig.debug = true;
+    }
+    if (!listScriptConfig.fieldOpSlug) {
         console.error("[List Script] Field Op slug not found in body dataset. Aborting.");
         return;
     }
 
-    if (scriptConfig.debug) {
-        console.log(`[List Script] Version ${scriptConfig.version} initialized for FieldOp: ${scriptConfig.fieldOpSlug}`);
+    if (listScriptConfig.debug) {
+        console.log(`[List Script] Version ${listScriptConfig.version} initialized for FieldOp: ${listScriptConfig.fieldOpSlug}`);
     }
 
-    const componentsReady = {
-        map: false,
-        filter: false,
-        list: false // This script itself
-    };
-    let initialFilterApplied = false;
-
-    function checkAllComponentsReady() {
-        if (initialFilterApplied) return; // Only run once
-
-        if (componentsReady.map && componentsReady.filter && componentsReady.list) {
-            if (scriptConfig.debug) {
-                console.log('[List Script] All components ready. Triggering initial filter application.');
+    // --- Data Initialization ---
+    try {
+        const dataEl = document.getElementById('all-aid-requests-json');
+        if (dataEl) {
+            allAidRequests = JSON.parse(dataEl.textContent);
+            if (listScriptConfig.debug) {
+                console.log(`[List Script] Loaded ${allAidRequests.length} aid requests into the local store.`);
+                console.table(allAidRequests);
             }
-            initialFilterApplied = true;
-            runFilterAndUpdates();
         } else {
-            if (scriptConfig.debug) {
-                console.log('[List Script] Waiting for components...', componentsReady);
-            }
+            console.error('[List Script] Aid request data element not found. Cannot initialize.');
+            return;
         }
+    } catch (e) {
+        console.error('[List Script] Failed to parse aid request data:', e);
+        return;
     }
 
-    document.body.addEventListener('componentReady', (e) => {
-        const componentName = e.detail?.name;
-        if (componentName && componentsReady.hasOwnProperty(componentName)) {
-            componentsReady[componentName] = true;
-            if (scriptConfig.debug) {
-                console.log(`[List Script] Received ready signal from: ${componentName}`);
-            }
-            checkAllComponentsReady();
+    // --- Initialize All Components Sequentially ---
+    // We use a setTimeout to push this execution to the next tick of the event loop.
+    // This is a standard and robust way to ensure that all other browser and third-party
+    // SDKs (like Azure Maps) have completed their own synchronous and asynchronous
+    // initialization routines before we try to use them.
+    setTimeout(() => {
+        if (listScriptConfig.debug) console.log('[List Script] Kicking off component initialization...');
+        if (window.initializeAidRequestMap) {
+            window.initializeAidRequestMap(allAidRequests);
+        } else if (listScriptConfig.debug) {
+            console.error('[List Script] Map initializer function not found.');
         }
-    });
+    }, 0);
 
     // Listener for row updates
     document.body.addEventListener('click', function(event) {
@@ -266,20 +265,27 @@ document.addEventListener('DOMContentLoaded', function() {
                         modalInstance.hide();
 
                         const aidRequestId = payload.aidRequestId;
-                        htmx.trigger('body', `update-row-${aidRequestId}`, {});
 
-                        // Update the local data store, which will trigger count and map updates
-                        // This part is now handled by the backend updateFilterCounts event
-                        // if (window.aidRequestsStore && window.aidRequestsStore.updateAidRequest) {
-                        //     const updates = {};
-                        //     if (payload.status) {
-                        //         updates.status = payload.status;
-                        //     }
-                        //     if (payload.priority) {
-                        //         updates.priority = payload.priority;
-                        //     }
-                        //     window.aidRequestsStore.updateAidRequest(aidRequestId, updates);
-                        // }
+                        // --- UPDATE THE IN-MEMORY DATA STORE ---
+                        // Find the request in our local array and update its property
+                        // before HTMX triggers a swap and re-filter.
+                        const requestToUpdate = allAidRequests.find(req => req.id == aidRequestId);
+                        if (requestToUpdate) {
+                            if (payload.status) {
+                                if (listScriptConfig.debug) console.log(`[List Script] Updating in-memory store for request #${aidRequestId}. Changing 'status' to '${payload.status}'.`);
+                                requestToUpdate.status = payload.status;
+                            }
+                            if (payload.priority) {
+                                const newPriority = payload.priority === 'none' ? null : payload.priority;
+                                if (listScriptConfig.debug) console.log(`[List Script] Updating in-memory store for request #${aidRequestId}. Changing 'priority' to '${newPriority}'.`);
+                                requestToUpdate.priority = newPriority;
+                            }
+                        } else if (listScriptConfig.debug) {
+                            console.warn(`[List Script] Could not find request #${aidRequestId} in local store to update.`);
+                        }
+
+                        // Trigger the row swap via HTMX. The `htmx:afterSwap` listener will handle re-filtering.
+                        htmx.trigger('body', `update-row-${aidRequestId}`, {});
 
                     } else {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -296,23 +302,25 @@ document.addEventListener('DOMContentLoaded', function() {
     document.body.addEventListener('htmx:afterSwap', function(event) {
         // Check if the swap happened on one of our rows
         if (event.target.matches('.aid-request-row')) {
-            if (scriptConfig.debug) {
+            if (listScriptConfig.debug) {
                 console.log('[List Script] Row updated via HTMX. Triggering map point update and filter counts.');
             }
 
-            // Trigger the map to update the specific point
+            // Trigger the map to update the specific point's data properties
             document.body.dispatchEvent(new CustomEvent('mapPointShouldUpdate', {
                 detail: { rowElement: event.target }
             }));
 
-            // After a row changes, refetch the counts and update filters
+            // After a row changes, refilter the list and then tell the map to refilter too.
             runFilterAndUpdates();
+            const filterState = getFilterStateFromDOM();
+            document.body.dispatchEvent(new CustomEvent('mapShouldUpdateFilter', { detail: filterState }));
         }
     });
 
     // Listen for the custom event from the filter script
     document.body.addEventListener('filterStateChange', function() {
-        if (scriptConfig.debug) {
+        if (listScriptConfig.debug) {
             console.log('[List Script] Received filterStateChange event.');
         }
         runFilterAndUpdates();
@@ -321,168 +329,119 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeTooltips();
 
     // Signal that this script is ready and check if all others are too.
-    componentsReady.list = true;
-    checkAllComponentsReady();
+    // componentsReady.list = true; // This line is removed
+    // checkAllComponentsReady(); // This line is removed
 
+    // This is the function that is called when the list needs to be re-filtered
+    // either from a direct filter change or after a row has been updated.
     function runFilterAndUpdates() {
         const filterState = getFilterStateFromDOM();
 
-        if (scriptConfig.debug) {
+        if (listScriptConfig.debug) {
             console.log('[List Script] Running filter and updates with state:', filterState);
         }
 
-        applyListFilter(filterState);
-        document.body.dispatchEvent(new CustomEvent('updateMapLayer', { detail: { filterState: filterState } }));
-        fetchFilterCounts(scriptConfig, filterState);
+        const visibleRequests = applyListFilter(filterState);
+        updateFilterCounts(visibleRequests); // Update counts based on visible items
     }
 
     function applyListFilter(filterState) {
         const rows = document.querySelectorAll('#aid-request-list-body tr.aid-request-row');
         let visibleCount = 0;
+        const visibleRequests = [];
 
-        rows.forEach(row => {
-            const status = row.dataset.status;
-            const priority = row.dataset.priority || 'none';
-            const aidType = row.dataset.aidType;
+        allAidRequests.forEach(request => {
+            const row = document.getElementById(`aid-request-row-${request.id}`);
+            if (!row) return;
 
-            const statusMatch = filterState.statuses.length === 0 || filterState.statuses.includes(status);
+            const statusMatch = filterState.statuses.length === 0 || filterState.statuses.includes(request.status);
 
             let priorityMatch = true;
             if (filterState.priorities !== 'all') {
-                priorityMatch = filterState.priorities.includes(priority);
+                priorityMatch = filterState.priorities.includes(request.priority || 'none');
             }
 
             let aidTypeMatch = true;
             if (filterState.aid_types !== 'all') {
-                aidTypeMatch = filterState.aid_types.includes(aidType);
+                aidTypeMatch = filterState.aid_types.includes(request.aid_type_slug);
             }
 
             if (statusMatch && priorityMatch && aidTypeMatch) {
                 row.classList.remove('d-none');
                 visibleCount++;
+                visibleRequests.push(request);
             } else {
                 row.classList.add('d-none');
             }
         });
 
-        if (scriptConfig.debug) {
+        if (listScriptConfig.debug) {
             console.log(`[List Script] Applied filter. Visible rows: ${visibleCount}`);
         }
-    }
 
-    function fetchFilterCounts(config, filterState) {
-        fetch(config.urls.getFilterCounts, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify(filterState)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (config.debug) {
-                console.log('[List Script] Received new counts from backend.');
-            }
-            updateFilterUIDisplay(data);
-        })
-        .catch(error => {
-            console.error('[List Script] Error fetching filter counts:', error);
-        });
-    }
-
-    function updateFilterUIDisplay(counts) {
-        // Update main results counter
+        // Update the main results counter
         const resultsCounter = document.getElementById('results-counter');
         if (resultsCounter) {
-            resultsCounter.textContent = `${counts.matched} of ${counts.total} requests`;
+            resultsCounter.textContent = `${visibleCount} of ${allAidRequests.length} requests`;
         }
 
-        // Update 'All' counters
-        const allAidType = document.querySelector('label[for="aid-type-filter-all"]');
-        if (allAidType) allAidType.innerHTML = `All <span class="text-muted">(${counts.matched})</span>`;
+        return visibleRequests;
+    }
 
-        const allPriority = document.querySelector('label[for="priority-filter-all"]');
-        if (allPriority) allPriority.innerHTML = `All <span class="text-muted">(${counts.matched})</span>`;
+    function updateFilterCounts(visibleRequests) {
+        if (listScriptConfig.debug) console.log(`[List Script] Updating filter counts based on ${visibleRequests.length} visible requests.`);
 
-
-        // Update status group totals
-        document.getElementById('status-group-filter-active-total').textContent = `(${counts.groups.active.filtered})`;
-        document.getElementById('status-group-filter-inactive-total').textContent = `(${counts.groups.inactive.filtered})`;
-
-        // Update individual status counts
-        for (const [status, count] of Object.entries(counts.byStatus)) {
-            const el = document.getElementById(`status-filter-${status}-count`);
-            if (el) el.textContent = `(${count})`;
-        }
-
-        // Update individual aid type counts
-        for (const [slug, count] of Object.entries(counts.byAidType)) {
-            const el = document.getElementById(`aid-type-${slug}-count`);
-            if (el) el.textContent = `(${count})`;
-        }
-
-        // Update individual priority counts
-        for (const [prio, count] of Object.entries(counts.byPriority)) {
-            const prioId = prio === 'None' ? 'none' : prio;
-            const el = document.getElementById(`priority-${prioId}-count`);
-            if (el) el.textContent = `(${count})`;
-        }
-
-        // Update list card summary
-        const listSummary = document.getElementById('list-filter-summary');
-        if(listSummary) listSummary.textContent = counts.summary_html;
-
-        // --- Disable/Enable filter options based on zero counts ---
-        const updateOption = (id, count) => {
-            const checkbox = document.getElementById(id);
-            if (!checkbox) return;
-
-            const label = checkbox.nextElementSibling;
-            const isDisabled = count === 0;
-
-            checkbox.disabled = isDisabled;
-            if (isDisabled) {
-                checkbox.checked = false; // Also uncheck if count is zero
-                label.classList.add('text-muted');
-            } else {
-                label.classList.remove('text-muted');
-            }
+        const counts = {
+            byStatus: {},
+            byPriority: {},
+            byAidType: {}
         };
 
-        // Update statuses
-        for (const [status, count] of Object.entries(counts.byStatus)) {
-            updateOption(`status-filter-${status}`, count);
-        }
+        // Initialize all possible filter options with a count of 0
+        document.querySelectorAll('[data-filter-type="status"]').forEach(el => counts.byStatus[el.dataset.filterValue] = 0);
+        document.querySelectorAll('[data-filter-type="priority"]').forEach(el => counts.byPriority[el.dataset.filterValue] = 0);
+        document.querySelectorAll('[data-filter-type="aid_type"]').forEach(el => counts.byAidType[el.dataset.filterValue] = 0);
 
-        // Update aid types
-        for (const [slug, count] of Object.entries(counts.byAidType)) {
-            updateOption(`aid-type-filter-${slug}`, count);
-        }
+        // Calculate counts from the visible requests
+        visibleRequests.forEach(request => {
+            if (counts.byStatus.hasOwnProperty(request.status)) {
+                counts.byStatus[request.status]++;
+            }
+            const priority = request.priority || 'none';
+            if (counts.byPriority.hasOwnProperty(priority)) {
+                counts.byPriority[priority]++;
+            }
+            if (counts.byAidType.hasOwnProperty(request.aid_type_slug)) {
+                counts.byAidType[request.aid_type_slug]++;
+            }
+        });
 
-        // Update priorities
-        for (const [prio, count] of Object.entries(counts.byPriority)) {
-            const prioId = prio === 'None' ? 'none' : prio;
-            updateOption(`priority-filter-${prioId}`, count);
-        }
+        if (listScriptConfig.debug) console.log('[List Script] Calculated new counts:', counts);
 
-        // Handle Status Group Checkboxes
-        if (counts.status_group_counts) {
-            const updateGroupOption = (groupName, count) => {
-                const checkbox = document.getElementById(`status-group-${groupName}`);
-                const label = document.querySelector(`label[for="status-group-${groupName}"]`);
-                if (checkbox && label) {
-                    label.textContent = `${groupName.charAt(0).toUpperCase() + groupName.slice(1)} (${count})`;
-                    const isDisabled = count === 0;
-                    checkbox.disabled = isDisabled;
-                    label.classList.toggle('text-muted', isDisabled);
-                    if (isDisabled) {
-                        checkbox.checked = false;
-                    }
+        // --- Update UI ---
+        updateCountUI('status', counts.byStatus);
+        updateCountUI('priority', counts.byPriority);
+        updateCountUI('aid_type', counts.byAidType);
+    }
+
+    function updateCountUI(filterType, counts) {
+        for (const [value, count] of Object.entries(counts)) {
+            const el = document.getElementById(`${filterType.replace('_', '-')}-${value}-count`);
+            if (el) {
+                el.textContent = `(${count})`;
+            }
+
+            // Disable/enable the checkbox based on the count
+            const checkbox = document.getElementById(`${filterType.replace('_', '-')}-filter-${value}`);
+            if (checkbox) {
+                const label = checkbox.closest('.form-check').querySelector('label');
+                checkbox.disabled = count === 0;
+                if (label) {
+                    label.classList.toggle('text-muted', count === 0);
                 }
-            };
-            updateGroupOption('active', counts.status_group_counts.active || 0);
-            updateGroupOption('inactive', counts.status_group_counts.inactive || 0);
+                // Do not uncheck here, as the user's selection should be preserved
+                // until they change it. The filter logic will handle what's visible.
+            }
         }
     }
 

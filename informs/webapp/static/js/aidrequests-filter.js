@@ -13,34 +13,57 @@ const requestsFilterConfig = {
 };
 
 document.addEventListener('DOMContentLoaded', function() {
+    const requestsFilterConfig = {
+        debug: true,
+        version: '0.0.14'
+    };
+
     if (requestsFilterConfig.debug) {
         console.log(`[Filter Script] Version ${requestsFilterConfig.version} loaded.`);
     }
 
-    const filterCard = document.getElementById('aid-request-filter-card');
-    if (!filterCard) return;
-
-    // --- Main Event Listener for all filter changes ---
-    filterCard.addEventListener('change', function(event) {
-        if (event.target.matches('.filter-checkbox, [id^="status-group-filter-"]')) {
-            handleFilterChange(event.target);
-        }
+    // Attach event listeners to filter checkboxes
+    const filterCheckboxes = document.querySelectorAll('.filter-checkbox');
+    filterCheckboxes.forEach(cb => {
+        cb.addEventListener('change', () => handleFilterChange(cb));
     });
-
-    // Signal that the filter component is ready.
-    document.body.dispatchEvent(new CustomEvent('componentReady', { detail: { name: 'filter' } }));
-
-    // We no longer need to apply filter on load from this script.
-    // aidrequests-list.js will handle the initial data fetching and filtering.
 });
 
 
-function handleFilterChange(checkbox) {
-    // Handle the visual logic for checkbox groups (e.g., 'All' <-> individuals)
-    if (checkbox.id.endsWith('-all')) {
-        handleAllCheckbox(checkbox);
-    } else {
-        handleIndividualCheckbox(checkbox);
+// Expose the initialize function globally so the main list script can call it
+window.initializeAidRequestFilter = function() {
+    if (requestsFilterConfig.debug) console.log('[Filter Script] Initializing...');
+
+    // Dispatch the initial state
+    const initialState = getFilterState();
+    if (requestsFilterConfig.debug) console.log('[Filter Script] Dispatching initial filter state:', initialState);
+    document.body.dispatchEvent(new CustomEvent('filterStateChange', { detail: initialState }));
+
+    document.body.dispatchEvent(new CustomEvent('componentReady', { detail: { name: 'filter' } }));
+}
+
+function handleFilterChange(targetCheckbox) {
+    if (!targetCheckbox) {
+        if (requestsFilterConfig.debug) console.error('[Filter Script] handleFilterChange called with invalid target.');
+        return;
+    }
+    const filterType = targetCheckbox.dataset.filterType;
+    const allCheckbox = document.getElementById(`${filterType}-filter-all`);
+
+    // Handle 'All' checkbox logic
+    if (allCheckbox.id === targetCheckbox.id) { // The 'All' checkbox was changed
+        const isChecked = targetCheckbox.checked;
+        const checkboxes = document.querySelectorAll(`.filter-checkbox[data-filter-type="${filterType}"]`);
+        checkboxes.forEach(cb => {
+            cb.checked = isChecked;
+        });
+    } else { // An individual checkbox was changed
+        // Handle the visual logic for checkbox groups (e.g., 'All' <-> individuals)
+        if (targetCheckbox.id.endsWith('-all')) {
+            handleAllCheckbox(targetCheckbox);
+        } else {
+            handleIndividualCheckbox(targetCheckbox);
+        }
     }
 
     // After handling the checkbox UI, get the definitive state and trigger updates.
@@ -59,19 +82,15 @@ function getFilterState() {
         aid_type: []
     };
 
-    // Get checked statuses
-    document.querySelectorAll('[data-filter-type="status"]:checked').forEach(cb => {
-        filterState.status.push(cb.dataset.filterValue || cb.value);
-    });
+    const filterCheckboxes = document.querySelectorAll('.filter-checkbox:checked');
 
-    // Get checked priorities
-    document.querySelectorAll('[data-filter-type="priority"]:checked').forEach(cb => {
-        filterState.priority.push(cb.dataset.filterValue || cb.value);
-    });
+    filterCheckboxes.forEach(cb => {
+        const filterType = cb.dataset.filterType;
+        const filterValue = cb.dataset.filterValue;
 
-    // Get checked aid types
-    document.querySelectorAll('[data-filter-type="aid_type"]:checked').forEach(cb => {
-        filterState.aid_type.push(cb.dataset.filterValue || cb.value);
+        if (filterType && filterValue && filterState[filterType] && filterValue !== 'all') {
+            filterState[filterType].push(filterValue);
+        }
     });
 
     return filterState;

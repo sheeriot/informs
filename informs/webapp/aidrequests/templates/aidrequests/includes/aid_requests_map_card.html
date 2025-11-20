@@ -14,7 +14,7 @@
         <div class="card-body p-0">
             <!-- Map container with data attributes -->
             <div id="aid-request-map-container" class="position-relative w-100 map-container-shared"
-                data-azure-maps-key="{{ azure_maps_key }}"
+                data-maps-subscription-key="{{ azure_maps_key }}"
                 data-initial-bounds='{{ initial_bounds_json|safe }}'
                 data-center-lat="{{ field_op.latitude|stringformat:".6f"|default:"0" }}"
                 data-center-lon="{{ field_op.longitude|stringformat:".6f"|default:"0" }}"
