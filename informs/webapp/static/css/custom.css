@@ -562,3 +562,8 @@ textarea:not([disabled]) {
 .htmx-request.btn .btn-content {
     display: none;
 }
+
+/* Vertical alignment fix for filter choice items */
+.filter-choice-item .form-check-label {
+    line-height: 1;
+}

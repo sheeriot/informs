@@ -1,164 +1,123 @@
-/**
- * aidrequests-filter.js
- *
- * Manages the filter checkboxes on the aid request list page.
- * - Handles the UI logic for "All" checkboxes and their corresponding individual options.
- * - Reads the state of all checkboxes to build a `filterState` object.
- * - Applies this filter state directly to the aid request list by toggling the `d-none` class on table rows.
- * - Dispatches `updateMapLayer` and `updateFilterCounts` events to notify other components of the change.
- */
-const requestsFilterConfig = {
-    debug: true,
-    version: '0.0.14'
-};
+document.addEventListener('DOMContentLoaded', function () {
+    'use strict';
 
-document.addEventListener('DOMContentLoaded', function() {
-    const requestsFilterConfig = {
-        debug: true,
-        version: '0.0.14'
-    };
-
-    if (requestsFilterConfig.debug) {
-        console.log(`[Filter Script] Version ${requestsFilterConfig.version} loaded.`);
-    }
-
-    // Attach event listeners to filter checkboxes
-    const filterCheckboxes = document.querySelectorAll('.filter-checkbox');
-    filterCheckboxes.forEach(cb => {
-        cb.addEventListener('change', () => handleFilterChange(cb));
-    });
-});
-
-
-// Expose the initialize function globally so the main list script can call it
-window.initializeAidRequestFilter = function() {
-    if (requestsFilterConfig.debug) console.log('[Filter Script] Initializing...');
-
-    // Dispatch the initial state
-    const initialState = getFilterState();
-    if (requestsFilterConfig.debug) console.log('[Filter Script] Dispatching initial filter state:', initialState);
-    document.body.dispatchEvent(new CustomEvent('filterStateChange', { detail: initialState }));
-
-    document.body.dispatchEvent(new CustomEvent('componentReady', { detail: { name: 'filter' } }));
-}
-
-function handleFilterChange(targetCheckbox) {
-    if (!targetCheckbox) {
-        if (requestsFilterConfig.debug) console.error('[Filter Script] handleFilterChange called with invalid target.');
+    const filterCard = document.getElementById('aid-request-filter-card');
+    if (!filterCard) {
+        // No filter card on this page, do nothing.
         return;
     }
-    const filterType = targetCheckbox.dataset.filterType;
-    const allCheckbox = document.getElementById(`${filterType}-filter-all`);
 
-    // Handle 'All' checkbox logic
-    if (allCheckbox.id === targetCheckbox.id) { // The 'All' checkbox was changed
-        const isChecked = targetCheckbox.checked;
-        const checkboxes = document.querySelectorAll(`.filter-checkbox[data-filter-type="${filterType}"]`);
-        checkboxes.forEach(cb => {
-            cb.checked = isChecked;
-        });
-    } else { // An individual checkbox was changed
-        // Handle the visual logic for checkbox groups (e.g., 'All' <-> individuals)
-        if (targetCheckbox.id.endsWith('-all')) {
-            handleAllCheckbox(targetCheckbox);
+    const filterScriptConfig = { debug: document.body.dataset.debug === 'true' };
+
+    /**
+     * Reads the current state of all filter checkboxes from the DOM.
+     * @returns {object} The current filter state.
+     */
+    function getFilterStateFromDOM() {
+        if (!filterCard) return {};
+
+        const getCheckedValues = (selector) =>
+            Array.from(filterCard.querySelectorAll(selector))
+                .filter(cb => cb.checked)
+                .map(cb => cb.dataset.filterValue);
+
+        const isAllOrIndeterminate = (selector) => {
+            const allCheckbox = filterCard.querySelector(selector);
+            return allCheckbox && (allCheckbox.checked || allCheckbox.indeterminate);
+        };
+
+        const getIndeterminateValues = (type) =>
+            Array.from(filterCard.querySelectorAll(`[data-filter-type="${type}"]:not([id$="-all"])`))
+                .filter(cb => cb.checked)
+                .map(cb => cb.dataset.filterValue);
+
+
+        const aidTypes = isAllOrIndeterminate('#aid-type-filter-all') ? 'all' : getIndeterminateValues('aid_type');
+        const priorities = isAllOrIndeterminate('#priority-filter-all') ? 'all' : getIndeterminateValues('priority');
+        const statuses = getCheckedValues('[data-filter-type="status"]');
+
+        return { status: statuses, priority: priorities, aid_type: aidTypes };
+    }
+
+
+    /**
+     * Updates the state of a parent/group checkbox based on the state of its children.
+     * @param {string} groupSelector - A CSS selector to find the child checkboxes for a specific group.
+     * @param {HTMLElement} parentCheckbox - The parent checkbox element to update.
+     */
+    function updateParentCheckboxState(groupSelector, parentCheckbox) {
+        if (!parentCheckbox) return;
+
+        const childCheckboxes = filterCard.querySelectorAll(groupSelector);
+        if (childCheckboxes.length === 0) return;
+
+        const allChecked = Array.from(childCheckboxes).every(cb => cb.checked);
+        const noneChecked = Array.from(childCheckboxes).every(cb => !cb.checked);
+
+        if (allChecked) {
+            parentCheckbox.checked = true;
+            parentCheckbox.indeterminate = false;
+        } else if (noneChecked) {
+            parentCheckbox.checked = false;
+            parentCheckbox.indeterminate = false;
         } else {
-            handleIndividualCheckbox(targetCheckbox);
+            parentCheckbox.checked = false; // A parent with some children is not "fully" checked.
+            parentCheckbox.indeterminate = true;
         }
     }
 
-    // After handling the checkbox UI, get the definitive state and trigger updates.
-    // We use a small timeout to ensure the DOM has been updated by the functions above.
-    setTimeout(() => {
-        const filterState = getFilterState();
-        if (requestsFilterConfig.debug) console.log('[Filter Script] Firing filterStateChange with state:', filterState);
-        document.body.dispatchEvent(new CustomEvent('filterStateChange', { detail: filterState }));
-    }, 50);
-}
 
-function getFilterState() {
-    const filterState = {
-        status: [],
-        priority: [],
-        aid_type: []
-    };
+    /**
+     * Handles any change on any filter checkbox and orchestrates UI updates.
+     * @param {Event} e - The change event.
+     */
+    function handleFilterChange(e) {
+        const target = e.target;
+        if (!target.matches('.filter-checkbox')) return;
 
-    const filterCheckboxes = document.querySelectorAll('.filter-checkbox:checked');
+        const filterType = target.dataset.filterType;
+        const filterValue = target.dataset.filterValue;
 
-    filterCheckboxes.forEach(cb => {
-        const filterType = cb.dataset.filterType;
-        const filterValue = cb.dataset.filterValue;
-
-        if (filterType && filterValue && filterState[filterType] && filterValue !== 'all') {
-            filterState[filterType].push(filterValue);
-        }
-    });
-
-    return filterState;
-}
-
-// This function is being moved to aidrequests-list.js
-// function applyListFilter(filterState) {
-//     const rows = document.querySelectorAll('#aid-request-list-body tr.aid-request-row');
-//
-//     rows.forEach(row => {
-//         const status = row.dataset.status;
-//         const priority = row.dataset.priority;
-//         const aidType = row.dataset.aidType;
-//
-//         const statusMatch = filterState.statuses === 'all' || filterState.statuses.includes(status);
-//         const priorityMatch = filterState.priorities === 'all' || filterState.priorities.includes(priority);
-//         const aidTypeMatch = filterState.aid_types === 'all' || filterState.aid_types.includes(aidType);
-//
-//         if (statusMatch && priorityMatch && aidTypeMatch) {
-//             row.classList.remove('d-none');
-//         } else {
-//             row.classList.add('d-none');
-//         }
-//     });
-// }
-
-
-// --- Checkbox Group UI Logic ---
-
-function handleAllCheckbox(allCheckbox) {
-    const filterType = allCheckbox.dataset.filterType;
-    const isChecked = allCheckbox.checked;
-    document.querySelectorAll(`[data-filter-type="${filterType}"]:not([id$="-all"])`)
-        .forEach(cb => cb.checked = isChecked);
-}
-
-function handleIndividualCheckbox(checkbox) {
-    const filterType = checkbox.dataset.filterType;
-    if (!filterType || filterType === 'status_group') return;
-
-    const allCheckbox = document.getElementById(`${filterType.replace('_', '-')}-filter-all`);
-    if (!allCheckbox) return;
-
-    const allRelated = document.querySelectorAll(`[data-filter-type="${filterType}"]:not([id$="-all"])`);
-    const allChecked = Array.from(allRelated).every(cb => cb.checked);
-    const someChecked = Array.from(allRelated).some(cb => cb.checked);
-
-    allCheckbox.checked = allChecked;
-    allCheckbox.indeterminate = !allChecked && someChecked;
+        // --- Parent to Child Logic ---
+        if (filterType === 'status_group') {
+            // User clicked "Active" or "Inactive" group checkbox
+            const childSelector = `#${filterValue}-status-filter-buttons .filter-checkbox[data-filter-type="status"]`;
+            filterCard.querySelectorAll(childSelector).forEach(cb => cb.checked = target.checked);
+        } else if (filterValue === 'all') {
+            // User clicked an "All" checkbox (for Priority or Aid Type)
+            filterCard.querySelectorAll(`.filter-checkbox[data-filter-type="${filterType}"]`).forEach(cb => cb.checked = target.checked);
         }
 
-// Handle Status group logic separately as it's a bit different
-document.addEventListener('change', function(event) {
-    const target = event.target;
-    if (target.matches('[data-filter-type="status_group"]')) {
-        const group = target.dataset.filterValue;
-        const isChecked = target.checked;
-        document.querySelectorAll(`[data-filter-type="status"][data-group="${group}"]`)
-            .forEach(cb => cb.checked = isChecked);
-    } else if (target.matches('[data-filter-type="status"]')) {
-        const group = target.dataset.group;
-        const groupCheckbox = document.getElementById(`status-group-filter-${group}`);
-        if(groupCheckbox) {
-            const allInGroup = document.querySelectorAll(`[data-filter-type="status"][data-group="${group}"]`);
-            const allChecked = Array.from(allInGroup).every(cb => cb.checked);
-            const someChecked = Array.from(allInGroup).some(cb => cb.checked);
-            groupCheckbox.checked = allChecked;
-            groupCheckbox.indeterminate = !allChecked && someChecked;
+        // --- Child to Parent Logic ---
+        if (filterType === 'status') {
+            // A status checkbox changed, so update its parent group ("Active" or "Inactive")
+            const parentGroup = target.closest('#active-status-filter-buttons') ? 'active' : 'inactive';
+            const groupParentCheckbox = document.getElementById(`status-group-filter-${parentGroup}`);
+            const groupChildSelector = `#${parentGroup}-status-filter-buttons .filter-checkbox[data-filter-type="status"]`;
+            updateParentCheckboxState(groupChildSelector, groupParentCheckbox);
+
+        } else if (filterType === 'priority' || filterType === 'aid_type') {
+            // A priority or aid_type checkbox changed, so update its "All" parent
+            const allParentCheckbox = document.getElementById(`${filterType}-filter-all`);
+            const childSelector = `.filter-checkbox[data-filter-type="${filterType}"]:not([data-filter-value="all"])`;
+            updateParentCheckboxState(childSelector, allParentCheckbox);
         }
+
+        // --- Dispatch Event ---
+        const newFilterState = getFilterStateFromDOM();
+        if (filterScriptConfig.debug) {
+            console.log('[Filter Script] User change detected. Dispatching new filter state:', newFilterState);
+        }
+        document.body.dispatchEvent(new CustomEvent('filterStateChange', {
+            detail: newFilterState,
+            bubbles: true
+        }));
     }
-    });
+
+    // Attach a single delegated event listener to the filter card.
+    filterCard.addEventListener('change', handleFilterChange);
+
+    if (filterScriptConfig.debug) {
+        console.log(`[Filter Script] Loaded. Delegated event listener attached to filter card.`);
+    }
+});

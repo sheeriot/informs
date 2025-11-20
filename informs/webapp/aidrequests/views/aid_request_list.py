@@ -128,11 +128,12 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         inactive_total_count = 0
         for status_code, status_name in all_statuses:
             count = all_aid_requests.filter(status=status_code).count()
+            checked_by_default = status_code in AidRequest.ACTIVE_STATUSES
             status_counts[status_name] = {
                 'count': count,
-                'total': count
+                'checked_by_default': checked_by_default,
             }
-            if status_code in AidRequest.ACTIVE_STATUSES:
+            if checked_by_default:
                 active_total_count += count
             else:
                 inactive_total_count += count
@@ -147,9 +148,12 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         priority_counts = {}
         for code, name in all_priorities:
             count = all_aid_requests.filter(priority=code).count()
+            # All priorities are checked by default under the "All" group
+            checked_by_default = True
             priority_counts[name] = {
                 'value': code if code is not None else 'none',
                 'count': count,
+                'checked_by_default': checked_by_default,
             }
         context['priority_counts'] = priority_counts
 
@@ -159,11 +163,36 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
             slug = at_data['slug']
             name = at_data['name']
             count = all_aid_requests.filter(aid_type__slug=slug).count()
+            # All aid types are checked by default under the "All" group
+            checked_by_default = True
             aid_type_counts[name] = {
                 'value': slug,
                 'count': count,
+                'checked_by_default': checked_by_default,
             }
         context['aid_type_counts'] = aid_type_counts
+
+        # Add the debug info to the main JSON data blob
+        all_requests_data = [req.to_dict() for req in all_aid_requests]
+
+        field_op_data = {
+            'slug': self.field_op.slug,
+            'latitude': self.field_op.latitude,
+            'longitude': self.field_op.longitude,
+            'ring_size': self.field_op.ring_size,
+        }
+
+        # This will be the NEW single source of truth for all client-side data
+        context_data_for_js = {
+            'field_op': field_op_data,
+            'debug': settings.DEBUG,
+            'active_total_count': active_total_count,
+            'inactive_total_count': inactive_total_count,
+            'status_groups': {
+                'active': AidRequest.ACTIVE_STATUSES,
+                'inactive': AidRequest.INACTIVE_STATUSES
+            }
+        }
 
         context.update({
             'field_op': self.field_op,
@@ -182,13 +211,14 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
             'aid_types_json': json.dumps(aid_types_data, cls=DecimalEncoder),
             'status_choices_json': json.dumps(list(AidRequest.STATUS_CHOICES)),
             'priority_choices_json': json.dumps(list(AidRequest.PRIORITY_CHOICES)),
-            # This is now the single source of truth for all client-side data
-            'all_requests_data_json': json.dumps([req.to_dict() for req in all_aid_requests], cls=DecimalEncoder),
+            # Pass the list of requests and the config separately
+            'all_requests_json': json.dumps([req.to_dict() for req in all_aid_requests], cls=DecimalEncoder),
+            'aid_requests_config_json': json.dumps(context_data_for_js, cls=DecimalEncoder),
         })
 
         # --- Bounding Box Calculation ---
         # Use the serialized data as the source for locations
-        aid_locations = [req for req in json.loads(context['all_requests_data_json']) if req.get('latitude') and req.get('longitude')]
+        aid_locations = [req for req in json.loads(context['all_requests_json']) if req.get('location') and req.get('location').get('latitude') and req.get('location').get('longitude')]
 
         final_bounds = None
         aid_requests_bounds = get_points_bounds(aid_locations)

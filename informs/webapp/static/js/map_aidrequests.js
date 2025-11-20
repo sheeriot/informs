@@ -136,12 +136,12 @@ window.initializeAidRequestMap = function(requests) {
 
         if (mapRequestsConfig.debug) console.log('[Map] All layers initialized.');
 
-        // Re-enable filter initialization
-        if (window.initializeAidRequestFilter) {
-            window.initializeAidRequestFilter();
-        } else if (mapRequestsConfig.debug) {
-            console.error('[Map] Filter initializer function not found.');
-        }
+        // The filter script now initializes itself. This call is no longer needed.
+        // if (window.initializeAidRequestFilter) {
+        //     window.initializeAidRequestFilter();
+        // } else if (mapRequestsConfig.debug) {
+        //     console.error('[Map] Filter initializer function not found.');
+        // }
 
         // Listen for filter changes from the filter script
         document.body.addEventListener('filterStateChange', (e) => {
@@ -211,14 +211,14 @@ window.initializeAidRequestMap = function(requests) {
         }
 
         // Handle priority filter
-        if (filterState.priority && filterState.priority.length > 0) {
+        if (filterState.priority && filterState.priority !== 'all' && filterState.priority.length > 0) {
             // Azure maps considers null a distinct value, so we must handle it explicitly if 'none' is a filter option
             const priorities = filterState.priority.map(p => p === 'none' ? null : p);
             filters.push(['in', ['get', 'priority'], ['literal', priorities]]);
         }
 
         // Handle aid_type filter
-        if (filterState.aid_type && filterState.aid_type.length > 0) {
+        if (filterState.aid_type && filterState.aid_type !== 'all' && filterState.aid_type.length > 0) {
             filters.push(['in', ['get', 'aid_type'], ['literal', filterState.aid_type]]);
         }
 

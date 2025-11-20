@@ -69,8 +69,11 @@
     <script id="aid-types-json" type="application/json">
         {{ aid_types_json|safe }}
     </script>
-    <script id="all-aid-requests-json" type="application/json">
-        {{ all_requests_data_json|safe }}
+    <script id="all-requests-json" type="application/json">
+        {{ all_requests_json|safe }}
+    </script>
+    <script id="aid-requests-config-json" type="application/json">
+        {{ aid_requests_config_json|safe }}
     </script>
     {{ status_choices_json|default:'[]'|json_script:'status-choices-data' }}
     {{ priority_choices_json|default:'[]'|json_script:'priority-choices-data' }}

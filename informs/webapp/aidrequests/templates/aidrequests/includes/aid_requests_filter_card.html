@@ -33,13 +33,13 @@
                                                data-filter-value="all"
                                                checked>
                                         <label class="form-check-label fw-bold" for="aid-type-filter-all">
-                                            All ({{ total_count }})
+                                            All <span id="aid-type-all-count">({{ total_count }})</span>
                                         </label>
                                     </div>
                                 </div>
                                 <div class="d-flex flex-wrap">
                                     {% for aid_type, data in aid_type_counts.items %}
-                                        {% include 'aidrequests/partials/_filter_choice.html' with id='aid-type-filter-'|add:data.value filter_type='aid_type' filter_value=data.value label=aid_type count=data.count %}
+                                        {% include 'aidrequests/partials/_filter_choice.html' with id='aid-type-filter-'|add:data.value filter_type='aid_type' filter_value=data.value label=aid_type count=data.count checked_by_default=data.checked_by_default %}
                                     {% endfor %}
                                 </div>
                             </div>
@@ -70,8 +70,8 @@
                                             <div class="d-flex flex-wrap">
                                                 {% for status_code, status_name in status_choices_list %}
                                                     {% if status_code in status_groups.active %}
-                                                        {% with status_count=status_counts|get_item:status_name|get_item:"count"|default:0 %}
-                                                            {% include 'aidrequests/partials/_filter_choice.html' with id='status-filter-'|add:status_code filter_type='status' filter_value=status_code label=status_name count=status_count icon_template='aidrequests/includes/status_icon.html' icon_context_value=status_code %}
+                                                        {% with choice_data=status_counts|get_item:status_name %}
+                                                            {% include 'aidrequests/partials/_filter_choice.html' with id='status-filter-'|add:status_code filter_type='status' filter_value=status_code label=status_name count=choice_data.count checked_by_default=choice_data.checked_by_default icon_template='aidrequests/includes/status_icon.html' icon_context_value=status_code %}
                                                         {% endwith %}
                                                     {% endif %}
                                                 {% endfor %}
@@ -89,9 +89,8 @@
                                                     <input class="form-check-input filter-checkbox filter-inactive" type="checkbox"
                                                            id="status-group-filter-inactive"
                                                            data-filter-type="status_group"
-                                                           data-filter-value="inactive"
-                                                           {% if inactive_total_count == 0 %}disabled{% endif %}>
-                                                    <label class="form-check-label fw-bold {% if inactive_total_count == 0 %}text-muted{% endif %}" for="status-group-filter-inactive">
+                                                           data-filter-value="inactive">
+                                                    <label class="form-check-label fw-bold" for="status-group-filter-inactive">
                                                         Inactive <span class="text-muted" id="status-group-filter-inactive-total">({{ inactive_total_count }})</span>
                                                     </label>
                                                 </div>
@@ -99,8 +98,8 @@
                                             <div class="d-flex flex-wrap">
                                                 {% for status_code, status_name in status_choices_list %}
                                                     {% if status_code in status_groups.inactive %}
-                                                        {% with status_count=status_counts|get_item:status_name|get_item:"total"|default:0 %}
-                                                             {% include 'aidrequests/partials/_filter_choice.html' with id='status-filter-'|add:status_code filter_type='status' filter_value=status_code label=status_name count=status_count icon_template='aidrequests/includes/status_icon.html' icon_context_value=status_code %}
+                                                        {% with choice_data=status_counts|get_item:status_name %}
+                                                             {% include 'aidrequests/partials/_filter_choice.html' with id='status-filter-'|add:status_code filter_type='status' filter_value=status_code label=status_name count=choice_data.count checked_by_default=choice_data.checked_by_default icon_template='aidrequests/includes/status_icon.html' icon_context_value=status_code %}
                                                         {% endwith %}
                                                     {% endif %}
                                                 {% endfor %}
@@ -123,14 +122,14 @@
                                                data-filter-value="all"
                                                checked>
                                         <label class="form-check-label fw-bold" for="priority-filter-all">
-                                            All ({{ total_count }})
+                                            All <span id="priority-all-count">({{ total_count }})</span>
                                         </label>
                                     </div>
                                 </div>
                                 <div class="d-flex flex-wrap">
                                     {% for priority_code, priority_name in priority_choices_list %}
-                                        {% with priority_count=priority_counts|get_item:priority_name|get_item:"count"|default:0 priority_value=priority_code|default:"none" %}
-                                             {% include 'aidrequests/partials/_filter_choice.html' with id='priority-filter-'|add:priority_value filter_type='priority' filter_value=priority_value label=priority_name count=priority_count %}
+                                        {% with choice_data=priority_counts|get_item:priority_name priority_value=priority_code|default:"none" %}
+                                             {% include 'aidrequests/partials/_filter_choice.html' with id='priority-filter-'|add:priority_value filter_type='priority' filter_value=priority_value label=priority_name count=choice_data.count checked_by_default=choice_data.checked_by_default %}
                                         {% endwith %}
                                     {% endfor %}
                                 </div>

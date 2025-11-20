@@ -11,12 +11,11 @@ Expects the following context variables:
 - `icon_context_key`: (Optional) The context variable name for the icon template (e.g., 'status').
 - `icon_context_value`: (Optional) The value for the icon template's context.
 {% endcomment %}
-<div class="form-check d-flex align-items-baseline me-4 mb-1 text-nowrap">
+<div class="form-check d-flex align-items-center filter-choice-item me-4 mb-1 text-nowrap">
     <input class="form-check-input filter-checkbox me-1" type="checkbox"
            id="{{ id }}"
            data-filter-type="{{ filter_type }}"
-           data-filter-value="{{ filter_value }}"
-           {% if checked_by_default %}checked{% endif %}>
+           data-filter-value="{{ filter_value }}">
 
     {% if icon_template %}
         <div class="me-1">
