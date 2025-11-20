@@ -123,10 +123,10 @@ window.initializeAidRequestMap = function(requests) {
             console.log('[Map] Checking integrity of aid request data before initializing layer...');
             console.table(requests);
         }
-        if (!Array.isArray(requests)) {
-            console.error('[Map] CRITICAL: The aid request data passed to initializeAidRequestMap is not an array or is missing.', requests);
-            return;
-        }
+        // if (!Array.isArray(requests)) {
+        //     console.error('[Map] CRITICAL: The aid request data passed to initializeAidRequestMap is not an array or is missing.', requests);
+        //     return;
+        // }
         // --- END FIX ---
 
         initializeAidRequestLayer(requests, aidTypesConfig);
@@ -137,11 +137,23 @@ window.initializeAidRequestMap = function(requests) {
         if (mapRequestsConfig.debug) console.log('[Map] All layers initialized.');
 
         // Re-enable filter initialization
-        // if (window.initializeAidRequestFilter) {
-        //     window.initializeAidRequestFilter();
-        // } else if (mapRequestsConfig.debug) {
-        //     console.error('[Map] Filter initializer function not found.');
-        // }
+        if (window.initializeAidRequestFilter) {
+            window.initializeAidRequestFilter();
+        } else if (mapRequestsConfig.debug) {
+            console.error('[Map] Filter initializer function not found.');
+        }
+
+        // Listen for filter changes from the filter script
+        document.body.addEventListener('filterStateChange', (e) => {
+            if (mapRequestsConfig.debug) console.log('[Map] Received filterStateChange event. Updating map layer.', e.detail);
+            updateMapLayer(e.detail);
+        });
+
+        // Also listen for updates triggered by the list script (e.g., after an inline edit)
+        document.body.addEventListener('mapShouldUpdateFilter', (e) => {
+            if (mapRequestsConfig.debug) console.log('[Map] Received mapShouldUpdateFilter event. Updating map layer.', e.detail);
+            updateMapLayer(e.detail);
+        });
     });
 
     // Add a global error listener for the map
@@ -275,9 +287,7 @@ window.initializeAidRequestMap = function(requests) {
                 textField: [
                     'format',
                     ['get', 'slug'], // Line 1: The slug
-                    { 'font-scale': 1.1 },
-                    '\n(top, 0.8)', // Line 2: The settings
-                    { 'font-scale': 0.8 }
+                    { 'font-scale': 1.1 }
                 ],
                 anchor: 'top', // Anchor the top of the text block...
                 offset: [0, 0.8], // ...0.8 'em' units below the icon's anchor (its center)
