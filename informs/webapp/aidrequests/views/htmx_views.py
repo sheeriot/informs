@@ -488,7 +488,7 @@ def htmx_send_tak_alert(request, field_op):
                 mark_type='aid',
                 aidrequest=aid_request_id,
                 task_name=task_name
-            )
+        )
     elif mark_type == 'aid_request_list':
         aid_request_ids_json = request.POST.get('aidrequests', '[]')
         aid_request_ids = json.loads(aid_request_ids_json)

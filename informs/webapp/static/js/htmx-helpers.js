@@ -63,7 +63,7 @@ function showActionAlert(message, type = 'success') {
 
     const alertId = `alert-${Date.now()}`;
     const alertHTML = `
-        <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+        <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show bg-opacity-50" role="alert">
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>

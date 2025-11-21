@@ -242,7 +242,7 @@
         if (filterState.status && filterState.status.length > 0) {
             const statusNames = filterState.status.map(s => `"${getLabelForValue('status', s)}"`).join(', ');
             summaryParts.push(`<strong>Status:</strong> ${statusNames}`);
-        }
+                    }
 
         if (filterState.priority && filterState.priority !== 'all') {
             const priorityNames = filterState.priority.map(p => `"${getLabelForValue('priority', p)}"`).join(', ');
@@ -329,7 +329,7 @@
             const priorityMatchForAidType = filterState.priority === 'all' || filterState.priority.includes(priority);
             if (statusMatchForAidType && priorityMatchForAidType && counts.byAidType.hasOwnProperty(aidType)) {
                 counts.byAidType[aidType]++;
-            }
+        }
         });
 
         if (SCRIPT_DEBUG) console.log('[List Script] Calculated intersectional counts:', counts);

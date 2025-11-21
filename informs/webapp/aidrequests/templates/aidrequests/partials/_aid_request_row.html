@@ -14,17 +14,17 @@
     <td class="py-1">
         <div class="d-flex align-items-center">
             <span class="fw-bold me-2">{{ aid_request.id }}</span>
-            <div class="btn-group">
+        <div class="btn-group">
                 <a href="#" class="btn btn-sm bg-info bg-opacity-25 border-secondary btn-view-on-map"
                    data-request-id="{{ aid_request.id }}"
                    title="View on Map">
                     <i class="bi bi-geo-alt view-on-map-icon"></i>
-                </a>
-                <a href="{% url 'aid_request_detail_short' field_op=field_op.slug pk=aid_request.pk %}"
+            </a>
+            <a href="{% url 'aid_request_detail_short' field_op=field_op.slug pk=aid_request.pk %}"
                    class="btn btn-sm bg-warning bg-opacity-25 border-secondary"
-                   title="Edit aid request {{ aid_request.id }}">
-                    <i class="bi bi-pencil"></i>
-                </a>
+               title="Edit aid request {{ aid_request.id }}">
+                <i class="bi bi-pencil"></i>
+            </a>
                 <a href="#"
                    class="btn btn-sm bg-success bg-opacity-25 border-secondary copy-url-link"
                    data-url="{% url 'aid_request_detail_short' field_op=field_op.slug pk=aid_request.pk %}"

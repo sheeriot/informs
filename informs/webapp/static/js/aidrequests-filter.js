@@ -126,4 +126,4 @@ document.addEventListener('DOMContentLoaded', function () {
     if (SCRIPT_DEBUG) {
         console.log(`[Filter Script] Loaded. Delegated event listener attached to filter card.`);
     }
-});
+    });

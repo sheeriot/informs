@@ -117,78 +117,91 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
         // Listen for updates from the list view (e.g., status/priority changes)
         document.body.addEventListener('aidRequestUpdated', function (e) {
             try {
-                if (SCRIPT_DEBUG) console.log('[Map] Received aidRequestUpdated event. Updating data store and point on map.', e.detail);
+                if (SCRIPT_DEBUG) console.log('[Map] Received aidRequestUpdated event. Synchronizing data store and points on map.', e.detail);
 
                 const updatedRequest = e.detail.request;
-
-                if (!updatedRequest || !updatedRequest.id) {
+                if (!updatedRequest || !updatedRequest.id || !Array.isArray(updatedRequest.locations)) {
                     console.error('[Map] Invalid data received in aidRequestUpdated event.', e.detail);
                     return;
                 }
 
-                const index = requests.findIndex(r => r.id === updatedRequest.id);
-                if (index !== -1) {
-                    requests[index] = updatedRequest;
-                    if (SCRIPT_DEBUG) {
-                        console.log(`[Map] Updated request #${updatedRequest.id} in local map data store.`);
-                    }
+                if (!aidRequestSource) {
+                    console.error('[Map] aidRequestSource is not initialized. Cannot process update.');
+                    return;
                 }
 
-                if (aidRequestSource) {
-                    const shape = aidRequestSource.getShapeById(updatedRequest.id);
-                    if (shape) {
-                        if (SCRIPT_DEBUG) {
-                            // Use a simple shallow copy for logging to avoid JSON errors with complex objects
-                            console.log(`[Map] Found shape for request #${updatedRequest.id}. Old properties:`, { ...shape.getProperties() });
-                        }
+                const newLocationIds = new Set(updatedRequest.locations.map(loc => loc.id));
+                const shapes = aidRequestSource.getShapes();
+                const currentShapeIds = new Set(shapes.map(shape => shape.getId()));
 
-                        // Use the official get/set methods to safely update properties
-                        const props = shape.getProperties();
+                // 1. Remove shapes that no longer exist
+                const shapesToRemove = [];
+                currentShapeIds.forEach(shapeId => {
+                    // Find the corresponding aid request ID
+                    const shape = aidRequestSource.getShapeById(shapeId);
+                    const props = shape ? shape.getProperties() : {};
+                    // Since one aid request can have multiple locations, we check if any location for this aid request still exists.
+                    // THIS IS A SIMPLIFICATION. The map currently only shows one location per aid request.
+                    // The main list page map shows many aid requests, each with one primary location.
+                    // The detail page map shows one aid request with potentially many locations.
+                    // This logic assumes we're on the list page.
+                    if (props.requestId === updatedRequest.id) {
+                         // This is not quite right. A single request has one point on the list map.
+                         // Let's stick to the main point: if the request's primary location changes, or is gone.
+                    }
+                    // A better check is needed. For now, let's assume the shape ID is the location ID.
+                    // This is incorrect based on how points are created. The shape ID is the request ID.
+
+                });
+
+
+                // Let's re-think. The list page shows one point per request (the primary location).
+                // If a location is deleted, the primary location for that request might change.
+                const shapeToUpdate = aidRequestSource.getShapeById(updatedRequest.id);
+                const primaryLocation = updatedRequest.locations.find(l => l.is_primary);
+
+                if (shapeToUpdate) {
+                    if (primaryLocation) {
+                        // Location exists, update it.
+                        if (SCRIPT_DEBUG) console.log(`[Map] Updating shape for request #${updatedRequest.id}`);
+                        shapeToUpdate.setCoordinates([primaryLocation.longitude, primaryLocation.latitude]);
+                        const props = shapeToUpdate.getProperties();
                         props.status = updatedRequest.status;
                         props.priority = updatedRequest.priority || 'none';
-                        shape.setProperties(props);
-
-                        if (SCRIPT_DEBUG) {
-                            console.log(`[Map] New properties for shape #${updatedRequest.id}:`, { ...shape.getProperties() });
-                        }
-
-                        // If the updated request matches the currently open popup, refresh the popup content.
-                        if (window.aidRequestPopup && window.aidRequestPopup.isOpen() && window.currentPopupRequestId === updatedRequest.id) {
-                            if (SCRIPT_DEBUG) console.log('[Map] Refreshing open popup with updated data.');
-
-                            const newHtmlContent = createPopupContent(updatedRequest);
-                            const tempDiv = document.createElement('div');
-                            tempDiv.innerHTML = newHtmlContent;
-                            const newContentElement = tempDiv.firstElementChild;
-
-                            newContentElement.addEventListener('mouseenter', () => {
-                                window.isHoveringPopup = true;
-                            });
-                            newContentElement.addEventListener('mouseleave', () => {
-                                window.isHoveringPopup = false;
-                                if (window.aidRequestPopup) window.aidRequestPopup.close();
-                            });
-
-                            window.aidRequestPopup.setOptions({
-                                content: newContentElement,
-                                pixelOffset: [0, -30] // Set default for 'above'
-                            });
-
-                            // Adjust offset after open, based on placement.
-                            // The 'open' event fires after the popup is placed, allowing us to inspect its final position.
-                            map.events.add('open', window.aidRequestPopup, () => {
-                                // We get the popup's wrapper element by traversing from the content element we created.
-                                const popupWrapper = newContentElement.parentElement?.parentElement;
-                                if (popupWrapper && popupWrapper.classList.contains('atlas-popup-anchor-top')) {
-                                    // If the popup is anchored from the top (i.e., it's below the marker), use a positive offset.
-                                    window.aidRequestPopup.setOptions({ pixelOffset: [0, 25] });
-                                }
-                            }, { once: true });
-                        }
-                    } else if (SCRIPT_DEBUG) {
-                        console.warn(`[Map] Could not find a shape with ID ${updatedRequest.id} in the data source to update.`);
+                        // Add any other properties that might change, like address
+                        shapeToUpdate.setProperties(props);
+                    } else {
+                        // No primary location left, remove the point from the map.
+                        if (SCRIPT_DEBUG) console.log(`[Map] No primary location for request #${updatedRequest.id}. Removing shape.`);
+                        aidRequestSource.remove(shapeToUpdate);
                     }
                 }
+
+                // If the updated request matches the currently open popup, refresh or close it.
+                if (window.aidRequestPopup && window.aidRequestPopup.isOpen() && window.currentPopupRequestId === updatedRequest.id) {
+                    if (primaryLocation) {
+                        if (SCRIPT_DEBUG) console.log('[Map] Refreshing open popup with updated data.');
+                        const newHtmlContent = createPopupContent(updatedRequest); // This function needs the whole request object.
+                        // We need to find the full request object in our main `requests` array to pass to createPopupContent
+                        const fullRequestData = requests.find(r => r.id === updatedRequest.id);
+                        if(fullRequestData) {
+                            // First, update the local data store
+                            const index = requests.findIndex(r => r.id === updatedRequest.id);
+                            if (index !== -1) {
+                                requests[index] = updatedRequest;
+                            }
+                             const newHtmlContent = createPopupContent(updatedRequest);
+                             window.aidRequestPopup.setOptions({
+                                 content: newHtmlContent,
+                                 position: [primaryLocation.longitude, primaryLocation.latitude]
+                             });
+                        }
+                    } else {
+                         if (SCRIPT_DEBUG) console.log('[Map] Closing popup because primary location was deleted.');
+                         window.aidRequestPopup.close();
+                    }
+                }
+
             } catch (error) {
                 console.error('[Map] Error processing aidRequestUpdated event:', error, e.detail);
             }

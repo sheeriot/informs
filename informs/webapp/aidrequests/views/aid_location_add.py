@@ -72,7 +72,7 @@ def add_location(request, field_op, pk):
                 "closeModal": "#addLocationModal",
                 "showActionAlert": {
                     "message": f"Location {location.pk} added successfully.",
-                    "level": "success"
+                    "level": "info"
                 },
                 "actionLogUpdated": "",
                 "auditLogUpdated": ""
@@ -195,23 +195,15 @@ def delete_aid_location(request, field_op, pk):
                 task_name=f"Update_CoT_AR_{aid_request.pk}_Loc_{pk}_Deleted"
             )
 
-        # After deleting, fetch the remaining locations to render the updated list
-        locations = aid_request.locations.sorted_for_display()
-
-        response = render(
-            request,
-            'aidrequests/includes/aid_locations_list.html',
-            {'aid_request': aid_request, 'locations': locations}
-        )
-        response['HX-Trigger'] = json.dumps({
-            "showActionAlert": {
-                "message": f"Location {location_id} has been deleted.",
-                "level": "success"
-            },
-            "actionLogUpdated": "",
-            "auditLogUpdated": ""
-        })
-        return response
+        # After deleting, return the full AidRequest object as JSON.
+        # The frontend will dispatch 'aidRequestUpdated' and 'detailFieldUpdated'
+        # which will cause HTMX to refresh the necessary parts of the page.
+        response_data = aid_request.to_dict()
+        response_data['action_alert'] = {
+            "message": f"Location #{location_id} has been deleted.",
+            "level": "danger"
+        }
+        return JsonResponse(response_data, status=200)
 
     except AidLocation.DoesNotExist:
         return HttpResponseNotFound("The requested location does not exist.")

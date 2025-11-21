@@ -91,10 +91,23 @@ def aid_location_status_update(request, field_op, pk):
     # Pass the note and user to the save method so it can create the correct log
     location.save(note=note, note_markdown=note_markdown)
 
+    # Set the alert level based on the action taken
+    if action == 'confirm':
+        alert_level = 'success'
+    elif action == 'reject':
+        alert_level = 'warning'
+    else: # reset
+        alert_level = 'info'
+
     # Instead of rendering a partial, return the updated AidRequest as JSON
     # The frontend will dispatch 'aidRequestUpdated' and 'detailFieldUpdated'
     # which will cause HTMX to refresh the necessary parts of the page.
-    return JsonResponse(aid_request.to_dict(), status=200)
+    response_data = aid_request.to_dict()
+    response_data['action_alert'] = {
+        "message": f"Location {location.pk} status updated to {location.get_status_display()}.",
+        "level": alert_level
+    }
+    return JsonResponse(response_data, status=200)
 
 @require_POST
 @login_required

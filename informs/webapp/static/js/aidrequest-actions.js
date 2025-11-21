@@ -259,6 +259,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.log('[Modal Action] Dispatching aidRequestUpdated event.');
                     }
 
+                    // Check for and display a server-provided action alert
+                    if (updatedRequest.action_alert && window.showActionAlert) {
+                        window.showActionAlert(updatedRequest.action_alert.message, updatedRequest.action_alert.level);
+                    }
+
                     // Dispatch a global event with the updated data so other components can react
                     document.body.dispatchEvent(new CustomEvent('aidRequestUpdated', {
                         detail: { request: updatedRequest }
