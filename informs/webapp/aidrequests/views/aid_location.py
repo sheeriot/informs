@@ -91,27 +91,10 @@ def aid_location_status_update(request, field_op, pk):
     # Pass the note and user to the save method so it can create the correct log
     location.save(note=note, note_markdown=note_markdown)
 
-    # Refresh to ensure the locations list is up-to-date
-    aid_request.refresh_from_db()
-
-    # The 'locations' variable needs to be explicitly fetched and sorted
-    locations = aid_request.locations.sorted_for_display()
-
-    response = render(
-        request,
-        'aidrequests/includes/aid_locations_list.html',
-        {'aid_request': aid_request, 'locations': locations}
-    )
-    # Trigger events to update logs and show a success message
-    response['HX-Trigger'] = json.dumps({
-        "showActionAlert": {
-            "message": f"Location {location.pk} status updated to {location.status}.",
-            "level": "success"
-        },
-        "actionLogUpdated": "",
-        "auditLogUpdated": ""
-    })
-    return response
+    # Instead of rendering a partial, return the updated AidRequest as JSON
+    # The frontend will dispatch 'aidRequestUpdated' and 'detailFieldUpdated'
+    # which will cause HTMX to refresh the necessary parts of the page.
+    return JsonResponse(aid_request.to_dict(), status=200)
 
 @require_POST
 @login_required

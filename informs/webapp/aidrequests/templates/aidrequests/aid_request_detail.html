@@ -49,7 +49,10 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
             <div class="card mb-3">
                 {% include 'aidrequests/includes/aid_request_status_card.html' %}
            </div>
-            <div id="locations-list-container">
+            <div id="locations-list-container"
+                 hx-get="{% url 'get_locations_list' field_op=field_op.slug pk=aid_request.pk %}"
+                 hx-trigger="detailFieldUpdated from:body"
+                 hx-swap="innerHTML">
                 {% include 'aidrequests/includes/aid_locations_list.html' with aid_request=object %}
             </div>
         </div>
