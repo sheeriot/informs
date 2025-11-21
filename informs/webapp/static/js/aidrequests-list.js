@@ -6,11 +6,13 @@
  */
 (function () {
     'use strict';
-    console.log('[List Script] File loading.'); // Unconditional log
+
+    const SCRIPT_DEBUG = false;
 
     let allAidRequests = [];
-    let listScriptConfig = { debug: false }; // Default config
+    let listScriptConfig = {}; // Default config, debug is now handled by SCRIPT_DEBUG
     let isInitialized = false;
+    let selectedRequestId = null;
 
     document.addEventListener('DOMContentLoaded', function () {
         initialize();
@@ -21,25 +23,27 @@
      */
     function initialize() {
         if (isInitialized) {
-            // This is a safeguard, but should not be hit if the templates are correct.
-            // console.warn('[List Script] Attempted to initialize again. Aborting.');
             return;
         }
         isInitialized = true;
-        if (listScriptConfig.debug) console.log('[List Script] Initialization started.');
 
-        // Attempt to load the debug flag from the body dataset
-        if (document.body.dataset.debug === 'true') {
-            listScriptConfig.debug = true;
-        }
+        if (SCRIPT_DEBUG) console.log('[List Script] File loading.');
 
-        // Load the config data
+        // Load the config data from the page, but ignore its debug flag
         const configEl = document.getElementById('aid-requests-config-json');
         if (configEl) {
-            listScriptConfig = JSON.parse(configEl.textContent);
+            try {
+                const backendConfig = JSON.parse(configEl.textContent);
+                delete backendConfig.debug; // Enforce local debug control
+                Object.assign(listScriptConfig, backendConfig);
+            } catch (e) {
+                console.error('[List Script] Failed to parse config JSON.', e);
+            }
         } else {
             console.error("[List Script] Config data element ('aid-requests-config-json') not found. Using defaults.");
         }
+
+        if (SCRIPT_DEBUG) console.log('[List Script] Initialization started.');
 
         // Load the aid request data directly from its script tag
         const dataEl = document.getElementById('all-requests-json');
@@ -69,7 +73,7 @@
 
         // The map component depends on this script to be initialized first.
         if (window.initializeAidRequestMap) {
-            // if (listScriptConfig.debug) console.log('[List Script] Calling window.initializeAidRequestMap...');
+            if (SCRIPT_DEBUG) console.log('[List Script] Calling window.initializeAidRequestMap...');
             window.initializeAidRequestMap(allAidRequests);
         } else {
             console.error('[List Script] Map initialization function not found.');
@@ -84,7 +88,7 @@
     function addPageEventListeners() {
         // Listen for filter changes from the filter script (i.e., user clicks)
         document.body.addEventListener('filterStateChange', function (e) {
-            if (listScriptConfig.debug) {
+            if (SCRIPT_DEBUG) {
                 console.log('[List Script] Received filterStateChange event from user action.', e.detail);
             }
             runFilterAndUpdates(e.detail);
@@ -119,7 +123,7 @@
             const oldValue = isStatusUpdate ? row.dataset.status : row.dataset.priority;
 
             if (newValue === oldValue) {
-                if (listScriptConfig.debug) console.log(`[List Script] ${fieldName} is already '${newValue}'. No action taken.`);
+                if (SCRIPT_DEBUG) console.log(`[List Script] ${fieldName} is already '${newValue}'. No action taken.`);
                 return;
             }
 
@@ -143,7 +147,7 @@
             triggerButton.dataset.requesterName = request.requester_name;
 
 
-            if (listScriptConfig.debug) {
+            if (SCRIPT_DEBUG) {
                 console.log('[List Script] Populating and clicking hidden modal trigger:', triggerButton.dataset);
             }
 
@@ -153,7 +157,7 @@
 
         // Listen for successful updates from the modal action script
         document.body.addEventListener('aidRequestUpdated', function (e) {
-            if (listScriptConfig.debug) {
+            if (SCRIPT_DEBUG) {
                 console.log('[List Script] Received aidRequestUpdated event. Refreshing data and filters.');
             }
             const updatedRequest = e.detail.request;
@@ -161,7 +165,7 @@
                 const index = allAidRequests.findIndex(r => r.id === updatedRequest.id);
                 if (index !== -1) {
                     allAidRequests[index] = updatedRequest;
-                    if (listScriptConfig.debug) {
+                    if (SCRIPT_DEBUG) {
                         console.log(`[List Script] Updated request #${updatedRequest.id} in local store.`);
                     }
                     // Re-run the filters and counts with the current state to reflect the change
@@ -179,6 +183,23 @@
                 }
             }
         });
+
+        // Listen for events from the map to sync the highlighted row
+        document.body.addEventListener('popupOpenedOnMap', function(e) {
+            const requestId = e.detail.requestId;
+            if (selectedRequestId && selectedRequestId !== requestId) {
+                unhighlightRow(selectedRequestId);
+            }
+            highlightRow(requestId);
+            selectedRequestId = requestId;
+        });
+
+        document.body.addEventListener('popupClosedOnMap', function(e) {
+            if (selectedRequestId) {
+                unhighlightRow(selectedRequestId);
+                selectedRequestId = null;
+            }
+        });
     }
 
     /**
@@ -190,7 +211,7 @@
             console.error('[List Script] runFilterAndUpdates called without a filterState. Recovering by reading from DOM.');
             filterState = getFilterStateFromDOM();
         }
-        // if (listScriptConfig.debug) console.log('[List Script] Running filter and updates with state:', filterState);
+        if (SCRIPT_DEBUG) console.log('[List Script] Running filter and updates with state:', filterState);
 
         const counts = applyListFilter(filterState);
         updateFilterCounts(filterState, counts);
@@ -226,7 +247,7 @@
             }
         });
 
-        if (listScriptConfig.debug) {
+        if (SCRIPT_DEBUG) {
             console.log(`[List Script] Applied filter. Visible rows: ${visibleCount}`);
         }
 
@@ -238,7 +259,7 @@
     }
 
     function updateFilterCounts(filterState, groupCounts) {
-        if (listScriptConfig.debug) console.log(`[List Script] Updating filter counts.`);
+        if (SCRIPT_DEBUG) console.log(`[List Script] Updating filter counts.`);
 
         const counts = { byStatus: {}, byPriority: {}, byAidType: {} };
 
@@ -269,7 +290,7 @@
             }
         });
 
-        if (listScriptConfig.debug) console.log('[List Script] Calculated intersectional counts:', counts);
+        if (SCRIPT_DEBUG) console.log('[List Script] Calculated intersectional counts:', counts);
 
         updateCountUI('status', counts.byStatus);
         updateCountUI('priority', counts.byPriority);
@@ -279,7 +300,7 @@
         if (groupCounts) {
             const activeTotal = Object.values(counts.byStatus).reduce((sum, current) => sum + current, 0);
             const inactiveTotal = Object.values(counts.byStatus).reduce((sum, current) => sum + current, 0); // This line was removed from the new_code, but should be removed here as well.
-            if (listScriptConfig.debug) {
+            if (SCRIPT_DEBUG) {
                 console.log(`[List Script] New Group Totals -> Active: ${activeTotal}, Inactive: ${inactiveTotal}`);
             }
             const activeTotalEl = document.getElementById('status-group-filter-active-total');
@@ -334,6 +355,32 @@
                 if (label) {
                     label.classList.toggle('text-muted', shouldBeMuted);
                 }
+            }
+        }
+    }
+
+    function highlightRow(requestId) {
+        if (!requestId) return;
+        const row = document.getElementById(`aid-request-row-${requestId}`);
+        if (row) {
+            row.classList.add('aidrequest-selected', 'shadow-sm');
+            const icon = row.querySelector('.view-on-map-icon');
+            if (icon) {
+                icon.classList.remove('bi-geo-alt');
+                icon.classList.add('bi-eye-fill');
+            }
+        }
+    }
+
+    function unhighlightRow(requestId) {
+        if (!requestId) return;
+        const row = document.getElementById(`aid-request-row-${requestId}`);
+        if (row) {
+            row.classList.remove('aidrequest-selected', 'shadow-sm');
+            const icon = row.querySelector('.view-on-map-icon');
+            if (icon) {
+                icon.classList.remove('bi-eye-fill');
+                icon.classList.add('bi-geo-alt');
             }
         }
     }
@@ -455,6 +502,63 @@
                         // Optionally show an error in the modal
                     });
                 });
+            }
+        });
+
+        // Add a handler for the new "View on Map" button
+        document.body.addEventListener('click', function(event) {
+            const viewBtn = event.target.closest('.btn-view-on-map');
+            if (viewBtn) {
+                event.preventDefault();
+
+                const requestId = parseInt(viewBtn.dataset.requestId, 10);
+
+                if (requestId === selectedRequestId) {
+                    // Clicked the already selected one, so deselect it.
+                    unhighlightRow(requestId);
+                    selectedRequestId = null;
+                    document.body.dispatchEvent(new CustomEvent('closePopupOnMap'));
+                } else {
+                    // A new one is being selected.
+                    if (selectedRequestId) {
+                        unhighlightRow(selectedRequestId);
+                    }
+                    highlightRow(requestId);
+                    selectedRequestId = requestId;
+                    document.body.dispatchEvent(new CustomEvent('showPopupForRequest', {
+                        detail: { requestId: requestId }
+                    }));
+                }
+            }
+
+            // Handle the new copy URL link
+            const copyLink = event.target.closest('.copy-url-link');
+            if (copyLink) {
+                event.preventDefault();
+                const relativeUrl = copyLink.getAttribute('data-url');
+                if (relativeUrl) {
+                    const absoluteUrl = window.location.origin + relativeUrl;
+                    navigator.clipboard.writeText(absoluteUrl).then(() => {
+                        showActionAlert('Link copied to clipboard!', 'success');
+                    }).catch(err => {
+                        console.error('Failed to copy URL: ', err);
+                        showActionAlert('Failed to copy link.', 'danger');
+                    });
+                }
+            }
+
+            // Handle clicks on the address copy icon
+            const copyAddressIcon = event.target.closest('.copy-address-icon');
+            if (copyAddressIcon) {
+                const address = copyAddressIcon.dataset.address;
+                if (address) {
+                    navigator.clipboard.writeText(address).then(() => {
+                        showActionAlert('Address copied to clipboard!', 'success');
+                    }).catch(err => {
+                        console.error('Failed to copy address:', err);
+                        showActionAlert('Failed to copy address.', 'danger');
+                    });
+                }
             }
         });
     }

@@ -1,13 +1,13 @@
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
 
+    const SCRIPT_DEBUG = false;
+
     const filterCard = document.getElementById('aid-request-filter-card');
     if (!filterCard) {
         // No filter card on this page, do nothing.
         return;
     }
-
-    const filterScriptConfig = { debug: false };
 
     /**
      * Reads the current state of all filter checkboxes from the DOM.
@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // --- Dispatch Event ---
         const newFilterState = getFilterStateFromDOM();
-        if (filterScriptConfig.debug) {
+        if (SCRIPT_DEBUG) {
             console.log('[Filter Script] User change detected. Dispatching new filter state:', newFilterState);
         }
         document.body.dispatchEvent(new CustomEvent('filterStateChange', {
@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Attach a single delegated event listener to the filter card.
     filterCard.addEventListener('change', handleFilterChange);
 
-    if (filterScriptConfig.debug) {
+    if (SCRIPT_DEBUG) {
         console.log(`[Filter Script] Loaded. Delegated event listener attached to filter card.`);
     }
 });

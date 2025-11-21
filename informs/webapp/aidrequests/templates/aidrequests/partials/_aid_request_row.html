@@ -11,17 +11,26 @@
     data-priority="{% if aid_request.priority %}{{ aid_request.priority }}{% else %}none{% endif %}"
     data-url-update="{% url 'aid_request_ajax_update' field_op=field_op.slug pk=aid_request.pk %}">
     <td class="py-1">
-        <div class="btn-group">
-            <a href="{% url 'aid_request_detail_short' field_op=field_op.slug pk=aid_request.pk %}"
-               class="btn btn-sm btn-info text-nowrap"
-               title="View aid request {{ aid_request.id }}">
-                {{ aid_request.id }}
-            </a>
-            <a href="{% url 'aid_request_detail_short' field_op=field_op.slug pk=aid_request.pk %}"
-               class="btn btn-sm btn-warning"
-               title="Edit aid request {{ aid_request.id }}">
-                <i class="bi bi-pencil"></i>
-            </a>
+        <div class="d-flex align-items-center">
+            <span class="fw-bold me-2">{{ aid_request.id }}</span>
+            <div class="btn-group">
+                <a href="#" class="btn btn-sm bg-info bg-opacity-25 border-secondary btn-view-on-map"
+                   data-request-id="{{ aid_request.id }}"
+                   title="View on Map">
+                    <i class="bi bi-geo-alt view-on-map-icon"></i>
+                </a>
+                <a href="{% url 'aid_request_detail_short' field_op=field_op.slug pk=aid_request.pk %}"
+                   class="btn btn-sm bg-warning bg-opacity-25 border-secondary"
+                   title="Edit aid request {{ aid_request.id }}">
+                    <i class="bi bi-pencil"></i>
+                </a>
+                <a href="#"
+                   class="btn btn-sm bg-success bg-opacity-25 border-secondary copy-url-link"
+                   data-url="{% url 'aid_request_detail_short' field_op=field_op.slug pk=aid_request.pk %}"
+                   title="Copy link to request {{ aid_request.id }}">
+                    <i class="bi bi-link-45deg"></i>
+                </a>
+            </div>
         </div>
         <div class="small text-muted">{{ aid_request.aid_type.name|default:"Unknown" }}</div>
     </td>

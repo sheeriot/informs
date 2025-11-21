@@ -567,3 +567,95 @@ textarea:not([disabled]) {
 .filter-choice-item .form-check-label {
     line-height: 1;
 }
+
+/*
+Custom CSS for Informs application
+*/
+
+/*
+Enhances the visibility of the Azure Maps popup pointer.
+This is applied via the `className` option in the atlas.Popup constructor.
+*/
+.popup-with-enhanced-pointer .atlas-popup-pointer-down,
+.popup-with-enhanced-pointer .atlas-popup-pointer-up,
+.popup-with-enhanced-pointer .atlas-popup-pointer-left,
+.popup-with-enhanced-pointer .atlas-popup-pointer-right {
+    border-color: transparent !important; /* Override default border */
+}
+
+/* Style for the "down" pointer (when popup is above marker) */
+.popup-with-enhanced-pointer .atlas-popup-pointer-down::after {
+    content: '';
+    position: absolute;
+    bottom: -12px; /* Position it correctly */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-top: 12px solid var(--bs-primary); /* Use Bootstrap primary color */
+    filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.2));
+    animation: pulse-pointer 2s infinite;
+}
+
+/* Style for the "up" pointer (when popup is below marker) */
+.popup-with-enhanced-pointer .atlas-popup-pointer-up::after {
+    content: '';
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 12px solid var(--bs-primary);
+    filter: drop-shadow(0 -3px 2px rgba(0, 0, 0, 0.2));
+    animation: pulse-pointer 2s infinite;
+}
+
+
+/* Pulsing animation for the pointer */
+@keyframes pulse-pointer {
+    0% {
+        border-top-color: var(--bs-primary);
+        border-bottom-color: var(--bs-primary);
+        transform: translateX(-50%) scale(1);
+    }
+    50% {
+        border-top-color: var(--bs-info); /* A slightly different shade for the pulse */
+        border-bottom-color: var(--bs-info);
+        transform: translateX(-50%) scale(1.05);
+    }
+    100% {
+        border-top-color: var(--bs-primary);
+        border-bottom-color: var(--bs-primary);
+        transform: translateX(-50%) scale(1);
+    }
+}
+
+/*
+  Custom subtle background and border classes to ensure compatibility.
+*/
+.bg-primary-subtle-custom {
+    background-color: rgba(var(--bs-primary-rgb), 0.15) !important;
+}
+.bg-warning-subtle-custom {
+    background-color: rgba(var(--bs-warning-rgb), 0.15) !important;
+}
+.bg-success-subtle-custom {
+    background-color: rgba(var(--bs-success-rgb), 0.15) !important;
+}
+.border-dark-custom {
+    border-color: rgba(0, 0, 0, 0.4) !important;
+}
+
+
+/*
+  A simple, reliable class for highlighting the selected aid request row.
+  The selector is made more specific to override Bootstrap's default table styles.
+*/
+tr.aidrequest-selected > td {
+    background-color: #d1e7dd !important; /* A hardcoded light green (Bootstrap's bg-success-subtle) */
+}
