@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    const filterScriptConfig = { debug: document.body.dataset.debug === 'true' };
+    const filterScriptConfig = { debug: false };
 
     /**
      * Reads the current state of all filter checkboxes from the DOM.
@@ -21,19 +21,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 .filter(cb => cb.checked)
                 .map(cb => cb.dataset.filterValue);
 
-        const isAllOrIndeterminate = (selector) => {
+        // Correctly determines if an "All" checkbox is fully checked.
+        const isAllChecked = (selector) => {
             const allCheckbox = filterCard.querySelector(selector);
-            return allCheckbox && (allCheckbox.checked || allCheckbox.indeterminate);
+            // It's only 'all' if the main checkbox is checked and not indeterminate.
+            return allCheckbox && allCheckbox.checked && !allCheckbox.indeterminate;
         };
 
-        const getIndeterminateValues = (type) =>
+        // Gets the values of all checked child checkboxes for a given type.
+        const getCheckedChildValues = (type) =>
             Array.from(filterCard.querySelectorAll(`[data-filter-type="${type}"]:not([id$="-all"])`))
                 .filter(cb => cb.checked)
                 .map(cb => cb.dataset.filterValue);
 
 
-        const aidTypes = isAllOrIndeterminate('#aid-type-filter-all') ? 'all' : getIndeterminateValues('aid_type');
-        const priorities = isAllOrIndeterminate('#priority-filter-all') ? 'all' : getIndeterminateValues('priority');
+        const aidTypes = isAllChecked('#aid-type-filter-all') ? 'all' : getCheckedChildValues('aid_type');
+        const priorities = isAllChecked('#priority-filter-all') ? 'all' : getCheckedChildValues('priority');
         const statuses = getCheckedValues('[data-filter-type="status"]');
 
         return { status: statuses, priority: priorities, aid_type: aidTypes };
@@ -91,14 +94,17 @@ document.addEventListener('DOMContentLoaded', function () {
         // --- Child to Parent Logic ---
         if (filterType === 'status') {
             // A status checkbox changed, so update its parent group ("Active" or "Inactive")
-            const parentGroup = target.closest('#active-status-filter-buttons') ? 'active' : 'inactive';
-            const groupParentCheckbox = document.getElementById(`status-group-filter-${parentGroup}`);
-            const groupChildSelector = `#${parentGroup}-status-filter-buttons .filter-checkbox[data-filter-type="status"]`;
-            updateParentCheckboxState(groupChildSelector, groupParentCheckbox);
+            const parentGroupEl = target.closest('.status-group');
+            if (parentGroupEl) {
+                const parentGroup = parentGroupEl.id.includes('active') ? 'active' : 'inactive';
+                const groupParentCheckbox = document.getElementById(`status-group-filter-${parentGroup}`);
+                const groupChildSelector = `#${parentGroup}-status-filter-buttons .filter-checkbox[data-filter-type="status"]`;
+                updateParentCheckboxState(groupChildSelector, groupParentCheckbox);
+            }
 
         } else if (filterType === 'priority' || filterType === 'aid_type') {
             // A priority or aid_type checkbox changed, so update its "All" parent
-            const allParentCheckbox = document.getElementById(`${filterType}-filter-all`);
+            const allParentCheckbox = document.getElementById(`${filterType.replace('_', '-')}-filter-all`);
             const childSelector = `.filter-checkbox[data-filter-type="${filterType}"]:not([data-filter-value="all"])`;
             updateParentCheckboxState(childSelector, allParentCheckbox);
         }

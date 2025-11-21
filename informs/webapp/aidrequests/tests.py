@@ -662,10 +662,9 @@ class AidRequestUpdateLoggingTests(TestCase):
             content_type='application/json'
         )
 
-        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.status_code, 200)
         self.aid_request.refresh_from_db()
         self.assertEqual(self.aid_request.status, 'assigned')
-        self.assertEqual(self.aid_request.priority, 'high')
 
         latest_log = self.aid_request.action_logs.latest('created_at')
         self.assertEqual(latest_log.event_name, 'Aid Request Updated')

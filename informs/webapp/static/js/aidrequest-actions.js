@@ -1,14 +1,14 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('AidRequest Actions Script v 0.0.14');
     const scriptConfig = {
-        debug: false, // Master debug switch for this script
+        debug: true, // Master debug switch for this script
     };
 
     // For debugging htmx swaps
     document.body.addEventListener('htmx:beforeSwap', function(evt) {
-        if (scriptConfig.debug) {
-            htmx.logAll(); // Enable full HTMX logging if debug is on
-        }
+        // if (scriptConfig.debug) {
+        //     htmx.logAll(); // Enable full HTMX logging if debug is on
+        // }
         const targetIdsToLog = [
             'aid_description_display',
             'supplies_needed_display',
@@ -129,26 +129,31 @@ document.addEventListener('DOMContentLoaded', function() {
         const modalBody = modal.querySelector('.modal-body-dynamic'); // A designated area for dynamic content
         const confirmBtn = modal.querySelector('.confirm-action-btn');
 
-        // --- New Title Logic ---
-        const configElement = document.getElementById('aid-request-config');
-        const fieldOpName = configElement.dataset.fieldOpName;
-        const fieldOpSlug = configElement.dataset.fieldOp;
-        const aidRequestId = configElement.dataset.aidRequestId;
-        const requesterName = configElement.dataset.requesterFullName;
+        // --- New Title Logic (works for both detail and list pages) ---
+        const configElement = document.getElementById('aid-requests-config-json') ? JSON.parse(document.getElementById('aid-requests-config-json').textContent) : {};
 
-        const newTitle = `
-            <div class="d-flex flex-column">
-                <small class="fw-bold">
-                    <i class="bi bi-truck me-2"></i>${fieldOpName} (${fieldOpSlug})
-                </small>
-                <small>
-                    <i class="bi bi-life-preserver me-2"></i>Aid Request #${aidRequestId}: ${requesterName}
-                </small>
-            </div>`;
+        const fieldOpName = configElement.field_op_name || 'FieldOp';
+        const fieldOpSlug = configElement.field_op_slug || '';
 
-        if (modalTitle) {
-            modalTitle.innerHTML = newTitle;
+        // Prioritize data from the trigger button (for list view), then fall back to page config (for detail view)
+        const aidRequestId = triggerButton.dataset.requestId || configElement.aid_request_id;
+        const requesterName = triggerButton.dataset.requesterName || configElement.requester_name;
+
+        if (aidRequestId) {
+            const newTitle = `
+                <div class="d-flex flex-column">
+                    <small class="fw-bold">
+                        <i class="bi bi-truck me-2"></i>${fieldOpName} (${fieldOpSlug})
+                    </small>
+                    <small>
+                        <i class="bi bi-life-preserver me-2"></i>Aid Request #${aidRequestId}: ${requesterName}
+                    </small>
+                </div>`;
+            if (modalTitle) {
+                modalTitle.innerHTML = newTitle;
+            }
         }
+        // --- End New Title Logic ---
 
         // 1. Populate Modal Body
         const actionName = triggerButton.dataset.actionName || "perform this action";
@@ -239,37 +244,27 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: JSON.stringify(payload)
                 }, 'Location Status Update')
                 .then(response => {
-                    // For a 204 response, there's no body to read, but we still want to proceed.
-                    if (response.status === 204) {
-                        return null; // Return null to signify no HTML content
-                    }
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
-                    // The server now returns HTML for location updates, so we read it as text
-                    return response.text();
+                    // The server now returns the updated object as JSON
+                    return response.json();
                 })
-                .then(html => {
+                .then(updatedRequest => {
                     newConfirmBtn.blur(); // Remove focus before hiding to prevent ARIA warning
                     modalInstance.hide();
 
-                    // If the action was for a location, swap the returned HTML
-                    if (triggerButton.dataset.actionUrl.includes('aidlocation') && html) {
-                        if (scriptConfig.debug) {
-                            console.log('[Modal Action] Location action detected. Swapping HTML.');
-                        }
-                        const container = document.getElementById('locations-list-container');
-                        if (container) {
-                            container.innerHTML = html;
-                            htmx.process(container);
-                        }
+                    if (scriptConfig.debug) {
+                        console.log('[Modal Action] Update successful. Server returned:', updatedRequest);
+                        console.log('[Modal Action] Dispatching aidRequestUpdated event.');
                     }
 
-                    // After any successful modal action, trigger the UI refreshes
-                    if (scriptConfig.debug) {
-                        console.log('[Modal Action] Triggering UI updates for header and logs.');
-                    }
-                    htmx.trigger('body', 'detailFieldUpdated', {});
+                    // Dispatch a global event with the updated data so other components can react
+                    document.body.dispatchEvent(new CustomEvent('aidRequestUpdated', {
+                        detail: { request: updatedRequest }
+                    }));
+
+                    // Trigger HTMX refreshes for log panels if they exist
                     htmx.trigger('body', 'actionLogUpdated', {});
                     htmx.trigger('body', 'auditLogUpdated', {});
                 })

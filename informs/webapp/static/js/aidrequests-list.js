@@ -10,12 +10,19 @@
 
     let allAidRequests = [];
     let listScriptConfig = { debug: false }; // Default config
+    let isInitialized = false;
 
     document.addEventListener('DOMContentLoaded', function () {
         initialize();
     });
 
     function initialize() {
+        if (isInitialized) {
+            if (listScriptConfig.debug) console.warn('[List Script] Attempted to initialize again. Aborting.');
+            return;
+        }
+        isInitialized = true;
+
         // Attempt to load the debug flag from the body dataset
         if (document.body.dataset.debug === 'true') {
             listScriptConfig.debug = true;
@@ -69,6 +76,7 @@
         // Set up all event listeners for the page.
         addPageEventListeners();
         initializeTooltips();
+        setupModalHandlers(); // Initialize modal handlers
 
         // KICK OFF MAP INITIALIZATION
         // Use a timeout to ensure the map script has loaded and the DOM is fully ready.
@@ -93,7 +101,95 @@
             runFilterAndUpdates(e.detail);
         });
 
-        // Add other listeners for HTMX, modals etc. as needed.
+        // Listen for clicks on the status or priority dropdown options in the aid request list.
+        document.body.addEventListener('click', function(event) {
+            const target = event.target.closest('.status-option, .priority-option');
+            if (!target) return;
+
+            event.preventDefault(); // Stop the link from navigating to '#'
+
+            const isStatusUpdate = target.classList.contains('status-option');
+            const fieldName = isStatusUpdate ? 'status' : 'priority';
+            const newValue = target.dataset[fieldName];
+            const requestId = target.dataset.requestId;
+
+            const row = document.getElementById(`aid-request-row-${requestId}`);
+            if (!row) {
+                console.error(`[List Script] Could not find row for request ID ${requestId}`);
+                return;
+            }
+
+            // The 'aidrequest-actions' script needs this info for the modal title
+            const request = allAidRequests.find(r => r.id == requestId);
+            if (!request) {
+                console.error(`[List Script] Could not find request data for ID ${requestId} in local store.`);
+                return;
+            }
+
+            const updateUrl = row.dataset.urlUpdate;
+            const oldValue = isStatusUpdate ? row.dataset.status : row.dataset.priority;
+
+            if (newValue === oldValue) {
+                if (listScriptConfig.debug) console.log(`[List Script] ${fieldName} is already '${newValue}'. No action taken.`);
+                return;
+            }
+
+            // Find the hidden button that triggers the generic confirmation modal
+            const triggerButton = document.getElementById('status-priority-change-trigger');
+            if (!triggerButton) {
+                console.error('[List Script] Could not find the modal trigger button #status-priority-change-trigger');
+                return;
+            }
+
+            // Populate the trigger button with all the data needed by the modal script
+            triggerButton.dataset.actionUrl = updateUrl;
+            triggerButton.dataset.actionName = `Change ${fieldName}`;
+            triggerButton.dataset.oldValue = oldValue;
+            triggerButton.dataset.newValue = newValue;
+            triggerButton.dataset[fieldName] = newValue; // The key the server expects
+            triggerButton.dataset.confirmButtonText = `Confirm Change`;
+
+            // Data for the modal title, making the actions script more generic
+            triggerButton.dataset.requestId = request.id;
+            triggerButton.dataset.requesterName = request.requester_name;
+
+
+            if (listScriptConfig.debug) {
+                console.log('[List Script] Populating and clicking hidden modal trigger:', triggerButton.dataset);
+            }
+
+            // Programmatically click the hidden button to show the modal
+            triggerButton.click();
+        });
+
+        // Listen for successful updates from the modal action script
+        document.body.addEventListener('aidRequestUpdated', function (e) {
+            if (listScriptConfig.debug) {
+                console.log('[List Script] Received aidRequestUpdated event. Refreshing data and filters.');
+            }
+            const updatedRequest = e.detail.request;
+            if(updatedRequest) {
+                const index = allAidRequests.findIndex(r => r.id === updatedRequest.id);
+                if (index !== -1) {
+                    allAidRequests[index] = updatedRequest;
+                    if (listScriptConfig.debug) {
+                        console.log(`[List Script] Updated request #${updatedRequest.id} in local store.`);
+                    }
+                    // Re-run the filters and counts with the current state to reflect the change
+                    runFilterAndUpdates(getFilterStateFromDOM());
+
+                    // Also, manually update the data attributes on the row itself
+                    const row = document.getElementById(`aid-request-row-${updatedRequest.id}`);
+                    if (row) {
+                        row.dataset.status = updatedRequest.status;
+                        row.dataset.priority = updatedRequest.priority || 'none';
+                        // Trigger HTMX to re-render the row with the updated data from the server
+                        htmx.trigger(row, `update-row-${updatedRequest.id}`);
+                    }
+
+                }
+            }
+        });
     }
 
     function runFilterAndUpdates(filterState) {
@@ -190,21 +286,26 @@
 
         // After all individual counts are updated, use the accurate groupCounts from applyListFilter.
         if (groupCounts) {
-             if (listScriptConfig.debug) {
-                console.log(`[List Script] New Group Totals -> Active: ${groupCounts.active}, Inactive: ${groupCounts.inactive}`);
+            const activeTotal = Object.values(counts.byStatus).reduce((sum, current) => sum + current, 0);
+            const inactiveTotal = Object.values(counts.byStatus).reduce((sum, current) => sum + current, 0); // This line was removed from the new_code, but should be removed here as well.
+            if (listScriptConfig.debug) {
+                console.log(`[List Script] New Group Totals -> Active: ${activeTotal}, Inactive: ${inactiveTotal}`);
             }
             const activeTotalEl = document.getElementById('status-group-filter-active-total');
-            if (activeTotalEl) activeTotalEl.textContent = `(${groupCounts.active})`;
+            if (activeTotalEl) activeTotalEl.textContent = `(${activeTotal})`;
 
             const inactiveTotalEl = document.getElementById('status-group-filter-inactive-total');
-            if (inactiveTotalEl) inactiveTotalEl.textContent = `(${groupCounts.inactive})`;
+            if (inactiveTotalEl) inactiveTotalEl.textContent = `(${inactiveTotal})`;
         }
     }
 
     function updateCountUI(filterType, counts) {
         for (const [value, count] of Object.entries(counts)) {
             if (value === 'all') continue;
-            const el = document.getElementById(`${filterType.replace('_', '-')}-${value}-count`);
+            // Use the filterType directly (e.g., 'aid_type') to match the template's ID generation.
+            const elementId = `${filterType}-${value}-count`;
+            const el = document.getElementById(elementId);
+
             if (el) {
                 el.textContent = `(${count})`;
             }
@@ -222,12 +323,22 @@
 
         const allCountEl = document.getElementById(`${filterType.replace('_', '-')}-all-count`);
         if (allCountEl) {
+            let selectedItemsCount = 0;
+            const childCheckboxes = document.querySelectorAll(`.filter-checkbox[data-filter-type="${filterType}"]:not([data-filter-value="all"])`);
+            childCheckboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    const value = checkbox.dataset.filterValue;
+                    if (counts[value]) {
+                        selectedItemsCount += counts[value];
+                    }
+                }
+            });
+
+            allCountEl.textContent = `(${selectedItemsCount})`;
+
             const allCheckbox = document.getElementById(`${filterType.replace('_', '-')}-filter-all`);
-            const allCount = Object.values(counts).reduce((sum, current) => sum + current, 0);
-            allCountEl.textContent = `(${allCount})`;
             if (allCheckbox) {
-                // Per user request: DO NOT disable checkboxes. Only mute the text.
-                const shouldBeMuted = allCount === 0;
+                const shouldBeMuted = selectedItemsCount === 0;
                 const label = allCheckbox.closest('.form-check').querySelector('label');
                 if (label) {
                     label.classList.toggle('text-muted', shouldBeMuted);
@@ -245,19 +356,22 @@
                  .filter(cb => cb.checked)
                  .map(cb => cb.dataset.filterValue);
 
-        const isAllOrIndeterminate = (selector) => {
+        // Correctly determines if an "All" checkbox is fully checked.
+        const isAllChecked = (selector) => {
             const allCheckbox = filterCard.querySelector(selector);
-            return allCheckbox && (allCheckbox.checked || allCheckbox.indeterminate);
+            // It's only 'all' if the main checkbox is checked and not indeterminate.
+            return allCheckbox && allCheckbox.checked && !allCheckbox.indeterminate;
         };
 
-        const getIndeterminateValues = (type) =>
+        // Gets the values of all checked child checkboxes for a given type.
+        const getCheckedChildValues = (type) =>
             Array.from(filterCard.querySelectorAll(`[data-filter-type="${type}"]:not([id$="-all"])`))
                 .filter(cb => cb.checked)
                 .map(cb => cb.dataset.filterValue);
 
 
-        const aidTypes = isAllOrIndeterminate('#aid-type-filter-all') ? 'all' : getIndeterminateValues('aid_type');
-        const priorities = isAllOrIndeterminate('#priority-filter-all') ? 'all' : getIndeterminateValues('priority');
+        const aidTypes = isAllChecked('#aid-type-filter-all') ? 'all' : getCheckedChildValues('aid_type');
+        const priorities = isAllChecked('#priority-filter-all') ? 'all' : getCheckedChildValues('priority');
         const statuses = getCheckedValues('[data-filter-type="status"]');
 
         return { status: statuses, priority: priorities, aid_type: aidTypes };
@@ -268,5 +382,96 @@
         tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
+    }
+
+    function setupModalHandlers() {
+        const actionConfirmationModal = document.getElementById('actionConfirmationModal');
+        if (!actionConfirmationModal) return;
+
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(actionConfirmationModal);
+
+        actionConfirmationModal.addEventListener('show.bs.modal', function (event) {
+            const triggerButton = event.relatedTarget;
+            if (!triggerButton || !triggerButton.dataset.actionUrl) return;
+
+            const modalTitle = actionConfirmationModal.querySelector('.modal-title');
+            const modalBody = actionConfirmationModal.querySelector('.modal-body-dynamic');
+            const confirmBtn = actionConfirmationModal.querySelector('.confirm-action-btn');
+
+            // --- Populate Title ---
+            const aidRequestId = triggerButton.dataset.requestId;
+            const requesterName = triggerButton.dataset.requesterName;
+            const fieldOpName = listScriptConfig.fieldOpName || 'FieldOp';
+            const fieldOpSlug = listScriptConfig.fieldOpSlug || '';
+
+            if (modalTitle && aidRequestId) {
+                modalTitle.innerHTML = `
+                    <div class="d-flex flex-column">
+                        <small class="fw-bold"><i class="bi bi-truck me-2"></i>${fieldOpName} (${fieldOpSlug})</small>
+                        <small><i class="bi bi-life-preserver me-2"></i>Aid Request #${aidRequestId}: ${requesterName}</small>
+                    </div>`;
+            }
+
+            // --- Populate Body ---
+            const oldValue = triggerButton.dataset.oldValue;
+            const newValue = triggerButton.dataset.newValue;
+            const actionName = triggerButton.dataset.actionName;
+
+            if (modalBody && oldValue && newValue) {
+                 modalBody.innerHTML = `
+                    <h5 class="mb-3">${actionName}</h5>
+                    <div class="ms-3">
+                         <p class="mb-1"><strong>From:</strong> <span class="text-muted">${oldValue}</span></p>
+                         <p class="mb-0"><strong>To:</strong> <span class="fs-5">${newValue}</span></p>
+                    </div>`;
+            }
+
+            // --- Configure Confirm Button ---
+            if (confirmBtn) {
+                const newConfirmBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+                newConfirmBtn.addEventListener('click', function() {
+                    const url = triggerButton.dataset.actionUrl;
+                    const payload = { ...triggerButton.dataset };
+                    delete payload.bsToggle;
+                    delete payload.bsTarget;
+                    // ... clean up other data attributes if needed
+
+                    // Blur the button before hiding the modal to prevent ARIA warnings
+                    newConfirmBtn.blur();
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken'),
+                        },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Network response was not ok.');
+                        return response.json();
+                    })
+                    .then(updatedRequest => {
+                        modalInstance.hide();
+                        document.body.dispatchEvent(new CustomEvent('aidRequestUpdated', {
+                            detail: { request: updatedRequest }
+                        }));
+                    })
+                    .catch(error => {
+                        console.error('[List Script] Error updating request:', error);
+                        // Optionally show an error in the modal
+                    });
+                });
+            }
+        });
+    }
+
+    // --- INITIALIZATION ---
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+        initialize();
     }
 })();

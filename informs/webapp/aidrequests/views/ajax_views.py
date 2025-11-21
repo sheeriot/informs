@@ -62,14 +62,26 @@ def update_aid_request(request, field_op, pk):
             note = data.get('note', '')
             note_markdown = data.get('note_markdown', False)
             ic(f"Saving with note: '{note}' (Markdown: {note_markdown})")
+
+            # Correctly pass update_fields to save()
+            update_fields = []
+            if 'status' in data:
+                update_fields.append('status')
+            if 'priority' in data:
+                update_fields.append('priority')
+
+            # Always include updated_at and updated_by
+            update_fields.extend(['updated_at', 'updated_by'])
+
             aid_request.save(
                 note=note,
                 note_markdown=note_markdown,
-                update_fields=['status', 'priority', 'updated_at', 'updated_by']
+                update_fields=update_fields
             )
-            return HttpResponse(status=204)
+            return JsonResponse(aid_request.to_dict(), status=200, encoder=DecimalEncoder)
         else:
-            return HttpResponse(status=204)
+            # If nothing was updated, just return the current state
+            return JsonResponse(aid_request.to_dict(), status=200, encoder=DecimalEncoder)
 
     except json.JSONDecodeError:
         return JsonResponse({'status': 'error', 'message': 'Invalid JSON.'}, status=400)

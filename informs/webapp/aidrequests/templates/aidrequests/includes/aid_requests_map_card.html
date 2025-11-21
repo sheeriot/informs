@@ -15,12 +15,7 @@
             <!-- Map container with data attributes -->
             <div id="aid-request-map-container" class="position-relative w-100 map-container-shared"
                 data-maps-subscription-key="{{ azure_maps_key }}"
-                data-initial-bounds='{{ initial_bounds_json|safe }}'
-                data-center-lat="{{ field_op.latitude|stringformat:".6f"|default:"0" }}"
-                data-center-lon="{{ field_op.longitude|stringformat:".6f"|default:"0" }}"
-                data-ring-size="{{ field_op.ring_size|default:"10" }}"
-                data-field-op-name="{{ field_op.name }}"
-                data-field-op-slug="{{ field_op.slug }}">
+                data-initial-bounds='{{ initial_bounds_json|safe }}'>
             </div>
         </div>
     </div>

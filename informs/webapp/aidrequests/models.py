@@ -237,8 +237,8 @@ class AidRequest(TimeStampedModel):
 
     @property
     def full_address(self):
-        """Returns the full address as a single string."""
-        parts = [self.street_address, self.city, self.state, self.zip_code, self.country.name if self.country else '']
+        """Returns the full address as a single string, without the country."""
+        parts = [self.street_address, self.city, self.state, self.zip_code]
         return ", ".join(filter(None, parts))
 
     # 4. Type of assistance requested
@@ -325,11 +325,14 @@ class AidRequest(TimeStampedModel):
         Serializes the AidRequest object to a dictionary for JSON embedding.
         """
         location_data = None
-        if self.locations.exists():
-            latest_location = self.locations.latest('created_at')
+        # Use the 'location' property which already finds the primary location
+        primary_location = self.location
+        if primary_location:
             location_data = {
-                'latitude': latest_location.latitude,
-                'longitude': latest_location.longitude,
+                'latitude': primary_location.latitude,
+                'longitude': primary_location.longitude,
+                'address_display': self.full_address, # The user-provided address
+                'free_form_address': primary_location.free_form_address, # The machine-geocoded address
             }
 
         aid_type_data = None
@@ -347,7 +350,7 @@ class AidRequest(TimeStampedModel):
             'priority_display': self.get_priority_display(),
             'aid_type': aid_type_data,
             'location': location_data,
-            'address': {'full': self.full_address},
+            'group_size': self.group_size,
             'requester_name': self.requester_full_name,
         }
 
