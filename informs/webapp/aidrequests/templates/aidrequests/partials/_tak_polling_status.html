@@ -1,0 +1,8 @@
+<div hx-get="{% url 'htmx_check_tak_status' field_op=slug task_id=task_id %}"
+     hx-trigger="load delay:500ms, every 2s"
+     hx-target="#send-cot-status"
+     hx-swap="innerHTML"
+     class="d-inline-flex align-items-center me-2">
+    <span class="spinner-border spinner-border-sm text-secondary" role="status" aria-hidden="true"></span>
+    <span class="small text-secondary ms-2">Sending...</span>
+</div>

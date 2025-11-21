@@ -28,7 +28,8 @@
                         <span class="text-nowrap">{{ location.latitude|stringformat:".5f" }},</span><span class="text-nowrap">{{ location.longitude|stringformat:".5f" }}</span>
                     </div>
                     <button class="btn btn-sm btn-link text-secondary"
-                            onclick="copyCoords('coords-{{ location.pk }}')">
+                            data-copy-text="{{ location.latitude|stringformat:".5f" }},{{ location.longitude|stringformat:".5f" }}"
+                            onclick="copyCoords(this)">
                         <i class="bi bi-clipboard"></i>
                     </button>
                 </div>

@@ -5,7 +5,7 @@
     <button class="btn btn-link text-secondary btn-sm py-0 ps-1 border-0 btn-copy-coords"
             type="button"
             data-copy-text="{{ latitude|floatformat:5 }},{{ longitude|floatformat:5 }}"
-            onclick="copyCoordinates(this)"
+            onclick="copyCoords(this)"
             title="Copy to clipboard">
         {% bs_icon 'clipboard' %}
     </button>

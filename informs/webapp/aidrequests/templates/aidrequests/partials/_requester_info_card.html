@@ -1,56 +1,47 @@
 {% load bootstrap_icons %}
-{% load groupsize_tags %}
 
 <div id="requester-info-section">
-    <div class="d-flex justify-content-between align-items-center">
-        <p class="mb-0 text-muted">Requester Name</p>
-    </div>
-    <div class="row align-items-center mb-3">
-        <div class="col-md-8">
-            <h3 class="mb-0">{{ aid_request.requester_full_name }}</h3>
-        </div>
-        <div class="col-md-4">
-            <div class="d-flex justify-content-end align-items-center">
-                <div class="text-end">
-                    {% if aid_request.requester_phone %}
-                        <div>
-                            <small class="text-muted">Phone</small>
-                            <p class="mb-0 text-nowrap">
-                                {% if aid_request.requester_phone_is_whatsapp %}
-                                    <span class="badge bg-success me-1">{% bs_icon 'whatsapp' %}</span>
-                                {% endif %}
-                                {{ aid_request.requester_phone }}
-                            </p>
-                        </div>
-                    {% endif %}
-                    {% if aid_request.requester_email %}
-                        <div class="mt-2">
-                            <small class="text-muted">Email</small>
-                            <p class="mb-0 text-nowrap">
-                                {{ aid_request.requester_email }}
-                            </p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div class="row">
-        <div class="col-md-4">
-            {% display_group_size aid_request.group_size %}
+        <div class="col-md-6">
+            <p class="mb-0 text-muted">Requester Name</p>
+            <h3 class="mb-3">{{ aid_request.requester_full_name }}</h3>
+
+            <p class="mb-0 text-muted">Group Size</p>
+            <p class="fs-4">{{ aid_request.group_size }}</p>
         </div>
-        <div class="col-md-8 d-flex justify-content-end align-items-end">
-            {% if request.user.is_staff %}
-                <a hx-get="{% url 'edit_requester_info' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
-                   hx-target="#requester-info-section"
-                   hx-swap="outerHTML"
-                   class="text-danger"
-                   title="Edit Requester Info"
-                   style="cursor: pointer;">
-                    <i class="bi bi-lock-fill fs-4"></i>
-                </a>
-            {% endif %}
+        <div class="col-md-6 text-md-end d-flex flex-column justify-content-between">
+            <div>
+                {% if aid_request.requester_phone %}
+                    <div>
+                        <small class="text-muted">Phone</small>
+                        <p class="mb-0 text-nowrap">
+                            {% if aid_request.requester_phone_is_whatsapp %}
+                                <span class="badge bg-success me-1">{% bs_icon 'whatsapp' %}</span>
+                            {% endif %}
+                            {{ aid_request.requester_phone }}
+                        </p>
+                    </div>
+                {% endif %}
+                {% if aid_request.requester_email %}
+                    <small class="text-muted">Email</small>
+                    <p class="mb-0 text-nowrap">
+                        {{ aid_request.requester_email }}
+                    </p>
+                {% endif %}
+            </div>
+
+            <div class="mt-auto">
+                {% if request.user.is_staff %}
+                    <a hx-get="{% url 'edit_requester_info' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
+                       hx-target="#requester-info-section"
+                       hx-swap="outerHTML"
+                       class="text-danger"
+                       title="Edit Requester Info"
+                       style="cursor: pointer;">
+                        <i class="bi bi-lock-fill fs-4"></i>
+                    </a>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>

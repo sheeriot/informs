@@ -5,27 +5,44 @@ const mapFieldOpsConfig = {
 
 let map;
 
-function initFieldOpsMap(fieldOpsData) {
-    if (!fieldOpsData || fieldOpsData.length === 0) {
-        console.error('No field ops data provided');
-        return;
-    }
-
-    // Calculate and set bounds
+function initFieldOpsMap() {
     const mapElement = document.getElementById('fieldops-map');
     if (!mapElement) {
-        console.error('Map container not found');
+        console.error('Map container with id "fieldops-map" not found');
         return;
     }
 
-    // Set bounds data attributes for map_init.js
-    mapElement.dataset.boundsWest = Math.min(...fieldOpsData.map(fo => fo.longitude));
-    mapElement.dataset.boundsSouth = Math.min(...fieldOpsData.map(fo => fo.latitude));
-    mapElement.dataset.boundsEast = Math.max(...fieldOpsData.map(fo => fo.longitude));
-    mapElement.dataset.boundsNorth = Math.max(...fieldOpsData.map(fo => fo.latitude));
+    // Construct the fieldOpsData from the map element's data attributes
+    const fieldOpsData = [{
+        id: mapElement.dataset.fieldOpId || null, // Assuming an ID might be useful
+        name: mapElement.dataset.fieldOpName,
+        slug: mapElement.dataset.fieldOpSlug,
+        latitude: parseFloat(mapElement.dataset.centerLat),
+        longitude: parseFloat(mapElement.dataset.centerLon)
+    }];
 
-    // Initialize map using shared initialization
-    map = initializeMap('fieldops-map');
+    if (!fieldOpsData[0].name || !fieldOpsData[0].slug) {
+        console.error('Field op data (name, slug) not found in data attributes');
+        return;
+    }
+
+    const azureMapsKey = mapElement.dataset.azureMapsKey;
+    if (!azureMapsKey) {
+        console.error('Azure Maps key not found in data attributes');
+        return;
+    }
+
+    // Initialize map
+    map = new atlas.Map('fieldops-map', {
+        authOptions: {
+            authType: 'subscriptionKey',
+            subscriptionKey: azureMapsKey
+        },
+        style: 'road',
+        showFeedbackLink: false,
+        showLogo: false
+    });
+
     if (!map) {
         console.error('Failed to initialize map');
         return;
@@ -39,6 +56,37 @@ function initFieldOpsMap(fieldOpsData) {
     // Wait for the map to be ready before adding data
     map.events.add('ready', function() {
         try {
+            // --- Draw the Operational Ring ---
+            const ringSize = parseFloat(mapElement.dataset.ringSize) || 10;
+            const centerLon = parseFloat(mapElement.dataset.centerLon);
+            const centerLat = parseFloat(mapElement.dataset.centerLat);
+
+            if (!isNaN(centerLon) && !isNaN(centerLat) && ringSize > 0) {
+                const centerPosition = new atlas.data.Position(centerLon, centerLat);
+                const ringSource = new atlas.source.DataSource();
+                map.sources.add(ringSource);
+
+                const fieldOpRing = new atlas.data.Feature(
+                    new atlas.data.Point(centerPosition), {
+                        subType: 'Circle',
+                        radius: ringSize * 1000 // Convert km to meters
+                    }
+                );
+                ringSource.add(fieldOpRing);
+
+                map.layers.add(new atlas.layer.PolygonLayer(ringSource, null, {
+                    fillColor: 'rgba(255, 0, 0, 0.2)',
+                    strokeColor: 'red',
+                    strokeWidth: 2
+                }));
+                 // Set camera to focus on the ring
+                 map.setCamera({
+                    center: [centerLon, centerLat],
+                    zoom: 8, // Adjust zoom as needed
+                    type: 'fly'
+                });
+            }
+
             // Create a data source for field ops
             const dataSource = new atlas.source.DataSource(undefined, {
                 cluster: true
@@ -171,3 +219,10 @@ function initFieldOpsMap(fieldOpsData) {
         }
     });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if the map container exists on the page before trying to initialize
+    if (document.getElementById('fieldops-map')) {
+        initFieldOpsMap();
+    }
+});

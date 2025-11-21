@@ -1,4 +1,2 @@
 {% load custom_tags %}
-
-<p class="mb-1"><strong>Group Size</strong></p>
-<p style="font-size: {{ font_size }};">{{ group_size|default:"-" }}</p>
+{{ group_size|default:"-" }}

@@ -1,0 +1,53 @@
+<div class="card shadow-sm" id="aid-request-list-card">
+    <div class="card-header py-2">
+        <div class="d-flex align-items-center">
+            <div class="btn-group">
+                <a href="{% url 'aid_request_create' field_op=field_op.slug %}"
+                   class="btn btn-sm btn-outline-success"
+                   title="Add new aid request">
+                    <i class="bi bi-plus-circle"></i>
+                </a>
+                <a href="{% url 'aid_requests_csv' field_op=field_op.slug %}"
+                   class="btn btn-sm btn-outline-info"
+                   title="Export to CSV">
+                    <i class="bi bi-download"></i>
+                </a>
+            </div>
+            <h5 class="card-title mx-2">Aid Requests</h5>
+            <button class="btn btn-sm btn-outline-secondary ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#list-filter-summary-collapse" aria-expanded="false" aria-controls="list-filter-summary-collapse" title="Show/Hide Active Filters">
+                <i class="bi bi-funnel"></i>
+            </button>
+        </div>
+        <div class="collapse" id="list-filter-summary-collapse">
+            <div id="list-filter-summary" class="small text-muted p-2 border-top">
+                {{ initial_list_summary_html|safe }}
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0" id="aid-request-list-table-container">
+        <table class="table table-sm table-hover table-striped border-bottom mb-0" id="aid-request-table">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col" class="py-1">#</th>
+                    <th scope="col" class="py-1 d-none d-md-table-cell">Requester</th>
+                    <th scope="col" class="py-1">Status</th>
+                    <th scope="col" class="py-1">Priority</th>
+                    <th scope="col" class="py-1 d-none d-lg-table-cell">Size</th>
+                    <th scope="col" class="py-1 d-none d-lg-table-cell">
+                        <i class="bi bi-geo-alt"></i>
+                        <span class="d-none d-xl-inline">Address</span>
+                    </th>
+                    <th scope="col" class="py-1 d-none d-xl-table-cell">
+                        <div class="d-flex flex-column" style="line-height: 1; font-size: 0.75rem;">
+                            <span>Updated</span>
+                            <span class="text-muted">Age</span>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="aid-request-list-body">
+                {% include "aidrequests/partials/_aid_request_list_rows.html" %}
+            </tbody>
+        </table>
+    </div>
+</div>

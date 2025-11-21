@@ -40,13 +40,12 @@ def update_aid_request(request, field_op, pk):
     """
     Update the status or priority of an aid request.
     """
-    ic.enable()
     field_op_obj = get_object_or_404(FieldOp, slug=field_op)
     aid_request = get_object_or_404(AidRequest, pk=pk, field_op=field_op_obj)
 
     try:
         data = json.loads(request.body)
-        ic('Received data for aid request update:', data)
+        # ic('Received data for aid request update:', data)
 
         updated = False
         if 'status' in data:
@@ -61,7 +60,7 @@ def update_aid_request(request, field_op, pk):
         if updated:
             note = data.get('note', '')
             note_markdown = data.get('note_markdown', False)
-            ic(f"Saving with note: '{note}' (Markdown: {note_markdown})")
+            # ic(f"Saving with note: '{note}' (Markdown: {note_markdown})")
 
             # Correctly pass update_fields to save()
             update_fields = []

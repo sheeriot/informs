@@ -1,0 +1,29 @@
+{% comment %}
+Renders a single filter checkbox option with an optional icon.
+
+Expects the following context variables:
+- `id`: The unique ID for the checkbox input.
+- `filter_type`: The data attribute for the filter type (e.g., 'status', 'priority').
+- `filter_value`: The actual value for the filter.
+- `label`: The text to display for the filter.
+- `count`: The number of items matching this filter.
+- `icon_template`: (Optional) The path to a template for an icon.
+- `icon_context_key`: (Optional) The context variable name for the icon template (e.g., 'status').
+- `icon_context_value`: (Optional) The value for the icon template's context.
+{% endcomment %}
+<div class="form-check d-flex align-items-center filter-choice-item me-4 mb-1 text-nowrap">
+    <input class="form-check-input filter-checkbox me-1" type="checkbox"
+           id="{{ id }}"
+           data-filter-type="{{ filter_type }}"
+           data-filter-value="{{ filter_value }}">
+
+    {% if icon_template %}
+        <div class="me-1">
+            {% include icon_template with status=icon_context_value %}
+        </div>
+    {% endif %}
+
+    <label class="form-check-label" for="{{ id }}">
+        {{ label }}<span class="text-muted" id="{{ filter_type }}-{{ filter_value }}-count">({{ count }})</span>
+    </label>
+</div>

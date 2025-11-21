@@ -1,0 +1,143 @@
+{% load custom_tags %}
+
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card shadow-sm" id="aid-request-filter-card">
+            <div class="card-header bg-secondary text-white py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Filter Aid Requests ({{ total_count }})</h6>
+
+                    <div>
+                        <button class="btn btn-sm btn-outline-light me-2" id="reset-all-filters">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reset
+                        </button>
+                        <span id="results-counter" class="badge bg-light text-dark rounded-pill">
+                            {{ active_total_count }} of {{ total_count }} requests
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-2 bg-light">
+                <form id="aid-request-filter-form">
+                    <!-- Filter Buttons -->
+                    <div class="rounded" id="aid-filter-buttons-container">
+                        <!-- Row 1: Aid Types -->
+                        <div class="mb-2">
+                            <h6 class="text-secondary mb-2 fw-bold">Aid Types:</h6>
+                            <div class="d-flex" id="aid-type-filter-buttons">
+                                <div class="flex-shrink-0 pe-3 border-end me-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox"
+                                               id="aid-type-filter-all"
+                                               data-filter-type="aid_type"
+                                               data-filter-value="all"
+                                               checked>
+                                        <label class="form-check-label fw-bold" for="aid-type-filter-all">
+                                            All <span id="aid-type-all-count">({{ total_count }})</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-wrap">
+                                    {% for aid_type, data in aid_type_counts.items %}
+                                        {% include 'aidrequests/partials/_filter_choice.html' with id='aid-type-filter-'|add:data.value filter_type='aid_type' filter_value=data.value label=aid_type count=data.count checked_by_default=data.checked_by_default %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Status Groups Container -->
+                        <div class="mb-2">
+                            <div class="card border">
+                                <div class="card-header bg-white py-2">
+                                    <h6 class="mb-0">Status</h6>
+                                </div>
+                                <div class="card-body p-2">
+                                    <!-- Active Status Group -->
+                                    <div class="mb-3 status-group" id="active-status-group">
+                                        <div class="d-flex" id="active-status-filter-buttons">
+                                            <div class="flex-shrink-0 pe-3 border-end me-3">
+                                                <div class="form-check">
+                                                    <input class="form-check-input filter-checkbox filter-active" type="checkbox"
+                                                           id="status-group-filter-active"
+                                                           data-filter-type="status_group"
+                                                           data-filter-value="active"
+                                                           {% if current_status_group != 'inactive' %}checked{% endif %}>
+                                                    <label class="form-check-label fw-bold" for="status-group-filter-active">
+                                                        Active <span class="text-muted" id="status-group-filter-active-total">({{ active_total_count }})</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex flex-wrap">
+                                                {% for status_code, status_name in status_choices_list %}
+                                                    {% if status_code in status_groups.active %}
+                                                        {% with choice_data=status_counts|get_item:status_name %}
+                                                            {% include 'aidrequests/partials/_filter_choice.html' with id='status-filter-'|add:status_code filter_type='status' filter_value=status_code label=status_name count=choice_data.count checked_by_default=choice_data.checked_by_default icon_template='aidrequests/includes/status_icon.html' icon_context_value=status_code %}
+                                                        {% endwith %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <hr class="my-2">
+
+                                    <!-- Inactive Status Group -->
+                                    <div class="status-group" id="inactive-status-group">
+                                        <div class="d-flex" id="inactive-status-filter-buttons">
+                                            <div class="flex-shrink-0 pe-3 border-end me-3">
+                                                <div class="form-check">
+                                                    <input class="form-check-input filter-checkbox filter-inactive" type="checkbox"
+                                                           id="status-group-filter-inactive"
+                                                           data-filter-type="status_group"
+                                                           data-filter-value="inactive">
+                                                    <label class="form-check-label fw-bold" for="status-group-filter-inactive">
+                                                        Inactive <span class="text-muted" id="status-group-filter-inactive-total">({{ inactive_total_count }})</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex flex-wrap">
+                                                {% for status_code, status_name in status_choices_list %}
+                                                    {% if status_code in status_groups.inactive %}
+                                                        {% with choice_data=status_counts|get_item:status_name %}
+                                                             {% include 'aidrequests/partials/_filter_choice.html' with id='status-filter-'|add:status_code filter_type='status' filter_value=status_code label=status_name count=choice_data.count checked_by_default=choice_data.checked_by_default icon_template='aidrequests/includes/status_icon.html' icon_context_value=status_code %}
+                                                        {% endwith %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 4: Priorities -->
+                        <div class="mb-2">
+                            <h6 class="text-secondary mb-2 fw-bold">Priority:</h6>
+                            <div class="d-flex" id="priority-filter-buttons">
+                                <div class="flex-shrink-0 pe-3 border-end me-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox"
+                                               id="priority-filter-all"
+                                               data-filter-type="priority"
+                                               data-filter-value="all"
+                                               checked>
+                                        <label class="form-check-label fw-bold" for="priority-filter-all">
+                                            All <span id="priority-all-count">({{ total_count }})</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-wrap">
+                                    {% for priority_code, priority_name in priority_choices_list %}
+                                        {% with choice_data=priority_counts|get_item:priority_name priority_value=priority_code|default:"none" %}
+                                             {% include 'aidrequests/partials/_filter_choice.html' with id='priority-filter-'|add:priority_value filter_type='priority' filter_value=priority_value label=priority_name count=choice_data.count checked_by_default=choice_data.checked_by_default %}
+                                        {% endwith %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

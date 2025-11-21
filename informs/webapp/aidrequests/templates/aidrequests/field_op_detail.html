@@ -7,39 +7,34 @@
 {% block page_title %}{{ object.name }} - Field Op{% endblock %}
 
 {% block extra_css %}
-<style>
-    .coordinates-input-group {
-        max-width: 300px; /* Or adjust as needed */
-    }
-</style>
 <link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" type="text/css" />
 {% endblock %}
 
 
 {% block content %}
-<div class="container-fluid mt-4">
+<div class="container-fluid mt-2">
     <div class="row">
         <!-- Details Column -->
         <div class="col-lg-12">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2 class="mb-0">{{ object.name }}</h2>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <h2 class="mb-0 ms-1">
+                    <i class="bi bi-truck m-0"></i>
+                    <span class="fw-normal fs-5">Field Operation:</span> {{ object.name }} ({{ object.slug }})
+                </h2>
                 <div>
-                    <a href="{% url 'aid_request_list' field_op=object.slug %}" class="btn btn-outline-info text-dark">
-                        <i class="bi bi-life-preserver text-danger"></i> View Aid Requests
-                        <span class="badge bg-info text-dark ms-1">{{ object.aid_requests.count }}</span>
-                    </a>
+                    {% include 'aidrequests/partials/_aid_requests_badge.html' with field_op=object %}
                     {% if request.user.is_staff %}
                     <a href="{% url 'field_op_update' slug=object.slug %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning ms-2">
                         {% bs_icon 'pencil-square' %} Edit
                     </a>
                     {% endif %}
-                    <a href="{% url 'field_op_list' %}" class="btn btn-secondary ms-2">
-                        All Field Ops
+                    <a href="{% url 'field_op_list' %}" class="btn btn-info ms-2">
+                        <i class="bi bi-card-list me-1"></i> <span class="text-nowrap">All Field Ops</span>
                     </a>
                 </div>
             </div>
 
-            {% include 'aidrequests/includes/field_op_summary.html' %}
+            {% include 'aidrequests/includes/field_op_details_card.html' %}
 
             <!-- Map -->
             <div class="card">
@@ -47,47 +42,30 @@
                     <h5 class="card-title mb-0">Field Operation Map</h5>
                 </div>
                 <div class="card-body p-0">
-                    <div id="aid-request-map"
+                    <div id="fieldops-map"
                          class="map-container-full-width"
                          data-azure-maps-key="{{ azure_maps_key }}"
-                         data-field-op-name="{{ field_op_name }}"
-                         data-field-op-slug="{{ field_op_slug }}"
-                         data-center-lat="{{ center_lat|stringformat:'f'|default:0 }}"
-                         data-center-lon="{{ center_lon|stringformat:'f'|default:0 }}"
-                         data-ring-size="{{ ring_size|default:10 }}"
-                         data-bounds-west="{{ map_bounds.0 }}"
-                         data-bounds-south="{{ map_bounds.1 }}"
-                         data-bounds-east="{{ map_bounds.2 }}"
-                         data-bounds-north="{{ map_bounds.3 }}">
+                         data-field-op-name="{{ object.name }}"
+                         data-field-op-slug="{{ object.slug }}"
+                         data-center-lat="{{ object.latitude|stringformat:'f'|default:0 }}"
+                         data-center-lon="{{ object.longitude|stringformat:'f'|default:0 }}"
+                         data-ring-size="{{ object.ring_size|default:10 }}">
                     </div>
                 </div>
                 <div class="card-footer" id="map-filter-summary-card" >
-                    <div id="map-filter-summary" class="small text-muted">Loading map...</div>
+                    <div id="map-filter-summary" class="small text-muted">Field Operation Location</div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Data scripts -->
-<script type="application/json" id="aid-locations-data">
-    {{ aid_locations_json|safe }}
-</script>
-<script type="application/json" id="aid-types-json">
-    {{ aid_types_json|safe }}
-</script>
-<script type="application/json" id="filter-state-initial">
-    {
-        "aid_types": "all",
-        "statuses": "all",
-        "priorities": "all"
-    }
-</script>
-
 {% endblock %}
 
 {% block extra_js %}
 <!-- Application JavaScript -->
 <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
-<script src="{% static 'js/map_aidrequests.js' %}?v={{ static_version }}"></script>
+<script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+<script src="{% static 'js/map_fieldops.js' %}?v={{ static_version }}"></script>
+<script src="{% static 'js/tak-alert-htmx.js' %}?v={{ static_version }}"></script>
 {% endblock %}

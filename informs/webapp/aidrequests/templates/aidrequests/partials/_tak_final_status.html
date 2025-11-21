@@ -1,0 +1,6 @@
+{% load cotstatus_tags %}
+
+<div class="small text-nowrap rounded px-2 py-1 {{ status_class|default:'bg-info-subtle' }}"
+     _="on load wait 10s then add .d-none to me">
+    {{ status_message }}
+</div>

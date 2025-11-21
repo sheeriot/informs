@@ -173,3 +173,40 @@ def hyperbolic_font_size(group_size):
     font_size = s_max - (s_max - s_min) / (1 + k * (group_size - 1))
 
     return f"{font_size:.2f}rem"
+
+
+@register.filter
+def compact_timesince(value):
+    """
+    Returns a compact string representing the time since the value.
+    Format: '+Xd, Yh', '+Xh, Ym', '+Xm'
+    """
+    if not value:
+        return ""
+
+    now = timezone.now()
+    if timezone.is_naive(value):
+        value = timezone.make_aware(value, timezone.get_default_timezone())
+
+    delta = now - value
+
+    days = delta.days
+    seconds = delta.seconds
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+
+    if days > 0:
+        return f"+{days}d, {hours}h"
+    elif hours > 0:
+        return f"+{hours}h, {minutes}m"
+    elif minutes > 0:
+        return f"+{minutes}m"
+    else:
+        return "now"
+
+@register.filter
+def json_loads(value):
+    """
+    Takes a JSON string and returns a Python dictionary.
+    """
+    return json.loads(value)

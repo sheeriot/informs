@@ -8,6 +8,8 @@ from django.contrib import messages
 from django.utils.html import format_html
 from django.urls import reverse
 import json
+from django_q.tasks import async_task
+from icecream import ic
 
 from .models import FieldOp, FieldOpNotify, AidType, AidRequest, ActionLog, AidLocation
 from .forms import AidLocationInline, AidRequestInline
@@ -128,6 +130,15 @@ class FieldOpAdmin(admin.ModelAdmin):
         # Set updated_by on every save
         obj.updated_by = request.user
         super().save_model(request, obj, form, change)
+
+        if not obj.disable_cot:
+            ic(f"Creating send_cot_task for FieldOp {obj.slug} from admin")
+            async_task(
+                'aidrequests.tasks.send_cot_task',
+                field_op_slug=obj.slug,
+                mark_type='field',
+                task_name=f"Send_CoT_FieldOp_{obj.slug}"
+            )
 
 
 class AidLocationAdmin(admin.ModelAdmin):

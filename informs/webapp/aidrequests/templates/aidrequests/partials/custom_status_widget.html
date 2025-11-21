@@ -1,5 +1,7 @@
+{% load custom_tags %}
 <div class="border rounded p-2 mb-3">
     <label class="form-label">Status</label>
+    {% with status_icons='{"new": "download", "assigned": "clock", "resolved": "hand-thumbs-up", "closed": "door-closed", "rejected": "hand-thumbs-down", "other": "question-lg"}'|json_loads %}
     <div id="status-buttons">
         <div class="mb-2">
             <small class="text-muted">Active</small>
@@ -7,7 +9,10 @@
                 {% for status_key, status_display in status_form.fields.status.choices %}
                     {% if status_key in aid_request.ACTIVE_STATUSES %}
                         <input type="radio" class="btn-check" name="status" id="status-{{ status_key }}" value="{{ status_key }}" autocomplete="off" {% if aid_request.status == status_key %}checked data-original-value="true"{% endif %}>
-                        <label class="btn btn-outline-primary" for="status-{{ status_key }}">{{ status_display }}</label>
+                        <label class="btn btn-outline-primary" for="status-{{ status_key }}">
+                            <i class="bi bi-{{ status_icons|get_item:status_key }} me-1"></i>
+                            {{ status_display }}
+                        </label>
                     {% endif %}
                 {% endfor %}
             </div>
@@ -18,32 +23,40 @@
                 {% for status_key, status_display in status_form.fields.status.choices %}
                     {% if status_key in aid_request.INACTIVE_STATUSES %}
                         <input type="radio" class="btn-check" name="status" id="status-{{ status_key }}" value="{{ status_key }}" autocomplete="off" {% if aid_request.status == status_key %}checked data-original-value="true"{% endif %}>
-                        <label class="btn btn-outline-secondary" for="status-{{ status_key }}">{{ status_display }}</label>
+                        <label class="btn btn-outline-secondary" for="status-{{ status_key }}">
+                            <i class="bi bi-{{ status_icons|get_item:status_key }} me-1"></i>
+                            {{ status_display }}
+                        </label>
                     {% endif %}
                 {% endfor %}
             </div>
         </div>
     </div>
+    {% endwith %}
 </div>
 
 <div class="mb-3">
     <label class="form-label">Priority</label>
+    {% with priority_styles='{"high": {"icon": "exclamation-diamond-fill"}, "medium": {"icon": "exclamation-triangle-fill"}, "low": {"icon": "info-circle-fill"}, "none": {"icon": "question-circle"}}'|json_loads %}
     <div id="priority-buttons">
         <div class="btn-group btn-group-sm w-100" role="group" aria-label="Priority Levels">
             {% for priority_key, priority_display in status_form.fields.priority.choices %}
-                {% if priority_key %}
-                <input type="radio" class="btn-check" name="priority" id="priority-{{ priority_key }}" value="{{ priority_key }}" autocomplete="off" {% if aid_request.priority == priority_key %}checked data-original-value="true"{% endif %}>
-                {% if priority_key == 'high' %}
-                <label class="btn btn-outline-danger" for="priority-{{ priority_key }}">{{ priority_display }}</label>
-                {% elif priority_key == 'medium' %}
-                <label class="btn btn-outline-warning" for="priority-{{ priority_key }}">{{ priority_display }}</label>
-                {% elif priority_key == 'low' %}
-                <label class="btn btn-outline-primary" for="priority-{{ priority_key }}">{{ priority_display }}</label>
+                {% with p_key_str=priority_key|default:"none" %}
+                {% with style=priority_styles|get_item:p_key_str %}
+                <input type="radio" class="btn-check" name="priority" id="priority-{{ p_key_str }}" value="{{ p_key_str }}" autocomplete="off" {% if aid_request.priority == p_key_str or not aid_request.priority and p_key_str == 'none' %}checked data-original-value="true"{% endif %}>
+                {% if p_key_str == 'high' %}
+                <label class="btn btn-outline-danger" for="priority-{{ p_key_str }}"><i class="bi bi-{{ style.icon }} me-1"></i>{{ priority_display }}</label>
+                {% elif p_key_str == 'medium' %}
+                <label class="btn btn-outline-warning" for="priority-{{ p_key_str }}"><i class="bi bi-{{ style.icon }} me-1"></i>{{ priority_display }}</label>
+                {% elif p_key_str == 'low' %}
+                <label class="btn btn-outline-primary" for="priority-{{ p_key_str }}"><i class="bi bi-{{ style.icon }} me-1"></i>{{ priority_display }}</label>
                 {% else %}
-                <label class="btn btn-outline-secondary" for="priority-{{ priority_key }}">{{ priority_display }}</label>
+                <label class="btn btn-outline-secondary" for="priority-{{ p_key_str }}"><i class="bi bi-{{ style.icon }} me-1"></i>{{ priority_display }}</label>
                 {% endif %}
-                {% endif %}
+                {% endwith %}
+                {% endwith %}
             {% endfor %}
         </div>
     </div>
+    {% endwith %}
 </div>

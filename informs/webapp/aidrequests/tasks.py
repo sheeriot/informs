@@ -2,10 +2,10 @@ from django.conf import settings
 
 from azure.communication.email import EmailClient
 from datetime import datetime
-from geopy.distance import geodesic
+# from geopy.distance import geodesic
 
 from .email_creator import email_connectstring, email_creator_html
-from .geocoder import get_azure_geocode, geocode_save
+# from .geocoder import get_azure_geocode, geocode_save
 from .views.maps import staticmap_aid, calculate_zoom
 from .models import FieldOpNotify, AidRequest, FieldOp, AidLocation, ActionLog
 from takserver.cot import CotSender, pytak_send_cot
@@ -13,15 +13,15 @@ from takserver.cot import CotSender, pytak_send_cot
 import asyncio
 import pytak
 
-from django.core.management import call_command
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
-from django.utils.html import strip_tags
+# from django.core.management import call_command
+# from django.core.mail import send_mail
+# from django.template.loader import render_to_string
+# from django.utils.html import strip_tags
 from django_q.tasks import async_task
 
 import logging
 import os
-import json
+# import json
 import time
 from icecream import ic
 
@@ -149,7 +149,7 @@ def aid_request_postsave(aid_request_pk, **kwargs):
             text_markdown = False
 
         aid_request.action_logs.create(
-            log_type='system',
+            log_type='alert',
             event_name=event_name,
             event_text=log_text,
             note_markdown=text_markdown,
@@ -224,7 +224,7 @@ def aid_request_notify(aid_request, **kwargs):
 
     try:
         aid_request.action_logs.create(
-            log_type='system',
+            log_type='alert',
             event_name="Manual Email Notifications Sent",
             event_text=results,
             agent_name=request.user.username if request.user.is_authenticated else "System"
@@ -514,7 +514,7 @@ def send_cot_task(field_op_slug, mark_type='field', aidrequest=None, aidrequests
 
                     ActionLog.objects.create(
                         aid_request=aid_request_obj,
-                        log_type='system',
+                        log_type='alert',
                         event_name='CoT Sent',
                         event_text=log_text,
                         note_markdown=False,

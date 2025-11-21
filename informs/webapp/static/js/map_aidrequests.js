@@ -1,1233 +1,738 @@
 /**
  * map_aidrequests.js
- *
- * Handles map initialization and display of aid request locations
- * Provides interactive map functionality for aid request visualization
+ * A robust, simplified version for initializing the map and its layers.
  */
 
-// Global map variable
+// A global 'map' variable
 let map;
-let layersByType = {};  // Store layers by aid type
 
-// Configuration
-const mapRequestsConfig = {
-    debug: false,  // Set to false in production
-    initialized: false,
-    config: null,
-    aidLocations: [],
-    aidTypesConfig: {},
-    mapReady: false,  // Track map ready state
-    performance: {    // Track timing metrics
-        loadStart: null,
-        configLoaded: null,
-        mapInitialized: null,
-        fullyReady: null
-    }
-};
+// Expose the initialize function globally so the main list script can call it
+window.initializeAidRequestMap = function(requests, initialFilterState) {
+    const SCRIPT_DEBUG = false;
+    let mapRequestsConfig = {};
+    let successfullyCreatedIcons = [];
+        let aidRequestLayer;
+        let aidRequestSource;
 
-// Load configuration and data
-function loadMapConfiguration() {
-    if (mapRequestsConfig.debug) {
-        console.time('map-config-load');
-        console.log('[Map] Loading configuration START');
-    }
-    mapRequestsConfig.performance.loadStart = performance.now();
-
-    const mapContainer = document.getElementById('aid-request-map');
-    if (!mapContainer) {
-        console.error('[Map] CRITICAL: Map container (aid-request-map) not found in DOM.');
-        throw new Error('Map container not found');
-    }
-    if (mapRequestsConfig.debug) {
-        console.log('[Map] mapContainer found. Dataset:', JSON.parse(JSON.stringify(mapContainer.dataset)));
-    }
-
-    // Debug log raw dataset values
-    if (mapRequestsConfig.debug) {
-        /*
-        console.log('[Map] Raw dataset values from mapContainer:', {
-            azureMapsKey: mapContainer.dataset.azureMapsKey,
-            boundsWest: mapContainer.dataset.boundsWest,
-            boundsSouth: mapContainer.dataset.boundsSouth,
-            boundsEast: mapContainer.dataset.boundsEast,
-            boundsNorth: mapContainer.dataset.boundsNorth,
-            centerLat: mapContainer.dataset.centerLat,
-            centerLon: mapContainer.dataset.centerLon,
-            allDataset: mapContainer.dataset
-        });
-        */
-    }
-
-    // Robustly parse ringSize, ensuring it's a positive number.
-    const rawRingSize = mapContainer.dataset.ringSize;
-    let parsedRingSize = parseFloat(rawRingSize);
-    const defaultRingSize = 10; // km
-    const finalRingSize = (isNaN(parsedRingSize) || parsedRingSize <= 0) ? defaultRingSize : parsedRingSize;
-
-    // Get configuration from data attributes
-    const config = {
-        key: mapContainer.dataset.azureMapsKey,
-        bounds: [
-            parseFloat(mapContainer.dataset.boundsWest),   // minLon
-            parseFloat(mapContainer.dataset.boundsSouth),  // minLat
-            parseFloat(mapContainer.dataset.boundsEast),   // maxLon
-            parseFloat(mapContainer.dataset.boundsNorth)   // maxLat
-        ],
-        padding: 50,  // Default padding in pixels
-        center: [
-            parseFloat(mapContainer.dataset.centerLon),
-            parseFloat(mapContainer.dataset.centerLat)
-        ],
-        fieldOpName: mapContainer.dataset.fieldOpName,
-        fieldOpSlug: mapContainer.dataset.fieldOpSlug,
-        ringSize: finalRingSize // Use validated finalRingSize
-    };
-
-    if (!config.key) {
-        throw new Error('Azure Maps key not found in data attributes');
-    }
-
-    // Load aid locations data EARLY - needed to decide on bounds strategy
-    const aidLocationsElement = document.getElementById('aid-locations-data');
-    if (aidLocationsElement && aidLocationsElement.textContent.trim()) {
+    const configEl = document.getElementById('aid-requests-config-json');
+    if (configEl) {
         try {
-            mapRequestsConfig.aidLocations = JSON.parse(aidLocationsElement.textContent);
-            // Standardize the priority value for 'None'/'null' right after loading
-            mapRequestsConfig.aidLocations.forEach(loc => {
-                if (loc.priority === null || loc.priority === 'none') {
-                    loc.priority = 'none_priority_value';
-                }
-            });
-            if (mapRequestsConfig.debug) {
-                console.log('[Map] Aid Locations loaded early:', {
-                    count: mapRequestsConfig.aidLocations.length,
-                    byType: mapRequestsConfig.aidLocations.reduce((acc, loc) => {
-                        acc[loc.aid_type.slug] = (acc[loc.aid_type.slug] || 0) + 1;
-                        return acc;
-                    }, {})
-                });
-            }
-        } catch (error) {
-            console.warn('[Map] Error parsing aid locations data, proceeding with empty list:', error.message);
-            mapRequestsConfig.aidLocations = []; // Default to empty list on error
-        }
-    } else {
-        if (mapRequestsConfig.debug) {
-            console.log('[Map] No aid-locations-data element found or it is empty. Defaulting to empty aid locations list.');
-        }
-        mapRequestsConfig.aidLocations = []; // Default to empty list if element not found or empty
-    }
-
-    // New bounds calculation logic:
-    // Always ensure the Field Op center and ring are included in the map view.
-    const originalDatasetBounds = [...config.bounds];
-    const areOriginalDatasetBoundsInvalid = originalDatasetBounds.some(isNaN) || originalDatasetBounds.every(val => val === 0);
-
-    // 1. Calculate the desired viewing bounds for the Field Op center and ring.
-    let fieldOpViewBounds = null;
-    if (!isNaN(config.center[0]) && !isNaN(config.center[1])) {
-        const centerLon = config.center[0];
-        const centerLat = config.center[1];
-        const ringRadiusKm = config.ringSize;
-
-        // Use a padding factor to ensure the ring is comfortably in view.
-        const viewDiameterPaddingFactor = 2.5;
-        const viewRadiusKm = ringRadiusKm * (viewDiameterPaddingFactor / 2);
-
-        const LAT_DEG_PER_KM = 1 / 111.32;
-        const lonDegPerKmAtCenterLat = 1 / (111.32 * Math.cos(centerLat * Math.PI / 180));
-
-        const deltaLat = viewRadiusKm * LAT_DEG_PER_KM;
-        let deltaLon = viewRadiusKm * lonDegPerKmAtCenterLat;
-
-        if (Math.abs(centerLat) >= 89) { // Safety for extreme latitudes
-            deltaLon = deltaLat;
-        }
-
-        fieldOpViewBounds = [
-            centerLon - deltaLon, // minLon
-            centerLat - deltaLat, // minLat
-            centerLon + deltaLon, // maxLon
-            centerLat + deltaLat  // maxLat
-        ];
-    }
-
-    // 2. Determine the final bounds for the map view.
-    if (areOriginalDatasetBoundsInvalid || mapRequestsConfig.aidLocations.length <= 1) {
-        // If dataset bounds are bad or there are no points, fall back to the Field Op view.
-        if (fieldOpViewBounds) {
-            config.bounds = fieldOpViewBounds;
-            if (mapRequestsConfig.debug) {
-                console.log('[Map] Using fallback bounds based on Field Op.', {
-                    reason: areOriginalDatasetBoundsInvalid ? "Original dataset bounds invalid" : "Not enough aid locations (<=1)",
-                    finalBounds: config.bounds
-                });
-            }
-        }
-        // If both are invalid, an error will be thrown later by the validation logic.
-    } else if (fieldOpViewBounds) {
-        // If both dataset and Field Op bounds are valid, create a union of the two.
-        config.bounds = [
-            Math.min(originalDatasetBounds[0], fieldOpViewBounds[0]), // minLon
-            Math.min(originalDatasetBounds[1], fieldOpViewBounds[1]), // minLat
-            Math.max(originalDatasetBounds[2], fieldOpViewBounds[2]), // maxLon
-            Math.max(originalDatasetBounds[3], fieldOpViewBounds[3])  // maxLat
-        ];
-        if (mapRequestsConfig.debug) {
-            console.log('[Map] Combined dataset bounds with Field Op bounds.', {
-                datasetBounds: originalDatasetBounds,
-                fieldOpViewBounds: fieldOpViewBounds,
-                finalBounds: config.bounds
-            });
-        }
-    }
-
-    // Enhanced bounds validation with detailed logging
-    // This `boundsData` captures the state of `config.bounds` AFTER potential fallback.
-    const boundsDataForLog = {
-        rawFromDataset: { // Keep raw dataset values for context
-            west: mapContainer.dataset.boundsWest,
-            south: mapContainer.dataset.boundsSouth,
-            east: mapContainer.dataset.boundsEast,
-            north: mapContainer.dataset.boundsNorth
-        },
-        initiallyParsedFromDataset: originalDatasetBounds, // Bounds as parsed from dataset before fallback
-        finalBoundsUsed: config.bounds, // The bounds that will actually be used (dataset or fallback)
-        source: areOriginalDatasetBoundsInvalid || mapRequestsConfig.aidLocations.length <= 1 ? "fallback_calculation" : "dataset"
-    };
-    /*
-    if (mapRequestsConfig.debug) {
-        console.log('[Map] Bounds data for map initialization:', boundsDataForLog);
-    }
-    */
-    // Validate final `config.bounds` values (these could be from dataset or fallback)
-    if (config.bounds.some(isNaN) || config.bounds.every(val => val === 0)) {
-        console.error('[Map] CRITICAL: Invalid or missing bounds values after parsing and potential fallback.', {
-            logContext: boundsDataForLog, // provides full context
-            aidLocationCount: mapRequestsConfig.aidLocations.length
-        });
-        throw new Error('Invalid or missing map bounds coordinates (post-fallback).');
-    }
-
-    // Validate center coordinates
-    if (isNaN(config.center[0]) || isNaN(config.center[1])) {
-        console.error('[Map] CRITICAL: Invalid center coordinates after parsing:', {
-            raw: {
-                lon: mapContainer.dataset.centerLon,
-                lat: mapContainer.dataset.centerLat
-            },
-            parsed: config.center
-        });
-        throw new Error('Invalid map center coordinates');
-    }
-
-    // Validate bounds format and values
-    const [minLon, minLat, maxLon, maxLat] = config.bounds;
-
-    // Check longitude values are in valid range (-180 to 180)
-    if (minLon < -180 || maxLon > 180 || minLon > maxLon) {
-        console.error('[Map] Invalid longitude values:', {
-            minLon,
-            maxLon,
-            valid: 'Must be: -180 ≤ minLon ≤ maxLon ≤ 180'
-        });
-    }
-
-    // Check latitude values are in valid range (-85 to 85 for Web Mercator)
-    if (minLat < -85 || maxLat > 85 || minLat > maxLat) {
-        console.error('[Map] Invalid latitude values:', {
-            minLat,
-            maxLat,
-            valid: 'Must be: -85 ≤ minLat ≤ maxLat ≤ 85'
-        });
-    }
-
-    // Calculate spans
-    const latSpan = maxLat - minLat;
-    const lonSpan = maxLon - minLon;
-
-    if (mapRequestsConfig.debug) {
-        /*
-        console.log('[Map] Configuration details:', {
-            bounds: {
-                minLon, minLat, maxLon, maxLat
-            },
-            spans: {
-                lat: latSpan,
-                lon: lonSpan
-            },
-            center: {
-                lon: config.center[0],
-                lat: config.center[1]
-            },
-            padding: config.padding
-        });
-        */
-    }
-
-    // Warn if spans seem unreasonably large
-    if (latSpan > 10 || lonSpan > 10) {
-        console.warn('[Map] Bounds span seems large for a field operation:', {
-            latSpan,
-            lonSpan,
-            suggestion: 'Expected spans of less than 10 degrees for typical field operations'
-        });
-    }
-
-    // Store configuration
-    mapRequestsConfig.config = config;
-
-    // Load aid types configuration
-    const aidTypesElement = document.getElementById('aid-types-json');
-    if (aidTypesElement) {
-        try {
-            const aidTypesArray = JSON.parse(aidTypesElement.textContent);
-            mapRequestsConfig.aidTypesConfig = aidTypesArray.reduce((acc, type) => {
-                acc[type.slug] = type;
-                return acc;
-            }, {});
-            if (mapRequestsConfig.debug) {
-                console.log('[Map] Aid Types loaded:', {
-                    count: Object.keys(mapRequestsConfig.aidTypesConfig).length,
-                    types: Object.keys(mapRequestsConfig.aidTypesConfig)
-                });
-            }
-        } catch (error) {
-            throw new Error('Error parsing aid types configuration: ' + error.message);
-        }
-    }
-
-    mapRequestsConfig.performance.configLoaded = performance.now();
-    if (mapRequestsConfig.debug) {
-        console.timeEnd('map-config-load');
-        console.log('[Map] Configuration load time:',
-            (mapRequestsConfig.performance.configLoaded - mapRequestsConfig.performance.loadStart).toFixed(2), 'ms');
-        console.log('[Map] Loading configuration END');
-    }
-}
-
-// Main initialization function
-async function initializeMapWithFilter(filterState) {
-    if (mapRequestsConfig.debug) {
-        console.log('[Map] initializeMapWithFilter START. Initialized already? ', mapRequestsConfig.initialized);
-        console.log('[Map] Received filterState for initializeMapWithFilter:', JSON.parse(JSON.stringify(filterState)));
-    }
-
-    if (mapRequestsConfig.initialized) {
-        if (mapRequestsConfig.debug) console.log('[Map] Already initialized, skipping');
-        return;
-    }
-
-    try {
-        if (mapRequestsConfig.debug) {
-            console.time('map-full-init');
-            console.log('[Map] Starting full initialization sequence in initializeMapWithFilter.');
-            // console.log('[Map] Current aidRequestsStore state (if available):', window.aidRequestsStore?.currentState);
-        }
-
-        // Load configuration first
-        if (mapRequestsConfig.debug) console.log('[Map] Calling loadMapConfiguration...');
-        loadMapConfiguration();
-        if (mapRequestsConfig.debug) console.log('[Map] loadMapConfiguration complete. mapRequestsConfig.config:', JSON.parse(JSON.stringify(mapRequestsConfig.config)));
-
-        // Initialize the map
-        if (mapRequestsConfig.debug) console.log('[Map] Calling initializeMap with config...');
-        await initializeMap(mapRequestsConfig.config);
-        if (mapRequestsConfig.debug) console.log('[Map] initializeMap complete.');
-        mapRequestsConfig.performance.mapInitialized = performance.now();
-
-        // Mark as initialized
-        mapRequestsConfig.initialized = true;
-        mapRequestsConfig.performance.fullyReady = performance.now();
-
-        // Apply initial filter state and update visibility
-        if (filterState) {
-            updateLayerVisibility(filterState.filterState, filterState.counts);
-        } else if (window.aidRequestsStore?.currentState) {
-            // Fallback to store state if available
-            updateLayerVisibility(
-                window.aidRequestsStore.currentState.filterState,
-                window.aidRequestsStore.currentState.counts
-            );
-        }
-
-        if (mapRequestsConfig.debug) {
-            /*
-            console.timeEnd('map-full-init');
-            console.log('[Map] Performance metrics after initializeMapWithFilter:', {
-                configLoad: (mapRequestsConfig.performance.configLoaded - mapRequestsConfig.performance.loadStart).toFixed(2) + 'ms',
-                mapInit: (mapRequestsConfig.performance.mapInitialized - mapRequestsConfig.performance.configLoaded).toFixed(2) + 'ms',
-                total: (mapRequestsConfig.performance.fullyReady - mapRequestsConfig.performance.loadStart).toFixed(2) + 'ms'
-            });
-            */
-        }
-    } catch (error) {
-        console.error('[Map] CRITICAL: Initialization failed in initializeMapWithFilter:', error);
-        if (mapRequestsConfig.debug) {
-            console.error('[Map] State at failure in initializeMapWithFilter:', {
-                configLoaded: !!mapRequestsConfig.config,
-                aidTypesLoaded: Object.keys(mapRequestsConfig.aidTypesConfig).length,
-                locationsLoaded: mapRequestsConfig.aidLocations.length,
-                filterState: filterState
-            });
-        }
-        throw error;
-    }
-}
-
-// Wait for DOM and check filter state
-document.addEventListener('DOMContentLoaded', function() {
-    if (mapRequestsConfig.debug) {
-        console.time('map-init-sequence');
-        console.log('[Map] DOM ready, checking filter state for map initialization.');
-    }
-
-    const initialFilterStateElement = document.getElementById('filter-state-initial');
-    let initialFilterData = null;
-    if (initialFilterStateElement) {
-        try {
-            initialFilterData = JSON.parse(initialFilterStateElement.textContent);
-            if (mapRequestsConfig.debug) {
-                console.log('[Map] Successfully parsed initial_filter_state from DOM:', initialFilterData);
-            }
+            // Load config from backend but ignore its debug flag
+            const backendConfig = JSON.parse(configEl.textContent);
+            delete backendConfig.debug;
+            Object.assign(mapRequestsConfig, backendConfig);
         } catch (e) {
-            console.error('[Map] ERROR: Failed to parse initial_filter_state from DOM. Content was:', initialFilterStateElement.textContent, e);
+            console.error('[Map] Failed to parse config JSON.', e);
         }
-    }
-
-    // Modal Map Handling
-    const mapModal = document.getElementById('mapModal');
-    if (mapModal) {
-        const mapContainer = document.getElementById('aid-request-map');
-        const modalMapContainer = document.getElementById('aid-request-map-modal-container');
-        const originalMapParent = mapContainer.parentElement;
-
-        mapModal.addEventListener('shown.bs.modal', () => {
-            // Move map to modal
-            modalMapContainer.appendChild(mapContainer);
-            // Resize map
-            if (map) {
-                map.resize();
-            }
-        });
-
-        mapModal.addEventListener('hidden.bs.modal', () => {
-            // Move map back to original container
-            originalMapParent.appendChild(mapContainer);
-            // Resize map
-            if (map) {
-                map.resize();
-            }
-        });
-    }
-
-
-    // Check if filter is already initialized (applies to aid_request_list page)
-    if (window.aidRequestsStore?.initialized) {
-        if (mapRequestsConfig.debug) {
-            console.log('[Map] aidRequestsStore is already initialized. Initializing map with its current state:', JSON.parse(JSON.stringify(window.aidRequestsStore.currentState)));
-        }
-        initializeMapWithFilter(window.aidRequestsStore.currentState).catch(error => {
-            console.error('[Map] CRITICAL: Failed to initialize with existing aidRequestsStore state:', error);
-        });
-    } else if (initialFilterData) { // For pages like field_op_detail that provide initial state directly
-        if (mapRequestsConfig.debug) {
-            console.log('[Map] aidRequestsStore not initialized. Using initialFilterData from DOM to initialize map:', JSON.parse(JSON.stringify(initialFilterData)));
-        }
-        initializeMapWithFilter({ filterState: initialFilterData, counts: {matched: 0, total:0} } ).catch(error => { // Pass a structure similar to store state
-            console.error('[Map] CRITICAL: Failed to initialize map with initialFilterData from DOM:', error);
-        });
     } else {
-        if (mapRequestsConfig.debug) {
-            console.warn('[Map] Neither aidRequestsStore initialized nor initialFilterData found. Waiting for aidRequestsFilterReady event (this might not fire on field_op_detail page).');
-        }
-        // Fallback: Wait for filter initialization event (primarily for aid_request_list page)
-        document.addEventListener('aidRequestsFilterReady', function(event) {
-            if (mapRequestsConfig.debug) {
-                console.timeEnd('map-init-sequence');
-                console.log('[Map] Filter ready event received:', {
-                    filterState: event.detail,
-                    initTime: (performance.now() - mapRequestsConfig.performance.loadStart).toFixed(2) + 'ms'
-                });
-            }
-            initializeMapWithFilter(event.detail).catch(error => {
-                console.error('[Map] Failed to initialize with filter event:', error);
-            });
-        });
+        console.error('[Map] Config JSON element not found.');
     }
-});
+     if (SCRIPT_DEBUG) console.log('[Map] Initializing...');
 
-// Initialize the map with minimum configuration
-function initializeMap(config) {
-    return new Promise((resolve, reject) => {
-        if (mapRequestsConfig.debug) {
-            console.time('map-init');
-            console.log('[Map] Initializing map with config:', JSON.parse(JSON.stringify(config)));
-        }
-
-        if (!config || !config.key) {
-            const error = new Error('Map initialization failed: Missing config or Azure Maps key.');
-            console.error('[Map]', error.message);
-            reject(error);
+    const mapContainer = document.getElementById('aid-request-map-container');
+        if (!mapContainer) {
+        console.error('[Map] Map container not found during initialization.');
             return;
         }
 
+    const subscriptionKey = mapContainer.dataset.mapsSubscriptionKey;
+    if (SCRIPT_DEBUG) {
+        console.log('[Map] Subscription Key:', subscriptionKey ? 'Found' : 'NOT FOUND');
+    }
+
+    const initialBoundsString = mapContainer.dataset.initialBounds;
+    let initialBounds = null;
+    if (initialBoundsString) {
         try {
-            // Initialize the map ONCE, combining all necessary options.
-            map = new atlas.Map('aid-request-map', {
-                authOptions: {
-                    authType: 'subscriptionKey',
-                    subscriptionKey: config.key
+            initialBounds = JSON.parse(initialBoundsString);
+            if (SCRIPT_DEBUG) console.log('[Map] Initial bounds from backend:', initialBounds);
+        } catch (e) {
+            console.error('[Map] Error parsing initial bounds:', e);
+        }
+    }
+
+    // Initialize the map
+    map = new atlas.Map(mapContainer, {
+        authOptions: {
+            authType: 'subscriptionKey',
+            subscriptionKey: subscriptionKey
+        },
+        style: 'road',
+        zoom: 3,
+        center: [-98.5795, 39.8283] // Default center of US
+    });
+
+    // Wait until the map resources are ready.
+        map.events.add('ready', async () => {
+        if (SCRIPT_DEBUG) console.log('[Map] Map is ready. Proceeding with layer setup.');
+
+        if (initialBounds) {
+            if (SCRIPT_DEBUG) console.log('[Map] Setting camera to initial bounds:', initialBounds);
+            map.setCamera({ bounds: initialBounds, padding: 50 });
+        } else if (SCRIPT_DEBUG) {
+            console.warn('[Map] No initial bounds to set camera.');
+        }
+
+        // Add all controls in one consolidated block.
+            map.controls.add([
+                new atlas.control.ZoomControl(),
+                new atlas.control.PitchControl(),
+                new atlas.control.CompassControl(),
+            new atlas.control.StyleControl({
+                mapStyles: ['road', 'satellite_road_labels', 'grayscale_dark']
+            })
+        ], { position: 'top-left' });
+        map.controls.add(new atlas.control.ScaleControl(), { position: 'bottom-left' });
+
+        // Create a custom icon for the field op using a VALID built-in template name
+        await map.imageSprite.createFromTemplate('field-op-star', 'marker', 'royalblue', '#fff');
+        if (SCRIPT_DEBUG) console.log('[Map] Custom FieldOp icon created.');
+
+            const aidTypesConfig = JSON.parse(document.getElementById('aid-types-json').textContent);
+        if (SCRIPT_DEBUG) console.log('[Map] aidTypesConfig for icon creation:', aidTypesConfig);
+                await createCustomIcons(aidTypesConfig);
+
+        initializeFieldOpLayer(mapRequestsConfig.field_op);
+
+        if (SCRIPT_DEBUG) {
+            console.log('[Map] Checking integrity of aid request data before initializing layer...');
+            console.table(requests);
+        }
+        initializeAidRequestLayer(requests, aidTypesConfig);
+        updateMapLayer(initialFilterState); // Apply initial filter
+        setupPopupLogic(requests, aidTypesConfig);
+
+        if (SCRIPT_DEBUG) console.log('[Map] All layers initialized.');
+
+        document.body.addEventListener('filterStateChange', (e) => {
+            if (SCRIPT_DEBUG) console.log('[Map] Received filterStateChange event. Updating map layer.', e.detail);
+            updateMapLayer(e.detail);
+        });
+
+        document.body.addEventListener('mapShouldUpdateFilter', (e) => {
+            if (SCRIPT_DEBUG) console.log('[Map] Received mapShouldUpdateFilter event. Updating map layer.', e.detail);
+            updateMapLayer(e.detail);
+        });
+
+        // Listen for updates from the list view (e.g., status/priority changes)
+        document.body.addEventListener('aidRequestUpdated', function (e) {
+            try {
+                if (SCRIPT_DEBUG) console.log('[Map] Received aidRequestUpdated event. Updating data store and point on map.', e.detail);
+
+                const updatedRequest = e.detail.request;
+
+                if (!updatedRequest || !updatedRequest.id) {
+                    console.error('[Map] Invalid data received in aidRequestUpdated event.', e.detail);
+                    return;
+                }
+
+                const index = requests.findIndex(r => r.id === updatedRequest.id);
+                if (index !== -1) {
+                    requests[index] = updatedRequest;
+                    if (SCRIPT_DEBUG) {
+                        console.log(`[Map] Updated request #${updatedRequest.id} in local map data store.`);
+                    }
+                }
+
+                if (aidRequestSource) {
+                    const shape = aidRequestSource.getShapeById(updatedRequest.id);
+                    if (shape) {
+                        if (SCRIPT_DEBUG) {
+                            // Use a simple shallow copy for logging to avoid JSON errors with complex objects
+                            console.log(`[Map] Found shape for request #${updatedRequest.id}. Old properties:`, { ...shape.getProperties() });
+                        }
+
+                        // Use the official get/set methods to safely update properties
+                        const props = shape.getProperties();
+                        props.status = updatedRequest.status;
+                        props.priority = updatedRequest.priority || 'none';
+                        shape.setProperties(props);
+
+                        if (SCRIPT_DEBUG) {
+                            console.log(`[Map] New properties for shape #${updatedRequest.id}:`, { ...shape.getProperties() });
+                        }
+
+                        // If the updated request matches the currently open popup, refresh the popup content.
+                        if (window.aidRequestPopup && window.aidRequestPopup.isOpen() && window.currentPopupRequestId === updatedRequest.id) {
+                            if (SCRIPT_DEBUG) console.log('[Map] Refreshing open popup with updated data.');
+
+                            const newHtmlContent = createPopupContent(updatedRequest);
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = newHtmlContent;
+                            const newContentElement = tempDiv.firstElementChild;
+
+                            newContentElement.addEventListener('mouseenter', () => {
+                                window.isHoveringPopup = true;
+                            });
+                            newContentElement.addEventListener('mouseleave', () => {
+                                window.isHoveringPopup = false;
+                                if (window.aidRequestPopup) window.aidRequestPopup.close();
+                            });
+
+                            window.aidRequestPopup.setOptions({
+                                content: newContentElement,
+                                pixelOffset: [0, -30] // Set default for 'above'
+                            });
+
+                            // Adjust offset after open, based on placement.
+                            // The 'open' event fires after the popup is placed, allowing us to inspect its final position.
+                            map.events.add('open', window.aidRequestPopup, () => {
+                                // We get the popup's wrapper element by traversing from the content element we created.
+                                const popupWrapper = newContentElement.parentElement?.parentElement;
+                                if (popupWrapper && popupWrapper.classList.contains('atlas-popup-anchor-top')) {
+                                    // If the popup is anchored from the top (i.e., it's below the marker), use a positive offset.
+                                    window.aidRequestPopup.setOptions({ pixelOffset: [0, 25] });
+                                }
+                            }, { once: true });
+                        }
+                    } else if (SCRIPT_DEBUG) {
+                        console.warn(`[Map] Could not find a shape with ID ${updatedRequest.id} in the data source to update.`);
+                    }
+                }
+            } catch (error) {
+                console.error('[Map] Error processing aidRequestUpdated event:', error, e.detail);
+            }
+        });
+    });
+
+    // Add a global error listener for the map
+        map.events.add('error', (e) => {
+            console.error('[Map] CRITICAL MAP ERROR:', e.error);
+        });
+
+
+    // Listen for events from the list view to control the popup
+    document.body.addEventListener('showPopupForRequest', (e) => {
+        const requestId = e.detail.requestId;
+        if (SCRIPT_DEBUG) console.log(`[Map] Received showPopupForRequest event for ID ${requestId}`);
+        openPopupForRequestId(requestId);
+    });
+
+    document.body.addEventListener('closePopupOnMap', (e) => {
+        if (window.aidRequestPopup && window.aidRequestPopup.isOpen()) {
+            if (SCRIPT_DEBUG) console.log(`[Map] Received closePopupOnMap event.`);
+            window.aidRequestPopup.close();
+        }
+    });
+
+
+    // Listen for events to update a single point on the map
+    document.body.addEventListener('mapPointShouldUpdate', (e) => {
+        if (!aidRequestSource) return;
+
+        const rowElement = e.detail?.rowElement;
+        if (!rowElement) return;
+
+        const requestId = parseInt(rowElement.dataset.id, 10);
+        const newStatus = rowElement.dataset.status;
+        const newPriority = rowElement.dataset.priority || 'none';
+
+        const pointToUpdate = aidRequestSource.getShapeById(requestId);
+
+        if (pointToUpdate) {
+            if (SCRIPT_DEBUG) console.log(`[Map] Updating point #${requestId} with status: ${newStatus}, priority: ${newPriority}`);
+            const currentProps = pointToUpdate.getProperties();
+            currentProps.status = newStatus;
+            currentProps.priority = newPriority;
+            pointToUpdate.setProperties(currentProps);
+        } else if (SCRIPT_DEBUG) {
+            console.warn(`[Map] Could not find point with ID ${requestId} to update.`);
+        }
+    });
+
+    function updateMapLayer(filterState) {
+        if (!map || !aidRequestLayer) {
+            if (SCRIPT_DEBUG) console.warn('[Map] updateMapLayer called but map or aidRequestLayer not ready.');
+            return;
+        }
+
+        if (!filterState) {
+            if (SCRIPT_DEBUG) console.log('[Map] No filter state provided. Clearing layer filter.');
+            aidRequestLayer.setOptions({ filter: null });
+            return;
+        }
+
+        const filters = [];
+
+        if (filterState.status && filterState.status.length > 0) {
+            filters.push(['in', ['get', 'status'], ['literal', filterState.status]]);
+        }
+
+        if (filterState.priority && filterState.priority !== 'all' && filterState.priority.length > 0) {
+            const priorities = filterState.priority.map(p => p === 'none' ? null : p);
+            filters.push(['in', ['get', 'priority'], ['literal', priorities]]);
+        }
+
+        if (filterState.aid_type && filterState.aid_type !== 'all' && filterState.aid_type.length > 0) {
+            filters.push(['in', ['get', 'aid_type'], ['literal', filterState.aid_type]]);
+        }
+
+        const combinedFilter = filters.length > 1 ? ['all', ...filters] : filters[0] || null;
+
+        if (SCRIPT_DEBUG) console.log('[Map] Constructed layer filter:', JSON.stringify(combinedFilter));
+
+        try {
+            aidRequestLayer.setOptions({ filter: combinedFilter });
+            if (SCRIPT_DEBUG) console.log('[Map] Layer filter applied successfully.');
+        } catch (e) {
+            console.error('[Map] Error applying layer filter:', e);
+        }
+    }
+
+
+    function initializeFieldOpLayer(fieldOp) {
+        if (SCRIPT_DEBUG) {
+            console.log('[Map] Initializing FieldOp Layer.');
+            console.log('[Map] FieldOp Config:', fieldOp);
+        }
+
+        if (!fieldOp || typeof fieldOp.latitude !== 'number' || typeof fieldOp.longitude !== 'number') {
+            if (SCRIPT_DEBUG) console.warn('[Map] FieldOp config or location is missing or invalid.');
+                return;
+            }
+
+        const fieldOpDataSource = new atlas.source.DataSource();
+        map.sources.add(fieldOpDataSource);
+
+        const centerPoint = new atlas.data.Point([fieldOp.longitude, fieldOp.latitude]);
+        fieldOpDataSource.add(new atlas.data.Feature(centerPoint, {
+            name: 'Field Operation Center',
+            slug: fieldOp.slug
+        }));
+
+        if (fieldOp.ring_size && typeof fieldOp.ring_size === 'number' && fieldOp.ring_size > 0) {
+            const radiusInMeters = fieldOp.ring_size * 1609.34; // Convert miles to meters
+            const circlePolygon = new atlas.data.Polygon([atlas.math.getRegularPolygonPath(centerPoint.coordinates, radiusInMeters, 64)]);
+            fieldOpDataSource.add(new atlas.data.Feature(circlePolygon, {
+                name: 'Field Operation Radius'
+            }));
+        } else if (SCRIPT_DEBUG) {
+            console.warn('[Map] FieldOp radius is missing or invalid. Skipping circle.', fieldOp.ring_size);
+        }
+
+        map.layers.add(new atlas.layer.LineLayer(fieldOpDataSource, 'field-op-radius-layer-line', {
+            strokeColor: 'rgba(220, 53, 69, 0.8)',
+            strokeWidth: 2,
+            filter: ['==', ['geometry-type'], 'Polygon']
+        }));
+
+        map.layers.add(new atlas.layer.SymbolLayer(fieldOpDataSource, 'field-op-center-layer', {
+                iconOptions: {
+                image: 'field-op-star',
+                allowOverlap: true,
+                ignorePlacement: true,
+                anchor: 'center'
                 },
-                style: 'road',
-                showFeedbackLink: false,
-                showLogo: false,
-                // Disable unwanted user interactions
-                scrollZoomInteraction: false,
+                textOptions: {
+                textField: [
+                    'format',
+                    ['get', 'slug'],
+                    { 'font-scale': 1.1 }
+                ],
+                anchor: 'top',
+                offset: [0, 0.8],
+                    color: '#000000',
+                    haloColor: '#FFFFFF',
+                    haloWidth: 1,
+                font: ['SegoeUi-Bold']
+            },
+            filter: ['==', ['geometry-type'], 'Point']
+        }));
+
+        if (SCRIPT_DEBUG) console.log('[Map] FieldOp layer initialized.');
+    }
+
+    function initializeAidRequestLayer(requests, aidTypesConfig) {
+        // console.log('%c[Map] Initializing Aid Request Layer', 'color: green; font-weight: bold;');
+
+        const points = [];
+        aidRequestSource = new atlas.source.DataSource();
+        map.sources.add(aidRequestSource);
+
+        let iconExpression = 'marker-default';
+        let scaleExpression = 1.0;
+
+        if (successfullyCreatedIcons.length > 0) {
+            iconExpression = ['match', ['get', 'aid_type']];
+            const uniqueIconSlugs = [...new Set(successfullyCreatedIcons)];
+            uniqueIconSlugs.forEach(slug => {
+                iconExpression.push(slug, slug);
             });
+            iconExpression.push('marker-default');
 
-            // Handle any errors during map setup
-            map.events.add('error', (e) => {
-                console.error('[Map] CRITICAL: Map error event:', e.error);
-                reject(e.error);
-            });
-
-            // Add a single 'ready' event listener to set up the map fully
-            map.events.add('ready', async () => {
-                if (mapRequestsConfig.debug) {
-                    console.timeEnd('map-init');
-                    console.log('[Map] Map ready event fired.');
-                }
-
-                try {
-                    // Set the camera to the configured bounds once map is ready
-                    try {
-                        map.setCamera({
-                            bounds: config.bounds,
-                            padding: config.padding,
-                            maxZoom: 18
-                        });
-                    } catch (cameraError) {
-                        console.warn('[Map] A non-critical error occurred while setting the camera. This is likely due to a known issue in the Azure Maps SDK and can be safely ignored.', cameraError);
-                    }
-
-                    // Add map controls
-                    map.controls.add(new atlas.control.ZoomControl(), { position: 'top-left' });
-                    map.controls.add(new atlas.control.CompassControl(), { position: 'top-left' });
-                    map.controls.add(new atlas.control.StyleControl({ mapStyles: ['road', 'satellite', 'hybrid'] }), { position: 'top-right' });
-                    map.controls.add(new atlas.control.PitchControl(), { position: 'top-right' });
-
-                    // Initialize the layers for field ops and aid requests
-                    initializeFieldOpLayer();
-                    await initializeAidRequestLayer();
-
-                    if (mapRequestsConfig.debug) {
-                        console.log('[Map] All layers initialized.');
-                    }
-
-                    // Set up a listener for filter changes
-                    document.addEventListener('aidRequestsFiltered', function(event) {
-                        if (mapRequestsConfig.debug) console.log('Map View: Filter event received:', event.detail);
-
-                        // If the event is from an AJAX update, update the point's data first
-                        if (event.detail && event.detail.source === 'ajaxUpdate' && event.detail.updatedRequest) {
-                            handleAjaxPointUpdate(event.detail.updatedRequest);
-                        }
-
-                        if (event.detail && event.detail.filterState) {
-                            updateLayerVisibility(event.detail.filterState, event.detail.counts);
-                        }
-                    });
-
-                    resolve(); // Signal that initialization is complete
-
-                } catch (error) {
-                    console.error('[Map] CRITICAL: Error within map ready event handler:', error);
-                    reject(error);
+            scaleExpression = ['match', ['get', 'aid_type']];
+            const uniqueScaleSlugs = [...new Set(aidTypesConfig.map(at => at.slug))];
+            uniqueScaleSlugs.forEach(slug => {
+                const aidType = aidTypesConfig.find(at => at.slug === slug);
+                if (aidType) {
+                    scaleExpression.push(slug, aidType.icon_scale || 1.0);
                 }
             });
-        } catch (error) {
-            console.error('[Map] CRITICAL: Error during atlas.Map instantiation:', error);
-            reject(error);
+            scaleExpression.push(1.0);
         }
-    });
-}
 
-// Update layer and point visibility based on filter state
-function updateLayerVisibility(filterState, counts) {
-    if (!map) {
-        console.warn('Map View: Map not initialized yet, skipping visibility update');
-        return;
-    }
+        if (SCRIPT_DEBUG) {
+            console.log("Icon expression:", JSON.stringify(iconExpression));
+            console.log("Scale expression:", JSON.stringify(scaleExpression));
+            }
 
-    if (mapRequestsConfig.debug) {
-        console.log('Map View: Updating visibility with:', {
-            filterState,
-            counts,
-            layerTypes: Object.keys(layersByType)
+        requests.forEach(request => {
+            try {
+                if (request.location && typeof request.location.latitude === 'number' && typeof request.location.longitude === 'number') {
+                    const coordinates = [request.location.longitude, request.location.latitude];
+                    const feature = new atlas.data.Feature(new atlas.data.Point(coordinates), {
+                    requestId: request.id,
+                    status: request.status,
+                    priority: request.priority,
+                        aid_type: request.aid_type.slug,
+                        full_address: request.full_address,
+                        requester_name: request.requester_name
+                });
+                    // This is the critical fix: Set the top-level ID on the feature itself
+                    // so that getShapeById() can find it.
+                    feature.id = request.id;
+                    points.push(feature);
+                } else if (SCRIPT_DEBUG) {
+                    console.warn(`[Map] Skipping request #${request.id} due to missing or invalid location data.`, { location: request.location });
+                }
+            } catch (error) {
+                if (SCRIPT_DEBUG) {
+                    console.error(`[Map] Failed to process aid request #${request.id} for map point.`, { error: error, request: request });
+                }
+            }
         });
+
+        if (SCRIPT_DEBUG) {
+            console.log(`Preparing to add ${points.length} points to the data source.`);
+            console.table(points.map(p => p.properties));
+        }
+
+        aidRequestSource.add(points);
+
+            aidRequestLayer = new atlas.layer.SymbolLayer(aidRequestSource, 'aid-request-layer', {
+                iconOptions: {
+                    image: iconExpression,
+                size: scaleExpression,
+                    allowOverlap: true,
+                    ignorePlacement: true,
+                anchor: 'bottom'
+                },
+                textOptions: {
+                textField: ['to-string', ['get', 'requestId']],
+                anchor: 'top',
+                offset: [0, -0.5],
+                color: 'black',
+                haloColor: 'white',
+                haloWidth: 1,
+                    size: 12,
+                font: ['SegoeUi-Bold'],
+                }
+            });
+
+            map.layers.add(aidRequestLayer);
+
+        if (SCRIPT_DEBUG) console.log(`[Map] Aid Request layer added.`);
     }
 
-    // Ensure filterState exists with default values - match aidrequests-filter.js exactly
-    filterState = filterState || {
-        aid_types: 'all',
-        statuses: 'all',
-        priorities: 'all'
-    };
-
-    // First, handle aid type layer visibility
-    Object.entries(layersByType).forEach(([aidType, layer]) => {
-        if (!layer) {
-            console.warn(`Layer for aid type ${aidType} not found`);
+    function openPopupForRequestId(requestId) {
+        const shape = aidRequestSource.getShapeById(requestId);
+        if (!shape) {
+            console.error(`[Map] Could not find shape for request ID ${requestId} to open popup.`);
             return;
         }
 
-        try {
-            // Get the source for this layer
-            const source = layer.getSource();
-            if (!source) {
-                console.warn(`Source for aid type ${aidType} not found`);
-                return;
-            }
+        if (SCRIPT_DEBUG) console.log('[Map] Opening popup for shape, closing existing popup if any.');
+        if (window.aidRequestPopup) {
+            window.aidRequestPopup.close();
+        }
+        window.isHoveringPopup = false;
 
-            // Match exactly how aidrequests-filter.js checks aid types
-            const showLayer = filterState.aid_types === 'all' ||
-                            (filterState.aid_types && filterState.aid_types.includes(aidType));
-            // Build filter expression for other filters (status, priority)
-            const statusFilter = filterState.statuses === 'all' ?
-                ['boolean', true] :
-                ['in', ['get', 'status'], ['literal', filterState.statuses || []]];
+        const properties = shape.getProperties();
+        const requestData = requests.find(r => r.id === properties.requestId);
 
-            let priorityFilter;
-            if (filterState.priorities === 'all') {
-                priorityFilter = ['boolean', true];
-            } else {
-                const priorityChecks = (filterState.priorities || []).map(p => {
-                    const valueToCompare = (p === null) ? 'none_priority_value' : p;
-                    return ['==', ['get', 'priority'], valueToCompare];
-                });
-                priorityFilter = ['any', ...priorityChecks];
-            }
+        if (requestData) {
+            if (SCRIPT_DEBUG) console.log('[Map] Creating popup, attaching hover listeners.');
+            const htmlContent = createPopupContent(requestData);
 
-            let filterExpr = ['all',
-                ['boolean', showLayer],  // Layer visibility based on aid type
-                statusFilter,
-                priorityFilter
-            ];
+            window.currentPopupRequestId = requestData.id;
 
-            // Set both the filter and visibility
-            layer.setOptions({
-                filter: filterExpr,
-                visible: showLayer  // Explicitly set layer visibility based on aid type
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = htmlContent;
+            const contentElement = tempDiv.firstElementChild;
+
+            contentElement.addEventListener('mouseenter', () => {
+                window.isHoveringPopup = true;
             });
-            /*
-            if (mapRequestsConfig.debug) {
-                const totalPoints = source.getShapes().length;
-                const visiblePoints = source.getShapes().filter(shape => {
-                    if (!showLayer) return false; // If layer is hidden, no points are visible
+            contentElement.addEventListener('mouseleave', () => {
+                window.isHoveringPopup = false;
+                if (window.aidRequestPopup) window.aidRequestPopup.close();
+            });
 
-                    const props = shape.getProperties();
-                    let visible = true;
+            window.aidRequestPopup.setOptions({
+                content: contentElement,
+                position: shape.getCoordinates(),
+                pixelOffset: [0, -25] // Reduced from -40
+            });
 
-                    // Match filter.js logic for status
-                    if (filterState.statuses !== 'all') {
-                        visible = visible && filterState.statuses.includes(props.status);
+            map.events.add('open', window.aidRequestPopup, () => {
+                const popupWrapper = contentElement.parentElement?.parentElement;
+                if (popupWrapper && popupWrapper.classList.contains('atlas-popup-anchor-top')) {
+                    window.aidRequestPopup.setOptions({ pixelOffset: [0, 35] }); // Increased from 25
+                }
+            }, { once: true });
+
+            window.aidRequestPopup.open(map);
+
+            // Dispatch event to notify the list view that a popup was opened.
+            document.body.dispatchEvent(new CustomEvent('popupOpenedOnMap', {
+                detail: { requestId: requestData.id }
+            }));
+        }
+        }
+
+        async function createCustomIcons(aidTypesConfig) {
+        if (SCRIPT_DEBUG) {
+            console.log('%c[Map] Starting createCustomIcons function...', 'color: blue; font-weight: bold;');
+            console.log('[Map] Received aidTypesConfig to create icons:');
+            console.table(aidTypesConfig);
+        }
+
+            const iconPromises = aidTypesConfig.map(async (aidType) => {
+                const iconName = aidType.slug;
+            const templateName = aidType.icon_name || 'marker-circle';
+            const color = aidType.icon_color || '#1A82A9';
+
+            try {
+                // Check if the image already exists before trying to create it
+                if (!map.imageSprite.hasImage(iconName)) {
+                    if (SCRIPT_DEBUG) {
+                        console.log(`[Map] Creating icon: name='${iconName}', template='${templateName}', color='${color}'`);
                     }
-
-                    // Match filter.js logic for priority
-                    if (filterState.priorities !== 'all') {
-                        visible = visible && filterState.priorities.includes(props.priority);
-                    }
-
-                    return visible;
-                }).length;
-
-                console.log(`Layer ${aidType} visibility result:`, {
-                    layerVisible: showLayer,
-                    totalPoints,
-                    visiblePoints,
-                    filterState: {
-                        aid_types: filterState.aid_types,
-                        statuses: filterState.statuses,
-                        priorities: filterState.priorities
-                    }
-                });
-            }
-            */
-        } catch (error) {
-            console.error(`Error updating visibility for layer ${aidType}:`, error);
-        }
-    });
-
-    // Update map summary card with both filter state and counts
-    updateMapSummary(filterState, counts);
-}
-
-// New function to handle AJAX updates to a specific point on the map
-function handleAjaxPointUpdate(updatedRequest) {
-    if (!map || !layersByType) {
-        console.warn('[Map] Map or layers not ready for AJAX update.');
-        return;
-    }
-
-    const { id, updates } = updatedRequest;
-    if (mapRequestsConfig.debug) {
-        console.log(`[Map] Handling AJAX update for request ID: ${id}`, updates);
-    }
-
-    // Find the shape in any of the layers by its 'id' property
-    for (const aidType in layersByType) {
-        const layer = layersByType[aidType];
-        const source = layer.getSource();
-        if (source) {
-            const shape = source.getShapes().find(s => String(s.getProperties().id) === String(id));
-
-            if (shape) {
-                const properties = shape.getProperties();
-
-                // Apply updates
-                if (updates.status) {
-                    properties.status = updates.status;
+                    await map.imageSprite.createFromTemplate(iconName, templateName, color, '#FFFFFF');
+                    if (SCRIPT_DEBUG) console.log(`[Map] Custom icon '${iconName}' created from template '${templateName}'.`);
+                } else if (SCRIPT_DEBUG) {
+                    console.log(`[Map] Icon '${iconName}' already exists. Skipping creation.`);
                 }
-                if (updates.priority) {
-                    // Standardize 'none' or null to the value the map expects
-                    properties.priority = (updates.priority === null || updates.priority === 'none')
-                        ? 'none_priority_value'
-                        : updates.priority;
+                successfullyCreatedIcons.push(iconName);
+                } catch (error) {
+                if (SCRIPT_DEBUG) {
+                    console.warn(`[Map] Failed to create icon '${iconName}' from template '${templateName}'. A default icon will be used. Error:`, error);
                 }
-
-                // Set the updated properties back on the shape
-                shape.setProperties(properties);
-
-                if (mapRequestsConfig.debug) {
-                    console.log(`[Map] Updated properties for shape with id ${id}:`, shape.getProperties());
                 }
-
-                // Found and updated the shape, no need to look further
-                return;
-            }
-        }
-    }
-
-    if (mapRequestsConfig.debug) {
-        console.warn(`[Map] Could not find a shape with property id ${id} to update.`);
-    }
-}
-
-// Update the map card header with filter summary and counts
-function updateMapSummary(filterState, counts) {
-    const summaryElement = document.getElementById('map-filter-summary');
-    if (!summaryElement) {
-        console.warn('Map View: Summary element not found');
-        return;
-    }
-
-    if (mapRequestsConfig.debug) {
-        console.log('Map View: Updating summary with:', {
-            filterState,
-            counts
-        });
-    }
-
-    // Build summary text
-    const parts = [];
-    const totalCount = mapRequestsConfig.aidLocations.length;
-    const visibleCount = mapRequestsConfig.aidLocations.filter(loc => locationMatchesFilterState(loc, filterState)).length;
-
-    // Create count element
-    const countText = `${visibleCount} of ${totalCount} locations`;
-
-    // Build filter parts - in order: Aid Type, Status, Priority
-    if (filterState.aid_types === null) {
-        parts.push('Type: None selected');
-    } else if (filterState.statuses === null) {
-        parts.push('Status: None selected');
-    } else if (filterState.priorities === null) {
-        parts.push('Priority: None selected');
-    } else {
-        // Only add other filters if no filter is null
-
-        // 1. Aid Type
-        if (filterState.aid_types !== 'all' && Array.isArray(filterState.aid_types) && filterState.aid_types.length > 0) {
-            const typeLabels = filterState.aid_types.map(type => {
-                if (type === null) {
-                    return 'None';
-                }
-                const config = mapRequestsConfig.aidTypesConfig[type];
-                return config ? config.name : type;
-            });
-            parts.push(`Type: ${typeLabels.join(', ')}`);
-        }
-
-        // 2. Status
-        if (filterState.statuses !== 'all' && Array.isArray(filterState.statuses) && filterState.statuses.length > 0) {
-            const statusLabels = filterState.statuses.map(status => {
-                return status.charAt(0).toUpperCase() + status.slice(1);
-            });
-            parts.push(`Status: ${statusLabels.join(', ')}`);
-        }
-
-        // 3. Priority
-        if (filterState.priorities !== 'all' && Array.isArray(filterState.priorities) && filterState.priorities.length > 0) {
-            const priorityLabels = filterState.priorities.map(p => {
-                if (p === null) {
-                    return 'None';
-                }
-                return p.charAt(0).toUpperCase() + p.slice(1);
-            });
-            parts.push(`Priority: ${priorityLabels.join(', ')}`);
-        }
-    }
-
-    // Create the summary HTML
-    summaryElement.innerHTML = `
-        <div class="small text-muted lh-1">
-            <div class="mb-1">${countText}</div>
-            ${parts.map(part => `<div class="mb-1">${part}</div>`).join('')}
-        </div>
-    `;
-
-    if (mapRequestsConfig.debug) {
-        console.log('Map View: Summary updated:', {
-            visibleCount,
-            totalCount,
-            filters: parts,
-            filterState
-        });
-    }
-}
-
-// Helper Functions
-
-function locationMatchesFilterState(request, filterState) {
-    const status = request.status;
-    const aidType = request.aid_type.slug;
-    const priority = request.priority; // This will be 'none_priority_value' for nulls from the data
-
-    const matchesStatus = filterState.statuses === 'all' ||
-                         (Array.isArray(filterState.statuses) && filterState.statuses.includes(status));
-
-    const matchesAidType = filterState.aid_types === 'all' ||
-                          (Array.isArray(filterState.aid_types) && filterState.aid_types.includes(aidType));
-
-    const matchesPriority = filterState.priorities === 'all' ||
-                           (Array.isArray(filterState.priorities) && filterState.priorities.some(p => {
-                               const filterPriority = (p === 'none' || p === 'null' || !p) ? 'none_priority_value' : p;
-                               // Direct comparison now works
-                               return priority === filterPriority;
-                           }));
-
-    return matchesStatus && matchesAidType && matchesPriority;
-}
-
-// Initialize the field operation layer and ring
-function initializeFieldOpLayer() {
-    if (mapRequestsConfig.debug) {
-        console.log('=== Starting Field Op Layer Initialization ===', {
-            center: mapRequestsConfig.config.center,
-            ringSize: mapRequestsConfig.config.ringSize,
-            config: mapRequestsConfig.config
-        });
-    }
-    // will use 2 layers, one for symbol and one for polygon
-
-    // Create the center position for both field op marker and ring
-    const centerPosition = new atlas.data.Position(
-        mapRequestsConfig.config.center[0],  // longitude
-        mapRequestsConfig.config.center[1]   // latitude
-    );
-
-    // First Data Source for the Field Op Center Marker
-    const fieldOpCenterSource = new atlas.source.DataSource();
-    map.sources.add(fieldOpCenterSource);
-    // Create the field op center feature with marker properties
-    const foCenter = new atlas.data.Feature(
-        new atlas.data.Point(centerPosition),
-        {
-            name: mapRequestsConfig.config.fieldOpName,
-            slug: mapRequestsConfig.config.fieldOpSlug
-        }
-    );
-    /*
-    if (mapRequestsConfig.debug) {
-        console.log('Created field op center:', {
-            position: centerPosition,
-            properties: foCenter.properties
-        });
-    }
-    */
-    // Temporarily disable the field op center marker for debugging
-    fieldOpCenterSource.add(foCenter);
-
-    // Add Symbol Layer for the Field Op Center Marker
-    map.layers.add(new atlas.layer.SymbolLayer(
-        fieldOpCenterSource,
-        'fieldop_center',
-        {
-            iconOptions: {
-                image: 'pin-blue',
-                anchor: 'center',
-                size: 1.5,
-                allowOverlap: true
-            },
-            textOptions: {
-                textField: ['get', 'slug'],
-                offset: [0, -2],
-                anchor: 'top',
-                font: ['StandardFont-Bold'],
-                size: 12,
-                color: 'black',
-                haloColor: 'white',
-                haloWidth: 2
-            }
-        }
-    ));
-    if (mapRequestsConfig.debug) console.log('Added field op center layer to map');
-
-    // Get ring size from data attribute
-    const mapContainer = document.getElementById('aid-request-map');
-    const ringSize = parseFloat(mapContainer.dataset.ringSize) || 10; // Default to 10km if not specified
-
-    if (mapRequestsConfig.debug) {
-        /*
-        console.log('Ring configuration:', {
-            ringSize: ringSize,
-            dataAttribute: mapContainer.dataset.ringSize,
-            center: centerPosition
-        });
-        */
-    }
-
-    const fieldOpRingSource = new atlas.source.DataSource();
-    map.sources.add(fieldOpRingSource);
-
-    // Create a Ring feature around the field op
-    const fieldOpRing = new atlas.data.Feature(
-        new atlas.data.Point(centerPosition),
-        {
-            subType: 'Circle',
-            radius: ringSize * 1000  // Convert km to meters
-        }
-    );
-    /*
-    if (mapRequestsConfig.debug) {
-        console.log('Created field op ring:', {
-            feature: fieldOpRing,
-            properties: fieldOpRing.properties,
-            geometry: fieldOpRing.geometry,
-            radius: ringSize * 1000
-        });
-    }
-    */
-    fieldOpRingSource.add(fieldOpRing);
-    /*
-    if (mapRequestsConfig.debug) {
-        console.log('Added field op ring to source:', {
-            sourceId: fieldOpRingSource.getId(),
-            shapeCount: fieldOpRingSource.getShapes().length
-        });
-    }
-    */
-    // Add ring PolygonLayer
-    const ringLayer = new atlas.layer.PolygonLayer(
-        fieldOpRingSource,
-        'fieldop_ring',
-        {
-            filter: ['==', ['get', 'subType'], 'Circle'],  // Only show the circle
-            fillColor: 'rgba(255, 0, 0, 0.2)',
-            strokeColor: 'red',
-            strokeWidth: 2
-        }
-    );
-    /*
-    if (mapRequestsConfig.debug) {
-        console.log('Ring layer configuration:', {
-            layerId: ringLayer.getId(),
-            options: ringLayer.getOptions()
-        });
-    }
-    */
-    map.layers.add(ringLayer);
-    if (mapRequestsConfig.debug) console.log('Added field op ring layer to map');
-}
-
-// Initialize aid request layer with icons and points
-async function initializeAidRequestLayer() {
-    if (mapRequestsConfig.debug) {
-        console.log('=== Starting Aid Request Layer Initialization ===');
-    }
-
-    // Optimization: If there are no locations, do not proceed with layer creation.
-    if (!mapRequestsConfig.aidLocations || mapRequestsConfig.aidLocations.length === 0) {
-        if (mapRequestsConfig.debug) {
-            console.log('No aid locations found. Skipping creation of aid request layers.');
-        }
-        return; // Exit the function early
-    }
-
-    if (mapRequestsConfig.debug) {
-        console.log('Aid Types Config:', mapRequestsConfig.aidTypesConfig);
-        console.log('Aid Locations:', mapRequestsConfig.aidLocations);
-    }
-
-    // Create icons first
-    await createAidTypeIcons();
-
-    // Create a data source and layer for each aid type
-    Object.entries(mapRequestsConfig.aidTypesConfig).forEach(([slug, aidTypeConfig]) => {
-        // Create source
-        const source = new atlas.source.DataSource(undefined, {
-            cluster: false
-        });
-        map.sources.add(source);
-
-        // Add ALL points for this aid type, regardless of status
-        const validRequests = mapRequestsConfig.aidLocations
-            .filter(request =>
-                request.aid_type.slug === slug &&
-                request.location && // Ensure location object exists
-                typeof request.location.latitude === 'number' && !isNaN(request.location.latitude) &&
-                typeof request.location.longitude === 'number' && !isNaN(request.location.longitude)
-            );
-
-        if (mapRequestsConfig.debug) {
-            console.log(`Processing ${slug} layer:`, {
-                total: mapRequestsConfig.aidLocations.filter(r => r.aid_type.slug === slug).length,
-                valid: validRequests.length,
-                invalid: mapRequestsConfig.aidLocations.filter(r => r.aid_type.slug === slug).length - validRequests.length
-            });
-        }
-
-        validRequests.forEach(request => {
-            const position = new atlas.data.Position(
-                request.location.longitude,
-                request.location.latitude
-            );
-            const point = new atlas.data.Feature(new atlas.data.Point(position), {
-                id: request.id,
-                aid_type: slug,
-                status: request.status,
-                priority: request.priority, // Already transformed to 'none_priority_value'
-                group_size: request.group_size,
-                address: request.address.full,
-                requester_name: request.requester_name
-            });
-            source.add(point);
-        });
-
-        // Create layer with initial visibility based on status
-        const layer = new atlas.layer.SymbolLayer(source, slug, {
-            iconOptions: {
-                ignorePlacement: false,
-                allowOverlap: true,
-                anchor: "bottom",
-                image: slug,
-                size: 1.0,
-                visible: true
-            },
-            textOptions: {
-                textField: ['get', 'id'],
-                offset: [0, 1],
-                anchor: 'top',
-                allowOverlap: true,
-                ignorePlacement: false,
-                font: ['StandardFont-Bold'],
-                size: 12,
-                color: 'black',
-                haloColor: 'white',
-                haloWidth: 2
-            }
-        });
-
-        // Store layer reference
-        layersByType[slug] = layer;
-
-        if (mapRequestsConfig.debug) {
-            console.log(`Added layer: ${slug} (${validRequests.length} points)`);
-        }
-
-        map.layers.add(layer);
-        addAidRequestPopup(layer);
-    });
-
-    // Mark map as ready
-    mapRequestsConfig.mapReady = true;
-
-    if (mapRequestsConfig.debug) {
-        const totalPoints = Object.values(layersByType)
-            .reduce((sum, layer) => sum + layer.getSource().getShapes().length, 0);
-        console.log('=== Layer Initialization Complete ===');
-        console.log(`Total points: ${totalPoints}`);
-    }
-}
-
-// Create icon templates for each aid type
-async function createAidTypeIcons() {
-    const startTime = Date.now();
-
-    if (mapRequestsConfig.debug) {
-        console.log('=== Starting Icon Creation ===');
-        const aidTypeCount = mapRequestsConfig.aidTypesConfig ? Object.keys(mapRequestsConfig.aidTypesConfig).length : 0;
-        console.log(`Processing ${aidTypeCount} aid types`);
-    }
-
-    const iconSettings = {
-        'evac': { name: 'marker-arrow', color: '#FF0000' },     // Red arrow for evacuation
-        'supply': { name: 'marker-circle', color: '#800080' },  // Purple circle for supply
-        'check': { name: 'marker-arrow', color: '#008000' }     // Green arrow for welfare check
-    };
-
-    try {
-        if (mapRequestsConfig.aidTypesConfig) {
-            const iconPromises = Object.entries(mapRequestsConfig.aidTypesConfig).map(([slug, aidTypeConfig]) => {
-                const settings = iconSettings[slug] || { name: 'marker-circle', color: '#1B87EC' };
-                return map.imageSprite.createFromTemplate(
-                    slug,
-                    settings.name,
-                    settings.color,
-                    '#ffffff'  // White outline
-                ).catch(error => {
-                    console.error(`Error creating template for ${slug}:`, error);
-                    return null;
-                });
             });
 
-            // Wait for all icon templates to be created
             await Promise.all(iconPromises);
 
-            if (mapRequestsConfig.debug) {
-                const duration = Date.now() - startTime;
-                console.log(`Icon creation complete - ${iconPromises.length} templates created in ${duration}ms`);
-                console.log('Available icons:', map.imageSprite.getImageIds());
+        if (SCRIPT_DEBUG) {
+            console.log(`%c[Map] Finished createCustomIcons. ${successfullyCreatedIcons.length} of ${aidTypesConfig.length} icons created.`, 'color: blue; font-weight: bold;');
+            console.log('[Map] Successfully created icons:', successfullyCreatedIcons);
+        }
+    }
+
+    function setupPopupLogic(requests, aidTypesConfig) {
+        // Hoist popup-related variables to the window scope to ensure they are accessible
+        // across different function calls and event listeners, especially after updates.
+        window.aidRequestPopup = null;
+        window.isHoveringPopup = false;
+        window.currentPopupRequestId = null;
+
+        // Initialize the popup with a closer offset and a white background.
+        window.aidRequestPopup = new atlas.Popup({
+            pixelOffset: [0, -25],
+            closeButton: false,
+            fillColor: 'rgba(255, 255, 255, 0.95)', // Reverted to white, kept high opacity
+            className: 'popup-with-enhanced-pointer'
+        });
+
+        // Listen for the popup's own close event to reset the tracking ID.
+        map.events.add('close', window.aidRequestPopup, () => {
+            const closedId = window.currentPopupRequestId;
+            if (SCRIPT_DEBUG) console.log(`[Map] Popup close event fired for ID ${closedId}. Resetting current ID.`);
+            window.currentPopupRequestId = null;
+            if (closedId) {
+                document.body.dispatchEvent(new CustomEvent('popupClosedOnMap', { detail: { requestId: closedId } }));
             }
-        } else {
-            console.warn('No aid types configuration found');
-        }
-    } catch (error) {
-        console.error('Error in icon creation:', error);
-    }
-}
+        });
 
-// Add aid request points to the source
-function addAidRequestPoints(aidRequestsSource) {
-    if (!aidRequestsSource || !mapRequestsConfig.aidLocations) {
-        console.error('Source or aid locations not available');
-        return;
-    }
+            const aidTypesMap = aidTypesConfig.reduce((acc, aidType) => {
+                acc[aidType.slug] = aidType;
+                return acc;
+            }, {});
 
-    // Create points by aid type
-    const pointsByType = {};
-
-    mapRequestsConfig.aidLocations.forEach(request => {
-        // Skip if location data is missing or invalid
-        if (!request.location ||
-            !request.location.latitude ||
-            !request.location.longitude ||
-            isNaN(request.location.latitude) ||
-            isNaN(request.location.longitude)) {
-            console.warn(`Skipping aid request ${request.id} due to invalid location data:`, request.location);
-            return;
-        }
-
-        const aidType = request.aid_type.slug;
-        if (!pointsByType[aidType]) {
-            pointsByType[aidType] = [];
-        }
-
-        // Create point feature with validated coordinates
-        const point = new atlas.data.Feature(
-            new atlas.data.Point([
-                parseFloat(request.location.longitude),
-                parseFloat(request.location.latitude)
-            ]), {
-                id: request.id,
-                title: `${request.aid_type.name} Request`,
-                aid_type: aidType,
-                status: request.status,
-                priority: request.priority,
-                description: `Status: ${request.status_display}<br>Priority: ${request.priority_display}`,
-                address: request.address.full
+        function getAddressForPopup(prop) {
+            const address = prop.full_address || 'Address not available';
+            if (address.includes(', ')) {
+                const parts = address.split(', ');
+                if (parts.length > 1) {
+                    return parts.slice(0, -1).join(', ');
+                }
             }
-        );
-
-        pointsByType[aidType].push(point);
-    });
-
-    // Add points to source by type
-    Object.entries(pointsByType).forEach(([aidType, points]) => {
-        if (mapRequestsConfig.debug) {
-            console.log(`Added layer: ${aidType} (${points.length} points)`);
+            return address;
         }
-        aidRequestsSource.add(points);
-    });
 
-    if (mapRequestsConfig.debug) {
-        console.log('=== Layer Initialization Complete ===');
-        console.log('Total points:', Object.values(pointsByType).flat().length);
+        // Add a click event to the layer to show a popup.
+        map.events.add('click', aidRequestLayer, function (e) {
+            if (SCRIPT_DEBUG) console.log('[Map] Map click event registered.');
+
+            if (e.shapes && e.shapes.length > 0) {
+                const shapeId = e.shapes[0].id;
+                openPopupForRequestId(shapeId);
+                }
+        });
+
+        // Keep this simple: only change the cursor on hover to indicate clickability.
+        map.events.add('mouseenter', aidRequestLayer, function () {
+            map.getCanvasContainer().style.cursor = 'pointer';
+        });
+
+        map.events.add('mouseleave', aidRequestLayer, function () {
+            map.getCanvasContainer().style.cursor = 'grab';
+            // Popup is no longer closed from here to prevent aggressive closing.
+            // It is now closed by its own mouseleave event or a click on the map.
+        });
+
+        // Add a click event to the map itself to close the popup when clicking anywhere other than an aid request marker.
+        map.events.add('click', function(e) {
+            let clickedOnAidRequestMarker = false;
+            if (e.shapes && e.shapes.length > 0) {
+                // Defensively check for properties on the clicked shapes, which can be of different types.
+                for (const shape of e.shapes) {
+                    let props;
+                    if (typeof shape.getProperties === 'function') {
+                        props = shape.getProperties(); // It's an atlas.Shape
+                    } else if (shape.properties) {
+                        props = shape.properties; // It's a raw GeoJSON feature
+                    }
+
+                    if (props && props.requestId) {
+                        clickedOnAidRequestMarker = true;
+                        break;
+                    }
+                }
+            }
+
+            // If the click was not on an aid request marker, and the popup is open, close it.
+            if (!clickedOnAidRequestMarker && window.aidRequestPopup && window.aidRequestPopup.isOpen()) {
+                if (SCRIPT_DEBUG) console.log('[Map] Click outside a marker detected, closing popup.');
+                window.aidRequestPopup.close();
+            }
+        });
+
+        document.body.addEventListener('click', function(event) {
+            // Use .closest() to ensure the listener works even if the icon inside the button is clicked
+            const copyBtn = event.target.closest('.copy-btn');
+            if (copyBtn) {
+                const textToCopy = copyBtn.dataset.copyText;
+                if (textToCopy) {
+                    if (SCRIPT_DEBUG) console.log('[Map] Copy button clicked. Text to copy:', textToCopy);
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        const originalContent = copyBtn.innerHTML;
+                        copyBtn.innerHTML = 'Copied!';
+                        copyBtn.disabled = true;
+                                setTimeout(() => {
+                            copyBtn.innerHTML = originalContent;
+                            copyBtn.disabled = false;
+                                }, 2000);
+                            }).catch(err => {
+                        console.error('Failed to copy text: ', err);
+                            });
+                        }
+            }
+        });
     }
-}
 
-// Create and add the aid request layer
-function createAidRequestLayer(aidRequestsSource) {
-    const aidRequestsLayer = new atlas.layer.SymbolLayer(
-        aidRequestsSource,
-        'aid-requests',
-        {
-            iconOptions: {
-                image: 'pin-blue',  // Use Azure Maps built-in pin-blue icon as default
-                allowOverlap: true,
-                size: 1.0,
-                anchor: 'center'
-            },
-            minZoom: 0,
-            maxZoom: 24,
-            visible: true
-        }
-    );
+    function createPopupContent(request) {
+        if (!request) return '';
 
-    if (mapRequestsConfig.debug) {
-        console.log('=== Layer Creation Details ===');
-        console.log('Layer ID:', aidRequestsLayer.getId());
-        console.log('Layer options:', aidRequestsLayer.getOptions());
+        const priorityDisplay = request.priority_display || 'None';
+        const statusDisplay = request.status_display || 'Unknown';
+        const providedAddress = request.location?.address_display || 'Not provided';
+        const geocodedAddress = request.location?.free_form_address || 'Not geocoded';
+        const coordinates = `${request.location.latitude},${request.location.longitude}`;
+        const groupSize = request.group_size || 'Unknown';
+        const textToCopy = getPopupTextForCopy(request);
+
+        return `
+            <div style="min-width: 260px; font-size: 0.85rem;" class="map-popup-content p-1">
+                <div class="d-flex justify-content-start align-items-center border-bottom pb-2 mb-2">
+                    <div>
+                        <h6 class="mb-0 text-primary">Aid Request #${request.id}</h6>
+                        <small class="text-muted">${request.aid_type.name}</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary copy-btn ms-2" data-copy-text="${textToCopy}" title="Copy All Details">
+                        <i class="bi bi-clipboard-plus"></i>
+                    </button>
+                </div>
+
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="mb-1">
+                                <small class="text-muted">Requester</small>
+                                <div class="fw-bold">${request.requester_name || 'N/A'}</div>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Status</small>
+                                <div class="fw-bold">${statusDisplay}</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-1">
+                                <small class="text-muted">Group Size</small>
+                                <div class="fw-bold">${groupSize}</div>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Priority</small>
+                                <div class="fw-bold">${priorityDisplay}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-1">
+
+                <div class="mb-1">
+                    <strong>Provided:</strong>
+                    <div class="ps-2 text-muted">${providedAddress}</div>
+                </div>
+                <div class="mb-2">
+                    <strong>Geocoded:</strong>
+                    <div class="ps-2 text-muted">${geocodedAddress}</div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <strong class="me-2">Coords:</strong>
+                    <div class="d-inline-flex align-items-center border rounded bg-light px-1">
+                        <span class="font-monospace text-nowrap">${coordinates}</span>
+                        <button class="btn btn-link text-secondary btn-sm py-0 ps-1 border-0 copy-btn"
+                                type="button"
+                                data-copy-text="${coordinates}"
+                                title="Copy Coordinates">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
-    map.layers.add(aidRequestsLayer);
+    function getPopupTextForCopy(request) {
+        if (!request) return '';
 
-    // Add mouse events for the aid requests layer
-    addAidRequestPopup(aidRequestsLayer);
+        const priorityDisplay = request.priority_display || 'None';
+        const statusDisplay = request.status_display || 'Unknown';
+        const providedAddress = request.location?.address_display || 'Not provided';
+        const geocodedAddress = request.location?.free_form_address || 'Not geocoded';
+        const coordinates = `${request.location.latitude},${request.location.longitude}`;
+        const groupSize = request.group_size || 'Unknown';
 
-    if (mapRequestsConfig.debug) {
-        console.log('Aid request layer added to map');
+        return `Aid Request #${request.id}
+Aid Type: ${request.aid_type.name}
+Requester: ${request.requester_name || 'N/A'}
+Status: ${statusDisplay}
+Priority: ${priorityDisplay}
+Group Size: ${groupSize}
+Provided Address: ${providedAddress}
+Geocoded Address: ${geocodedAddress}
+Coordinates: ${coordinates}`;
     }
-}
-
-// Add popup functionality to the aid request layer
-function addAidRequestPopup(aidRequestsLayer) {
-    const popup = new atlas.Popup({
-        pixelOffset: [0, -20]
-    });
-
-    map.events.add('mouseover', aidRequestsLayer, (e) => {
-        if (e.shapes && e.shapes[0] && e.shapes[0].properties) {
-            const prop = e.shapes[0].properties;
-            const aidTypeConfig = mapRequestsConfig.aidTypesConfig[prop.aid_type];
-            const priorityKey = prop.priority === 'none_priority_value' ? 'null' : prop.priority;
-            const priorityLabel = window.aidRequestsStore.data.priorityChoices[priorityKey] || 'None';
-            const content = `
-                <div style="padding: 10px;">
-                    <strong>Status:</strong> ${prop.status || 'None'}<br>
-                    <strong>Priority:</strong> ${priorityLabel}<br>
-                    <strong>Type:</strong> ${aidTypeConfig ? aidTypeConfig.name : prop.aid_type || 'None'}
-                </div>`;
-            popup.setOptions({
-                content: content,
-                position: e.position
-            });
-            popup.open(map);
-        }
-    });
-
-    map.events.add('mouseout', aidRequestsLayer, () => {
-        popup.close();
-    });
 }

@@ -1,6 +1,10 @@
-<div class="card mb-4">
-    <div class="card-header bg-light">
+<div class="card mb-1">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">Details</h5>
+        <div class="d-inline-flex align-items-center">
+            <div id="send-cot-status" class="small text-nowrap rounded px-2 py-1 transition-opacity"></div>
+            {% include 'aidrequests/partials/_tak_alert_button.html' with slug=object.slug action='field_op_only' disabled=object.disable_cot %}
+        </div>
     </div>
     <div class="card-body">
         <dl class="row mb-0">

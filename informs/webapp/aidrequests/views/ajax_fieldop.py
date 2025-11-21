@@ -1,14 +1,17 @@
 import json
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib.auth.decorators import login_required, permission_required
 from django_q.tasks import async_task
 from datetime import datetime
+import logging
 
 from ..models import FieldOp
 from ..tasks import send_cot_task
 # from icecream import ic
+
+logger = logging.getLogger(__name__)
 
 
 @login_required

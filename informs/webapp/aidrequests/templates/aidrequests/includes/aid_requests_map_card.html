@@ -1,0 +1,26 @@
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center p-2">
+        <div class="d-flex align-items-center">
+                <h5 class="mb-0">Map</h5>
+                <button class="btn btn-sm btn-outline-secondary ms-2" data-bs-toggle="modal" data-bs-target="#mapModal" title="Expand Map">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+            </div>
+            <div class="d-flex align-items-center">
+                {% include 'aidrequests/partials/_coordinates_display.html' with latitude=field_op.latitude longitude=field_op.longitude element_id='header-coordinates' %}
+                <button class="btn btn-sm btn-outline-secondary ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#map-filter-summary-collapse" aria-expanded="false" aria-controls="map-filter-summary-collapse" title="Show/Hide Active Filters">
+                    <i class="bi bi-funnel"></i>
+                </button>
+            </div>
+        </div>
+        <div class="collapse" id="map-filter-summary-collapse">
+            <div id="map-filter-summary" class="small text-muted p-2 border-top"></div>
+        </div>
+        <div class="card-body p-0">
+            <!-- Map container with data attributes -->
+            <div id="aid-request-map-container" class="position-relative w-100 map-container-shared"
+                data-maps-subscription-key="{{ azure_maps_key }}"
+                data-initial-bounds='{{ initial_bounds_json|safe }}'>
+            </div>
+        </div>
+    </div>

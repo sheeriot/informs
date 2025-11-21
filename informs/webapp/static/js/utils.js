@@ -59,3 +59,67 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
+function copyCoords(elementOrId) {
+    if (!elementOrId) return;
+
+    let textToCopy;
+    let isLegacyId = typeof elementOrId === 'string';
+
+    if (isLegacyId) {
+        // Legacy mode: argument is an ID string of the element containing the text.
+        const textElement = document.getElementById(elementOrId);
+        if (textElement) {
+            textToCopy = textElement.innerText;
+        }
+    } else {
+        // Modern mode: argument is the button element itself.
+        textToCopy = elementOrId.dataset.copyText;
+    }
+
+    if (textToCopy) {
+        navigator.clipboard.writeText(textToCopy)
+            .then(() => {
+                showActionAlert(`Copied: ${textToCopy}`, 'success');
+            })
+            .catch(err => {
+                console.error('Failed to copy coordinates: ', err);
+                showActionAlert('Failed to copy coordinates.', 'danger');
+            });
+    } else {
+        console.error('Could not find text to copy for element/ID:', elementOrId);
+        showActionAlert('Nothing to copy.', 'warning');
+    }
+}
+
+/**
+ * Displays a dismissible alert at the top of the page.
+ * @param {string} message - The message to display in the alert.
+ * @param {string} type - The Bootstrap alert type (e.g., 'success', 'danger', 'warning').
+ */
+function showActionAlert(message, type = 'success') {
+    const container = document.getElementById('action-alert-container');
+    if (!container) {
+        console.error('Alert container not found.');
+        return;
+    }
+
+    const alertId = `alert-${Date.now()}`;
+    const alertHTML = `
+        <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+
+    container.innerHTML = alertHTML;
+
+    // Optional: Automatically dismiss the alert after a few seconds
+    setTimeout(() => {
+        const alertElement = document.getElementById(alertId);
+        if (alertElement) {
+            const bsAlert = new bootstrap.Alert(alertElement);
+            bsAlert.close();
+        }
+    }, 5000); // 5 seconds
+}

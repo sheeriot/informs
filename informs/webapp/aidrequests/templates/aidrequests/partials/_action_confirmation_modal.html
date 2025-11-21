@@ -46,16 +46,3 @@
         }
     });
 </script>
-
-<!--
-  This hidden button is used as a generic trigger for the action confirmation modal,
-  especially for actions that aren't initiated by a direct button click on the modal's
-  final target, like the status/priority radio buttons. The JavaScript will find this
-  button, populate its data attributes, and then programmatically click it to show the modal.
--->
-<button id="status-priority-change-trigger"
-        class="d-none"
-        data-bs-toggle="modal"
-        data-bs-target="#actionConfirmationModal"
-        data-action-url="{% url 'aid_request_ajax_update' field_op=aid_request.field_op.slug pk=aid_request.pk %}"
-></button>

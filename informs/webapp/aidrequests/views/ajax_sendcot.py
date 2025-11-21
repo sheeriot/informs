@@ -27,6 +27,7 @@ def send_cot(request, field_op=None):
     """
     try:
         data = json.loads(request.body)
+        ic(data)
     except Exception as e:
         # ic(e)
         return JsonResponse({"status": "error", "message": "Could not parse JSON request body."})
@@ -70,6 +71,7 @@ def send_cot(request, field_op=None):
                 if aidrequests:  # Only add if we have actual IDs
                     task_kwargs['aidrequests'] = aidrequests
 
+        ic(task_kwargs)
         sendcot_id = async_task(
             'aidrequests.tasks.send_cot_task',
             task_name=task_title,
