@@ -16,12 +16,17 @@
         initialize();
     });
 
+    /**
+     * Main initialization function. Sets up everything.
+     */
     function initialize() {
         if (isInitialized) {
-            if (listScriptConfig.debug) console.warn('[List Script] Attempted to initialize again. Aborting.');
+            // This is a safeguard, but should not be hit if the templates are correct.
+            // console.warn('[List Script] Attempted to initialize again. Aborting.');
             return;
         }
         isInitialized = true;
+        if (listScriptConfig.debug) console.log('[List Script] Initialization started.');
 
         // Attempt to load the debug flag from the body dataset
         if (document.body.dataset.debug === 'true') {
@@ -49,47 +54,31 @@
             return;
         }
 
-        if (listScriptConfig.debug) {
-            console.log(`[List Script] Initialization started.`);
-            console.log(`[List Script] Loaded ${allAidRequests.length} aid requests into the local store.`);
-        }
-
-        // The server renders the initial checkbox state. Read it directly from the DOM.
+        // Get the initial filter state from the DOM.
         const initialFilterState = getFilterStateFromDOM();
-        if (listScriptConfig.debug) {
-            console.log('[List Script] Reading initial filter state from DOM:', initialFilterState);
-        }
 
-        // Run the first filter pass WITHOUT updating counts.
-        // The template is now the source of truth for the initial render.
-        applyListFilter(initialFilterState);
+        // Apply the initial filter to set the correct visibility and get initial counts
+        runFilterAndUpdates(initialFilterState);
 
-        // Dispatch the true initial state for other components like the map to use.
-        if (listScriptConfig.debug) {
-            console.log('[List Script] Dispatching authoritative initial filter state for other components.');
-        }
-        document.body.dispatchEvent(new CustomEvent('filterStateChange', {
-            detail: initialFilterState,
-            bubbles: true
+        // After the first run, dispatch an event to let other components (like the map)
+        // know what the authoritative initial filter state is.
+        document.body.dispatchEvent(new CustomEvent('mapShouldUpdateFilter', {
+            detail: initialFilterState
         }));
+
+
+        // The map component depends on this script to be initialized first.
+        if (window.initializeAidRequestMap) {
+            // if (listScriptConfig.debug) console.log('[List Script] Calling window.initializeAidRequestMap...');
+            window.initializeAidRequestMap(allAidRequests);
+        } else {
+            console.error('[List Script] Map initialization function not found.');
+        }
 
         // Set up all event listeners for the page.
         addPageEventListeners();
         initializeTooltips();
         setupModalHandlers(); // Initialize modal handlers
-
-        // KICK OFF MAP INITIALIZATION
-        // Use a timeout to ensure the map script has loaded and the DOM is fully ready.
-        setTimeout(() => {
-            if (window.initializeAidRequestMap) {
-                if (listScriptConfig.debug) {
-                    console.log('[List Script] Calling window.initializeAidRequestMap...');
-                }
-                window.initializeAidRequestMap(allAidRequests);
-            } else {
-                console.error('[List Script] Map initializer function (window.initializeAidRequestMap) not found.');
-            }
-        }, 0);
     }
 
     function addPageEventListeners() {
@@ -192,17 +181,19 @@
         });
     }
 
+    /**
+     * The main worker function that applies the current filter state to the list and updates the UI.
+     * @param {object} filterState - The current state of all filters.
+     */
     function runFilterAndUpdates(filterState) {
         if (!filterState) {
-            console.error('[List Script] runFilterAndUpdates called without a filterState.');
-            return;
+            console.error('[List Script] runFilterAndUpdates called without a filterState. Recovering by reading from DOM.');
+            filterState = getFilterStateFromDOM();
         }
-        if (listScriptConfig.debug) {
-            console.log('[List Script] Running filter and updates with state:', filterState);
-        }
-        // applyListFilter now returns the counts of visible items per status group.
-        const groupCounts = applyListFilter(filterState);
-        updateFilterCounts(filterState, groupCounts); // Pass the new counts to the UI updater.
+        // if (listScriptConfig.debug) console.log('[List Script] Running filter and updates with state:', filterState);
+
+        const counts = applyListFilter(filterState);
+        updateFilterCounts(filterState, counts);
     }
 
     function applyListFilter(filterState) {

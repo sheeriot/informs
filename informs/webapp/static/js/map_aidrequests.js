@@ -114,7 +114,7 @@ window.initializeAidRequestMap = function(requests) {
         // Listen for updates from the list view (e.g., status/priority changes)
         document.body.addEventListener('aidRequestUpdated', function (e) {
             try {
-                if (mapRequestsConfig.debug) console.log('[Map] Received aidRequestUpdated event. Updating data store and point on map.', e.detail);
+                // if (mapRequestsConfig.debug) console.log('[Map] Received aidRequestUpdated event. Updating data store and point on map.', e.detail);
 
                 const updatedRequest = e.detail.request;
 
@@ -126,18 +126,18 @@ window.initializeAidRequestMap = function(requests) {
                 const index = requests.findIndex(r => r.id === updatedRequest.id);
                 if (index !== -1) {
                     requests[index] = updatedRequest;
-                    if (mapRequestsConfig.debug) {
-                        console.log(`[Map] Updated request #${updatedRequest.id} in local map data store.`);
-                    }
+                    // if (mapRequestsConfig.debug) {
+                    //     console.log(`[Map] Updated request #${updatedRequest.id} in local map data store.`);
+                    // }
                 }
 
                 if (aidRequestSource) {
                     const shape = aidRequestSource.getShapeById(updatedRequest.id);
                     if (shape) {
-                        if (mapRequestsConfig.debug) {
-                            // Use a simple shallow copy for logging to avoid JSON errors with complex objects
-                            console.log(`[Map] Found shape for request #${updatedRequest.id}. Old properties:`, { ...shape.getProperties() });
-                        }
+                        // if (mapRequestsConfig.debug) {
+                        //     // Use a simple shallow copy for logging to avoid JSON errors with complex objects
+                        //     console.log(`[Map] Found shape for request #${updatedRequest.id}. Old properties:`, { ...shape.getProperties() });
+                        // }
 
                         // Use the official get/set methods to safely update properties
                         const props = shape.getProperties();
@@ -145,9 +145,9 @@ window.initializeAidRequestMap = function(requests) {
                         props.priority = updatedRequest.priority || 'none';
                         shape.setProperties(props);
 
-                        if (mapRequestsConfig.debug) {
-                            console.log(`[Map] New properties for shape #${updatedRequest.id}:`, { ...shape.getProperties() });
-                        }
+                        // if (mapRequestsConfig.debug) {
+                        //     console.log(`[Map] New properties for shape #${updatedRequest.id}:`, { ...shape.getProperties() });
+                        // }
 
                         // If the updated request matches the currently open popup, refresh the popup content.
                         if (window.aidRequestPopup && window.aidRequestPopup.isOpen() && window.currentPopupRequestId === updatedRequest.id) {
@@ -167,8 +167,20 @@ window.initializeAidRequestMap = function(requests) {
                             });
 
                             window.aidRequestPopup.setOptions({
-                                content: newContentElement
+                                content: newContentElement,
+                                pixelOffset: [0, -30] // Set default for 'above'
                             });
+
+                            // Adjust offset after open, based on placement.
+                            // The 'open' event fires after the popup is placed, allowing us to inspect its final position.
+                            map.events.add('open', window.aidRequestPopup, () => {
+                                // We get the popup's wrapper element by traversing from the content element we created.
+                                const popupWrapper = newContentElement.parentElement?.parentElement;
+                                if (popupWrapper && popupWrapper.classList.contains('atlas-popup-anchor-top')) {
+                                    // If the popup is anchored from the top (i.e., it's below the marker), use a positive offset.
+                                    window.aidRequestPopup.setOptions({ pixelOffset: [0, 25] });
+                                }
+                            }, { once: true });
                         }
                     } else if (mapRequestsConfig.debug) {
                         console.warn(`[Map] Could not find a shape with ID ${updatedRequest.id} in the data source to update.`);
@@ -200,7 +212,7 @@ window.initializeAidRequestMap = function(requests) {
         const pointToUpdate = aidRequestSource.getShapeById(requestId);
 
         if (pointToUpdate) {
-            if (mapRequestsConfig.debug) console.log(`[Map] Updating point #${requestId} with status: ${newStatus}, priority: ${newPriority}`);
+            // if (mapRequestsConfig.debug) console.log(`[Map] Updating point #${requestId} with status: ${newStatus}, priority: ${newPriority}`);
             const currentProps = pointToUpdate.getProperties();
             currentProps.status = newStatus;
             currentProps.priority = newPriority;
@@ -217,7 +229,7 @@ window.initializeAidRequestMap = function(requests) {
         }
 
         if (!filterState) {
-            if (mapRequestsConfig.debug) console.log('[Map] No filter state provided. Clearing layer filter.');
+            // if (mapRequestsConfig.debug) console.log('[Map] No filter state provided. Clearing layer filter.');
             aidRequestLayer.setOptions({ filter: null });
             return;
         }
@@ -239,11 +251,11 @@ window.initializeAidRequestMap = function(requests) {
 
         const combinedFilter = filters.length > 1 ? ['all', ...filters] : filters[0] || null;
 
-        if (mapRequestsConfig.debug) console.log('[Map] Constructed layer filter:', JSON.stringify(combinedFilter));
+        // if (mapRequestsConfig.debug) console.log('[Map] Constructed layer filter:', JSON.stringify(combinedFilter));
 
         try {
             aidRequestLayer.setOptions({ filter: combinedFilter });
-            if (mapRequestsConfig.debug) console.log('[Map] Layer filter applied successfully.');
+            // if (mapRequestsConfig.debug) console.log('[Map] Layer filter applied successfully.');
         } catch (e) {
             console.error('[Map] Error applying layer filter:', e);
         }
@@ -253,7 +265,7 @@ window.initializeAidRequestMap = function(requests) {
     function initializeFieldOpLayer(fieldOp) {
         if (mapRequestsConfig.debug) {
             console.log('[Map] Initializing FieldOp Layer.');
-            console.log('[Map] FieldOp Config:', fieldOp);
+            // console.log('[Map] FieldOp Config:', fieldOp);
         }
 
         if (!fieldOp || typeof fieldOp.latitude !== 'number' || typeof fieldOp.longitude !== 'number') {
@@ -309,11 +321,11 @@ window.initializeAidRequestMap = function(requests) {
             filter: ['==', ['geometry-type'], 'Point']
         }));
 
-        if (mapRequestsConfig.debug) console.log('[Map] FieldOp layer initialized.');
+        // if (mapRequestsConfig.debug) console.log('[Map] FieldOp layer initialized.');
     }
 
     function initializeAidRequestLayer(requests, aidTypesConfig) {
-        console.log('%c[Map] Initializing Aid Request Layer', 'color: green; font-weight: bold;');
+        // console.log('%c[Map] Initializing Aid Request Layer', 'color: green; font-weight: bold;');
 
         const points = [];
         aidRequestSource = new atlas.source.DataSource();
@@ -341,10 +353,10 @@ window.initializeAidRequestMap = function(requests) {
             scaleExpression.push(1.0);
         }
 
-        if (mapRequestsConfig.debug) {
-            console.log("Icon expression:", JSON.stringify(iconExpression));
-            console.log("Scale expression:", JSON.stringify(scaleExpression));
-        }
+        // if (mapRequestsConfig.debug) {
+        //     console.log("Icon expression:", JSON.stringify(iconExpression));
+        //     console.log("Scale expression:", JSON.stringify(scaleExpression));
+        // }
 
         requests.forEach(request => {
             try {
@@ -372,10 +384,10 @@ window.initializeAidRequestMap = function(requests) {
             }
         });
 
-        if (mapRequestsConfig.debug) {
-            console.log(`Preparing to add ${points.length} points to the data source.`);
-            console.table(points.map(p => p.properties));
-        }
+        // if (mapRequestsConfig.debug) {
+        //     console.log(`Preparing to add ${points.length} points to the data source.`);
+        //     console.table(points.map(p => p.properties));
+        // }
 
         aidRequestSource.add(points);
 
@@ -401,15 +413,15 @@ window.initializeAidRequestMap = function(requests) {
 
         map.layers.add(aidRequestLayer);
 
-        if (mapRequestsConfig.debug) console.log(`[Map] Aid Request layer added.`);
+        // if (mapRequestsConfig.debug) console.log(`[Map] Aid Request layer added.`);
     }
 
     async function createCustomIcons(aidTypesConfig) {
-        if (mapRequestsConfig.debug) {
-            console.log('%c[Map] Starting createCustomIcons function...', 'color: blue; font-weight: bold;');
-            console.log('[Map] Received aidTypesConfig to create icons:');
-            console.table(aidTypesConfig);
-        }
+        // if (mapRequestsConfig.debug) {
+        //     console.log('%c[Map] Starting createCustomIcons function...', 'color: blue; font-weight: bold;');
+        //     console.log('[Map] Received aidTypesConfig to create icons:');
+        //     console.table(aidTypesConfig);
+        // }
 
         const iconPromises = aidTypesConfig.map(async (aidType) => {
             const iconName = aidType.slug;
@@ -419,11 +431,11 @@ window.initializeAidRequestMap = function(requests) {
             try {
                 // Check if the image already exists before trying to create it
                 if (!map.imageSprite.hasImage(iconName)) {
-                    if (mapRequestsConfig.debug) {
-                        console.log(`[Map] Creating icon: name='${iconName}', template='${templateName}', color='${color}'`);
-                    }
+                    // if (mapRequestsConfig.debug) {
+                    //     console.log(`[Map] Creating icon: name='${iconName}', template='${templateName}', color='${color}'`);
+                    // }
                     await map.imageSprite.createFromTemplate(iconName, templateName, color, '#FFFFFF');
-                    if (mapRequestsConfig.debug) console.log(`[Map] Custom icon '${iconName}' created from template '${templateName}'.`);
+                    // if (mapRequestsConfig.debug) console.log(`[Map] Custom icon '${iconName}' created from template '${templateName}'.`);
                 } else if (mapRequestsConfig.debug) {
                     console.log(`[Map] Icon '${iconName}' already exists. Skipping creation.`);
                 }
@@ -437,10 +449,10 @@ window.initializeAidRequestMap = function(requests) {
 
         await Promise.all(iconPromises);
 
-        if (mapRequestsConfig.debug) {
-            console.log(`%c[Map] Finished createCustomIcons. ${successfullyCreatedIcons.length} of ${aidTypesConfig.length} icons created.`, 'color: blue; font-weight: bold;');
-            console.log('[Map] Successfully created icons:', successfullyCreatedIcons);
-        }
+        // if (mapRequestsConfig.debug) {
+        //     console.log(`%c[Map] Finished createCustomIcons. ${successfullyCreatedIcons.length} of ${aidTypesConfig.length} icons created.`, 'color: blue; font-weight: bold;');
+        //     console.log('[Map] Successfully created icons:', successfullyCreatedIcons);
+        // }
     }
 
     function setupPopupLogic(requests, aidTypesConfig) {
@@ -459,7 +471,7 @@ window.initializeAidRequestMap = function(requests) {
 
         // Listen for the popup's own close event to reset the tracking ID.
         map.events.add('close', window.aidRequestPopup, () => {
-            if (mapRequestsConfig.debug) console.log('[Map] Popup close event fired. Resetting current ID.');
+            // if (mapRequestsConfig.debug) console.log('[Map] Popup close event fired. Resetting current ID.');
             window.currentPopupRequestId = null;
         });
 
@@ -481,7 +493,7 @@ window.initializeAidRequestMap = function(requests) {
 
         // Add a click event to the layer to show a popup.
         map.events.add('click', aidRequestLayer, function (e) {
-            if (mapRequestsConfig.debug) console.log('[Map] Map click event registered.');
+            // if (mapRequestsConfig.debug) console.log('[Map] Map click event registered.');
 
             if (e.shapes && e.shapes.length > 0) {
                 // This is the correct way to get the full shape object.
@@ -490,7 +502,7 @@ window.initializeAidRequestMap = function(requests) {
                 const clickedShape = aidRequestSource.getShapeById(shapeId);
 
                 if (clickedShape) {
-                    if (mapRequestsConfig.debug) console.log('[Map] Clicked shape found, closing existing popup if any.');
+                    // if (mapRequestsConfig.debug) console.log('[Map] Clicked shape found, closing existing popup if any.');
                     if (window.aidRequestPopup) {
                         window.aidRequestPopup.close();
                     }
@@ -500,7 +512,7 @@ window.initializeAidRequestMap = function(requests) {
                     const requestData = requests.find(r => r.id === properties.requestId);
 
                     if (requestData) {
-                        if (mapRequestsConfig.debug) console.log('[Map] Creating popup, attaching hover listeners.');
+                        // if (mapRequestsConfig.debug) console.log('[Map] Creating popup, attaching hover listeners.');
                         const htmlContent = createPopupContent(requestData);
 
                         // Track the ID of the request being shown in the popup.
@@ -513,19 +525,33 @@ window.initializeAidRequestMap = function(requests) {
 
                         // Add listeners to the content element to manage hover state
                         contentElement.addEventListener('mouseenter', () => {
-                            if (mapRequestsConfig.debug) console.log('[Map] Mouse entered popup content.');
+                            // if (mapRequestsConfig.debug) console.log('[Map] Mouse entered popup content.');
                             window.isHoveringPopup = true;
                         });
                         contentElement.addEventListener('mouseleave', () => {
-                            if (mapRequestsConfig.debug) console.log('[Map] Mouse left popup content.');
+                            // if (mapRequestsConfig.debug) console.log('[Map] Mouse left popup content.');
                             window.isHoveringPopup = false;
                             if (window.aidRequestPopup) window.aidRequestPopup.close();
                         });
 
                         window.aidRequestPopup.setOptions({
                             content: contentElement, // Pass the element with listeners
-                            position: clickedShape.getCoordinates()
+                            position: clickedShape.getCoordinates(),
+                            pixelOffset: [0, -30] // Default to an offset suitable for being above the marker
                         });
+
+                        // Add a one-time listener to adjust the offset after the map has placed the popup.
+                        map.events.add('open', window.aidRequestPopup, () => {
+                            // We get the popup's wrapper element by traversing from the content element we created.
+                            const popupWrapper = contentElement.parentElement?.parentElement;
+                            // When the popup is placed below the marker, the SDK adds a class to anchor it from the top.
+                            if (popupWrapper && popupWrapper.classList.contains('atlas-popup-anchor-top')) {
+                                // It's below the marker, so use a larger positive offset to push it down.
+                                window.aidRequestPopup.setOptions({ pixelOffset: [0, 25] });
+                            }
+                        }, { once: true });
+
+
                         window.aidRequestPopup.open(map);
                     }
                 }
@@ -565,7 +591,7 @@ window.initializeAidRequestMap = function(requests) {
 
             // If the click was not on an aid request marker, and the popup is open, close it.
             if (!clickedOnAidRequestMarker && window.aidRequestPopup && window.aidRequestPopup.isOpen()) {
-                if (mapRequestsConfig.debug) console.log('[Map] Click outside a marker detected, closing popup.');
+                // if (mapRequestsConfig.debug) console.log('[Map] Click outside a marker detected, closing popup.');
                 window.aidRequestPopup.close();
             }
         });
@@ -576,7 +602,7 @@ window.initializeAidRequestMap = function(requests) {
             if (copyBtn) {
                 const textToCopy = copyBtn.dataset.copyText;
                 if (textToCopy) {
-                    if (mapRequestsConfig.debug) console.log('[Map] Copy button clicked. Text to copy:', textToCopy);
+                    // if (mapRequestsConfig.debug) console.log('[Map] Copy button clicked. Text to copy:', textToCopy);
                     navigator.clipboard.writeText(textToCopy).then(() => {
                         const originalContent = copyBtn.innerHTML;
                         copyBtn.innerHTML = 'Copied!';
@@ -600,22 +626,20 @@ window.initializeAidRequestMap = function(requests) {
         const statusDisplay = request.status_display || 'Unknown';
         const providedAddress = request.location?.address_display || 'Not provided';
         const geocodedAddress = request.location?.free_form_address || 'Not geocoded';
-        const coordinates = `${request.location.latitude}, ${request.location.longitude}`;
+        const coordinates = `${request.location.latitude},${request.location.longitude}`;
         const groupSize = request.group_size || 'Unknown';
         const textToCopy = getPopupTextForCopy(request);
 
         return `
             <div style="min-width: 260px; font-size: 0.85rem;" class="map-popup-content p-1">
-                <div class="d-flex justify-content-between align-items-start border-bottom pb-2 mb-2">
+                <div class="d-flex justify-content-start align-items-center border-bottom pb-2 mb-2">
                     <div>
                         <h6 class="mb-0 text-primary">Aid Request #${request.id}</h6>
                         <small class="text-muted">${request.aid_type.name}</small>
                     </div>
-                    <div class="d-flex">
-                        <button class="btn btn-sm btn-outline-secondary copy-btn ms-2" data-copy-text="${textToCopy}" title="Copy All Details">
-                            <i class="bi bi-clipboard-plus"></i>
-                        </button>
-                    </div>
+                    <button class="btn btn-sm btn-outline-secondary copy-btn ms-2" data-copy-text="${textToCopy}" title="Copy All Details">
+                        <i class="bi bi-clipboard-plus"></i>
+                    </button>
                 </div>
 
                 <div class="container-fluid">
@@ -676,7 +700,7 @@ window.initializeAidRequestMap = function(requests) {
         const statusDisplay = request.status_display || 'Unknown';
         const providedAddress = request.location?.address_display || 'Not provided';
         const geocodedAddress = request.location?.free_form_address || 'Not geocoded';
-        const coordinates = `${request.location.latitude}, ${request.location.longitude}`;
+        const coordinates = `${request.location.latitude},${request.location.longitude}`;
         const groupSize = request.group_size || 'Unknown';
 
         return `Aid Request #${request.id}

@@ -60,10 +60,10 @@ function getCookie(name) {
     return cookieValue;
 }
 
-function copyCoords(elementId) {
-    const coordsElement = document.getElementById(elementId);
-    if (coordsElement) {
-        const coordsText = coordsElement.innerText;
+function copyCoords(buttonElement) {
+    if (!buttonElement) return;
+    const coordsText = buttonElement.dataset.copyText;
+    if (coordsText) {
         navigator.clipboard.writeText(coordsText)
             .then(() => {
                 showActionAlert(`Copied: ${coordsText}`, 'success');
