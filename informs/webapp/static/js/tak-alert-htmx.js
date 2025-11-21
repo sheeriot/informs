@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     const scriptConfig = {
-        debug: false // Set to false in production
+        debug: true // Set to false in production
     };
 
     let statusClearTimer = null; // Variable to hold the timer ID
@@ -17,7 +17,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // If the request is from the TAK alert button, handle visibility and dynamic parameters
-        if (evt.detail.elt.id === 'tak-alert-button') {
+        if (evt.detail.elt.id === 'htmx-tak-alert-button') {
+             if (scriptConfig.debug) {
+                console.log('[TAK Alert] Intercepted HTMX request from TAK button.', evt.detail);
+                console.log('[TAK Alert] Parameters before modification:', JSON.parse(JSON.stringify(evt.detail.parameters)));
+            }
             // Clear any pending timeout to hide the status, so the new status isn't hidden prematurely
             if (statusClearTimer) {
                 clearTimeout(statusClearTimer);
@@ -42,6 +46,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 const aidRequestIds = getVisibleAidRequestIds();
                 // Add the IDs to the parameters that will be sent
                 evt.detail.parameters['aidrequests'] = JSON.stringify(aidRequestIds);
+                 if (scriptConfig.debug) {
+                    console.log('[TAK Alert] Added aidrequests to parameters:', evt.detail.parameters);
+                }
             }
         }
     });

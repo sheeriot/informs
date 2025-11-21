@@ -10,7 +10,7 @@ from .views.htmx_views import (
     edit_requester_info, save_requester_info,
     edit_address_info, save_address_info
 )
-from .views.ajax_views import update_aid_request
+from .views.ajax_aidrequest import update_aid_request
 from .views.aid_location import aid_location_status_update
 from .views.aid_location_add import add_location, delete_aid_location
 from .views.field_op import FieldOpListView, FieldOpDetailView, FieldOpCreateView, FieldOpUpdateView

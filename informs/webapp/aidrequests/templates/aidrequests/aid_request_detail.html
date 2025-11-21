@@ -33,7 +33,7 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
             hx-get="{% url 'get_aid_request_header' field_op=field_op.slug pk=aid_request.pk %}"
             hx-trigger="detailFieldUpdated from:body"
             hx-swap="innerHTML">
-            {% include 'aidrequests/partials/_aid_request_header.html' %}
+            {% include 'aidrequests/includes/aid_request_header.html' %}
         </div>
         {% include 'aidrequests/partials/_field_op_badge.html' %}
         {% include 'aidrequests/partials/_aid_requests_badge.html' %}
@@ -47,7 +47,7 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
         <!-- Right column for locations -->
         <div class="col-lg-5">
             <div class="card mb-3">
-                {% include 'aidrequests/includes/aid_request_status.html' %}
+                {% include 'aidrequests/includes/aid_request_status_card.html' %}
            </div>
             <div id="locations-list-container">
                 {% include 'aidrequests/includes/aid_locations_list.html' with aid_request=object %}
@@ -111,10 +111,14 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
 <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
 <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
+
 <script src="{% static 'js/htmx-helpers.js' %}?v={{ app_version }}"></script>
 <script src="{% static 'js/location-picker-map.js' %}?v={{ app_version }}"></script>
+
 <script src="{% static 'js/map-poller.js' %}?v={{ app_version }}"></script>
-<script src="{% static 'js/tak-alert.js' %}?v={{ app_version }}"></script>
+
+<script src="{% static 'js/tak-alert-htmx.js' %}?v={{ app_version }}"></script>
 <script src="{% static 'js/aidrequest-actions.js' %}?v={{ app_version }}"></script>
 <script src="{% static 'js/movable-modal.js' %}?v={{ app_version }}"></script>
+
 {% endblock extra_js %}

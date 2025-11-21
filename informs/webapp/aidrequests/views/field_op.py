@@ -83,7 +83,7 @@ class FieldOpCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
         if not self.object.disable_cot:
             ic(f"Creating send_cot_task for FieldOp {self.object.slug}")
             async_task(
-                'informs.webapp.aidrequests.tasks.send_cot_task',
+                'aidrequests.tasks.send_cot_task',
                 field_op_slug=self.object.slug,
                 mark_type='field',
                 task_name=f"Send_CoT_FieldOp_{self.object.slug}"
@@ -157,22 +157,10 @@ class FieldOpUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
 
         if form.is_valid():
             # ic("Form is valid, saving...")
-            return self.form_valid(form)
-        else:
-            ic("Form is invalid:", form.errors)
-            return self.form_invalid(form)
-
-    def form_valid(self, form):
-        # ic("form_valid called")
-        user = self.request.user
-        if user.is_authenticated:
-            form.instance.updated_by = user
-        form.save()
-
-        if not self.object.disable_cot:
+            self.object = form.save()
             ic(f"Creating send_cot_task for updated FieldOp {self.object.slug}")
             async_task(
-                'informs.webapp.aidrequests.tasks.send_cot_task',
+                'aidrequests.tasks.send_cot_task',
                 field_op_slug=self.object.slug,
                 mark_type='field',
                 task_name=f"Send_CoT_FieldOp_{self.object.slug}"

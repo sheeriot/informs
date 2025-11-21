@@ -14,7 +14,14 @@
                 </a>
             </div>
             <h5 class="card-title mx-2">Aid Requests</h5>
-            <small id="list-filter-summary" class="text-muted ms-auto">{{ initial_list_summary_html|safe }}</small>
+            <button class="btn btn-sm btn-outline-secondary ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#list-filter-summary-collapse" aria-expanded="false" aria-controls="list-filter-summary-collapse" title="Show/Hide Active Filters">
+                <i class="bi bi-funnel"></i>
+            </button>
+        </div>
+        <div class="collapse" id="list-filter-summary-collapse">
+            <div id="list-filter-summary" class="small text-muted p-2 border-top">
+                {{ initial_list_summary_html|safe }}
+            </div>
         </div>
     </div>
     <div class="card-body p-0" id="aid-request-list-table-container">

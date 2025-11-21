@@ -17,14 +17,13 @@
             {% endif %}
             </h5>
         </div>
-        <div>
-        <div class="btn-group btn-group-sm">
-            <button id="tak-alert-button" class="btn btn-outline-danger">
-                <i class="bi bi-broadcast"></i> Alert TAK
-            </button>
-            <a href="{% url 'aid_request_notify' field_op=aid_request.field_op.slug pk=aid_request.pk %}" class="btn btn-outline-secondary">
-                    <i class="bi bi-envelope"></i> eMail Alert
-            </a>
+        <div class="d-flex align-items-center">
+            <div id="send-cot-status" class="me-2"></div>
+            <div class="btn-group btn-group-sm">
+                {% include 'aidrequests/partials/_tak_alert_button.html' with slug=aid_request.field_op.slug action='aid' aid_request_id=aid_request.pk csrf_token=csrf_token %}
+                <a href="{% url 'aid_request_notify' field_op=aid_request.field_op.slug pk=aid_request.pk %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-envelope"></i><span class="d-none d-md-inline ms-1">eMail Alert</span>
+                </a>
             </div>
         </div>
     </div>

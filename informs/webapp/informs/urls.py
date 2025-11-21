@@ -30,7 +30,7 @@ from aidrequests.views.aid_request_detail import AidRequestDetailView, AidReques
 from aidrequests.views.aid_request_list import AidRequestListView
 from aidrequests.views.aid_request_notify import AidRequestNotifyView
 
-from aidrequests.views.ajax_views import get_aid_requests_json, update_aid_request
+from aidrequests.views.ajax_aidrequest import get_aid_requests_json, update_aid_request
 
 from aidrequests.views.ajax_sendcot import send_cot, sendcot_checkstatus
 

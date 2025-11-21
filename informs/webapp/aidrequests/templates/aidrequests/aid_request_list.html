@@ -17,7 +17,7 @@
         </div>
         <div class="d-flex align-items-center flex-wrap justify-content-end">
             <div id="send-cot-status" class="small text-nowrap rounded px-2 py-1 transition-opacity me-2"></div>
-            {% include 'aidrequests/partials/_tak_alert_button.html' with slug=field_op.slug action='aid_request_list' disabled=field_op.disable_cot button_size_class='' %}
+            {% include 'aidrequests/partials/_tak_alert_button.html' with slug=field_op.slug action='aid_request_list' disabled=field_op.disable_cot button_size_class='' csrf_token=csrf_token %}
         </div>
     </div>
 

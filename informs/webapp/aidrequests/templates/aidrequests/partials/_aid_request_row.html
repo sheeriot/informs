@@ -1,4 +1,5 @@
 {% load custom_tags %}
+{% load bootstrap_icons %}
 
 <tr class="aid-request-row {% if current_status_group and current_status_group != 'all' %}{% if current_status_group == 'active' and aid_request.status not in status_groups.active %}d-none{% elif current_status_group == 'inactive' and aid_request.status not in status_groups.inactive %}d-none{% endif %}{% endif %}"
     id="aid-request-row-{{ aid_request.id }}"
@@ -32,7 +33,9 @@
                 </a>
             </div>
         </div>
-        <div class="small text-muted">{{ aid_request.aid_type.name|default:"Unknown" }}</div>
+        <div class="small text-muted text-nowrap">
+            {% bs_icon aid_request.aid_type.bs_icon|default:'question-circle' size='1em' extra_classes='me-1' %} {{ aid_request.aid_type.name|default:"Unknown" }}
+        </div>
     </td>
     <td class="py-1 d-none d-md-table-cell">{{ aid_request.requester_full_name|default:"Unknown" }}</td>
     <td class="py-1">

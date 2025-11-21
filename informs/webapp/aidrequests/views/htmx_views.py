@@ -55,7 +55,7 @@ def get_aid_request_header_partial(request, field_op, pk):
         'confirmed': aid_request.location_status == 'confirmed',
         'action_logs': aid_request.action_logs.all(),
     }
-    return render(request, 'aidrequests/partials/_aid_request_header.html', context)
+    return render(request, 'aidrequests/includes/aid_request_header.html', context)
 
 
 @login_required
@@ -462,37 +462,48 @@ def serve_map_file(request, field_op, aid_request_pk, filename):
 @login_required
 def htmx_send_tak_alert(request, field_op):
     """
-    Receives a POST request from an HTMX button to send a TAK alert.
-    Dispatches an async task and returns a partial that polls for status.
+    Receives an HTMX POST request to send a TAK alert.
     """
-    ic.enable()
-    action = request.POST.get('action', 'field_op_only')
+    ic(request.POST)
     field_op_obj = get_object_or_404(FieldOp, slug=field_op)
-    ic(f"HTMX send_tak_alert for '{field_op_obj.name}' received for action: {action}")
+    mark_type = request.POST.get('mark_type', 'field_op_only')
+    task_name = f"Send_CoT_HTMX_{field_op_obj.slug}_{mark_type}"
 
     task_id = None
-    context = {'slug': field_op}
-
-    if action == 'field_op_only':
+    if mark_type == 'field_op_only':
         ic(f"Creating send_cot_task for FieldOp {field_op_obj.slug}")
         task_id = async_task(
             'aidrequests.tasks.send_cot_task',
             field_op_slug=field_op_obj.slug,
             mark_type='field',
-            aid_request_ids=None
+            task_name=task_name
         )
-    elif action == 'aid_request_list':
+    elif mark_type == 'aid':
+        aid_request_id = request.POST.get('aid_request_id')
+        if aid_request_id:
+            ic(f"Creating send_cot_task for FieldOp {field_op_obj.slug} and Aid Request {aid_request_id}")
+            task_id = async_task(
+                'aidrequests.tasks.send_cot_task',
+                field_op_slug=field_op_obj.slug,
+                mark_type='aid',
+                aidrequest=aid_request_id,
+                task_name=task_name
+            )
+    elif mark_type == 'aid_request_list':
         aid_request_ids_json = request.POST.get('aidrequests', '[]')
         aid_request_ids = json.loads(aid_request_ids_json)
-        ic(f"Creating send_cot_task for FieldOp {field_op_obj.slug} and {len(aid_request_ids)} Aid Requests")
-        task_id = async_task(
-            'aidrequests.tasks.send_cot_task',
-            field_op_slug=field_op_obj.slug,
-            mark_type='aid',
-            aid_request_ids=aid_request_ids
-        )
+        if aid_request_ids:
+            ic(f"Creating send_cot_task for FieldOp {field_op_obj.slug} and {len(aid_request_ids)} Aid Requests")
+            task_id = async_task(
+                'aidrequests.tasks.send_cot_task',
+                field_op_slug=field_op_obj.slug,
+                mark_type='aid',
+                aidrequests=aid_request_ids,
+                task_name=task_name
+            )
 
     if task_id:
+        context = {'slug': field_op}
         context['task_id'] = task_id
         return render(request, 'aidrequests/partials/_tak_polling_status.html', context)
     else:
@@ -511,7 +522,7 @@ def htmx_check_tak_status(request, field_op, task_id):
     context = {'task_id': task_id, 'slug': field_op}
 
     if task:
-        ic(f"Checking status for task {task_id}: {task.result}")
+        # ic(f"Checking status for task {task_id}: {task.result}")
         if task.success:
             context['status_message'] = "TAK Alert Sent Successfully"
             context['status_class'] = 'bg-success-subtle'

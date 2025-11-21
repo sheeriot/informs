@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('AidRequest Actions Script v 0.0.14');
     const scriptConfig = {
-        debug: true, // Master debug switch for this script
+        debug: false, // Master debug switch for this script
     };
 
     // For debugging htmx swaps
@@ -261,6 +261,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // Dispatch a global event with the updated data so other components can react
                     document.body.dispatchEvent(new CustomEvent('aidRequestUpdated', {
+                        detail: { request: updatedRequest }
+                    }));
+                    // ALSO dispatch the event for the detail page
+                    document.body.dispatchEvent(new CustomEvent('detailFieldUpdated', {
                         detail: { request: updatedRequest }
                     }));
 

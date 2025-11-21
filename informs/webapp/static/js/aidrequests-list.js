@@ -55,8 +55,8 @@
             allAidRequests = JSON.parse(dataEl.textContent);
         } catch (e) {
             console.error('[List Script] Failed to parse aid request data:', e);
-            return;
-        }
+        return;
+    }
 
         // Get the initial filter state from the DOM.
         const initialFilterState = getFilterStateFromDOM();
@@ -74,10 +74,10 @@
         // The map component depends on this script to be initialized first.
         if (window.initializeAidRequestMap) {
             if (SCRIPT_DEBUG) console.log('[List Script] Calling window.initializeAidRequestMap...');
-            window.initializeAidRequestMap(allAidRequests);
+            window.initializeAidRequestMap(allAidRequests, initialFilterState);
         } else {
             console.error('[List Script] Map initialization function not found.');
-        }
+            }
 
         // Set up all event listeners for the page.
         addPageEventListeners();
@@ -92,10 +92,10 @@
                 console.log('[List Script] Received filterStateChange event from user action.', e.detail);
             }
             runFilterAndUpdates(e.detail);
-        });
+    });
 
         // Listen for clicks on the status or priority dropdown options in the aid request list.
-        document.body.addEventListener('click', function(event) {
+    document.body.addEventListener('click', function(event) {
             const target = event.target.closest('.status-option, .priority-option');
             if (!target) return;
 
@@ -189,7 +189,7 @@
             const requestId = e.detail.requestId;
             if (selectedRequestId && selectedRequestId !== requestId) {
                 unhighlightRow(selectedRequestId);
-            }
+                    }
             highlightRow(requestId);
             selectedRequestId = requestId;
         });
@@ -200,7 +200,7 @@
                 selectedRequestId = null;
             }
         });
-    }
+            }
 
     /**
      * The main worker function that applies the current filter state to the list and updates the UI.
@@ -213,13 +213,62 @@
         }
         if (SCRIPT_DEBUG) console.log('[List Script] Running filter and updates with state:', filterState);
 
-        const counts = applyListFilter(filterState);
-        updateFilterCounts(filterState, counts);
+        applyListFilter(filterState);
+        updateFilterCounts(filterState);
+        updateFilterSummary(filterState);
+    }
+
+    function updateFilterSummary(filterState) {
+        const summaryParts = [];
+
+        const getLabelForValue = (type, value) => {
+            const checkbox = document.querySelector(`[data-filter-type="${type}"][data-filter-value="${value}"]`);
+            if (checkbox) {
+                // Find the label associated with the checkbox and get its text, excluding the count span
+                const label = checkbox.closest('.form-check').querySelector('label');
+                if (label) {
+                    // Clone the label, remove the count span, and then get the text content
+                    const clone = label.cloneNode(true);
+                    const countSpan = clone.querySelector('span');
+                    if (countSpan) {
+                        countSpan.remove();
+                    }
+                    return clone.textContent.trim();
+                }
+            }
+            return value; // Fallback to the value itself
+        };
+
+        if (filterState.status && filterState.status.length > 0) {
+            const statusNames = filterState.status.map(s => `"${getLabelForValue('status', s)}"`).join(', ');
+            summaryParts.push(`<strong>Status:</strong> ${statusNames}`);
+        }
+
+        if (filterState.priority && filterState.priority !== 'all') {
+            const priorityNames = filterState.priority.map(p => `"${getLabelForValue('priority', p)}"`).join(', ');
+            summaryParts.push(`<strong>Priority:</strong> ${priorityNames}`);
+        }
+
+        if (filterState.aid_type && filterState.aid_type !== 'all') {
+            const aidTypeNames = filterState.aid_type.map(a => `"${getLabelForValue('aid_type', a)}"`).join(', ');
+            summaryParts.push(`<strong>Aid&nbsp;Type:</strong> ${aidTypeNames}`);
+        }
+
+        const summaryHTML = summaryParts.join('<br>');
+
+        const mapSummaryEl = document.getElementById('map-filter-summary');
+        const listSummaryEl = document.getElementById('list-filter-summary');
+
+        if (mapSummaryEl) {
+            mapSummaryEl.innerHTML = summaryHTML;
+        }
+        if (listSummaryEl) {
+            listSummaryEl.innerHTML = summaryHTML;
+        }
     }
 
     function applyListFilter(filterState) {
         let visibleCount = 0;
-        const groupCounts = { active: 0, inactive: 0 };
 
         allAidRequests.forEach(request => {
             const row = document.getElementById(`aid-request-row-${request.id}`);
@@ -236,12 +285,6 @@
             if (statusMatch && priorityMatch && aidTypeMatch) {
                 row.classList.remove('d-none');
                 visibleCount++;
-                // Count which group the newly visible item belongs to.
-                if (listScriptConfig.status_groups.active.includes(request.status)) {
-                    groupCounts.active++;
-                } else if (listScriptConfig.status_groups.inactive.includes(request.status)) {
-                    groupCounts.inactive++;
-                }
             } else {
                 row.classList.add('d-none');
             }
@@ -255,10 +298,9 @@
         if (resultsCounter) {
             resultsCounter.textContent = `${visibleCount} of ${allAidRequests.length} requests`;
         }
-        return groupCounts;
     }
 
-    function updateFilterCounts(filterState, groupCounts) {
+    function updateFilterCounts(filterState) {
         if (SCRIPT_DEBUG) console.log(`[List Script] Updating filter counts.`);
 
         const counts = { byStatus: {}, byPriority: {}, byAidType: {} };
@@ -296,19 +338,29 @@
         updateCountUI('priority', counts.byPriority);
         updateCountUI('aid_type', counts.byAidType);
 
-        // After all individual counts are updated, use the accurate groupCounts from applyListFilter.
-        if (groupCounts) {
-            const activeTotal = Object.values(counts.byStatus).reduce((sum, current) => sum + current, 0);
-            const inactiveTotal = Object.values(counts.byStatus).reduce((sum, current) => sum + current, 0); // This line was removed from the new_code, but should be removed here as well.
-            if (SCRIPT_DEBUG) {
-                console.log(`[List Script] New Group Totals -> Active: ${activeTotal}, Inactive: ${inactiveTotal}`);
-            }
-            const activeTotalEl = document.getElementById('status-group-filter-active-total');
-            if (activeTotalEl) activeTotalEl.textContent = `(${activeTotal})`;
+        // Correctly calculate Active and Inactive totals from the intersectional `counts.byStatus` object.
+        let activeTotal = 0;
+        let inactiveTotal = 0;
 
-            const inactiveTotalEl = document.getElementById('status-group-filter-inactive-total');
-            if (inactiveTotalEl) inactiveTotalEl.textContent = `(${inactiveTotal})`;
+        if (listScriptConfig.status_groups) {
+            for (const status in counts.byStatus) {
+                if (listScriptConfig.status_groups.active.includes(status)) {
+                    activeTotal += counts.byStatus[status];
+                }
+                if (listScriptConfig.status_groups.inactive.includes(status)) {
+                    inactiveTotal += counts.byStatus[status];
+                }
+            }
         }
+
+        if (SCRIPT_DEBUG) {
+            console.log(`[List Script] New Group Totals -> Active: ${activeTotal}, Inactive: ${inactiveTotal}`);
+        }
+        const activeTotalEl = document.getElementById('status-group-filter-active-total');
+        if (activeTotalEl) activeTotalEl.textContent = `(${activeTotal})`;
+
+        const inactiveTotalEl = document.getElementById('status-group-filter-inactive-total');
+        if (inactiveTotalEl) inactiveTotalEl.textContent = `(${inactiveTotal})`;
     }
 
     function updateCountUI(filterType, counts) {
@@ -329,7 +381,7 @@
                 const shouldBeMuted = count === 0;
                 if (label) {
                     label.classList.toggle('text-muted', shouldBeMuted);
-                }
+            }
             }
         }
 
@@ -368,8 +420,8 @@
             if (icon) {
                 icon.classList.remove('bi-geo-alt');
                 icon.classList.add('bi-eye-fill');
-            }
-        }
+                    }
+                }
     }
 
     function unhighlightRow(requestId) {
@@ -386,20 +438,20 @@
     }
 
     function getFilterStateFromDOM() {
-        const filterCard = document.getElementById('aid-request-filter-card');
-        if (!filterCard) return {};
+    const filterCard = document.getElementById('aid-request-filter-card');
+    if (!filterCard) return {};
 
-        const getCheckedValues = (selector) =>
-            Array.from(filterCard.querySelectorAll(selector))
-                 .filter(cb => cb.checked)
-                 .map(cb => cb.dataset.filterValue);
+    const getCheckedValues = (selector) =>
+        Array.from(filterCard.querySelectorAll(selector))
+             .filter(cb => cb.checked)
+             .map(cb => cb.dataset.filterValue);
 
         // Correctly determines if an "All" checkbox is fully checked.
-        const isAllChecked = (selector) => {
-            const allCheckbox = filterCard.querySelector(selector);
+    const isAllChecked = (selector) => {
+        const allCheckbox = filterCard.querySelector(selector);
             // It's only 'all' if the main checkbox is checked and not indeterminate.
             return allCheckbox && allCheckbox.checked && !allCheckbox.indeterminate;
-        };
+    };
 
         // Gets the values of all checked child checkboxes for a given type.
         const getCheckedChildValues = (type) =>
@@ -410,17 +462,17 @@
 
         const aidTypes = isAllChecked('#aid-type-filter-all') ? 'all' : getCheckedChildValues('aid_type');
         const priorities = isAllChecked('#priority-filter-all') ? 'all' : getCheckedChildValues('priority');
-        const statuses = getCheckedValues('[data-filter-type="status"]');
+    const statuses = getCheckedValues('[data-filter-type="status"]');
 
         return { status: statuses, priority: priorities, aid_type: aidTypes };
-    }
+}
 
-    function initializeTooltips() {
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-    }
+function initializeTooltips() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+}
 
     function setupModalHandlers() {
         const actionConfirmationModal = document.getElementById('actionConfirmationModal');
@@ -558,8 +610,8 @@
                         console.error('Failed to copy address:', err);
                         showActionAlert('Failed to copy address.', 'danger');
                     });
-                }
             }
+        }
         });
     }
 

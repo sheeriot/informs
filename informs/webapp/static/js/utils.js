@@ -60,18 +60,35 @@ function getCookie(name) {
     return cookieValue;
 }
 
-function copyCoords(buttonElement) {
-    if (!buttonElement) return;
-    const coordsText = buttonElement.dataset.copyText;
-    if (coordsText) {
-        navigator.clipboard.writeText(coordsText)
+function copyCoords(elementOrId) {
+    if (!elementOrId) return;
+
+    let textToCopy;
+    let isLegacyId = typeof elementOrId === 'string';
+
+    if (isLegacyId) {
+        // Legacy mode: argument is an ID string of the element containing the text.
+        const textElement = document.getElementById(elementOrId);
+        if (textElement) {
+            textToCopy = textElement.innerText;
+        }
+    } else {
+        // Modern mode: argument is the button element itself.
+        textToCopy = elementOrId.dataset.copyText;
+    }
+
+    if (textToCopy) {
+        navigator.clipboard.writeText(textToCopy)
             .then(() => {
-                showActionAlert(`Copied: ${coordsText}`, 'success');
+                showActionAlert(`Copied: ${textToCopy}`, 'success');
             })
             .catch(err => {
                 console.error('Failed to copy coordinates: ', err);
                 showActionAlert('Failed to copy coordinates.', 'danger');
             });
+    } else {
+        console.error('Could not find text to copy for element/ID:', elementOrId);
+        showActionAlert('Nothing to copy.', 'warning');
     }
 }
 

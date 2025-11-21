@@ -7,12 +7,12 @@
 let map;
 
 // Expose the initialize function globally so the main list script can call it
-window.initializeAidRequestMap = function(requests) {
+window.initializeAidRequestMap = function(requests, initialFilterState) {
     const SCRIPT_DEBUG = false;
     let mapRequestsConfig = {};
     let successfullyCreatedIcons = [];
-    let aidRequestLayer;
-    let aidRequestSource;
+        let aidRequestLayer;
+        let aidRequestSource;
 
     const configEl = document.getElementById('aid-requests-config-json');
     if (configEl) {
@@ -30,10 +30,10 @@ window.initializeAidRequestMap = function(requests) {
      if (SCRIPT_DEBUG) console.log('[Map] Initializing...');
 
     const mapContainer = document.getElementById('aid-request-map-container');
-    if (!mapContainer) {
+        if (!mapContainer) {
         console.error('[Map] Map container not found during initialization.');
-        return;
-    }
+            return;
+        }
 
     const subscriptionKey = mapContainer.dataset.mapsSubscriptionKey;
     if (SCRIPT_DEBUG) {
@@ -63,7 +63,7 @@ window.initializeAidRequestMap = function(requests) {
     });
 
     // Wait until the map resources are ready.
-    map.events.add('ready', async () => {
+        map.events.add('ready', async () => {
         if (SCRIPT_DEBUG) console.log('[Map] Map is ready. Proceeding with layer setup.');
 
         if (initialBounds) {
@@ -74,10 +74,10 @@ window.initializeAidRequestMap = function(requests) {
         }
 
         // Add all controls in one consolidated block.
-        map.controls.add([
-            new atlas.control.ZoomControl(),
-            new atlas.control.PitchControl(),
-            new atlas.control.CompassControl(),
+            map.controls.add([
+                new atlas.control.ZoomControl(),
+                new atlas.control.PitchControl(),
+                new atlas.control.CompassControl(),
             new atlas.control.StyleControl({
                 mapStyles: ['road', 'satellite_road_labels', 'grayscale_dark']
             })
@@ -88,9 +88,9 @@ window.initializeAidRequestMap = function(requests) {
         await map.imageSprite.createFromTemplate('field-op-star', 'marker', 'royalblue', '#fff');
         if (SCRIPT_DEBUG) console.log('[Map] Custom FieldOp icon created.');
 
-        const aidTypesConfig = JSON.parse(document.getElementById('aid-types-json').textContent);
+            const aidTypesConfig = JSON.parse(document.getElementById('aid-types-json').textContent);
         if (SCRIPT_DEBUG) console.log('[Map] aidTypesConfig for icon creation:', aidTypesConfig);
-        await createCustomIcons(aidTypesConfig);
+                await createCustomIcons(aidTypesConfig);
 
         initializeFieldOpLayer(mapRequestsConfig.field_op);
 
@@ -99,7 +99,7 @@ window.initializeAidRequestMap = function(requests) {
             console.table(requests);
         }
         initializeAidRequestLayer(requests, aidTypesConfig);
-
+        updateMapLayer(initialFilterState); // Apply initial filter
         setupPopupLogic(requests, aidTypesConfig);
 
         if (SCRIPT_DEBUG) console.log('[Map] All layers initialized.');
@@ -196,9 +196,9 @@ window.initializeAidRequestMap = function(requests) {
     });
 
     // Add a global error listener for the map
-    map.events.add('error', (e) => {
-        console.error('[Map] CRITICAL MAP ERROR:', e.error);
-    });
+        map.events.add('error', (e) => {
+            console.error('[Map] CRITICAL MAP ERROR:', e.error);
+        });
 
 
     // Listen for events from the list view to control the popup
@@ -288,8 +288,8 @@ window.initializeAidRequestMap = function(requests) {
 
         if (!fieldOp || typeof fieldOp.latitude !== 'number' || typeof fieldOp.longitude !== 'number') {
             if (SCRIPT_DEBUG) console.warn('[Map] FieldOp config or location is missing or invalid.');
-            return;
-        }
+                return;
+            }
 
         const fieldOpDataSource = new atlas.source.DataSource();
         map.sources.add(fieldOpDataSource);
@@ -317,13 +317,13 @@ window.initializeAidRequestMap = function(requests) {
         }));
 
         map.layers.add(new atlas.layer.SymbolLayer(fieldOpDataSource, 'field-op-center-layer', {
-            iconOptions: {
+                iconOptions: {
                 image: 'field-op-star',
                 allowOverlap: true,
                 ignorePlacement: true,
                 anchor: 'center'
-            },
-            textOptions: {
+                },
+                textOptions: {
                 textField: [
                     'format',
                     ['get', 'slug'],
@@ -331,9 +331,9 @@ window.initializeAidRequestMap = function(requests) {
                 ],
                 anchor: 'top',
                 offset: [0, 0.8],
-                color: '#000000',
-                haloColor: '#FFFFFF',
-                haloWidth: 1,
+                    color: '#000000',
+                    haloColor: '#FFFFFF',
+                    haloWidth: 1,
                 font: ['SegoeUi-Bold']
             },
             filter: ['==', ['geometry-type'], 'Point']
@@ -374,20 +374,20 @@ window.initializeAidRequestMap = function(requests) {
         if (SCRIPT_DEBUG) {
             console.log("Icon expression:", JSON.stringify(iconExpression));
             console.log("Scale expression:", JSON.stringify(scaleExpression));
-        }
+            }
 
         requests.forEach(request => {
             try {
                 if (request.location && typeof request.location.latitude === 'number' && typeof request.location.longitude === 'number') {
                     const coordinates = [request.location.longitude, request.location.latitude];
                     const feature = new atlas.data.Feature(new atlas.data.Point(coordinates), {
-                        requestId: request.id,
-                        status: request.status,
-                        priority: request.priority,
+                    requestId: request.id,
+                    status: request.status,
+                    priority: request.priority,
                         aid_type: request.aid_type.slug,
                         full_address: request.full_address,
                         requester_name: request.requester_name
-                    });
+                });
                     // This is the critical fix: Set the top-level ID on the feature itself
                     // so that getShapeById() can find it.
                     feature.id = request.id;
@@ -409,27 +409,27 @@ window.initializeAidRequestMap = function(requests) {
 
         aidRequestSource.add(points);
 
-        aidRequestLayer = new atlas.layer.SymbolLayer(aidRequestSource, 'aid-request-layer', {
-            iconOptions: {
-                image: iconExpression,
+            aidRequestLayer = new atlas.layer.SymbolLayer(aidRequestSource, 'aid-request-layer', {
+                iconOptions: {
+                    image: iconExpression,
                 size: scaleExpression,
-                allowOverlap: true,
-                ignorePlacement: true,
+                    allowOverlap: true,
+                    ignorePlacement: true,
                 anchor: 'bottom'
-            },
-            textOptions: {
+                },
+                textOptions: {
                 textField: ['to-string', ['get', 'requestId']],
                 anchor: 'top',
                 offset: [0, -0.5],
                 color: 'black',
                 haloColor: 'white',
                 haloWidth: 1,
-                size: 12,
+                    size: 12,
                 font: ['SegoeUi-Bold'],
-            }
-        });
+                }
+            });
 
-        map.layers.add(aidRequestLayer);
+            map.layers.add(aidRequestLayer);
 
         if (SCRIPT_DEBUG) console.log(`[Map] Aid Request layer added.`);
     }
@@ -488,17 +488,17 @@ window.initializeAidRequestMap = function(requests) {
                 detail: { requestId: requestData.id }
             }));
         }
-    }
+        }
 
-    async function createCustomIcons(aidTypesConfig) {
+        async function createCustomIcons(aidTypesConfig) {
         if (SCRIPT_DEBUG) {
             console.log('%c[Map] Starting createCustomIcons function...', 'color: blue; font-weight: bold;');
             console.log('[Map] Received aidTypesConfig to create icons:');
             console.table(aidTypesConfig);
         }
 
-        const iconPromises = aidTypesConfig.map(async (aidType) => {
-            const iconName = aidType.slug;
+            const iconPromises = aidTypesConfig.map(async (aidType) => {
+                const iconName = aidType.slug;
             const templateName = aidType.icon_name || 'marker-circle';
             const color = aidType.icon_color || '#1A82A9';
 
@@ -514,14 +514,14 @@ window.initializeAidRequestMap = function(requests) {
                     console.log(`[Map] Icon '${iconName}' already exists. Skipping creation.`);
                 }
                 successfullyCreatedIcons.push(iconName);
-            } catch (error) {
+                } catch (error) {
                 if (SCRIPT_DEBUG) {
                     console.warn(`[Map] Failed to create icon '${iconName}' from template '${templateName}'. A default icon will be used. Error:`, error);
                 }
-            }
-        });
+                }
+            });
 
-        await Promise.all(iconPromises);
+            await Promise.all(iconPromises);
 
         if (SCRIPT_DEBUG) {
             console.log(`%c[Map] Finished createCustomIcons. ${successfullyCreatedIcons.length} of ${aidTypesConfig.length} icons created.`, 'color: blue; font-weight: bold;');
@@ -554,10 +554,10 @@ window.initializeAidRequestMap = function(requests) {
             }
         });
 
-        const aidTypesMap = aidTypesConfig.reduce((acc, aidType) => {
-            acc[aidType.slug] = aidType;
-            return acc;
-        }, {});
+            const aidTypesMap = aidTypesConfig.reduce((acc, aidType) => {
+                acc[aidType.slug] = aidType;
+                return acc;
+            }, {});
 
         function getAddressForPopup(prop) {
             const address = prop.full_address || 'Address not available';
@@ -577,7 +577,7 @@ window.initializeAidRequestMap = function(requests) {
             if (e.shapes && e.shapes.length > 0) {
                 const shapeId = e.shapes[0].id;
                 openPopupForRequestId(shapeId);
-            }
+                }
         });
 
         // Keep this simple: only change the cursor on hover to indicate clickability.
@@ -629,14 +629,14 @@ window.initializeAidRequestMap = function(requests) {
                         const originalContent = copyBtn.innerHTML;
                         copyBtn.innerHTML = 'Copied!';
                         copyBtn.disabled = true;
-                        setTimeout(() => {
+                                setTimeout(() => {
                             copyBtn.innerHTML = originalContent;
                             copyBtn.disabled = false;
-                        }, 2000);
-                    }).catch(err => {
+                                }, 2000);
+                            }).catch(err => {
                         console.error('Failed to copy text: ', err);
-                    });
-                }
+                            });
+                        }
             }
         });
     }
