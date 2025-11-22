@@ -59,44 +59,37 @@ def format_aid_location_summary(aid_location):
     return template.render(Context(context))
 
 
+# This view is hit after the initial public form submission
 class AidRequestSubmittedView(DetailView):
     model = AidRequest
     template_name = 'aidrequests/aid_request_submitted.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # self.object is the aid_request, so it's already in the context.
-        # We just need to ensure our other context variables are also set correctly.
         context['aid_request'] = self.object
         context['field_op'] = self.object.field_op
-        context['azure_maps_key'] = settings.AZURE_MAPS_KEY
         context['hide_auth_header_items'] = True
 
         # Get the most recent location, which should have been created by the post_save task.
         aid_location = self.object.locations.order_by('-created_at').first()
         context['aid_location'] = aid_location
-        context['map_ready'] = False  # Default to false
-        test_mode = 'test_map_timeout' in self.request.GET
+        context['map_ready'] = False
 
         if aid_location:
-            # If not in test mode, check if the map already exists.
-            if not test_mode and aid_location.map_filename:
+            # If the location doesn't have a map, generate one synchronously.
+            if not aid_location.map_filename:
+                ic(f"SubmittedView: Location {aid_location.pk} is missing a map. Generating synchronously.")
+                create_static_map(aid_location, synchronous=True)
+                aid_location.refresh_from_db()
+
+            # Now, check if the map exists and set context accordingly
+            if aid_location.map_filename:
                 context['map_ready'] = True
             else:
-                # Either in test mode or the map is genuinely missing.
-                # We'll wait up to 1 second, unless a test flag is set.
-                timeout_ms = 1 if test_mode else 1000
-                ic("SubmittedView: Test flag 'test_map_timeout' detected?", test_mode)
-                ic(f"SubmittedView: Location is missing or in test mode, waiting up to {timeout_ms}ms for generation.")
-                map_was_generated = create_static_map(aid_location, wait_with_timeout=timeout_ms)
+                context['map_ready'] = False
+                ic(f"SubmittedView: Map generation for {aid_location.pk} failed or did not produce a filename.")
 
-                if map_was_generated:
-                    aid_location.refresh_from_db()
-                    if aid_location.map_filename:
-                        context['map_ready'] = True
-
-            context['MEDIA_URL'] = settings.MEDIA_URL
-
+        context['MEDIA_URL'] = settings.MEDIA_URL
         return context
 
 

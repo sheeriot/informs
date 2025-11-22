@@ -431,13 +431,15 @@ def get_locations_list_partial(request, field_op, pk):
     return render(request, 'aidrequests/includes/aid_locations_list.html', context)
 
 
-@login_required
 def serve_map_file(request, field_op, aid_request_pk, filename):
     """
-    Serves a static map image after performing a security check.
-    Sets long-term cache headers as the map files are immutable.
+    Serves a static map image. It performs a security check to ensure the
+    file belongs to the request, but it does NOT require a login.
+    This allows the map to be viewed on the public "submitted" page.
     """
     try:
+        # Security check: Ensure a location exists matching all URL components.
+        # This prevents enumeration of files.
         AidLocation.objects.get(
             map_filename=filename,
             aid_request__pk=aid_request_pk,
@@ -451,6 +453,7 @@ def serve_map_file(request, field_op, aid_request_pk, filename):
 
     if os.path.exists(file_path):
         response = FileResponse(open(file_path, 'rb'))
+        # Set aggressive caching since the filename is unique and immutable
         response['Cache-Control'] = 'public, max-age=31536000, immutable'
         return response
     else:
