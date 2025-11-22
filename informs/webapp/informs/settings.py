@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 import configparser
+from icecream import ic
 # from icecream import ic
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -32,10 +33,18 @@ ENV_NAME = os.environ.get('ENV_NAME', 'sand')
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-if os.environ.get('DJANGO_DEBUG') == 'False':
+# We default to True in development if not set, but in production this should be False
+if os.environ.get('DJANGO_DEBUG', 'True').lower() == 'false':
     DEBUG = False
 else:
     DEBUG = True
+
+# Debug Toolbar settings - requires DEBUG to be True
+DEBUG_TOOLBAR = False
+if DEBUG and os.environ.get('DEBUG_TOOLBAR', 'False').lower() == 'true':
+    DEBUG_TOOLBAR = True
+
+ic(DEBUG, DEBUG_TOOLBAR)
 
 SERVERNAME1 = os.environ.get('SERVERNAME1', 'localhost')
 SERVERNAME2 = os.environ.get('SERVERNAME2', 'localhost')
@@ -130,7 +139,6 @@ INSTALLED_APPS = [
     'django_bootstrap_icons',
     'django_q',
     'django_filters',
-    # 'debug_toolbar',
     'auditlog',
     'tz_detect',
     'crispy_forms',
@@ -151,7 +159,6 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
-    # 'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -160,6 +167,55 @@ MIDDLEWARE = [
     'tz_detect.middleware.TimezoneMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
 ]
+
+if DEBUG_TOOLBAR:
+    INSTALLED_APPS.append('debug_toolbar')
+    INSTALLED_APPS.append('template_profiler_panel')
+    # Insert after AuthenticationMiddleware so we can check request.user
+    try:
+        auth_idx = MIDDLEWARE.index('django.contrib.auth.middleware.AuthenticationMiddleware')
+        MIDDLEWARE.insert(auth_idx + 1, 'debug_toolbar.middleware.DebugToolbarMiddleware')
+    except ValueError:
+        MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
+
+    # Internal IPS for Docker
+    INTERNAL_IPS = [
+        "127.0.0.1",
+        "localhost",
+    ]
+    # Add the docker container IP
+    import socket
+    try:
+        hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
+        INTERNAL_IPS += [".".join(ip.split(".")[:-1] + ["1"]) for ip in ips]
+    except Exception:
+        pass
+
+    # Show toolbar only if user is logged in
+    def show_toolbar(request):
+        if request.user.is_authenticated:
+            return True
+        return False
+
+    DEBUG_TOOLBAR_CONFIG = {
+        'SHOW_TOOLBAR_CALLBACK': show_toolbar,
+    }
+
+    DEBUG_TOOLBAR_PANELS = [
+        'debug_toolbar.panels.versions.VersionsPanel',
+        'debug_toolbar.panels.timer.TimerPanel',
+        'debug_toolbar.panels.settings.SettingsPanel',
+        'debug_toolbar.panels.headers.HeadersPanel',
+        'debug_toolbar.panels.request.RequestPanel',
+        'debug_toolbar.panels.sql.SQLPanel',
+        'debug_toolbar.panels.staticfiles.StaticFilesPanel',
+        'debug_toolbar.panels.templates.TemplatesPanel',
+        'debug_toolbar.panels.cache.CachePanel',
+        'debug_toolbar.panels.signals.SignalsPanel',
+        'debug_toolbar.panels.redirects.RedirectsPanel',
+        'debug_toolbar.panels.profiling.ProfilingPanel',
+        'template_profiler_panel.panels.template.TemplateProfilerPanel',
+    ]
 
 ROOT_URLCONF = 'informs.urls'
 

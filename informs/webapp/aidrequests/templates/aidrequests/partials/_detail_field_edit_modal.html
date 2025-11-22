@@ -1,5 +1,4 @@
 {% load crispy_forms_tags %}
-{% load bootstrap_icons %}
 
 <div class="modal-header">
     <h5 class="modal-title" id="genericEditModalLabel">Edit {{ field_label }}</h5>
@@ -19,16 +18,16 @@
         <div class="form-check form-switch me-3">
             <input class="form-check-input" type="checkbox" role="switch" id="edit-confirmation-toggle">
             <label class="form-check-label" for="edit-confirmation-toggle">
-                {% bs_icon 'eye-fill' %} Confirm Change
+                <i class="bi bi-eye-fill"></i> Confirm Change
             </label>
         </div>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            <span class="text-nowrap">{% bs_icon 'x-circle' %} Cancel</span>
+            <span class="text-nowrap"><i class="bi bi-x-circle"></i> Cancel</span>
         </button>
     </div>
     <div>
         <button type="submit" form="generic-edit-form" id="generic-save-button" class="btn btn-primary d-none">
-            <span class="text-nowrap">{% bs_icon 'check-circle-fill' %} Save {{ field_label }} Changes</span>
+            <span class="text-nowrap"><i class="bi bi-check-circle-fill"></i> Save {{ field_label }} Changes</span>
         </button>
     </div>
 </div>

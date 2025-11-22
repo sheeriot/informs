@@ -1,5 +1,3 @@
-{% load bootstrap_icons %}
-
 <div class="card" id="aid-request-details-card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center">
@@ -8,11 +6,11 @@
             </h5>
             <h5 class="mb-0 me-3">
                 <span id="aid-type-display" class="fw-normal text-nowrap">
-                    {% bs_icon aid_request.aid_type.bs_icon|default:'question-circle' %} {{ aid_request.aid_type.name }}
+                    <i class="bi bi-{{ aid_request.aid_type.bs_icon|default:'question-circle' }}"></i> {{ aid_request.aid_type.name }}
                 </span>
             {% if request.user.is_superuser %}
                 <a data-bs-toggle="modal" data-bs-target="#changeAidTypeModal" title="Change Aid Type" class="text-warning text-decoration-none ms-1">
-                    {% bs_icon 'wrench' %}
+                    <i class="bi bi-wrench"></i>
                 </a>
             {% endif %}
             </h5>

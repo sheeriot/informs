@@ -659,3 +659,10 @@ This is applied via the `className` option in the atlas.Popup constructor.
 tr.aidrequest-selected > td {
     background-color: #d1e7dd !important; /* A hardcoded light green (Bootstrap's bg-success-subtle) */
 }
+
+/* Fade out animation for hidden rows */
+.fade-out-row {
+    transition: opacity 3s ease-out, background-color 3s ease-out;
+    opacity: 0;
+    /* Optionally, collapse the height too, but opacity is often cleaner for 'fading' visually first */
+}

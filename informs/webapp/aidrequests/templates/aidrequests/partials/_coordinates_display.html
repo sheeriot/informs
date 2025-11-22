@@ -1,5 +1,3 @@
-{% load bootstrap_icons %}
-
 <div class="d-inline-flex align-items-center border rounded bg-light px-1">
     <span class="font-monospace text-nowrap" id="{{ element_id }}">{{ latitude|floatformat:5 }},{{ longitude|floatformat:5 }}</span>
     <button class="btn btn-link text-secondary btn-sm py-0 ps-1 border-0 btn-copy-coords"
@@ -7,6 +5,6 @@
             data-copy-text="{{ latitude|floatformat:5 }},{{ longitude|floatformat:5 }}"
             onclick="copyCoords(this)"
             title="Copy to clipboard">
-        {% bs_icon 'clipboard' %}
+        <i class="bi bi-clipboard"></i>
     </button>
 </div>

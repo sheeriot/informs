@@ -19,22 +19,31 @@ def staticmap_aid(width=600, height=400,
                   aid1_lat=0.0, aid1_lon=0.0):
 
     # --- Calculate Center Point ---
-    center_lon = (float(fieldop_lon) + float(aid1_lon)) / 2
-    center_lat = (float(fieldop_lat) + float(aid1_lat)) / 2
+    # Handle cases where lat/lon might be None or non-numeric
+    try:
+        f_lat = float(fieldop_lat) if fieldop_lat is not None else 0.0
+        f_lon = float(fieldop_lon) if fieldop_lon is not None else 0.0
+        a_lat = float(aid1_lat) if aid1_lat is not None else 0.0
+        a_lon = float(aid1_lon) if aid1_lon is not None else 0.0
+    except (ValueError, TypeError):
+        f_lat, f_lon, a_lat, a_lon = 0.0, 0.0, 0.0, 0.0
+
+    center_lon = (f_lon + a_lon) / 2
+    center_lat = (f_lat + a_lat) / 2
 
     # --- Calculate Distance and Zoom ---
     try:
-        distance_km = geodesic((fieldop_lat, fieldop_lon), (aid1_lat, aid1_lon)).kilometers
+        distance_km = geodesic((f_lat, f_lon), (a_lat, a_lon)).kilometers
     except Exception:
         distance_km = 0
 
     zoom = calculate_zoom(distance_km)
 
     # Correct Pin Format
-    pin1 = f"default|co008000|lcFFFFFF||'OP'{fieldop_lon} {fieldop_lat}"
-    pin2 = f"default|coFF0000|lcFFFFFF||'AID'{aid1_lon} {aid1_lat}"
+    pin1 = f"default|co008000|lcFFFFFF||'OP'{f_lon} {f_lat}"
+    pin2 = f"default|coFF0000|lcFFFFFF||'AID'{a_lon} {a_lat}"
 
-    raw_path = f"lcFF1493||{fieldop_lon} {fieldop_lat}|{aid1_lon} {aid1_lat}"
+    raw_path = f"lcFF1493||{f_lon} {f_lat}|{a_lon} {a_lat}"
 
     url = "https://atlas.microsoft.com/map/static"
 
@@ -122,11 +131,18 @@ def staticmap_fieldop(width=600, height=400, latitude=0.0, longitude=0.0, zoom=1
         logger.warning(f"Non-PNG response for FieldOp map: {response.text}")
         return None
 
-def create_static_map(location, wait_with_timeout: int = None):
+def create_static_map(location, wait_with_timeout: int = None, synchronous: bool = False):
     """
-    Enqueues a task to generate a static map for an AidLocation.
-    Optionally waits for the task to complete and returns the filename.
+    Generates a static map for an AidLocation.
+    If synchronous=True, runs the task immediately in the current thread.
+    Otherwise, enqueues a background task.
+    Optionally waits for the task to complete (if async) and returns the filename.
     """
+    if synchronous:
+        from ..tasks import generate_static_map_for_location
+        result = generate_static_map_for_location(location.pk)
+        return result.get('map_filename') if result.get('status') == 'success' else None
+
     task_name = f"GenerateMap_L{location.pk}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
     async_task(
         'aidrequests.tasks.generate_static_map_for_location',

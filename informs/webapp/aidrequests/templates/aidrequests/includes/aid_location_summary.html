@@ -1,4 +1,3 @@
-{% load bootstrap_icons %}
 {% if location %}
 <div class="location-summary-card" data-location-id="{{ location.pk }}" {% if url_check_map_status %}data-check-map-url="{{ url_check_map_status }}"{% endif %}>
     <table class="table table-bordered table-data caption-top me-2 border border-3 border-primary">
@@ -24,7 +23,7 @@
                 <div class="d-flex align-items-center">
                     <strong class="me-2">Geocode JSON</strong>
                     <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#geocodeJsonCollapse-{{ location.pk }}" aria-expanded="false" aria-controls="geocodeJsonCollapse-{{ location.pk }}">
-                        <span class="text-nowrap">{% bs_icon 'card-text' %} Details</span>
+                        <span class="text-nowrap"><i class="bi bi-card-text"></i> Details</span>
                     </button>
                 </div>
                 <div class="collapse" id="geocodeJsonCollapse-{{ location.pk }}">

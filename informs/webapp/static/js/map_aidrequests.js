@@ -11,45 +11,39 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
     const SCRIPT_DEBUG = false;
     let mapRequestsConfig = {};
     let successfullyCreatedIcons = [];
-        let aidRequestLayer;
-        let aidRequestSource;
+    let aidRequestLayer;
+    let aidRequestSource;
+    let currentLayerFilterState = null; // Store the current filter state
 
     const configEl = document.getElementById('aid-requests-config-json');
     if (configEl) {
         try {
-            // Load config from backend but ignore its debug flag
+            // Load config from backend
             const backendConfig = JSON.parse(configEl.textContent);
-            delete backendConfig.debug;
             Object.assign(mapRequestsConfig, backendConfig);
         } catch (e) {
             console.error('[Map] Failed to parse config JSON.', e);
         }
-    } else {
-        console.error('[Map] Config JSON element not found.');
     }
-     if (SCRIPT_DEBUG) console.log('[Map] Initializing...');
 
     const mapContainer = document.getElementById('aid-request-map-container');
-        if (!mapContainer) {
+    if (!mapContainer) {
         console.error('[Map] Map container not found during initialization.');
-            return;
-        }
-
-    const subscriptionKey = mapContainer.dataset.mapsSubscriptionKey;
-    if (SCRIPT_DEBUG) {
-        console.log('[Map] Subscription Key:', subscriptionKey ? 'Found' : 'NOT FOUND');
+        return;
     }
 
+    const subscriptionKey = mapContainer.dataset.mapsSubscriptionKey;
     const initialBoundsString = mapContainer.dataset.initialBounds;
     let initialBounds = null;
     if (initialBoundsString) {
         try {
             initialBounds = JSON.parse(initialBoundsString);
-            if (SCRIPT_DEBUG) console.log('[Map] Initial bounds from backend:', initialBounds);
         } catch (e) {
             console.error('[Map] Error parsing initial bounds:', e);
         }
     }
+
+    if (SCRIPT_DEBUG) console.log('[Map] Initializing...');
 
     // Initialize the map
     map = new atlas.Map(mapContainer, {
@@ -63,21 +57,18 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
     });
 
     // Wait until the map resources are ready.
-        map.events.add('ready', async () => {
-        if (SCRIPT_DEBUG) console.log('[Map] Map is ready. Proceeding with layer setup.');
+    map.events.add('ready', async () => {
+        if (SCRIPT_DEBUG) console.log('[Map] Map is ready.');
 
         if (initialBounds) {
-            if (SCRIPT_DEBUG) console.log('[Map] Setting camera to initial bounds:', initialBounds);
             map.setCamera({ bounds: initialBounds, padding: 50 });
-        } else if (SCRIPT_DEBUG) {
-            console.warn('[Map] No initial bounds to set camera.');
         }
 
         // Add all controls in one consolidated block.
-            map.controls.add([
-                new atlas.control.ZoomControl(),
-                new atlas.control.PitchControl(),
-                new atlas.control.CompassControl(),
+        map.controls.add([
+            new atlas.control.ZoomControl(),
+            new atlas.control.PitchControl(),
+            new atlas.control.CompassControl(),
             new atlas.control.StyleControl({
                 mapStyles: ['road', 'satellite_road_labels', 'grayscale_dark']
             })
@@ -86,102 +77,73 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
 
         // Create a custom icon for the field op using a VALID built-in template name
         await map.imageSprite.createFromTemplate('field-op-star', 'marker', 'royalblue', '#fff');
-        if (SCRIPT_DEBUG) console.log('[Map] Custom FieldOp icon created.');
 
-            const aidTypesConfig = JSON.parse(document.getElementById('aid-types-json').textContent);
-        if (SCRIPT_DEBUG) console.log('[Map] aidTypesConfig for icon creation:', aidTypesConfig);
-                await createCustomIcons(aidTypesConfig);
+        const aidTypesConfig = JSON.parse(document.getElementById('aid-types-json').textContent);
+        await createCustomIcons(aidTypesConfig);
 
         initializeFieldOpLayer(mapRequestsConfig.field_op);
-
-        if (SCRIPT_DEBUG) {
-            console.log('[Map] Checking integrity of aid request data before initializing layer...');
-            console.table(requests);
-        }
         initializeAidRequestLayer(requests, aidTypesConfig);
+
         updateMapLayer(initialFilterState); // Apply initial filter
         setupPopupLogic(requests, aidTypesConfig);
 
         if (SCRIPT_DEBUG) console.log('[Map] All layers initialized.');
 
         document.body.addEventListener('filterStateChange', (e) => {
-            if (SCRIPT_DEBUG) console.log('[Map] Received filterStateChange event. Updating map layer.', e.detail);
+            if (SCRIPT_DEBUG) console.log('[Map] Filter change received.', e.detail);
             updateMapLayer(e.detail);
         });
 
         document.body.addEventListener('mapShouldUpdateFilter', (e) => {
-            if (SCRIPT_DEBUG) console.log('[Map] Received mapShouldUpdateFilter event. Updating map layer.', e.detail);
+            if (SCRIPT_DEBUG) console.log('[Map] Should update filter.', e.detail);
             updateMapLayer(e.detail);
         });
 
         // Listen for updates from the list view (e.g., status/priority changes)
         document.body.addEventListener('aidRequestUpdated', function (e) {
             try {
-                if (SCRIPT_DEBUG) console.log('[Map] Received aidRequestUpdated event. Synchronizing data store and points on map.', e.detail);
-
                 const updatedRequest = e.detail.request;
-                if (!updatedRequest || !updatedRequest.id || !Array.isArray(updatedRequest.locations)) {
-                    console.error('[Map] Invalid data received in aidRequestUpdated event.', e.detail);
-                    return;
-                }
+                if (!updatedRequest || !updatedRequest.id) return;
 
-                if (!aidRequestSource) {
-                    console.error('[Map] aidRequestSource is not initialized. Cannot process update.');
-                    return;
-                }
-
-                const newLocationIds = new Set(updatedRequest.locations.map(loc => loc.id));
-                const shapes = aidRequestSource.getShapes();
-                const currentShapeIds = new Set(shapes.map(shape => shape.getId()));
-
-                // 1. Remove shapes that no longer exist
-                const shapesToRemove = [];
-                currentShapeIds.forEach(shapeId => {
-                    // Find the corresponding aid request ID
-                    const shape = aidRequestSource.getShapeById(shapeId);
-                    const props = shape ? shape.getProperties() : {};
-                    // Since one aid request can have multiple locations, we check if any location for this aid request still exists.
-                    // THIS IS A SIMPLIFICATION. The map currently only shows one location per aid request.
-                    // The main list page map shows many aid requests, each with one primary location.
-                    // The detail page map shows one aid request with potentially many locations.
-                    // This logic assumes we're on the list page.
-                    if (props.requestId === updatedRequest.id) {
-                         // This is not quite right. A single request has one point on the list map.
-                         // Let's stick to the main point: if the request's primary location changes, or is gone.
+                // Ensure locations is an array
+                if (!Array.isArray(updatedRequest.locations)) {
+                    if (updatedRequest.location) {
+                       updatedRequest.locations = [updatedRequest.location];
+                    } else {
+                        console.error('[Map] Invalid location data in aidRequestUpdated.');
+                        return;
                     }
-                    // A better check is needed. For now, let's assume the shape ID is the location ID.
-                    // This is incorrect based on how points are created. The shape ID is the request ID.
+                }
 
-                });
+                if (!aidRequestSource) return;
 
-
-                // Let's re-think. The list page shows one point per request (the primary location).
-                // If a location is deleted, the primary location for that request might change.
                 const shapeToUpdate = aidRequestSource.getShapeById(updatedRequest.id);
                 const primaryLocation = updatedRequest.locations.find(l => l.is_primary);
 
                 if (shapeToUpdate) {
                     if (primaryLocation) {
                         // Location exists, update it.
-                        if (SCRIPT_DEBUG) console.log(`[Map] Updating shape for request #${updatedRequest.id}`);
                         shapeToUpdate.setCoordinates([primaryLocation.longitude, primaryLocation.latitude]);
                         const props = shapeToUpdate.getProperties();
                         props.status = updatedRequest.status;
                         props.priority = updatedRequest.priority || 'none';
-                        // Add any other properties that might change, like address
                         shapeToUpdate.setProperties(props);
+                        if (SCRIPT_DEBUG) console.log(`[Map] Updated shape for request #${updatedRequest.id}`);
                     } else {
                         // No primary location left, remove the point from the map.
-                        if (SCRIPT_DEBUG) console.log(`[Map] No primary location for request #${updatedRequest.id}. Removing shape.`);
                         aidRequestSource.remove(shapeToUpdate);
+                        if (SCRIPT_DEBUG) console.log(`[Map] Removed shape for request #${updatedRequest.id}`);
+                    }
+
+                    // RE-APPLY FILTER TO UPDATE VISIBILITY
+                    if (currentLayerFilterState) {
+                        updateMapLayer(currentLayerFilterState);
                     }
                 }
 
                 // If the updated request matches the currently open popup, refresh or close it.
                 if (window.aidRequestPopup && window.aidRequestPopup.isOpen() && window.currentPopupRequestId === updatedRequest.id) {
                     if (primaryLocation) {
-                        if (SCRIPT_DEBUG) console.log('[Map] Refreshing open popup with updated data.');
-                        const newHtmlContent = createPopupContent(updatedRequest); // This function needs the whole request object.
                         // We need to find the full request object in our main `requests` array to pass to createPopupContent
                         const fullRequestData = requests.find(r => r.id === updatedRequest.id);
                         if(fullRequestData) {
@@ -197,33 +159,29 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
                              });
                         }
                     } else {
-                         if (SCRIPT_DEBUG) console.log('[Map] Closing popup because primary location was deleted.');
                          window.aidRequestPopup.close();
                     }
                 }
 
             } catch (error) {
-                console.error('[Map] Error processing aidRequestUpdated event:', error, e.detail);
+                console.error('[Map] Error processing aidRequestUpdated:', error);
             }
         });
     });
 
     // Add a global error listener for the map
-        map.events.add('error', (e) => {
-            console.error('[Map] CRITICAL MAP ERROR:', e.error);
-        });
+    map.events.add('error', (e) => {
+        console.error('[Map] CRITICAL MAP ERROR:', e.error);
+    });
 
 
     // Listen for events from the list view to control the popup
     document.body.addEventListener('showPopupForRequest', (e) => {
-        const requestId = e.detail.requestId;
-        if (SCRIPT_DEBUG) console.log(`[Map] Received showPopupForRequest event for ID ${requestId}`);
-        openPopupForRequestId(requestId);
+        openPopupForRequestId(e.detail.requestId);
     });
 
     document.body.addEventListener('closePopupOnMap', (e) => {
         if (window.aidRequestPopup && window.aidRequestPopup.isOpen()) {
-            if (SCRIPT_DEBUG) console.log(`[Map] Received closePopupOnMap event.`);
             window.aidRequestPopup.close();
         }
     });
@@ -243,27 +201,24 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
         const pointToUpdate = aidRequestSource.getShapeById(requestId);
 
         if (pointToUpdate) {
-            if (SCRIPT_DEBUG) console.log(`[Map] Updating point #${requestId} with status: ${newStatus}, priority: ${newPriority}`);
             const currentProps = pointToUpdate.getProperties();
             currentProps.status = newStatus;
             currentProps.priority = newPriority;
             pointToUpdate.setProperties(currentProps);
-        } else if (SCRIPT_DEBUG) {
-            console.warn(`[Map] Could not find point with ID ${requestId} to update.`);
         }
     });
 
     function updateMapLayer(filterState) {
-        if (!map || !aidRequestLayer) {
-            if (SCRIPT_DEBUG) console.warn('[Map] updateMapLayer called but map or aidRequestLayer not ready.');
+        if (!map || !aidRequestLayer) return;
+
+        if (!filterState) {
+            aidRequestLayer.setOptions({ filter: null });
+            currentLayerFilterState = null;
             return;
         }
 
-        if (!filterState) {
-            if (SCRIPT_DEBUG) console.log('[Map] No filter state provided. Clearing layer filter.');
-            aidRequestLayer.setOptions({ filter: null });
-            return;
-        }
+        // Store the valid filter state for later re-use (e.g. after point updates)
+        currentLayerFilterState = filterState;
 
         const filters = [];
 
@@ -282,11 +237,42 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
 
         const combinedFilter = filters.length > 1 ? ['all', ...filters] : filters[0] || null;
 
-        if (SCRIPT_DEBUG) console.log('[Map] Constructed layer filter:', JSON.stringify(combinedFilter));
-
         try {
             aidRequestLayer.setOptions({ filter: combinedFilter });
-            if (SCRIPT_DEBUG) console.log('[Map] Layer filter applied successfully.');
+
+            // Re-calculate visible points count based on the new filter
+            if (aidRequestSource) {
+                const allShapes = aidRequestSource.getShapes();
+                let visibleCount = 0;
+                allShapes.forEach(shape => {
+                    const props = shape.getProperties();
+                    // Check Status
+                    let statusMatch = true;
+                    if (filterState.status && filterState.status.length > 0) {
+                        statusMatch = filterState.status.includes(props.status);
+                    }
+                    // Check Priority
+                    let priorityMatch = true;
+                    if (filterState.priority && filterState.priority !== 'all') {
+                        const p = props.priority || 'none';
+                        priorityMatch = filterState.priority.includes(p);
+                    }
+                    // Check Aid Type
+                    let aidTypeMatch = true;
+                    if (filterState.aid_type && filterState.aid_type !== 'all') {
+                        aidTypeMatch = filterState.aid_type.includes(props.aid_type);
+                    }
+
+                    if (statusMatch && priorityMatch && aidTypeMatch) {
+                        visibleCount++;
+                    }
+                });
+                const countElement = document.getElementById('map-location-count');
+                if (countElement) {
+                    countElement.textContent = `${visibleCount} Locations`;
+                }
+            }
+
         } catch (e) {
             console.error('[Map] Error applying layer filter:', e);
         }
@@ -294,11 +280,6 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
 
 
     function initializeFieldOpLayer(fieldOp) {
-        if (SCRIPT_DEBUG) {
-            console.log('[Map] Initializing FieldOp Layer.');
-            console.log('[Map] FieldOp Config:', fieldOp);
-        }
-
         if (!fieldOp || typeof fieldOp.latitude !== 'number' || typeof fieldOp.longitude !== 'number') {
             if (SCRIPT_DEBUG) console.warn('[Map] FieldOp config or location is missing or invalid.');
                 return;
@@ -319,8 +300,6 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
             fieldOpDataSource.add(new atlas.data.Feature(circlePolygon, {
                 name: 'Field Operation Radius'
             }));
-        } else if (SCRIPT_DEBUG) {
-            console.warn('[Map] FieldOp radius is missing or invalid. Skipping circle.', fieldOp.ring_size);
         }
 
         map.layers.add(new atlas.layer.LineLayer(fieldOpDataSource, 'field-op-radius-layer-line', {
@@ -351,13 +330,9 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
             },
             filter: ['==', ['geometry-type'], 'Point']
         }));
-
-        if (SCRIPT_DEBUG) console.log('[Map] FieldOp layer initialized.');
     }
 
     function initializeAidRequestLayer(requests, aidTypesConfig) {
-        // console.log('%c[Map] Initializing Aid Request Layer', 'color: green; font-weight: bold;');
-
         const points = [];
         aidRequestSource = new atlas.source.DataSource();
         map.sources.add(aidRequestSource);
@@ -384,77 +359,64 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
             scaleExpression.push(1.0);
         }
 
-        if (SCRIPT_DEBUG) {
-            console.log("Icon expression:", JSON.stringify(iconExpression));
-            console.log("Scale expression:", JSON.stringify(scaleExpression));
-            }
-
         requests.forEach(request => {
             try {
                 if (request.location && typeof request.location.latitude === 'number' && typeof request.location.longitude === 'number') {
                     const coordinates = [request.location.longitude, request.location.latitude];
                     const feature = new atlas.data.Feature(new atlas.data.Point(coordinates), {
-                    requestId: request.id,
-                    status: request.status,
-                    priority: request.priority,
+                        requestId: request.id,
+                        status: request.status,
+                        priority: request.priority,
                         aid_type: request.aid_type.slug,
-                        full_address: request.full_address,
+                        provided_address: request.provided_address,
                         requester_name: request.requester_name
-                });
-                    // This is the critical fix: Set the top-level ID on the feature itself
-                    // so that getShapeById() can find it.
+                    });
+                    // Set top-level ID for getShapeById()
                     feature.id = request.id;
                     points.push(feature);
-                } else if (SCRIPT_DEBUG) {
-                    console.warn(`[Map] Skipping request #${request.id} due to missing or invalid location data.`, { location: request.location });
                 }
             } catch (error) {
-                if (SCRIPT_DEBUG) {
-                    console.error(`[Map] Failed to process aid request #${request.id} for map point.`, { error: error, request: request });
-                }
+                if (SCRIPT_DEBUG) console.error(`[Map] Error processing request #${request.id}:`, error);
             }
         });
 
-        if (SCRIPT_DEBUG) {
-            console.log(`Preparing to add ${points.length} points to the data source.`);
-            console.table(points.map(p => p.properties));
-        }
-
         aidRequestSource.add(points);
 
-            aidRequestLayer = new atlas.layer.SymbolLayer(aidRequestSource, 'aid-request-layer', {
-                iconOptions: {
-                    image: iconExpression,
+        // Update the location count badge
+        const countElement = document.getElementById('map-location-count');
+        if (countElement) {
+            countElement.textContent = `${points.length} Locations`;
+        }
+
+        aidRequestLayer = new atlas.layer.SymbolLayer(aidRequestSource, 'aid-request-layer', {
+            iconOptions: {
+                image: iconExpression,
                 size: scaleExpression,
-                    allowOverlap: true,
-                    ignorePlacement: true,
+                allowOverlap: true,
+                ignorePlacement: true,
                 anchor: 'bottom'
-                },
-                textOptions: {
+            },
+            textOptions: {
                 textField: ['to-string', ['get', 'requestId']],
                 anchor: 'top',
                 offset: [0, -0.5],
                 color: 'black',
                 haloColor: 'white',
                 haloWidth: 1,
-                    size: 12,
+                size: 12,
+                allowOverlap: true,
+                ignorePlacement: true,
                 font: ['SegoeUi-Bold'],
-                }
-            });
+            }
+        });
 
-            map.layers.add(aidRequestLayer);
-
-        if (SCRIPT_DEBUG) console.log(`[Map] Aid Request layer added.`);
+        map.layers.add(aidRequestLayer);
     }
 
     function openPopupForRequestId(requestId) {
         const shape = aidRequestSource.getShapeById(requestId);
-        if (!shape) {
-            console.error(`[Map] Could not find shape for request ID ${requestId} to open popup.`);
-            return;
-        }
+        if (!shape) return;
 
-        if (SCRIPT_DEBUG) console.log('[Map] Opening popup for shape, closing existing popup if any.');
         if (window.aidRequestPopup) {
             window.aidRequestPopup.close();
         }
@@ -464,7 +426,6 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
         const requestData = requests.find(r => r.id === properties.requestId);
 
         if (requestData) {
-            if (SCRIPT_DEBUG) console.log('[Map] Creating popup, attaching hover listeners.');
             const htmlContent = createPopupContent(requestData);
 
             window.currentPopupRequestId = requestData.id;
@@ -473,24 +434,16 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
             tempDiv.innerHTML = htmlContent;
             const contentElement = tempDiv.firstElementChild;
 
-            contentElement.addEventListener('mouseenter', () => {
-                window.isHoveringPopup = true;
-            });
-            contentElement.addEventListener('mouseleave', () => {
-                window.isHoveringPopup = false;
-                if (window.aidRequestPopup) window.aidRequestPopup.close();
-            });
-
             window.aidRequestPopup.setOptions({
                 content: contentElement,
                 position: shape.getCoordinates(),
-                pixelOffset: [0, -25] // Reduced from -40
+                pixelOffset: [0, -25]
             });
 
             map.events.add('open', window.aidRequestPopup, () => {
                 const popupWrapper = contentElement.parentElement?.parentElement;
                 if (popupWrapper && popupWrapper.classList.contains('atlas-popup-anchor-top')) {
-                    window.aidRequestPopup.setOptions({ pixelOffset: [0, 35] }); // Increased from 25
+                    window.aidRequestPopup.setOptions({ pixelOffset: [0, 35] });
                 }
             }, { once: true });
 
@@ -504,42 +457,23 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
         }
 
         async function createCustomIcons(aidTypesConfig) {
-        if (SCRIPT_DEBUG) {
-            console.log('%c[Map] Starting createCustomIcons function...', 'color: blue; font-weight: bold;');
-            console.log('[Map] Received aidTypesConfig to create icons:');
-            console.table(aidTypesConfig);
-        }
-
             const iconPromises = aidTypesConfig.map(async (aidType) => {
                 const iconName = aidType.slug;
             const templateName = aidType.icon_name || 'marker-circle';
             const color = aidType.icon_color || '#1A82A9';
 
             try {
-                // Check if the image already exists before trying to create it
                 if (!map.imageSprite.hasImage(iconName)) {
-                    if (SCRIPT_DEBUG) {
-                        console.log(`[Map] Creating icon: name='${iconName}', template='${templateName}', color='${color}'`);
-                    }
-                    await map.imageSprite.createFromTemplate(iconName, templateName, color, '#FFFFFF');
-                    if (SCRIPT_DEBUG) console.log(`[Map] Custom icon '${iconName}' created from template '${templateName}'.`);
-                } else if (SCRIPT_DEBUG) {
-                    console.log(`[Map] Icon '${iconName}' already exists. Skipping creation.`);
+                    const safeColor = color || '#1A82A9';
+                    await map.imageSprite.createFromTemplate(iconName, templateName, safeColor, '#FFFFFF');
                 }
                 successfullyCreatedIcons.push(iconName);
-                } catch (error) {
-                if (SCRIPT_DEBUG) {
-                    console.warn(`[Map] Failed to create icon '${iconName}' from template '${templateName}'. A default icon will be used. Error:`, error);
-                }
-                }
-            });
+            } catch (error) {
+                if (SCRIPT_DEBUG) console.warn(`[Map] Failed to create icon '${iconName}'.`, error);
+            }
+        });
 
-            await Promise.all(iconPromises);
-
-        if (SCRIPT_DEBUG) {
-            console.log(`%c[Map] Finished createCustomIcons. ${successfullyCreatedIcons.length} of ${aidTypesConfig.length} icons created.`, 'color: blue; font-weight: bold;');
-            console.log('[Map] Successfully created icons:', successfullyCreatedIcons);
-        }
+        await Promise.all(iconPromises);
     }
 
     function setupPopupLogic(requests, aidTypesConfig) {
@@ -552,7 +486,7 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
         // Initialize the popup with a closer offset and a white background.
         window.aidRequestPopup = new atlas.Popup({
             pixelOffset: [0, -25],
-            closeButton: false,
+            closeButton: true,
             fillColor: 'rgba(255, 255, 255, 0.95)', // Reverted to white, kept high opacity
             className: 'popup-with-enhanced-pointer'
         });
@@ -573,7 +507,7 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
             }, {});
 
         function getAddressForPopup(prop) {
-            const address = prop.full_address || 'Address not available';
+            const address = prop.provided_address || 'Address not available';
             if (address.includes(', ')) {
                 const parts = address.split(', ');
                 if (parts.length > 1) {
@@ -590,7 +524,12 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
             if (e.shapes && e.shapes.length > 0) {
                 const shapeId = e.shapes[0].id;
                 openPopupForRequestId(shapeId);
-                }
+
+                // Highlight the row in the list, similar to the view-on-map button
+                document.body.dispatchEvent(new CustomEvent('popupOpenedOnMap', {
+                    detail: { requestId: shapeId }
+                }));
+            }
         });
 
         // Keep this simple: only change the cursor on hover to indicate clickability.

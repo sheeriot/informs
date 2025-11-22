@@ -1,6 +1,5 @@
 {% load markdown_tags %}
 {% load actionlog_tags %}
-{% load bootstrap_icons %}
 
 <tr data-log-id="{{ log.pk }}" data-timestamp="{{ log.created_at.isoformat }}"
     class="{% if log.log_type == 'user' or log.log_type == 'location' %}table-warning
@@ -44,7 +43,7 @@
                             hx-get="{% url 'get_action_log_edit_form' field_op=log.aid_request.field_op.slug aid_request_pk=log.aid_request.pk pk=log.pk %}"
                             hx-target="closest tr"
                             hx-swap="outerHTML">
-                        {% bs_icon 'pencil' %} Edit
+                        <i class="bi bi-pencil"></i> Edit
                     </button>
                 {% endif %}
             </div>

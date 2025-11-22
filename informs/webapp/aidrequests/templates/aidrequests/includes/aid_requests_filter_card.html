@@ -71,7 +71,7 @@
                                                 {% for status_code, status_name in status_choices_list %}
                                                     {% if status_code in status_groups.active %}
                                                         {% with choice_data=status_counts|get_item:status_name %}
-                                                            {% include 'aidrequests/partials/_filter_choice.html' with id='status-filter-'|add:status_code filter_type='status' filter_value=status_code label=status_name count=choice_data.count checked_by_default=choice_data.checked_by_default icon_template='aidrequests/includes/status_icon.html' icon_context_value=status_code %}
+                                                            {% include 'aidrequests/partials/_filter_choice.html' with id='status-filter-'|add:status_code filter_type='status' filter_value=status_code label=status_name count=choice_data.count checked_by_default=choice_data.checked_by_default icon_template='aidrequests/partials/_status_icon.html' icon_context_value=status_code %}
                                                         {% endwith %}
                                                     {% endif %}
                                                 {% endfor %}
@@ -99,7 +99,7 @@
                                                 {% for status_code, status_name in status_choices_list %}
                                                     {% if status_code in status_groups.inactive %}
                                                         {% with choice_data=status_counts|get_item:status_name %}
-                                                             {% include 'aidrequests/partials/_filter_choice.html' with id='status-filter-'|add:status_code filter_type='status' filter_value=status_code label=status_name count=choice_data.count checked_by_default=choice_data.checked_by_default icon_template='aidrequests/includes/status_icon.html' icon_context_value=status_code %}
+                                                             {% include 'aidrequests/partials/_filter_choice.html' with id='status-filter-'|add:status_code filter_type='status' filter_value=status_code label=status_name count=choice_data.count checked_by_default=choice_data.checked_by_default icon_template='aidrequests/partials/_status_icon.html' icon_context_value=status_code %}
                                                         {% endwith %}
                                                     {% endif %}
                                                 {% endfor %}

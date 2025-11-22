@@ -10,40 +10,35 @@
     const SCRIPT_DEBUG = false;
 
     let allAidRequests = [];
-    let listScriptConfig = {}; // Default config, debug is now handled by SCRIPT_DEBUG
+    let listScriptConfig = {};
     let isInitialized = false;
     let selectedRequestId = null;
 
-    document.addEventListener('DOMContentLoaded', function () {
-        initialize();
-    });
+    document.addEventListener('DOMContentLoaded', initialize);
 
     /**
      * Main initialization function. Sets up everything.
      */
     function initialize() {
-        if (isInitialized) {
-            return;
-        }
+        if (isInitialized) return;
         isInitialized = true;
 
-        if (SCRIPT_DEBUG) console.log('[List Script] File loading.');
+        if (SCRIPT_DEBUG) console.log('[List Script] Initialization started.');
 
-        // Load the config data from the page, but ignore its debug flag
+        // Load the config data from the page
         const configEl = document.getElementById('aid-requests-config-json');
         if (configEl) {
             try {
                 const backendConfig = JSON.parse(configEl.textContent);
-                delete backendConfig.debug; // Enforce local debug control
+                // Allow backend to override local debug setting if present
+                if (typeof backendConfig.debug !== 'undefined') {
+                     // Optionally respect backend debug flag here if we wanted to
+                }
                 Object.assign(listScriptConfig, backendConfig);
             } catch (e) {
                 console.error('[List Script] Failed to parse config JSON.', e);
             }
-        } else {
-            console.error("[List Script] Config data element ('aid-requests-config-json') not found. Using defaults.");
         }
-
-        if (SCRIPT_DEBUG) console.log('[List Script] Initialization started.');
 
         // Load the aid request data directly from its script tag
         const dataEl = document.getElementById('all-requests-json');
@@ -55,14 +50,15 @@
             allAidRequests = JSON.parse(dataEl.textContent);
         } catch (e) {
             console.error('[List Script] Failed to parse aid request data:', e);
-        return;
-    }
+            return;
+        }
 
         // Get the initial filter state from the DOM.
         const initialFilterState = getFilterStateFromDOM();
 
         // Apply the initial filter to set the correct visibility and get initial counts
-        runFilterAndUpdates(initialFilterState);
+        // On page load, we want standard visibility handling (hide d-none immediately), NOT fading.
+        runFilterAndUpdates(initialFilterState, true);
 
         // After the first run, dispatch an event to let other components (like the map)
         // know what the authoritative initial filter state is.
@@ -72,34 +68,33 @@
 
 
         // The map component depends on this script to be initialized first.
-        if (window.initializeAidRequestMap) {
+        if (typeof window.initializeAidRequestMap === 'function') {
             if (SCRIPT_DEBUG) console.log('[List Script] Calling window.initializeAidRequestMap...');
             window.initializeAidRequestMap(allAidRequests, initialFilterState);
         } else {
             console.error('[List Script] Map initialization function not found.');
-            }
+        }
 
         // Set up all event listeners for the page.
         addPageEventListeners();
         initializeTooltips();
-        setupModalHandlers(); // Initialize modal handlers
+        setupModalHandlers();
     }
 
     function addPageEventListeners() {
         // Listen for filter changes from the filter script (i.e., user clicks)
         document.body.addEventListener('filterStateChange', function (e) {
-            if (SCRIPT_DEBUG) {
-                console.log('[List Script] Received filterStateChange event from user action.', e.detail);
-            }
-            runFilterAndUpdates(e.detail);
-    });
+            if (SCRIPT_DEBUG) console.log('[List Script] Filter change received.', e.detail);
+            // User changed a filter: Apply immediately, no fade animation.
+            runFilterAndUpdates(e.detail, true);
+        });
 
         // Listen for clicks on the status or priority dropdown options in the aid request list.
-    document.body.addEventListener('click', function(event) {
+        document.body.addEventListener('click', function(event) {
             const target = event.target.closest('.status-option, .priority-option');
             if (!target) return;
 
-            event.preventDefault(); // Stop the link from navigating to '#'
+            event.preventDefault();
 
             const isStatusUpdate = target.classList.contains('status-option');
             const fieldName = isStatusUpdate ? 'status' : 'priority';
@@ -108,48 +103,41 @@
 
             const row = document.getElementById(`aid-request-row-${requestId}`);
             if (!row) {
-                console.error(`[List Script] Could not find row for request ID ${requestId}`);
+                console.error(`[List Script] Row not found for ID ${requestId}`);
                 return;
             }
 
-            // The 'aidrequest-actions' script needs this info for the modal title
             const request = allAidRequests.find(r => r.id == requestId);
             if (!request) {
-                console.error(`[List Script] Could not find request data for ID ${requestId} in local store.`);
+                console.error(`[List Script] Request data not found for ID ${requestId}`);
                 return;
             }
 
             const updateUrl = row.dataset.urlUpdate;
             const oldValue = isStatusUpdate ? row.dataset.status : row.dataset.priority;
 
-            if (newValue === oldValue) {
-                if (SCRIPT_DEBUG) console.log(`[List Script] ${fieldName} is already '${newValue}'. No action taken.`);
-                return;
-            }
+            if (newValue === oldValue) return;
 
             // Find the hidden button that triggers the generic confirmation modal
             const triggerButton = document.getElementById('status-priority-change-trigger');
             if (!triggerButton) {
-                console.error('[List Script] Could not find the modal trigger button #status-priority-change-trigger');
+                console.error('[List Script] Modal trigger button not found.');
                 return;
             }
 
             // Populate the trigger button with all the data needed by the modal script
-            triggerButton.dataset.actionUrl = updateUrl;
-            triggerButton.dataset.actionName = `Change ${fieldName}`;
-            triggerButton.dataset.oldValue = oldValue;
-            triggerButton.dataset.newValue = newValue;
-            triggerButton.dataset[fieldName] = newValue; // The key the server expects
-            triggerButton.dataset.confirmButtonText = `Confirm Change`;
+            Object.assign(triggerButton.dataset, {
+                actionUrl: updateUrl,
+                actionName: `Change ${fieldName}`,
+                oldValue: oldValue,
+                newValue: newValue,
+                [fieldName]: newValue, // The key the server expects
+                confirmButtonText: 'Confirm Change',
+                requestId: request.id,
+                requesterName: request.requester_name
+            });
 
-            // Data for the modal title, making the actions script more generic
-            triggerButton.dataset.requestId = request.id;
-            triggerButton.dataset.requesterName = request.requester_name;
-
-
-            if (SCRIPT_DEBUG) {
-                console.log('[List Script] Populating and clicking hidden modal trigger:', triggerButton.dataset);
-            }
+            if (SCRIPT_DEBUG) console.log('[List Script] Triggering modal for:', triggerButton.dataset);
 
             // Programmatically click the hidden button to show the modal
             triggerButton.click();
@@ -157,29 +145,69 @@
 
         // Listen for successful updates from the modal action script
         document.body.addEventListener('aidRequestUpdated', function (e) {
-            if (SCRIPT_DEBUG) {
-                console.log('[List Script] Received aidRequestUpdated event. Refreshing data and filters.');
-            }
+            if (SCRIPT_DEBUG) console.log('[List Script] aidRequestUpdated received.');
+
             const updatedRequest = e.detail.request;
-            if(updatedRequest) {
-                const index = allAidRequests.findIndex(r => r.id === updatedRequest.id);
-                if (index !== -1) {
-                    allAidRequests[index] = updatedRequest;
-                    if (SCRIPT_DEBUG) {
-                        console.log(`[List Script] Updated request #${updatedRequest.id} in local store.`);
-                    }
-                    // Re-run the filters and counts with the current state to reflect the change
-                    runFilterAndUpdates(getFilterStateFromDOM());
+            if (!updatedRequest) return;
 
-                    // Also, manually update the data attributes on the row itself
-                    const row = document.getElementById(`aid-request-row-${updatedRequest.id}`);
-                    if (row) {
-                        row.dataset.status = updatedRequest.status;
-                        row.dataset.priority = updatedRequest.priority || 'none';
-                        // Trigger HTMX to re-render the row with the updated data from the server
-                        htmx.trigger(row, `update-row-${updatedRequest.id}`);
-                    }
+            const index = allAidRequests.findIndex(r => r.id === updatedRequest.id);
+            if (index !== -1) {
+                allAidRequests[index] = updatedRequest;
 
+                // Re-run the filters and counts with the current state to reflect the change
+                const currentFilterState = getFilterStateFromDOM();
+
+                updateFilterCounts(currentFilterState);
+                updateFilterSummary(currentFilterState);
+
+                // Dispatch event to ensure map also re-evaluates its filter/counts with the new data state
+                document.body.dispatchEvent(new CustomEvent('mapShouldUpdateFilter', {
+                    detail: currentFilterState
+                }));
+
+                // Also, manually update the data attributes on the row itself
+                const row = document.getElementById(`aid-request-row-${updatedRequest.id}`);
+                if (row) {
+                    row.dataset.status = updatedRequest.status;
+                    row.dataset.priority = updatedRequest.priority || 'none';
+
+                    // Trigger HTMX to re-render the row with the updated data from the server
+                    htmx.trigger(row, `update-row-${updatedRequest.id}`);
+
+                    // Use a one-time listener on the table body to catch the swap event,
+                    // ensuring we catch it even if the original row element is replaced.
+                    const swapHandler = function(evt) {
+                        const targetId = evt.target.id || evt.detail?.target?.id;
+
+                        if (targetId === `aid-request-row-${updatedRequest.id}`) {
+                            const listBody = document.getElementById('aid-request-list-body');
+                            if (listBody) listBody.removeEventListener('htmx:afterSwap', swapHandler);
+
+                            // Get the NEW row element
+                            const newRow = document.getElementById(`aid-request-row-${updatedRequest.id}`);
+                            if (newRow) {
+                                const isVisible = isRequestVisible(updatedRequest, currentFilterState);
+                                if (SCRIPT_DEBUG) console.log(`[List Script] Row ${updatedRequest.id} visible after swap? ${isVisible}`);
+
+                                // Apply visibility logic to THIS ROW ONLY
+                                updateRowVisibility(newRow, isVisible, false); // immediate=false to allow fade
+
+                                // We also need to update the visible count number in the header
+                                let visibleCount = 0;
+                                allAidRequests.forEach(r => {
+                                    if (isRequestVisible(r, currentFilterState)) visibleCount++;
+                                });
+                                updateResultsCounters(visibleCount);
+                            }
+                        }
+                    };
+
+                    const listBody = document.getElementById('aid-request-list-body');
+                    if (listBody) {
+                        listBody.addEventListener('htmx:afterSwap', swapHandler);
+                        // Safety timeout to remove listener if swap never happens/fails
+                        setTimeout(() => listBody.removeEventListener('htmx:afterSwap', swapHandler), 5000);
+                    }
                 }
             }
         });
@@ -189,7 +217,7 @@
             const requestId = e.detail.requestId;
             if (selectedRequestId && selectedRequestId !== requestId) {
                 unhighlightRow(selectedRequestId);
-                    }
+            }
             highlightRow(requestId);
             selectedRequestId = requestId;
         });
@@ -200,108 +228,99 @@
                 selectedRequestId = null;
             }
         });
-            }
+    }
+
+    // Helper to determine if a single request should be visible
+    function isRequestVisible(request, filterState) {
+        const statusMatch = filterState.status.length === 0 || filterState.status.includes(request.status);
+        const priority = request.priority || 'none';
+        const priorityMatch = filterState.priority === 'all' || filterState.priority.includes(priority);
+        const aidType = request.aid_type.slug;
+        const aidTypeMatch = filterState.aid_type === 'all' || filterState.aid_type.includes(aidType);
+        return statusMatch && priorityMatch && aidTypeMatch;
+    }
+
+    // Helper to handle the row visibility transition for a single row
+    function updateRowVisibility(row, isVisible, immediate = false) {
+        if (isVisible) {
+             row.classList.remove('d-none');
+             row.classList.remove('fade-out-row');
+             row.style.opacity = '';
+        } else {
+             if (immediate) {
+                 row.classList.add('d-none');
+                 row.classList.remove('fade-out-row');
+                 row.style.opacity = '';
+             } else {
+                 // Check if it's already hidden or fading to avoid restarting
+                 if (!row.classList.contains('d-none') && !row.classList.contains('fade-out-row')) {
+
+                     // Ensure start state is fully visible
+                     row.style.opacity = '1';
+
+                     // Force reflow
+                     void row.offsetHeight;
+
+                     // Small delay to ensure browser paints the visible state
+                     setTimeout(() => {
+                         row.classList.add('fade-out-row');
+                         row.style.opacity = ''; // Remove inline style so class takes effect
+                     }, 50);
+
+                     setTimeout(() => {
+                         // Only hide if still meant to be hidden (still has the class)
+                         if (row.classList.contains('fade-out-row')) {
+                             row.classList.add('d-none');
+                             row.classList.remove('fade-out-row');
+                         }
+                     }, 3000);
+                 }
+             }
+        }
+    }
 
     /**
      * The main worker function that applies the current filter state to the list and updates the UI.
      * @param {object} filterState - The current state of all filters.
      */
-    function runFilterAndUpdates(filterState) {
+    function runFilterAndUpdates(filterState, immediate = false) {
         if (!filterState) {
             console.error('[List Script] runFilterAndUpdates called without a filterState. Recovering by reading from DOM.');
             filterState = getFilterStateFromDOM();
         }
-        if (SCRIPT_DEBUG) console.log('[List Script] Running filter and updates with state:', filterState);
 
-        applyListFilter(filterState);
-        updateFilterCounts(filterState);
-        updateFilterSummary(filterState);
-    }
-
-    function updateFilterSummary(filterState) {
-        const summaryParts = [];
-
-        const getLabelForValue = (type, value) => {
-            const checkbox = document.querySelector(`[data-filter-type="${type}"][data-filter-value="${value}"]`);
-            if (checkbox) {
-                // Find the label associated with the checkbox and get its text, excluding the count span
-                const label = checkbox.closest('.form-check').querySelector('label');
-                if (label) {
-                    // Clone the label, remove the count span, and then get the text content
-                    const clone = label.cloneNode(true);
-                    const countSpan = clone.querySelector('span');
-                    if (countSpan) {
-                        countSpan.remove();
-                    }
-                    return clone.textContent.trim();
-                }
-            }
-            return value; // Fallback to the value itself
-        };
-
-        if (filterState.status && filterState.status.length > 0) {
-            const statusNames = filterState.status.map(s => `"${getLabelForValue('status', s)}"`).join(', ');
-            summaryParts.push(`<strong>Status:</strong> ${statusNames}`);
-                    }
-
-        if (filterState.priority && filterState.priority !== 'all') {
-            const priorityNames = filterState.priority.map(p => `"${getLabelForValue('priority', p)}"`).join(', ');
-            summaryParts.push(`<strong>Priority:</strong> ${priorityNames}`);
-        }
-
-        if (filterState.aid_type && filterState.aid_type !== 'all') {
-            const aidTypeNames = filterState.aid_type.map(a => `"${getLabelForValue('aid_type', a)}"`).join(', ');
-            summaryParts.push(`<strong>Aid&nbsp;Type:</strong> ${aidTypeNames}`);
-        }
-
-        const summaryHTML = summaryParts.join('<br>');
-
-        const mapSummaryEl = document.getElementById('map-filter-summary');
-        const listSummaryEl = document.getElementById('list-filter-summary');
-
-        if (mapSummaryEl) {
-            mapSummaryEl.innerHTML = summaryHTML;
-        }
-        if (listSummaryEl) {
-            listSummaryEl.innerHTML = summaryHTML;
-        }
-    }
-
-    function applyListFilter(filterState) {
         let visibleCount = 0;
 
         allAidRequests.forEach(request => {
             const row = document.getElementById(`aid-request-row-${request.id}`);
             if (!row) return;
 
-            const statusMatch = filterState.status.length === 0 || filterState.status.includes(request.status);
+            const shouldBeVisible = isRequestVisible(request, filterState);
+            if (shouldBeVisible) visibleCount++;
 
-            const priority = request.priority || 'none';
-            const priorityMatch = filterState.priority === 'all' || filterState.priority.includes(priority);
-
-            const aidType = request.aid_type.slug;
-            const aidTypeMatch = filterState.aid_type === 'all' || filterState.aid_type.includes(aidType);
-
-            if (statusMatch && priorityMatch && aidTypeMatch) {
-                row.classList.remove('d-none');
-                visibleCount++;
-            } else {
-                row.classList.add('d-none');
-            }
+            updateRowVisibility(row, shouldBeVisible, immediate);
         });
 
-        if (SCRIPT_DEBUG) {
-            console.log(`[List Script] Applied filter. Visible rows: ${visibleCount}`);
-        }
+        if (SCRIPT_DEBUG) console.log(`[List Script] Filter applied. Visible rows: ${visibleCount}`);
 
+        updateResultsCounters(visibleCount);
+        updateFilterCounts(filterState);
+        updateFilterSummary(filterState);
+    }
+
+    function updateResultsCounters(visibleCount) {
         const resultsCounter = document.getElementById('results-counter');
         if (resultsCounter) {
             resultsCounter.textContent = `${visibleCount} of ${allAidRequests.length} requests`;
         }
+
+        const listTotalCount = document.getElementById('list-total-count');
+        if (listTotalCount) {
+            listTotalCount.textContent = `${visibleCount}`;
+        }
     }
 
     function updateFilterCounts(filterState) {
-        if (SCRIPT_DEBUG) console.log(`[List Script] Updating filter counts.`);
 
         const counts = { byStatus: {}, byPriority: {}, byAidType: {} };
 
@@ -332,7 +351,7 @@
         }
         });
 
-        if (SCRIPT_DEBUG) console.log('[List Script] Calculated intersectional counts:', counts);
+        if (SCRIPT_DEBUG) console.log('[List Script] Counts updated.', counts);
 
         updateCountUI('status', counts.byStatus);
         updateCountUI('priority', counts.byPriority);
@@ -353,14 +372,60 @@
             }
         }
 
-        if (SCRIPT_DEBUG) {
-            console.log(`[List Script] New Group Totals -> Active: ${activeTotal}, Inactive: ${inactiveTotal}`);
-        }
         const activeTotalEl = document.getElementById('status-group-filter-active-total');
         if (activeTotalEl) activeTotalEl.textContent = `(${activeTotal})`;
 
         const inactiveTotalEl = document.getElementById('status-group-filter-inactive-total');
         if (inactiveTotalEl) inactiveTotalEl.textContent = `(${inactiveTotal})`;
+    }
+
+    function updateFilterSummary(filterState) {
+        const summaryParts = [];
+
+        const getLabelForValue = (type, value) => {
+            const checkbox = document.querySelector(`[data-filter-type="${type}"][data-filter-value="${value}"]`);
+            if (checkbox) {
+                // Find the label associated with the checkbox and get its text, excluding the count span
+                const label = checkbox.closest('.form-check').querySelector('label');
+                if (label) {
+                    // Clone the label, remove the count span, and then get the text content
+                    const clone = label.cloneNode(true);
+                    const countSpan = clone.querySelector('span');
+                    if (countSpan) {
+                        countSpan.remove();
+                    }
+                    return clone.textContent.trim();
+                }
+            }
+            return value; // Fallback to the value itself
+        };
+
+        if (filterState.status && filterState.status.length > 0) {
+            const statusNames = filterState.status.map(s => `"${getLabelForValue('status', s)}"`).join(', ');
+            summaryParts.push(`<strong>Status:</strong> ${statusNames}`);
+        }
+
+        if (filterState.priority && filterState.priority !== 'all') {
+            const priorityNames = filterState.priority.map(p => `"${getLabelForValue('priority', p)}"`).join(', ');
+            summaryParts.push(`<strong>Priority:</strong> ${priorityNames}`);
+        }
+
+        if (filterState.aid_type && filterState.aid_type !== 'all') {
+            const aidTypeNames = filterState.aid_type.map(a => `"${getLabelForValue('aid_type', a)}"`).join(', ');
+            summaryParts.push(`<strong>Aid&nbsp;Type:</strong> ${aidTypeNames}`);
+        }
+
+        const summaryHTML = summaryParts.join('<br>');
+
+        const mapSummaryEl = document.getElementById('map-filter-summary');
+        const listSummaryEl = document.getElementById('list-filter-summary');
+
+        if (mapSummaryEl) {
+            mapSummaryEl.innerHTML = summaryHTML;
+        }
+        if (listSummaryEl) {
+            listSummaryEl.innerHTML = summaryHTML;
+        }
     }
 
     function updateCountUI(filterType, counts) {

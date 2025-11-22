@@ -1,9 +1,10 @@
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('AidRequest Actions Script v 0.0.14');
     const scriptConfig = {
         debug: false, // Master debug switch for this script
     };
-
+    if (scriptConfig.debug) {
+        console.log('AidRequest Actions Script v 0.0.14');
+    }
     // For debugging htmx swaps
     document.body.addEventListener('htmx:beforeSwap', function(evt) {
         // if (scriptConfig.debug) {
@@ -666,8 +667,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const state = modal.querySelector('#id_state_modal')?.value.trim();
         const street = modal.querySelector('#id_street_address_modal')?.value.trim();
         const spinner = document.getElementById('geocode-spinner-modal');
-        const mapContainer = modal.querySelector('#add-location-map');
-        const subscriptionKey = mapContainer?.dataset.azureMapsKey;
+        // Dynamically find the map container instead of hardcoding #add-location-map
+        const mapContainer = modal.querySelector('.location-picker-map');
+
+        if (!mapContainer) {
+             console.warn("[AddLocation] Map container not found, cannot get subscription key.");
+             return;
+        }
+
+        const subscriptionKey = mapContainer.dataset.azureMapsKey;
         const query = [street, city, state].filter(Boolean).join(', ');
         const url = `https://atlas.microsoft.com/search/address/json?api-version=1.0&query=${encodeURIComponent(query)}&countrySet=${mapContainer.dataset.countryCode || ''}&limit=1&subscription-key=${subscriptionKey}`;
 
@@ -698,15 +706,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         addLocationModal.addEventListener('shown.bs.modal', function () {
-            if (window.initializeLocationPicker) {
+            // The map is now inside _add_location_modal_body.html which might be static or loaded dynamically.
+            // We need to find the map container ID dynamically or ensure we use the correct one.
+            // Based on _location_picker_map.html logic, the ID is dynamic 'map_data.map_id'.
+            // However, for the add location modal, we often hardcode or pass 'add-location-map'.
+            // Let's look for any element with class 'location-picker-map' inside the modal.
+
+            const mapContainer = addLocationModal.querySelector('.location-picker-map');
+            if (mapContainer && window.initializeLocationPicker) {
+                // Use the actual ID of the found container
+                const mapId = mapContainer.id;
                 setTimeout(() => {
-                    window.initializeLocationPicker('add-location-map').then(() => {
+                    window.initializeLocationPicker(mapId).then(() => {
                         const cityInput = addLocationModal.querySelector('#id_city_modal');
                         if (cityInput?.value.trim()) {
                             performModalGeocode();
                         }
                     });
                 }, 150);
+            } else if (!mapContainer) {
+                 console.warn("[Actions] Location picker map container not found in modal.");
             }
         });
 

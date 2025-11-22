@@ -490,8 +490,17 @@ def htmx_send_tak_alert(request, field_op):
                 task_name=task_name
         )
     elif mark_type == 'aid_request_list':
+        # aidrequests param is a JSON string from JS
         aid_request_ids_json = request.POST.get('aidrequests', '[]')
-        aid_request_ids = json.loads(aid_request_ids_json)
+        try:
+            aid_request_ids = json.loads(aid_request_ids_json)
+        except json.JSONDecodeError:
+            aid_request_ids = []
+            ic(f"Failed to parse aidrequests JSON: {aid_request_ids_json}")
+
+        # Filter out empty strings if any made it through
+        aid_request_ids = [id for id in aid_request_ids if id]
+
         if aid_request_ids:
             ic(f"Creating send_cot_task for FieldOp {field_op_obj.slug} and {len(aid_request_ids)} Aid Requests")
             task_id = async_task(
@@ -501,6 +510,10 @@ def htmx_send_tak_alert(request, field_op):
                 aidrequests=aid_request_ids,
                 task_name=task_name
             )
+        else:
+            ic("No valid aid request IDs found for aid_request_list action.")
+            # Return a user-friendly error or status
+            return HttpResponse("No active aid requests visible to send.", status=400)
 
     if task_id:
         context = {'slug': field_op}

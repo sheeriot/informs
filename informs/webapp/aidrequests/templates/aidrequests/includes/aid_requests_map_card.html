@@ -5,6 +5,7 @@
                 <button class="btn btn-sm btn-outline-secondary ms-2" data-bs-toggle="modal" data-bs-target="#mapModal" title="Expand Map">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
+                <span class="badge bg-secondary ms-2" id="map-location-count">0 Locations</span>
             </div>
             <div class="d-flex align-items-center">
                 {% include 'aidrequests/partials/_coordinates_display.html' with latitude=field_op.latitude longitude=field_op.longitude element_id='header-coordinates' %}

@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load bootstrap_icons %}
 {% load crispy_forms_tags %}
 
 {% block content %}
@@ -11,13 +10,13 @@
             <h1 class="display-5 fw-bold">Aid Request: {{ object.pk }}</h1>
         </div>
         <div class="col">
-            <h3 class="text-danger">{% bs_icon object.aid_type.bs_icon|default:'question-circle' %} {{ object.aid_type }}</h3>
+            <h3 class="text-danger"><i class="bi bi-{{ object.aid_type.bs_icon|default:'question-circle' }}"></i> {{ object.aid_type }}</h3>
         </div>
     </div>
     <div class="row">
         <div class="col-md-6">
             <p><strong>Requester:</strong> {{ object.requester_full_name }}</p>
-            <p><strong>Address:</strong> {{ object.full_address }}</p>
+            <p><strong>Address:</strong> {{ object.provided_address }}</p>
         </div>
         <div class="col-md-6">
             <p><strong>Priority:</strong> {{ object.get_priority_display }}</p>

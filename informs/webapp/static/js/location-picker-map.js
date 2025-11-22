@@ -17,6 +17,12 @@
         return new Promise((resolve) => {
             if (locationPickerConfig.debug) console.log(`[LocationPicker] Initializing for map ID: ${mapContainerId}`);
 
+            if (!mapContainerId) {
+                 console.error(`[LocationPicker] Initialized with empty or null mapContainerId.`);
+                 resolve();
+                 return;
+            }
+
             const mapContainer = document.getElementById(mapContainerId);
             if (!mapContainer) {
                 console.error(`[LocationPicker] Map container with ID '${mapContainerId}' not found.`);
