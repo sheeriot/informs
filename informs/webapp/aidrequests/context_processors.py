@@ -40,8 +40,18 @@ def field_op_context(request):
     if not field_op_slug:
         return {}
 
+    # Optimization: Use cached field_op from request if available (set by views)
+    if hasattr(request, 'field_op') and request.field_op.slug == field_op_slug:
+        return {
+            'field_op': request.field_op,
+            'fieldop_slug': field_op_slug,
+            'body_data_attributes': f'data-field-op-slug="{field_op_slug}"'
+        }
+
     try:
         field_op = FieldOp.objects.get(slug=field_op_slug)
+        # Cache it for future use
+        request.field_op = field_op
         return {
             'field_op': field_op,
             'fieldop_slug': field_op_slug,

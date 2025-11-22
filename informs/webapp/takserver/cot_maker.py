@@ -172,7 +172,7 @@ class CotMaker:
 
             if aid_request.group_size: remarks.append(f"Group Size: {aid_request.group_size}")
 
-            if aid_request.full_address: remarks.append(f"Provided Address: {aid_request.full_address}")
+            if aid_request.provided_address: remarks.append(f"Provided Address: {aid_request.provided_address}")
 
             remarks.append("") # Add a blank line for spacing
             remarks.extend([

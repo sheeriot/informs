@@ -13,7 +13,7 @@
                     <i class="bi bi-download"></i>
                 </a>
             </div>
-            <h5 class="card-title mx-2">Aid Requests</h5>
+            <h5 class="card-title mx-2">Aid Requests <span class="badge bg-secondary ms-1" id="list-total-count">0</span></h5>
             <button class="btn btn-sm btn-outline-secondary ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#list-filter-summary-collapse" aria-expanded="false" aria-controls="list-filter-summary-collapse" title="Show/Hide Active Filters">
                 <i class="bi bi-funnel"></i>
             </button>
@@ -29,15 +29,19 @@
             <thead class="table-light">
                 <tr>
                     <th scope="col" class="py-1">#</th>
-                    <th scope="col" class="py-1 d-none d-md-table-cell">Requester</th>
-                    <th scope="col" class="py-1">Status</th>
-                    <th scope="col" class="py-1">Priority</th>
-                    <th scope="col" class="py-1 d-none d-lg-table-cell">Size</th>
-                    <th scope="col" class="py-1 d-none d-lg-table-cell">
-                        <i class="bi bi-geo-alt"></i>
-                        <span class="d-none d-xl-inline">Address</span>
+                    <th scope="col" class="py-1">Requester</th>
+                    <th scope="col" class="py-1">
+                        <div class="d-flex flex-column" style="line-height: 1; font-size: 0.75rem;">
+                            <span>Status</span>
+                            <span class="text-muted">Priority</span>
+                        </div>
                     </th>
-                    <th scope="col" class="py-1 d-none d-xl-table-cell">
+                    <th scope="col" class="py-1 px-1 text-center">Size</th>
+                    <th scope="col" class="py-1">
+                        <i class="bi bi-geo-alt"></i>
+                        <span class="d-none d-xl-inline">Location</span>
+                    </th>
+                    <th scope="col" class="py-1 d-none d-xxl-table-cell">
                         <div class="d-flex flex-column" style="line-height: 1; font-size: 0.75rem;">
                             <span>Updated</span>
                             <span class="text-muted">Age</span>

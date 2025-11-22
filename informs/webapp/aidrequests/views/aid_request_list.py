@@ -77,7 +77,15 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     def setup(self, request, *args, **kwargs):
         """Initialize common attributes used by all view methods"""
         super().setup(request, *args, **kwargs)
-        self.field_op = get_object_or_404(FieldOp, slug=kwargs.get('field_op'))
+        # Optimization: Check if field_op is already cached on the request (e.g. by middleware)
+        # or cache it after fetching to save queries in context processors
+        slug = kwargs.get('field_op')
+        if hasattr(request, 'field_op') and request.field_op.slug == slug:
+            self.field_op = request.field_op
+        else:
+            self.field_op = get_object_or_404(FieldOp, slug=slug)
+            request.field_op = self.field_op
+
         self.status_group = kwargs.get('status_group', 'active')
 
     def get_queryset(self):
@@ -109,7 +117,10 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        all_aid_requests = self.get_queryset()
+
+        # Evaluate the object_list ONCE into a list.
+        # This executes the query (with prefetches) one time.
+        all_aid_requests = list(self.object_list)
 
         # Prepare aid_type counts for the filter interface
         aid_types_data = []
@@ -119,7 +130,7 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                 at_data['icon_scale'] = 1.0
             aid_types_data.append(at_data)
 
-        total_count = all_aid_requests.count()
+        total_count = len(all_aid_requests)
 
         # Prepare status counts for the filter interface
         all_statuses = AidRequest.STATUS_CHOICES
@@ -127,7 +138,7 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         active_total_count = 0
         inactive_total_count = 0
         for status_code, status_name in all_statuses:
-            count = all_aid_requests.filter(status=status_code).count()
+            count = sum(1 for req in all_aid_requests if req.status == status_code)
             checked_by_default = status_code in AidRequest.ACTIVE_STATUSES
             status_counts[status_name] = {
                 'count': count,
@@ -147,7 +158,7 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         all_priorities = AidRequest.PRIORITY_CHOICES
         priority_counts = {}
         for code, name in all_priorities:
-            count = all_aid_requests.filter(priority=code).count()
+            count = sum(1 for req in all_aid_requests if req.priority == code)
             # All priorities are checked by default under the "All" group
             checked_by_default = True
             priority_counts[name] = {
@@ -162,7 +173,7 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         for at_data in aid_types_data:
             slug = at_data['slug']
             name = at_data['name']
-            count = all_aid_requests.filter(aid_type__slug=slug).count()
+            count = sum(1 for req in all_aid_requests if req.aid_type.slug == slug)
             # All aid types are checked by default under the "All" group
             checked_by_default = True
             aid_type_counts[name] = {
@@ -173,6 +184,7 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         context['aid_type_counts'] = aid_type_counts
 
         # Add the debug info to the main JSON data blob
+        # Use the already evaluated list 'all_aid_requests' to avoid re-querying
         all_requests_data = [req.to_dict() for req in all_aid_requests]
 
         field_op_data = {
@@ -196,7 +208,7 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
         context.update({
             'field_op': self.field_op,
-            'aid_requests': all_aid_requests,
+            'aid_requests': all_aid_requests, # Use the list, not the queryset
             'total_count': total_count,
             'active_total_count': active_total_count,
             'inactive_total_count': inactive_total_count,
@@ -212,13 +224,13 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
             'status_choices_json': json.dumps(list(AidRequest.STATUS_CHOICES)),
             'priority_choices_json': json.dumps(list(AidRequest.PRIORITY_CHOICES)),
             # Pass the list of requests and the config separately
-            'all_requests_json': json.dumps([req.to_dict() for req in all_aid_requests], cls=DecimalEncoder),
+            'all_requests_json': json.dumps(all_requests_data, cls=DecimalEncoder),
             'aid_requests_config_json': json.dumps(context_data_for_js, cls=DecimalEncoder),
         })
 
         # --- Bounding Box Calculation ---
         # Use the serialized data as the source for locations
-        aid_locations = [req for req in json.loads(context['all_requests_json']) if req.get('location') and req.get('location').get('latitude') and req.get('location').get('longitude')]
+        aid_locations = [req for req in all_requests_data if req.get('location') and req.get('location').get('latitude') and req.get('location').get('longitude')]
 
         final_bounds = None
         aid_requests_bounds = get_points_bounds(aid_locations)
@@ -271,7 +283,7 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                 primary_location = request.sorted_locations[0]
                 locations.append({
                     'id': request.id,
-                    'full_address': request.full_address,
+                    'provided_address': request.provided_address,
                     'requester_full_name': request.requester_full_name,
                     'status': request.status,
                     'status_display': request.get_status_display(),

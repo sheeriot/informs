@@ -194,9 +194,23 @@ class AidRequest(TimeStampedModel):
     @property
     def location_status(self):
         """
-        Calculates the primary location status using efficient database queries.
+        Calculates the primary location status.
+        Uses prefetched 'sorted_locations' if available to avoid DB queries.
         Order of precedence: 'confirmed', then 'new'.
         """
+        if hasattr(self, 'sorted_locations'):
+            if not self.sorted_locations:
+                return None
+
+            # sorted_locations is ordered by: confirmed(1), new(2), other(3)
+            top_loc = self.sorted_locations[0]
+
+            if top_loc.status == 'confirmed':
+                return 'confirmed'
+            if top_loc.status == 'new':
+                return 'new'
+
+            return None
 
         is_confirmed = self.locations.filter(status='confirmed').exists()
 
@@ -214,10 +228,22 @@ class AidRequest(TimeStampedModel):
     @property
     def location(self):
         """
-        Finds the primary location object using an ordered database query to ensure
-        the oldest of the highest-precedence locations is returned.
+        Finds the primary location object.
+        Uses prefetched 'sorted_locations' if available to avoid DB queries.
         Order of precedence: 'confirmed', then 'new'.
         """
+        if hasattr(self, 'sorted_locations'):
+            if not self.sorted_locations:
+                return None
+
+            # sorted_locations is ordered by: confirmed(1), new(2), other(3)
+            top_loc = self.sorted_locations[0]
+
+            if top_loc.status in ['confirmed', 'new']:
+                return top_loc
+
+            return None
+
         confirmed_loc = self.locations.filter(status='confirmed').order_by('created_at').first()
         if confirmed_loc:
             return confirmed_loc
@@ -236,7 +262,7 @@ class AidRequest(TimeStampedModel):
     country = CountryField(blank=True)
 
     @property
-    def full_address(self):
+    def provided_address(self):
         """Returns the full address as a single string, without the country."""
         parts = [self.street_address, self.city, self.state, self.zip_code]
         return ", ".join(filter(None, parts))
@@ -331,7 +357,7 @@ class AidRequest(TimeStampedModel):
             location_data = {
                 'latitude': primary_location.latitude,
                 'longitude': primary_location.longitude,
-                'address_display': self.full_address, # The user-provided address
+                'address_display': self.provided_address, # The user-provided address
                 'free_form_address': primary_location.free_form_address, # The machine-geocoded address
             }
 
@@ -364,19 +390,29 @@ class AidRequest(TimeStampedModel):
     @staticmethod
     def get_filtered_counts(base_queryset, statuses, priorities, aid_types):
         """
-        A static method to calculate counts based on a base queryset and filter criteria.
+        A static method to calculate counts efficiently using conditional aggregation.
         """
         # Overall counts for the entire field_op (ignoring filters)
-        total_requests = base_queryset.count()
-        active_requests_count = base_queryset.filter(status__in=AidRequest.ACTIVE_STATUSES).count()
-        inactive_requests_count = base_queryset.filter(status__in=AidRequest.INACTIVE_STATUSES).count()
+        # We can get these in a single query with aggregation
+        aggregates = base_queryset.aggregate(
+            total=models.Count('id'),
+            active=models.Count(
+                Case(When(status__in=AidRequest.ACTIVE_STATUSES, then=1))
+            ),
+            inactive=models.Count(
+                Case(When(status__in=AidRequest.INACTIVE_STATUSES, then=1))
+            )
+        )
+
+        total_requests = aggregates['total']
+        active_requests_count = aggregates['active']
+        inactive_requests_count = aggregates['inactive']
 
         # Build the filtered queryset
         filtered_qs = base_queryset
         if statuses and statuses != 'all':
             filtered_qs = filtered_qs.filter(status__in=statuses)
         if priorities and priorities != 'all':
-            # Handle 'none' as a string from JS, which corresponds to NULL in the DB
             if 'none' in priorities:
                 priorities.remove('none')
                 q_objects = models.Q(priority__in=priorities) | models.Q(priority__isnull=True)
@@ -402,68 +438,94 @@ class AidRequest(TimeStampedModel):
             'byPriority': {},
         }
 
-        # Calculate counts for each category based on the *base* queryset
-        # This shows the total items in each category, which is more useful for the filter UI
+        # --- Status Counts (Filtered) ---
+        # Calculate counts for active/inactive groups within the filtered set
+        filtered_status_aggregates = filtered_qs.aggregate(
+            active_filtered=models.Count(
+                Case(When(status__in=AidRequest.ACTIVE_STATUSES, then=1))
+            ),
+            inactive_filtered=models.Count(
+                Case(When(status__in=AidRequest.INACTIVE_STATUSES, then=1))
+            )
+        )
+        counts['groups']['active']['filtered'] = filtered_status_aggregates['active_filtered']
+        counts['groups']['inactive']['filtered'] = filtered_status_aggregates['inactive_filtered']
 
-        # Status counts (within the filtered set)
-        status_counts = filtered_qs.values('status').annotate(count=models.Count('id'))
-        for item in status_counts:
-            if item['status'] in AidRequest.ACTIVE_STATUSES:
-                counts['groups']['active']['filtered'] += item['count']
-            elif item['status'] in AidRequest.INACTIVE_STATUSES:
-                counts['groups']['inactive']['filtered'] += item['count']
-
-        # To show counts for each status even if it's zero within the current filter
-        all_status_counts = base_queryset.values('status').annotate(total=models.Count('id'))
-        status_map = {item['status']: item['total'] for item in all_status_counts}
-
-        for status_code, status_name in AidRequest.STATUS_CHOICES:
-            # We want the count of items that would appear if only this status was selected,
-            # keeping other filters (priority, aid_type) constant.
-            temp_qs = base_queryset
-            if priorities and priorities != 'all':
-                if 'none' in priorities:
-                    priorities.remove('none')
-                    q_objects = models.Q(priority__in=priorities) | models.Q(priority__isnull=True)
-                    temp_qs = temp_qs.filter(q_objects)
-                else:
-                    temp_qs = temp_qs.filter(priority__in=priorities)
-
-            if aid_types and aid_types != 'all':
-                temp_qs = temp_qs.filter(aid_type__slug__in=aid_types)
-
-            counts['byStatus'][status_code] = temp_qs.filter(status=status_code).count()
-
-        # Aid Type and Priority counts
-        from .models import AidType # Local import to avoid circular dependency
-        all_aid_types = AidType.objects.filter(field_ops=base_queryset.first().field_op)
-
-        # Calculate counts for each aid type
-        for at in all_aid_types:
-            temp_qs = base_queryset
-            if statuses and statuses != 'all':
-                temp_qs = temp_qs.filter(status__in=statuses)
-            if priorities and priorities != 'all':
-                if 'none' in priorities:
-                    priorities.remove('none')
-                    q_objects = models.Q(priority__in=priorities) | models.Q(priority__isnull=True)
-                    temp_qs = temp_qs.filter(q_objects)
-                else:
-                    temp_qs = temp_qs.filter(priority__in=priorities)
-            counts['byAidType'][at.slug] = temp_qs.filter(aid_type=at).count()
-
-        # Calculate counts for each priority
-        for prio_code, prio_name in AidRequest.PRIORITY_CHOICES:
-            temp_qs = base_queryset
-            if statuses and statuses != 'all':
-                temp_qs = temp_qs.filter(status__in=statuses)
-            if aid_types and aid_types != 'all':
-                temp_qs = temp_qs.filter(aid_type__slug__in=aid_types)
-
-            if prio_code is None:
-                counts['byPriority']['none'] = temp_qs.filter(priority__isnull=True).count()
+        # --- Calculate specific facet counts ---
+        # 1. Status Counts: Apply priority and aid_type filters only
+        status_qs = base_queryset
+        if priorities and priorities != 'all':
+            if 'none' in priorities:
+                q_objects = models.Q(priority__in=priorities) | models.Q(priority__isnull=True)
+                status_qs = status_qs.filter(q_objects)
             else:
-                counts['byPriority'][prio_code] = temp_qs.filter(priority=prio_code).count()
+                status_qs = status_qs.filter(priority__in=priorities)
+
+        if aid_types and aid_types != 'all':
+            status_qs = status_qs.filter(aid_type__slug__in=aid_types)
+
+        status_counts_data = status_qs.values('status').annotate(count=models.Count('id'))
+        status_map = {item['status']: item['count'] for item in status_counts_data}
+
+        for status_code, _ in AidRequest.STATUS_CHOICES:
+            counts['byStatus'][status_code] = status_map.get(status_code, 0)
+
+        # 2. Aid Type Counts: Apply status and priority filters only
+        aid_type_qs = base_queryset
+        if statuses and statuses != 'all':
+            aid_type_qs = aid_type_qs.filter(status__in=statuses)
+
+        if priorities and priorities != 'all':
+            if 'none' in priorities:
+                q_objects = models.Q(priority__in=priorities) | models.Q(priority__isnull=True)
+                aid_type_qs = aid_type_qs.filter(q_objects)
+            else:
+                aid_type_qs = aid_type_qs.filter(priority__in=priorities)
+
+        aid_type_counts_data = aid_type_qs.values('aid_type__slug').annotate(count=models.Count('id'))
+        aid_type_map = {item['aid_type__slug']: item['count'] for item in aid_type_counts_data}
+
+        # 3. Priority Counts: Apply status and aid_type filters only
+        priority_qs = base_queryset
+        if statuses and statuses != 'all':
+            priority_qs = priority_qs.filter(status__in=statuses)
+
+        if aid_types and aid_types != 'all':
+            priority_qs = priority_qs.filter(aid_type__slug__in=aid_types)
+
+        priority_counts_data = priority_qs.values('priority').annotate(count=models.Count('id'))
+        priority_map = {item['priority']: item['count'] for item in priority_counts_data}
+
+        for prio_code, _ in AidRequest.PRIORITY_CHOICES:
+            key = prio_code if prio_code is not None else None
+            count = priority_map.get(key, 0)
+            out_key = prio_code if prio_code is not None else 'none'
+            counts['byPriority'][out_key] = count
+
+        # Aid Type manual fill (since we don't have the full list of slugs here easily)
+        # The original method queried AidType objects.
+        # To keep this efficient, we will just return the map we have.
+        # The javascript or view calling this might need to merge with all available types if it needs zero counts.
+        # However, the original code DID iterate over all types.
+        # Let's replicate that logic by doing a single query for aid types if we can, or assume the caller handles it.
+        # Actually, the original code imported AidType locally. Let's do that.
+        from .models import AidType # Local import to avoid circular dependency
+        # We need the field_op to filter aid types. base_queryset has a field_op filter.
+        # We can get one instance to find the field_op.
+        first_req = base_queryset.first()
+        if first_req:
+            all_aid_types = AidType.objects.filter(field_ops=first_req.field_op)
+            for at in all_aid_types:
+                if at.slug not in counts['byAidType']:
+                    counts['byAidType'][at.slug] = 0
+                # If it is in the map, it's already set correctly from the aggregation above.
+                # Wait, the map has the counts. We just need to ensure 0s are there.
+                # Actually, the map aggregation is what we want.
+                # We just need to merge.
+                if at.slug in aid_type_map:
+                    counts['byAidType'][at.slug] = aid_type_map[at.slug]
+                else:
+                    counts['byAidType'][at.slug] = 0
 
         return counts
 

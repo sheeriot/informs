@@ -1,4 +1,3 @@
-{% load bootstrap_icons %}
 <div class="modal fade" id="actionConfirmationModal" tabindex="-1" aria-labelledby="actionConfirmationModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -23,7 +22,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% bs_icon 'x-circle' %} Cancel</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle"></i> Cancel</button>
                 <button type="button" class="btn btn-primary confirm-action-btn">
                     <span class="button-icon"></span>
                     <span class="button-text">Confirm</span>
@@ -38,10 +37,17 @@
         const confirmationModal = document.getElementById('actionConfirmationModal');
         if (confirmationModal) {
             confirmationModal.addEventListener('hidden.bs.modal', function () {
+                // Blur close button to prevent ARIA warnings
                 const closeButton = confirmationModal.querySelector('.btn-close');
                 if (closeButton && document.activeElement === closeButton) {
                     closeButton.blur();
                 }
+
+                // Clear inputs
+                const noteTextarea = confirmationModal.querySelector('.action-note-textarea');
+                const markdownCheckbox = confirmationModal.querySelector('.action-markdown-checkbox');
+                if (noteTextarea) noteTextarea.value = '';
+                if (markdownCheckbox) markdownCheckbox.checked = false;
             });
         }
     });

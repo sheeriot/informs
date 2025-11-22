@@ -101,9 +101,9 @@ class AidLocationCreateForm(forms.ModelForm):
             'field_op_lon': field_op_lon,
             'field_op_ring_size': field_op_ring_size,
             'country_code': self.field_op_obj.country.code if self.field_op_obj.country else '',
-            'latInputId': self.auto_id % 'latitude',
-            'lonInputId': self.auto_id % 'longitude',
-            'sourceInputId': self.auto_id % 'source',
+            'latInputId': 'id_latitude_modal',
+            'lonInputId': 'id_longitude_modal',
+            'sourceInputId': 'id_source_modal',
             'noteInputId': self.auto_id % 'note',
             'freeformAddressInputId': self.auto_id % 'free_form_address',
             'streetInputId': 'id_street_address_modal',
@@ -114,9 +114,10 @@ class AidLocationCreateForm(forms.ModelForm):
             'formContainerId': 'addLocationModal',
             'geocodeDetailsContainerId': 'geocode-details-container-modal',
             'distanceContainerId': 'distance-from-fieldop-modal',
-            'geocodeJsonInputId': self.auto_id % 'geocode_json',
+            'geocodeJsonInputId': 'id_geocode_json_modal',
             'getLocationButtonId': 'get-location-modal',
-            'resetLocationButtonId': 'reset-location-modal'
+            'resetLocationButtonId': 'reset-location-modal',
+            'map_id': 'add-location-map'
         }
 
         self.helper.layout = Layout(

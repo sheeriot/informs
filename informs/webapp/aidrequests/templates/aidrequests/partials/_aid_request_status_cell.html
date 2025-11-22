@@ -1,0 +1,43 @@
+<div class="btn-group dropdown-fix-overflow w-100">
+    <button type="button"
+            class="btn btn-sm py-0 px-1 w-100 status-button text-nowrap {% if aid_request.status == 'new' %}btn-outline-warning{% elif aid_request.status == 'assigned' %}btn-outline-warning{% elif aid_request.status == 'resolved' %}btn-outline-success{% elif aid_request.status == 'closed' %}btn-outline-primary{% elif aid_request.status == 'rejected' %}btn-outline-danger{% else %}btn-outline-secondary{% endif %}"
+            style="font-size: 0.75rem;"
+            data-bs-toggle="dropdown"
+            data-bs-container="body"
+            aria-expanded="false"
+            data-request-id="{{ aid_request.id }}"
+            data-current-status="{{ aid_request.status }}">
+        {% if aid_request.status == 'new' %}
+        <i class="bi bi-download"></i>
+        {% elif aid_request.status == 'assigned' %}
+        <i class="bi bi-clock"></i>
+        {% elif aid_request.status == 'resolved' %}
+        <i class="bi bi-hand-thumbs-up"></i>
+        {% elif aid_request.status == 'closed' %}
+        <i class="bi bi-door-closed"></i>
+        {% elif aid_request.status == 'rejected' %}
+        <i class="bi bi-hand-thumbs-down"></i>
+        {% else %}
+        <i class="bi bi-question-lg"></i>
+        {% endif %}
+        <span class="text-dark">{{ aid_request.get_status_display }}</span>
+    </button>
+    <ul class="dropdown-menu">
+        {% load custom_tags %}
+        {% with status_icons='{"new": "download", "assigned": "clock", "resolved": "hand-thumbs-up", "closed": "door-closed", "rejected": "hand-thumbs-down", "other": "question-lg"}'|json_loads %}
+        {% for status_code, status_name in status_choices_list %}
+            <li>
+                <a class="dropdown-item status-option d-flex align-items-center" href="#"
+              data-status="{{ status_code }}"
+                   data-request-id="{{ aid_request.id }}">
+                    <i class="bi bi-{{ status_icons|get_item:status_code }} me-2"></i>
+                    <span class="text-nowrap">{{ status_name }}</span>
+                </a>
+            </li>
+            {% if status_code == 'resolved' %}
+                <li><hr class="dropdown-divider"></li>
+            {% endif %}
+        {% endfor %}
+        {% endwith %}
+    </ul>
+</div>

@@ -1,0 +1,31 @@
+<div class="dropdown dropdown-fix-overflow w-100">
+    <button type="button"
+            class="btn btn-sm py-0 px-1 w-100 priority-button {% if aid_request.priority == 'high' %}btn-danger{% elif aid_request.priority == 'medium' %}btn-warning{% elif aid_request.priority == 'low' %}btn-primary{% else %}btn-secondary{% endif %}"
+            style="font-size: 0.75rem;"
+            data-bs-toggle="dropdown"
+            data-bs-container="body"
+            aria-expanded="false"
+            data-request-id="{{ aid_request.id }}"
+            data-current-priority="{{ aid_request.priority }}">
+        {{ aid_request.get_priority_display }}
+    </button>
+    <ul class="dropdown-menu">
+        {% load custom_tags %}
+        {% with priority_styles='{"high": {"icon": "exclamation-diamond-fill", "color": "text-danger"}, "medium": {"icon": "exclamation-triangle-fill", "color": "text-warning"}, "low": {"icon": "info-circle-fill", "color": "text-primary"}, "None": {"icon": "question-circle", "color": "text-secondary"}}'|json_loads %}
+        {% for priority_code, priority_name in priority_choices_list %}
+            {% with p_code_str=priority_code|default:"None" %}
+            {% with style=priority_styles|get_item:p_code_str %}
+                <li>
+                    <a class="dropdown-item priority-option d-flex align-items-center" href="#"
+                       data-priority="{{ priority_code|default:'none' }}"
+                       data-request-id="{{ aid_request.id }}">
+                        <i class="bi bi-{{ style.icon }} me-2 {{ style.color }}"></i>
+                        <span class="text-nowrap">{{ priority_name }}</span>
+                    </a>
+                </li>
+            {% endwith %}
+            {% endwith %}
+        {% endfor %}
+        {% endwith %}
+    </ul>
+</div>

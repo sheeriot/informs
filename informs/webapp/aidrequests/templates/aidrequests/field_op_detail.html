@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load bootstrap_icons %}
 {% load static %}
 {% load crispy_forms_tags %}
 {% load custom_tags %}
@@ -25,7 +24,7 @@
                     {% include 'aidrequests/partials/_aid_requests_badge.html' with field_op=object %}
                     {% if request.user.is_staff %}
                     <a href="{% url 'field_op_update' slug=object.slug %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning ms-2">
-                        {% bs_icon 'pencil-square' %} Edit
+                        <i class="bi bi-pencil-square"></i> Edit
                     </a>
                     {% endif %}
                     <a href="{% url 'field_op_list' %}" class="btn btn-info ms-2">

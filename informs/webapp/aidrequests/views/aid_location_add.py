@@ -21,7 +21,7 @@ def add_location(request, field_op, pk):
     field_op_obj = get_object_or_404(FieldOp, slug=field_op)
     # ic(f"VIEW: add_location for AidRequest PK: {aid_request.pk}")
     # ic(f"VIEW: field_op PK: {field_op_obj.pk}, slug: {field_op_obj.slug}")
-    # ic(f"VIEW: aid_request address: {aid_request.full_address}")
+    # ic(f"VIEW: aid_request address: {aid_request.provided_address}")
 
     if request.method == 'POST':
         form = AidLocationCreateForm(request.POST, field_op_obj=field_op_obj, aid_request_obj=aid_request)
@@ -35,12 +35,43 @@ def add_location(request, field_op, pk):
             city = form.cleaned_data.get('city', '')
             state = form.cleaned_data.get('state', '')
             # Join only non-empty parts with a comma and a space
-            location.address_searched = ", ".join(filter(None, [street, city, state]))
+            formatted_address = ", ".join(filter(None, [street, city, state]))
+
+            location.address_searched = formatted_address
+
+            # Try to extract free_form_address from geocode_json if available
+            geocode_json_str = form.cleaned_data.get('geocode_json')
+
+            if geocode_json_str:
+                # Check if it's a string that needs parsing (it might already be a dict if handled by form cleaning, but usually HiddenInput returns string)
+                if isinstance(geocode_json_str, str):
+                    try:
+                        geocode_data = json.loads(geocode_json_str)
+                        if 'freeformAddress' in geocode_data:
+                            location.free_form_address = geocode_data['freeformAddress']
+                    except json.JSONDecodeError:
+                        pass # Invalid JSON, fallback to formatted address
+                elif isinstance(geocode_json_str, dict):
+                     if 'freeformAddress' in geocode_json_str:
+                            location.free_form_address = geocode_json_str['freeformAddress']
+
+            # Fallback: If still empty, use the formatted manual address
+            if not location.free_form_address and formatted_address:
+                location.free_form_address = formatted_address
 
             location.created_by = request.user
             location.updated_by = request.user
 
             location.save()
+
+            # Create map synchronously so it is available immediately
+            try:
+                create_static_map(location, synchronous=True)
+                location.refresh_from_db()
+            except Exception as e:
+                ic(f"Error generating static map synchronously: {e}")
+                # Proceed without map if generation fails, to avoid 500 error
+                pass
 
             # After saving, get the complete list of all locations, but
             # annotate it to force the newly created one to the top.

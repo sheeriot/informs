@@ -1,6 +1,5 @@
 {% load crispy_forms_tags %}
 {% load markdown_tags %}
-{% load bootstrap_icons %}
 
 <tr hx-target="this" hx-swap="outerHTML">
     <td class="text-nowrap">{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
@@ -33,9 +32,9 @@
                     <div>
                         <button type="button" class="btn btn-sm btn-secondary"
                                 hx-get="{% url 'get_action_log_row' field_op=log.aid_request.field_op.slug aid_request_pk=log.aid_request.pk pk=log.pk %}">
-                            {% bs_icon 'x-circle' %} Cancel
+                            <i class="bi bi-x-circle"></i> Cancel
                         </button>
-                        <button type="submit" class="btn btn-sm btn-primary">{% bs_icon 'pencil' %} Save Edit</button>
+                        <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-pencil"></i> Save Edit</button>
                     </div>
                 </div>
             </form>

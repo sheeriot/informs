@@ -1,9 +1,76 @@
 {% load crispy_forms_tags %}
-{% crispy add_location_form %}
-<div id="addLocationLoading" class="text-center p-5 d-none">
-    <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
+<form id="addLocationForm"
+      hx-post="{% url 'add_location_modal' field_op=field_op.slug pk=aid_request.pk %}"
+      hx-target="#locations-list-container"
+      hx-swap="innerHTML"
+      hx-on:htmx:after-on-load="
+        const modal = bootstrap.Modal.getInstance(document.getElementById('addLocationModal'));
+        if (event.detail.xhr.status === 200) {
+            if (modal) modal.hide();
+            document.getElementById('addLocationForm').reset();
+            showActionAlert('Location added successfully!', 'success');
+            // Trigger a re-fetch of the audit logs to show the new addition
+            htmx.trigger('body', 'auditLogUpdated', {});
+        } else {
+            // If there are errors, the modal body (target) might be replaced with the form containing errors
+            // or we might handle validation errors differently.
+            // For now, we assume the response contains the updated list if successful.
+            // If validation fails, the view should ideally return the form with errors,
+            // but here we are targeting the list container.
+            // This logic might need adjustment depending on how the backend handles invalid forms with HTMX.
+             console.error('Add location failed', event.detail.xhr);
+        }
+      ">
+    {% csrf_token %}
+
+    <div class="row">
+        <div class="col-md-6">
+            {{ form.city|as_crispy_field }}
+        </div>
+        <div class="col-md-6">
+            {{ form.state|as_crispy_field }}
+        </div>
     </div>
-    <h5 class="mt-3">Adding Location...</h5>
-    <p>Please wait while we create the record and generate the map.</p>
+    <div class="row">
+        <div class="col-12">
+            {{ form.street_address|as_crispy_field }}
+        </div>
+    </div>
+
+    <!-- Hidden fields for coordinates and source -->
+    <input type="hidden" name="latitude" id="id_latitude_modal">
+    <input type="hidden" name="longitude" id="id_longitude_modal">
+    <input type="hidden" name="source" id="id_source_modal" value="manual">
+    <input type="hidden" name="geocode_json" id="id_geocode_json_modal">
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex gap-2">
+             <button type="button" id="btn-get-location-modal" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-crosshair"></i> Use Device Location
+            </button>
+            <button type="button" id="btn-reset-location-modal" class="btn btn-outline-danger btn-sm" onclick="document.dispatchEvent(new CustomEvent('resetLocationView'));">
+                <i class="bi bi-x-circle"></i> Reset Map
+            </button>
+        </div>
+        <div id="add-location-distance-display" class="text-muted small fw-bold"></div>
+    </div>
+
+    <!-- Map Container -->
+    {% include 'aidrequests/partials/_location_picker_map.html' with map_data=form.map_context %}
+
+    <div class="mt-3">
+        {{ form.note|as_crispy_field }}
+    </div>
+
+    <div class="d-flex justify-content-end mt-3">
+        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" id="btn-confirm-location-modal" class="btn btn-primary">Add Location</button>
+    </div>
+</form>
+
+<div id="geocode-spinner-modal" class="d-none text-center mt-2">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Geocoding...</span>
+    </div>
+    <small class="text-muted d-block">Looking up address...</small>
 </div>

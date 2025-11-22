@@ -1,4 +1,3 @@
-{% load bootstrap_icons %}
 <a href="{% url 'aid_request_list' field_op=field_op.slug %}" class="btn btn-outline-info btn-sm text-dark">
     <div class="text-nowrap">
         <i class="bi bi-life-preserver text-danger me-1"></i> Aid Requests ({{ field_op.aid_requests.count }})

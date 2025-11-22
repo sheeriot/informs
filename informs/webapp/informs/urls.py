@@ -156,6 +156,7 @@ urlpatterns = [
     path('<slug:field_op>/aidrequest/<int:pk>/notify/', AidRequestNotifyView.as_view(), name='aid_request_notify'),
     path('<slug:field_op>/aidrequest/<int:pk>/submitted/', AidRequestSubmittedView.as_view(), name='aid_request_submitted'),
     path('<slug:field_op>/aidrequest/<int:pk>/add-location/', add_location, name='add_location'),
+    path('<slug:field_op>/aidrequest/<int:pk>/add-location-modal/', add_location, name='add_location_modal'), # Using same view but new name for clarity in HTMX
     path('<slug:field_op>/aidrequest/export-csv/', AidRequestCsvView.as_view(), {'action': 'export_csv'}, name='aid_requests_csv'),
     path('<slug:field_op>/aidrequest/<int:aid_request>/location/<int:pk>/delete', AidLocationDeleteView.as_view(), name='aid_location_delete'),
     path('<slug:field_op>/<int:pk>/',
@@ -181,4 +182,8 @@ urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 handler404 = 'informs.views.custom_404'
 handler500 = 'informs.views.custom_500'
 
-# urlpatterns += debug_toolbar_urls()
+if getattr(settings, 'DEBUG_TOOLBAR', False):
+    import debug_toolbar
+    urlpatterns += [
+        path('__debug__/', include(debug_toolbar.urls)),
+    ]
