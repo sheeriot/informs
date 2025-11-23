@@ -3,17 +3,176 @@
  * A robust, simplified version for initializing the map and its layers.
  */
 
-// A global 'map' variable
-let map;
+    // A global 'map' variable
+    let map;
 
-// Expose the initialize function globally so the main list script can call it
-window.initializeAidRequestMap = function(requests, initialFilterState) {
-    const SCRIPT_DEBUG = false;
-    let mapRequestsConfig = {};
-    let successfullyCreatedIcons = [];
-    let aidRequestLayer;
-    let aidRequestSource;
-    let currentLayerFilterState = null; // Store the current filter state
+    // Handle Map Modal events to resize map and maintain state
+    // document.addEventListener('DOMContentLoaded', function() {
+    //    // Moved logic inside initializeAidRequestMap to access map scope
+    // });
+
+    // Expose the initialize function globally so the main list script can call it
+    window.initializeAidRequestMap = function(requests, initialFilterState) {
+        // SCRIPT_DEBUG is controlled here or via config
+        let SCRIPT_DEBUG = false;
+        // Make sure it's available globally for the modal handlers
+        window.SCRIPT_DEBUG = SCRIPT_DEBUG;
+
+        let mapRequestsConfig = {};
+        let successfullyCreatedIcons = [];
+        let aidRequestLayer;
+        let aidRequestSource;
+        let currentLayerFilterState = null; // Store the current filter state
+
+        // Handle Map Modal Logic
+        const mapModal = document.getElementById('mapModal');
+        const mapContainer = document.getElementById('aid-request-map-container');
+        const mapModalContainer = document.getElementById('aid-request-map-modal-container');
+
+        if (mapModal && mapContainer && mapModalContainer) {
+            const originalParent = mapContainer.parentElement;
+
+            mapModal.addEventListener('shown.bs.modal', () => {
+                if (SCRIPT_DEBUG) console.log('[Map] Moving map to modal...');
+
+                // Initialize jQuery UI Draggable on the modal DIALOG (the wrapper)
+                // and Resizable on the modal CONTENT
+                if (typeof $ !== 'undefined' && $.ui) {
+                    const $dialog = $(mapModal).find('.modal-dialog');
+                    const $content = $(mapModal).find('.modal-content');
+
+                    if (!$dialog.data('ui-draggable')) {
+                        $dialog.draggable({
+                            handle: ".modal-header",
+                            // Remove strict window containment to allow moving partly off-screen if needed
+                            // containment: "window",
+                            scroll: false
+                        });
+                    }
+
+                    if (!$content.data('ui-resizable')) {
+                        $content.resizable({
+                            minHeight: 300,
+                            minWidth: 300,
+                            handles: "n, e, s, w, ne, se, sw, nw", // All directions
+                            resize: function(event, ui) {
+                                // During resize, resize map to follow
+                                if (map) map.resize();
+                            },
+                            stop: function(event, ui) {
+                                // Final resize and center
+                                if (map) {
+                                    map.resize();
+                                    // recenterMap(); // Optional: keep center vs fit bounds
+                                }
+                            }
+                        });
+                    }
+                }
+
+                mapModalContainer.appendChild(mapContainer);
+
+                // Ensure map container fills the modal container
+                mapContainer.style.height = '100%';
+                mapContainer.style.width = '100%';
+
+                // Small timeout to allow flex layout to settle
+                setTimeout(() => {
+                    if (map) {
+                        map.resize();
+                        recenterMap();
+                    }
+                }, 100);
+            });
+
+            mapModal.addEventListener('hidden.bs.modal', () => {
+                if (SCRIPT_DEBUG) console.log('[Map] Moving map back to card...');
+                originalParent.appendChild(mapContainer);
+
+                // Reset map container styles for the card
+                mapContainer.style.height = '';
+                mapContainer.style.width = '';
+
+                // Reset modal content dimensions to default for next open
+                if (typeof $ !== 'undefined') {
+                    $(mapModal).find('.modal-content').css({ width: '', height: '90vh' });
+                }
+
+                if (map) {
+                    map.resize();
+                    // Optional: recenter for small view, or keep user's view?
+                    // Keeping user's view is usually less jarring, but we can ensure bounds if needed.
+                    // recenterMap();
+                }
+            });
+        }
+
+        function recenterMap() {
+            if (!map || !aidRequestSource) return;
+
+            const shapes = aidRequestSource.getShapes();
+            let bounds = null;
+
+            // 1. Get bounds of all visible aid requests
+            // Note: getShapes() returns all shapes. We should probably respect the filter?
+            // However, usually "Zoom to fit" includes all potential points or just filtered ones.
+            // Let's stick to ALL shapes for context, or we can filter manually.
+            // The request said "ensure all Shapes are visible".
+            if (shapes.length > 0) {
+                bounds = atlas.data.BoundingBox.fromData(shapes);
+            }
+
+            // 2. Ensure at least 1.5x ring diameter is visible
+            if (mapRequestsConfig.field_op && mapRequestsConfig.field_op.ring_size) {
+                const ringSizeMiles = mapRequestsConfig.field_op.ring_size;
+                const lat = mapRequestsConfig.field_op.latitude;
+                const lon = mapRequestsConfig.field_op.longitude;
+
+                // 1.5x Ring Diameter = 3x Radius
+                const targetRadiusMiles = ringSizeMiles * 1.5;
+
+                // Approximate bounding box for this radius (simple spherical approx)
+                // 1 deg lat ~= 69 miles
+                // 1 deg lon ~= 69 * cos(lat) miles
+                const latDelta = targetRadiusMiles / 69.0;
+                const lonDelta = targetRadiusMiles / (69.0 * Math.cos(lat * Math.PI / 180));
+
+                const ringBounds = [
+                    lon - lonDelta,
+                    lat - latDelta,
+                    lon + lonDelta,
+                    lat + latDelta
+                ];
+
+                if (bounds) {
+                    bounds = atlas.data.BoundingBox.merge(bounds, ringBounds);
+                } else {
+                    bounds = ringBounds;
+                }
+            }
+
+            if (bounds) {
+                // 3. Apply 10% margins
+                // map.setCamera padding is in pixels. We need map dimensions.
+                const canvas = map.getCanvas();
+                const h = canvas.height;
+                const w = canvas.width;
+
+                const padding = {
+                    top: h * 0.1,
+                    bottom: h * 0.1,
+                    left: w * 0.1,
+                    right: w * 0.1
+                };
+
+                if (SCRIPT_DEBUG) console.log('[Map] Resetting camera with bounds:', bounds, 'and padding:', padding);
+                map.setCamera({
+                    bounds: bounds,
+                    padding: padding
+                });
+            }
+        }
+
 
     const configEl = document.getElementById('aid-requests-config-json');
     if (configEl) {
@@ -21,19 +180,22 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
             // Load config from backend
             const backendConfig = JSON.parse(configEl.textContent);
             Object.assign(mapRequestsConfig, backendConfig);
+            if (typeof backendConfig.debug !== 'undefined') {
+                SCRIPT_DEBUG = backendConfig.debug;
+            }
         } catch (e) {
             console.error('[Map] Failed to parse config JSON.', e);
         }
     }
 
-    const mapContainer = document.getElementById('aid-request-map-container');
-    if (!mapContainer) {
+    const mapContainerEl = document.getElementById('aid-request-map-container');
+    if (!mapContainerEl) {
         console.error('[Map] Map container not found during initialization.');
         return;
     }
 
-    const subscriptionKey = mapContainer.dataset.mapsSubscriptionKey;
-    const initialBoundsString = mapContainer.dataset.initialBounds;
+    const subscriptionKey = mapContainerEl.dataset.mapsSubscriptionKey;
+    const initialBoundsString = mapContainerEl.dataset.initialBounds;
     let initialBounds = null;
     if (initialBoundsString) {
         try {
@@ -46,7 +208,7 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
     if (SCRIPT_DEBUG) console.log('[Map] Initializing...');
 
     // Initialize the map
-    map = new atlas.Map(mapContainer, {
+    map = new atlas.Map(mapContainerEl, {
         authOptions: {
             authType: 'subscriptionKey',
             subscriptionKey: subscriptionKey
@@ -84,7 +246,11 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
         initializeFieldOpLayer(mapRequestsConfig.field_op);
         initializeAidRequestLayer(requests, aidTypesConfig);
 
-        updateMapLayer(initialFilterState); // Apply initial filter
+        // Apply initial filter - ensure it's not null/empty if passed
+        if (initialFilterState) {
+             if (SCRIPT_DEBUG) console.log('[Map] Applying initial filter:', initialFilterState);
+             updateMapLayer(initialFilterState);
+        }
         setupPopupLogic(requests, aidTypesConfig);
 
         if (SCRIPT_DEBUG) console.log('[Map] All layers initialized.');
@@ -103,47 +269,55 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
         document.body.addEventListener('aidRequestUpdated', function (e) {
             try {
                 const updatedRequest = e.detail.request;
-                if (!updatedRequest || !updatedRequest.id) return;
+                if (SCRIPT_DEBUG) console.log('[Map] aidRequestUpdated event received:', updatedRequest);
 
-                // Ensure locations is an array
-                if (!Array.isArray(updatedRequest.locations)) {
-                    if (updatedRequest.location) {
-                       updatedRequest.locations = [updatedRequest.location];
-                    } else {
-                        console.error('[Map] Invalid location data in aidRequestUpdated.');
-                        return;
-                    }
-                }
+                if (!updatedRequest || !updatedRequest.id) return;
 
                 if (!aidRequestSource) return;
 
                 const shapeToUpdate = aidRequestSource.getShapeById(updatedRequest.id);
-                const primaryLocation = updatedRequest.locations.find(l => l.is_primary);
+
+                // For the list map, we assume a single location per request as 'location'.
+                const location = updatedRequest.location;
 
                 if (shapeToUpdate) {
-                    if (primaryLocation) {
+                    if (location && typeof location.latitude === 'number' && typeof location.longitude === 'number') {
                         // Location exists, update it.
-                        shapeToUpdate.setCoordinates([primaryLocation.longitude, primaryLocation.latitude]);
+                        shapeToUpdate.setCoordinates([location.longitude, location.latitude]);
                         const props = shapeToUpdate.getProperties();
+
+                        if (SCRIPT_DEBUG) console.log('[Map] Updating shape properties. Old:', props);
+
                         props.status = updatedRequest.status;
                         props.priority = updatedRequest.priority || 'none';
+
+                        // Ensure aid_type is preserved if not present in update, or updated if it is
+                        if (updatedRequest.aid_type && updatedRequest.aid_type.slug) {
+                             props.aid_type = updatedRequest.aid_type.slug;
+                        }
+
                         shapeToUpdate.setProperties(props);
-                        if (SCRIPT_DEBUG) console.log(`[Map] Updated shape for request #${updatedRequest.id}`);
+                        if (SCRIPT_DEBUG) console.log(`[Map] Updated shape for request #${updatedRequest.id}. New props:`, props);
                     } else {
-                        // No primary location left, remove the point from the map.
+                        // No valid location left, remove the point from the map.
                         aidRequestSource.remove(shapeToUpdate);
-                        if (SCRIPT_DEBUG) console.log(`[Map] Removed shape for request #${updatedRequest.id}`);
+                        if (SCRIPT_DEBUG) console.log(`[Map] Removed shape for request #${updatedRequest.id} (no valid location)`);
                     }
 
                     // RE-APPLY FILTER TO UPDATE VISIBILITY
                     if (currentLayerFilterState) {
+                        if (SCRIPT_DEBUG) console.log('[Map] Re-applying filter after update:', currentLayerFilterState);
                         updateMapLayer(currentLayerFilterState);
+                    } else {
+                        if (SCRIPT_DEBUG) console.warn('[Map] No current filter state to re-apply!');
                     }
+                } else {
+                     if (SCRIPT_DEBUG) console.warn(`[Map] Shape not found for request #${updatedRequest.id}`);
                 }
 
                 // If the updated request matches the currently open popup, refresh or close it.
                 if (window.aidRequestPopup && window.aidRequestPopup.isOpen() && window.currentPopupRequestId === updatedRequest.id) {
-                    if (primaryLocation) {
+                    if (location) {
                         // We need to find the full request object in our main `requests` array to pass to createPopupContent
                         const fullRequestData = requests.find(r => r.id === updatedRequest.id);
                         if(fullRequestData) {
@@ -155,7 +329,7 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
                              const newHtmlContent = createPopupContent(updatedRequest);
                              window.aidRequestPopup.setOptions({
                                  content: newHtmlContent,
-                                 position: [primaryLocation.longitude, primaryLocation.latitude]
+                                 position: [location.longitude, location.latitude]
                              });
                         }
                     } else {
@@ -205,8 +379,21 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
             currentProps.status = newStatus;
             currentProps.priority = newPriority;
             pointToUpdate.setProperties(currentProps);
+
+            // Re-apply filter
+            if (currentLayerFilterState) {
+                updateMapLayer(currentLayerFilterState);
+            }
         }
     });
+
+    function updateLocationCounts(count) {
+        const text = `${count} Locations`;
+        const el1 = document.getElementById('map-location-count');
+        if (el1) el1.textContent = text;
+        const el2 = document.getElementById('map-modal-location-count');
+        if (el2) el2.textContent = text;
+    }
 
     function updateMapLayer(filterState) {
         if (!map || !aidRequestLayer) return;
@@ -237,6 +424,8 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
 
         const combinedFilter = filters.length > 1 ? ['all', ...filters] : filters[0] || null;
 
+        if (SCRIPT_DEBUG) console.log('[Map] Applying filter:', JSON.stringify(combinedFilter));
+
         try {
             aidRequestLayer.setOptions({ filter: combinedFilter });
 
@@ -244,6 +433,8 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
             if (aidRequestSource) {
                 const allShapes = aidRequestSource.getShapes();
                 let visibleCount = 0;
+                let popupShouldClose = false;
+
                 allShapes.forEach(shape => {
                     const props = shape.getProperties();
                     // Check Status
@@ -265,11 +456,20 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
 
                     if (statusMatch && priorityMatch && aidTypeMatch) {
                         visibleCount++;
+                    } else {
+                        // If this shape is now hidden, and it matches the current popup, mark for closing
+                        if (window.currentPopupRequestId && props.requestId === window.currentPopupRequestId) {
+                            popupShouldClose = true;
+                        }
                     }
                 });
-                const countElement = document.getElementById('map-location-count');
-                if (countElement) {
-                    countElement.textContent = `${visibleCount} Locations`;
+
+                updateLocationCounts(visibleCount);
+
+                // Close popup if its associated shape is now filtered out
+                if (popupShouldClose && window.aidRequestPopup && window.aidRequestPopup.isOpen()) {
+                    if (SCRIPT_DEBUG) console.log(`[Map] Closing popup for ID ${window.currentPopupRequestId} as it is filtered out.`);
+                    window.aidRequestPopup.close();
                 }
             }
 
@@ -383,10 +583,7 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
         aidRequestSource.add(points);
 
         // Update the location count badge
-        const countElement = document.getElementById('map-location-count');
-        if (countElement) {
-            countElement.textContent = `${points.length} Locations`;
-        }
+        updateLocationCounts(points.length);
 
         aidRequestLayer = new atlas.layer.SymbolLayer(aidRequestSource, 'aid-request-layer', {
             iconOptions: {
@@ -494,10 +691,14 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
         // Listen for the popup's own close event to reset the tracking ID.
         map.events.add('close', window.aidRequestPopup, () => {
             const closedId = window.currentPopupRequestId;
-            if (SCRIPT_DEBUG) console.log(`[Map] Popup close event fired for ID ${closedId}. Resetting current ID.`);
-            window.currentPopupRequestId = null;
             if (closedId) {
+                if (SCRIPT_DEBUG) console.log(`[Map] Popup close event fired for ID ${closedId}. Resetting current ID.`);
+                window.currentPopupRequestId = null;
                 document.body.dispatchEvent(new CustomEvent('popupClosedOnMap', { detail: { requestId: closedId } }));
+            } else {
+                 // This happens if the popup was closed programmatically when no request ID was active
+                 // or if it was closed before an ID was assigned.
+                 if (SCRIPT_DEBUG) console.log('[Map] Popup closed (no active Request ID).');
             }
         });
 
@@ -598,7 +799,7 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
 
         const priorityDisplay = request.priority_display || 'None';
         const statusDisplay = request.status_display || 'Unknown';
-        const providedAddress = request.location?.address_display || 'Not provided';
+        const providedAddress = request.provided_address || 'Not provided';
         const geocodedAddress = request.location?.free_form_address || 'Not geocoded';
         const coordinates = `${request.location.latitude},${request.location.longitude}`;
         const groupSize = request.group_size || 'Unknown';
@@ -672,7 +873,7 @@ window.initializeAidRequestMap = function(requests, initialFilterState) {
 
         const priorityDisplay = request.priority_display || 'None';
         const statusDisplay = request.status_display || 'Unknown';
-        const providedAddress = request.location?.address_display || 'Not provided';
+        const providedAddress = request.provided_address || 'Not provided';
         const geocodedAddress = request.location?.free_form_address || 'Not geocoded';
         const coordinates = `${request.location.latitude},${request.location.longitude}`;
         const groupSize = request.group_size || 'Unknown';

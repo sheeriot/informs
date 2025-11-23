@@ -376,6 +376,7 @@ class AidRequest(TimeStampedModel):
             'priority_display': self.get_priority_display(),
             'aid_type': aid_type_data,
             'location': location_data,
+            'provided_address': self.provided_address,
             'group_size': self.group_size,
             'requester_name': self.requester_full_name,
         }

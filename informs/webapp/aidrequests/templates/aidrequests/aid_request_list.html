@@ -36,14 +36,21 @@
 
 <!-- Map Modal -->
 <div class="modal fade" id="mapModal" tabindex="-1" aria-labelledby="mapModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-fullscreen-lg-down">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="mapModalLabel">Aid Requests Map</h5>
+  <!-- Remove height constraint from dialog so content can dictate size -->
+  <div class="modal-dialog modal-xl modal-fullscreen-lg-down" style="max-width: 95vw; margin: 1.75rem auto;">
+    <!-- Apply initial height to content, remove h-100 class to allow jQuery UI resizing to work -->
+    <div class="modal-content" style="height: 90vh; overflow: hidden; min-width: 300px; min-height: 300px;">
+      <div class="modal-header" style="cursor: move;">
+        <h5 class="modal-title" id="mapModalLabel">
+            <i class="bi bi-map me-2"></i>{{ field_op.name }}
+            <span class="text-muted font-monospace ms-1 me-2" style="font-size: 0.85em;">({{ field_op.slug }})</span>
+            <span class="badge bg-secondary" id="map-modal-location-count">0 Locations</span>
+        </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body p-0">
-        <div id="aid-request-map-modal-container" style="height: 80vh;">
+      <div class="modal-body p-0 d-flex flex-column" aria-hidden="false">
+        <!-- Use flex-grow-1 to fill available space without using h-100 which can conflict -->
+        <div id="aid-request-map-modal-container" class="flex-grow-1 w-100">
           <!-- Map will be moved here -->
         </div>
       </div>
@@ -101,12 +108,15 @@
 <script src="{% static 'js/azure-maps-layer-legend.js' %}?v={{static_version}}"></script>
 <!-- Application JavaScript -->
 <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 
 <script src="{% static 'js/htmx-helpers.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/tak-alert-htmx.js' %}?v={{static_version}}"></script>
 
-<script src="{% static 'js/aidrequests-list.js' %}?v={{static_version}}"></script>
+<!-- REORDERED SCRIPTS: Filter (Logic), Map (Init Function), List (Controller) -->
 <script src="{% static 'js/aidrequests-filter.js' %}?v={{static_version}}"></script>
 <script src="{% static 'js/map_aidrequests.js' %}?v={{static_version}}"></script>
+<script src="{% static 'js/aidrequests-list.js' %}?v={{static_version}}"></script>
 
 {% endblock %}

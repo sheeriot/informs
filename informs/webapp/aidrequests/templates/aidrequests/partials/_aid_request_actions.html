@@ -1,24 +1,32 @@
-<div class="d-flex align-items-center">
-    <span class="fw-bold me-2">{{ aid_request.id }}</span>
+<!-- Row 1: ID and Action Buttons -->
+<div class="d-flex align-items-center mb-1">
+    <span class="font-monospace me-2 text-muted small">#{{ aid_request.id }}</span>
     <div class="btn-group">
-        <a href="#" class="btn btn-sm bg-info bg-opacity-25 border-secondary btn-view-on-map"
+        <a href="#" class="btn btn-sm bg-info bg-opacity-25 border-secondary btn-view-on-map py-0 px-1"
            data-request-id="{{ aid_request.id }}"
            title="View on Map">
-            <i class="bi bi-geo-alt view-on-map-icon"></i>
+            <i class="bi bi-geo-alt view-on-map-icon" style="font-size: 0.85rem;"></i>
         </a>
         <a href="{% url 'aid_request_detail_short' field_op=field_op.slug pk=aid_request.pk %}"
-           class="btn btn-sm bg-warning bg-opacity-25 border-secondary"
+           class="btn btn-sm bg-warning bg-opacity-25 border-secondary py-0 px-1"
            title="Edit aid request {{ aid_request.id }}">
-            <i class="bi bi-pencil"></i>
+            <i class="bi bi-pencil" style="font-size: 0.85rem;"></i>
         </a>
         <a href="#"
-           class="btn btn-sm bg-success bg-opacity-25 border-secondary copy-url-link"
+           class="btn btn-sm bg-success bg-opacity-25 border-secondary copy-url-link py-0 px-1"
            data-url="{% url 'aid_request_detail_short' field_op=field_op.slug pk=aid_request.pk %}"
            title="Copy link to request {{ aid_request.id }}">
-            <i class="bi bi-link-45deg"></i>
+            <i class="bi bi-link-45deg" style="font-size: 0.85rem;"></i>
         </a>
     </div>
 </div>
-<div class="small text-muted text-nowrap mt-1">
+
+<!-- Row 2: Requester Name -->
+<div class="fw-bold text-truncate mb-1" style="max-width: 160px;" title="{{ aid_request.requester_full_name|default:"Unknown" }}">
+    {{ aid_request.requester_full_name|default:"Unknown" }}
+</div>
+
+<!-- Row 3: Aid Type -->
+<div class="small text-muted text-nowrap">
     {% include "aidrequests/partials/_aid_request_type_cell.html" %}
 </div>

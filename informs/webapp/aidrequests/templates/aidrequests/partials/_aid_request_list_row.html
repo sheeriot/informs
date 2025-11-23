@@ -14,21 +14,20 @@
     hx-swap="outerHTML"
     hx-trigger="update-row-{{ aid_request.id }} from:body"
     data-url-update="{% url 'aid_request_ajax_update' field_op=field_op.slug pk=aid_request.pk %}">
-    <td scope="row" class="align-middle py-1">
+    <td scope="row" class="align-top py-1">
         {% include "aidrequests/partials/_aid_request_actions.html" %}
     </td>
-    <td class="py-1 text-truncate" style="max-width: 120px;">{{ aid_request.requester_full_name|default:"Unknown" }}</td>
-    <td class="align-middle">
+    <td class="align-top">
         <div class="d-flex flex-column gap-1">
             {% include "aidrequests/partials/_aid_request_status_cell.html" %}
             {% include "aidrequests/partials/_aid_request_priority_cell.html" %}
         </div>
     </td>
-    <td class="align-middle px-1 text-center">
+    <td class="align-top px-1 text-center">
         {{ aid_request.group_size|default:"-" }}
     </td>
-    <td class="align-middle">
-        {% include "aidrequests/partials/_aid_request_address_cell.html" %}
+    <td class="align-top">
+        {% include "aidrequests/partials/_aid_request_location_cell.html" %}
     </td>
     <td class="py-1 d-none d-xxl-table-cell">
         <div class="small text-nowrap">

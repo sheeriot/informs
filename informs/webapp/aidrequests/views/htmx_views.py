@@ -575,7 +575,7 @@ def get_aid_request_row(request, field_op, pk):
         'status_choices_list': AidRequest.STATUS_CHOICES,
         'priority_choices_list': AidRequest.PRIORITY_CHOICES,
     }
-    return render(request, 'aidrequests/partials/_aid_request_row.html', context)
+    return render(request, 'aidrequests/partials/_aid_request_list_row.html', context)
 
 
 @login_required
