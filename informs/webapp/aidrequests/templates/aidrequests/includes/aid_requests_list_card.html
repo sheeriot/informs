@@ -28,23 +28,43 @@
         <table class="table table-sm table-hover table-striped border-bottom mb-0" id="aid-request-table">
             <thead class="table-light">
                 <tr>
-                    <th scope="col" class="py-1">#</th>
-                    <th scope="col" class="py-1">Requester</th>
-                    <th scope="col" class="py-1">
-                        <div class="d-flex flex-column" style="line-height: 1; font-size: 0.75rem;">
-                            <span>Status</span>
-                            <span class="text-muted">Priority</span>
+                    <th scope="col" class="py-1 cursor-pointer sort-header" data-sort-key="requester" title="Sort by Requester/ID">
+                        <div class="d-flex align-items-center">
+                            <span>Request</span>
+                            <i class="bi bi-arrow-down-up ms-1 small text-muted sort-icon"></i>
                         </div>
                     </th>
-                    <th scope="col" class="py-1 px-1 text-center">Size</th>
                     <th scope="col" class="py-1">
-                        <i class="bi bi-geo-alt"></i>
-                        <span class="d-none d-xl-inline">Location</span>
-                    </th>
-                    <th scope="col" class="py-1 d-none d-xxl-table-cell">
                         <div class="d-flex flex-column" style="line-height: 1; font-size: 0.75rem;">
-                            <span>Updated</span>
-                            <span class="text-muted">Age</span>
+                            <div class="d-flex align-items-center cursor-pointer sort-header mb-1" data-sort-key="status" title="Sort by Status">
+                                <span class="me-1">Status</span>
+                                <i class="bi bi-arrow-down-up small text-muted sort-icon"></i>
+                            </div>
+                            <div class="d-flex align-items-center cursor-pointer sort-header" data-sort-key="priority" title="Sort by Priority">
+                                <span class="text-muted me-1">Priority</span>
+                                <i class="bi bi-arrow-down-up small text-muted sort-icon"></i>
+                            </div>
+                        </div>
+                    </th>
+                    <th scope="col" class="py-1 px-1 text-center cursor-pointer sort-header" data-sort-key="size" title="Sort by Size">
+                        <div class="d-flex align-items-center justify-content-center">
+                            <span>Size</span>
+                            <i class="bi bi-arrow-down-up ms-1 small text-muted sort-icon"></i>
+                        </div>
+                    </th>
+                    <th scope="col" class="py-1">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-geo-alt me-1"></i>
+                            <span class="d-none d-xl-inline">Location</span>
+                        </div>
+                    </th>
+                    <th scope="col" class="py-1 d-none d-xxl-table-cell cursor-pointer sort-header" data-sort-key="updated" title="Sort by Updated">
+                        <div class="d-flex align-items-center">
+                            <div class="d-flex flex-column" style="line-height: 1; font-size: 0.75rem;">
+                                <span>Updated</span>
+                                <span class="text-muted">Age</span>
+                            </div>
+                            <i class="bi bi-arrow-down-up ms-1 small text-muted sort-icon"></i>
                         </div>
                     </th>
                 </tr>

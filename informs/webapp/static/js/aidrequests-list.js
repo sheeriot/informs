@@ -8,11 +8,21 @@
     'use strict';
 
     const SCRIPT_DEBUG = false;
-
+    if (SCRIPT_DEBUG) {
+        console.log('AidRequests List Script v 0.0.1');
+    }
     let allAidRequests = [];
     let listScriptConfig = {};
     let isInitialized = false;
     let selectedRequestId = null;
+
+    // Sorting State
+    let currentSort = { key: 'status', direction: 'asc' }; // Default sort
+
+    // Sort Order Definitions (Custom)
+    const statusOrder = ['new', 'assigned', 'closed', 'resolved', 'rejected', 'other'];
+    const priorityOrder = ['high', 'medium', 'low', null, 'none']; // 'none' handles legacy/string nulls
+    const locationStatusOrder = ['confirmed', 'new', 'rejected', 'candidate', 'other'];
 
     document.addEventListener('DOMContentLoaded', initialize);
 
@@ -53,8 +63,16 @@
             return;
         }
 
-        // Get the initial filter state from the DOM.
-        const initialFilterState = getFilterStateFromDOM();
+        // Get the initial filter state. Prefer the globally exposed function if available.
+        let initialFilterState;
+        if (window.informs && typeof window.informs.getFilterState === 'function') {
+            initialFilterState = window.informs.getFilterState();
+        } else {
+             console.warn('[List Script] window.informs.getFilterState not found, falling back to local implementation.');
+             initialFilterState = getFilterStateFromDOM();
+        }
+
+        if (SCRIPT_DEBUG) console.log('[List Script] Initial filter state:', initialFilterState);
 
         // Apply the initial filter to set the correct visibility and get initial counts
         // On page load, we want standard visibility handling (hide d-none immediately), NOT fading.
@@ -72,13 +90,153 @@
             if (SCRIPT_DEBUG) console.log('[List Script] Calling window.initializeAidRequestMap...');
             window.initializeAidRequestMap(allAidRequests, initialFilterState);
         } else {
-            console.error('[List Script] Map initialization function not found.');
+            console.error('[List Script] Map initialization function not found. Ensure map_aidrequests.js is loaded.');
         }
 
         // Set up all event listeners for the page.
         addPageEventListeners();
         initializeTooltips();
         setupModalHandlers();
+        setupSortingHandlers();
+    }
+
+    function setupSortingHandlers() {
+        const headers = document.querySelectorAll('.sort-header');
+        headers.forEach(header => {
+            header.addEventListener('click', () => {
+                const key = header.dataset.sortKey;
+                handleSort(key);
+            });
+        });
+    }
+
+    function handleSort(key) {
+        if (currentSort.key === key) {
+            // Toggle direction
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            // New key, default to asc (except 'updated' which usually defaults to desc, but let's stick to simple)
+            currentSort.key = key;
+            currentSort.direction = 'asc';
+        }
+
+        if (SCRIPT_DEBUG) console.log(`[List Script] Sorting by ${currentSort.key} (${currentSort.direction})`);
+
+        sortAidRequests();
+        // Re-apply filter/visibility logic which essentially re-renders the order by manipulating the DOM
+        // Actually, runFilterAndUpdates just hides/shows. We need to re-append rows in the new order.
+        renderSortedRows();
+    }
+
+    function sortAidRequests() {
+        allAidRequests.sort((a, b) => {
+            let valA, valB;
+            let comparison = 0;
+
+            switch (currentSort.key) {
+                case 'status':
+                    // Primary: Status, Secondary: Priority
+                    valA = statusOrder.indexOf(a.status);
+                    valB = statusOrder.indexOf(b.status);
+                    if (valA === -1) valA = 999;
+                    if (valB === -1) valB = 999;
+                    comparison = valA - valB;
+
+                    if (comparison === 0) {
+                        // Tie-breaker: Priority
+                        let prioA = priorityOrder.indexOf(a.priority || 'none');
+                        let prioB = priorityOrder.indexOf(b.priority || 'none');
+                        if (prioA === -1) prioA = 999;
+                        if (prioB === -1) prioB = 999;
+                        comparison = prioA - prioB;
+                    }
+                    break;
+
+                case 'priority':
+                    // Primary: Priority, Secondary: Status
+                    let prioA = priorityOrder.indexOf(a.priority || 'none');
+                    let prioB = priorityOrder.indexOf(b.priority || 'none');
+                    if (prioA === -1) prioA = 999;
+                    if (prioB === -1) prioB = 999;
+                    comparison = prioA - prioB;
+
+                    if (comparison === 0) {
+                        // Tie-breaker: Status
+                        valA = statusOrder.indexOf(a.status);
+                        valB = statusOrder.indexOf(b.status);
+                        if (valA === -1) valA = 999;
+                        if (valB === -1) valB = 999;
+                        comparison = valA - valB;
+                    }
+                    break;
+
+                case 'requester':
+                    // Sort by Request ID (numeric)
+                    valA = a.id;
+                    valB = b.id;
+                    comparison = valA - valB;
+                    break;
+
+                case 'size':
+                    valA = a.group_size || 0;
+                    valB = b.group_size || 0;
+                    comparison = valA - valB;
+                    break;
+
+                case 'location':
+                    // Location sort removed per user request
+                    comparison = 0;
+                    break;
+
+                case 'updated':
+                    // Sort by ID (proxy for creation/update somewhat) or just ID
+                    valA = a.id;
+                    valB = b.id;
+                    comparison = valA - valB;
+                    break;
+
+                default:
+                    comparison = 0;
+            }
+
+            return currentSort.direction === 'asc' ? comparison : -comparison;
+        });
+    }
+
+    function renderSortedRows() {
+        const tbody = document.getElementById('aid-request-list-body');
+        if (!tbody) return;
+
+        // Create a document fragment for better performance
+        const fragment = document.createDocumentFragment();
+
+        allAidRequests.forEach(request => {
+            const row = document.getElementById(`aid-request-row-${request.id}`);
+            if (row) {
+                fragment.appendChild(row); // Moves the row to the fragment (and thus new position)
+            }
+        });
+
+        tbody.appendChild(fragment);
+
+        // Update icons
+        updateSortIcons();
+    }
+
+    function updateSortIcons() {
+        document.querySelectorAll('.sort-icon').forEach(icon => {
+            icon.className = 'bi bi-arrow-down-up ms-1 small text-muted sort-icon'; // Reset
+        });
+
+        const activeHeader = document.querySelector(`.sort-header[data-sort-key="${currentSort.key}"]`);
+        if (activeHeader) {
+            const icon = activeHeader.querySelector('.sort-icon');
+            if (icon) {
+                icon.className = currentSort.direction === 'asc'
+                    ? 'bi bi-sort-down ms-1 small text-dark sort-icon'
+                    : 'bi bi-sort-up ms-1 small text-dark sort-icon';
+            }
+        }
     }
 
     function addPageEventListeners() {
@@ -145,17 +303,23 @@
 
         // Listen for successful updates from the modal action script
         document.body.addEventListener('aidRequestUpdated', function (e) {
-            if (SCRIPT_DEBUG) console.log('[List Script] aidRequestUpdated received.');
+            if (SCRIPT_DEBUG) console.log('[List Script] aidRequestUpdated received.', e.detail);
 
             const updatedRequest = e.detail.request;
             if (!updatedRequest) return;
 
             const index = allAidRequests.findIndex(r => r.id === updatedRequest.id);
             if (index !== -1) {
+                // Update local data store
                 allAidRequests[index] = updatedRequest;
 
                 // Re-run the filters and counts with the current state to reflect the change
-                const currentFilterState = getFilterStateFromDOM();
+                let currentFilterState;
+                if (window.informs && typeof window.informs.getFilterState === 'function') {
+                    currentFilterState = window.informs.getFilterState();
+                } else {
+                    currentFilterState = getFilterStateFromDOM();
+                }
 
                 updateFilterCounts(currentFilterState);
                 updateFilterSummary(currentFilterState);
@@ -286,7 +450,11 @@
     function runFilterAndUpdates(filterState, immediate = false) {
         if (!filterState) {
             console.error('[List Script] runFilterAndUpdates called without a filterState. Recovering by reading from DOM.');
-            filterState = getFilterStateFromDOM();
+             if (window.informs && typeof window.informs.getFilterState === 'function') {
+                filterState = window.informs.getFilterState();
+            } else {
+                filterState = getFilterStateFromDOM();
+            }
         }
 
         let visibleCount = 0;
@@ -502,42 +670,43 @@
         }
     }
 
+    // Backup local implementation for robustness if the global one fails/is missing
     function getFilterStateFromDOM() {
-    const filterCard = document.getElementById('aid-request-filter-card');
-    if (!filterCard) return {};
+        const filterCard = document.getElementById('aid-request-filter-card');
+        if (!filterCard) return {};
 
-    const getCheckedValues = (selector) =>
-        Array.from(filterCard.querySelectorAll(selector))
-             .filter(cb => cb.checked)
-             .map(cb => cb.dataset.filterValue);
-
-        // Correctly determines if an "All" checkbox is fully checked.
-    const isAllChecked = (selector) => {
-        const allCheckbox = filterCard.querySelector(selector);
-            // It's only 'all' if the main checkbox is checked and not indeterminate.
-            return allCheckbox && allCheckbox.checked && !allCheckbox.indeterminate;
-    };
-
-        // Gets the values of all checked child checkboxes for a given type.
-        const getCheckedChildValues = (type) =>
-            Array.from(filterCard.querySelectorAll(`[data-filter-type="${type}"]:not([id$="-all"])`))
+        const getCheckedValues = (selector) =>
+            Array.from(filterCard.querySelectorAll(selector))
                 .filter(cb => cb.checked)
                 .map(cb => cb.dataset.filterValue);
 
+            // Correctly determines if an "All" checkbox is fully checked.
+        const isAllChecked = (selector) => {
+            const allCheckbox = filterCard.querySelector(selector);
+                // It's only 'all' if the main checkbox is checked and not indeterminate.
+                return allCheckbox && allCheckbox.checked && !allCheckbox.indeterminate;
+        };
 
-        const aidTypes = isAllChecked('#aid-type-filter-all') ? 'all' : getCheckedChildValues('aid_type');
-        const priorities = isAllChecked('#priority-filter-all') ? 'all' : getCheckedChildValues('priority');
-    const statuses = getCheckedValues('[data-filter-type="status"]');
+            // Gets the values of all checked child checkboxes for a given type.
+            const getCheckedChildValues = (type) =>
+                Array.from(filterCard.querySelectorAll(`[data-filter-type="${type}"]:not([id$="-all"])`))
+                    .filter(cb => cb.checked)
+                    .map(cb => cb.dataset.filterValue);
 
-        return { status: statuses, priority: priorities, aid_type: aidTypes };
-}
 
-function initializeTooltips() {
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-}
+            const aidTypes = isAllChecked('#aid-type-filter-all') ? 'all' : getCheckedChildValues('aid_type');
+            const priorities = isAllChecked('#priority-filter-all') ? 'all' : getCheckedChildValues('priority');
+        const statuses = getCheckedValues('[data-filter-type="status"]');
+
+            return { status: statuses, priority: priorities, aid_type: aidTypes };
+    }
+
+    function initializeTooltips() {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
 
     function setupModalHandlers() {
         const actionConfirmationModal = document.getElementById('actionConfirmationModal');

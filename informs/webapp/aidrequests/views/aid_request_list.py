@@ -111,7 +111,29 @@ class AidRequestListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
         qs = AidRequest.objects.filter(
             field_op=self.field_op
-        ).select_related('aid_type').prefetch_related(prefetch_locations).order_by('-updated_at')
+        ).select_related('aid_type').prefetch_related(prefetch_locations)
+
+        # Apply ordering: Status (custom order), then Priority (custom order), then Updated At
+        qs = qs.annotate(
+            status_order=Case(
+                When(status='new', then=Value(1)),
+                When(status='assigned', then=Value(2)),
+                When(status='closed', then=Value(3)),
+                When(status='resolved', then=Value(4)),
+                When(status='rejected', then=Value(5)),
+                When(status='other', then=Value(6)),
+                default=Value(7),
+                output_field=IntegerField()
+            ),
+            priority_order=Case(
+                When(priority='high', then=Value(1)),
+                When(priority='medium', then=Value(2)),
+                When(priority='low', then=Value(3)),
+                When(priority__isnull=True, then=Value(4)), # Treat None as lowest priority
+                default=Value(4),
+                output_field=IntegerField()
+            )
+        ).order_by('status_order', 'priority_order', '-updated_at')
 
         return qs
 

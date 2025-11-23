@@ -1,13 +1,19 @@
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
 
-    const SCRIPT_DEBUG = false;
+    // Toggle this to true for detailed debug logs in the browser console
+    const SCRIPT_DEBUG = true;
 
     const filterCard = document.getElementById('aid-request-filter-card');
     if (!filterCard) {
         // No filter card on this page, do nothing.
         return;
     }
+
+    // Expose this utility globally so other scripts (like the list and map) can use it
+    // without duplicating the logic.
+    window.informs = window.informs || {};
+    window.informs.getFilterState = getFilterStateFromDOM;
 
     /**
      * Reads the current state of all filter checkboxes from the DOM.
