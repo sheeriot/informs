@@ -814,6 +814,13 @@
             });
         }, { once: true });
 
+        // Blur focused element before modal hides to prevent aria-hidden focus issue
+        modal.addEventListener('hide.bs.modal', function blurFocus() {
+            if (document.activeElement && modal.contains(document.activeElement)) {
+                document.activeElement.blur();
+            }
+        }, { once: true });
+
         // Clean up when modal is hidden
         modal.addEventListener('hidden.bs.modal', function cleanup() {
             if (positionMapInstance) {
