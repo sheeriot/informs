@@ -8,7 +8,6 @@ from ..models import FieldOp, AidRequest
 from ..forms import FieldOpForm
 from .utils import prepare_aid_locations_for_map
 from .maps import staticmap_fieldop
-from icecream import ic
 import json
 import base64
 from django.core.serializers.json import DjangoJSONEncoder
@@ -81,7 +80,6 @@ class FieldOpCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
         response = super().form_valid(form)
 
         if not self.object.disable_cot:
-            ic(f"Creating send_cot_task for FieldOp {self.object.slug}")
             async_task(
                 'aidrequests.tasks.send_cot_task',
                 field_op_slug=self.object.slug,
@@ -153,12 +151,9 @@ class FieldOpUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         form = self.get_form()
-        ic("Processing POST request")
 
         if form.is_valid():
-            # ic("Form is valid, saving...")
             self.object = form.save()
-            ic(f"Creating send_cot_task for updated FieldOp {self.object.slug}")
             async_task(
                 'aidrequests.tasks.send_cot_task',
                 field_op_slug=self.object.slug,

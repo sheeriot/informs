@@ -1,0 +1,57 @@
+{% if success %}
+<div class="alert alert-success py-2 mb-0">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+        <div class="flex-grow-1">
+            <strong class="text-nowrap">Connection Successful</strong>
+            {% if test_type == 'gateway' %}
+            <span class="badge bg-info ms-2">via Gateway</span>
+            {% endif %}
+            <br>
+            <small>{{ message }}</small>
+            {% if details %}
+            <div class="mt-2 small">
+                {% if details.connect_time_ms %}
+                <span class="badge bg-light text-dark me-1">Connect: {{ details.connect_time_ms }}ms</span>
+                {% endif %}
+                {% if details.subscribe_time_ms %}
+                <span class="badge bg-light text-dark me-1">Subscribe: {{ details.subscribe_time_ms }}ms</span>
+                {% endif %}
+                {% if details.publish_time_ms %}
+                <span class="badge bg-light text-dark me-1">Publish: {{ details.publish_time_ms }}ms</span>
+                {% endif %}
+                {% if details.round_trip_time_ms %}
+                <span class="badge bg-success me-1">Round-trip: {{ details.round_trip_time_ms }}ms</span>
+                {% endif %}
+                {% if details.messages_received is not None %}
+                <span class="badge bg-info">Messages: {{ details.messages_received }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-danger py-2 mb-0">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-x-circle-fill me-2 fs-5"></i>
+        <div>
+            <strong class="text-nowrap">Connection Failed</strong>
+            {% if test_type == 'gateway' %}
+            <span class="badge bg-warning text-dark ms-2">via Gateway</span>
+            {% endif %}
+            <br>
+            <small>{{ message }}</small>
+            {% if error %}
+            <br>
+            <code class="small">{{ error }}</code>
+            {% endif %}
+            {% if details and details.connect_time_ms %}
+            <div class="mt-2 small">
+                <span class="badge bg-light text-dark">Connect attempt: {{ details.connect_time_ms }}ms</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}

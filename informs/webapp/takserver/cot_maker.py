@@ -8,7 +8,6 @@ from asgiref.sync import sync_to_async
 from aidrequests.models import FieldOp, AidRequest, AidLocation
 from .cot_helper import make_cot, aidrequest_location
 import logging
-from icecream import ic
 import xml.etree.ElementTree as ET
 from datetime import datetime
 import pytak

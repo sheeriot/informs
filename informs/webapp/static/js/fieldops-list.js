@@ -14,7 +14,6 @@ const fieldOpsConfig = {
 
 // Main execution
 document.addEventListener('DOMContentLoaded', function() {
-    if (fieldOpsConfig.debug) console.log('Initializing Field Ops List JS');
     initializeFieldOpsList();
 
     // Initialize map if data is available
@@ -69,25 +68,11 @@ async function handleCotToggle(event) {
     const switchInput = event.currentTarget;
     const fieldOpSlug = switchInput.dataset.fieldOpSlug;
     const currentStatus = switchInput.dataset.currentStatus;
-    const newStatus = currentStatus === 'disabled' ? 'active' : 'disabled';
-
-    if (fieldOpsConfig.debug) {
-        console.log('COT Toggle Request:', {
-            fieldOpSlug,
-            currentStatus,
-            newStatus,
-            switchElement: switchInput,
-            requestUrl: fieldOpsConfig.urls.toggleCot(fieldOpSlug)
-        });
-    }
-
     try {
         const requestBody = {
             field_op_slug: fieldOpSlug,
             disable_cot: newStatus === 'disabled'
         };
-
-        if (fieldOpsConfig.debug) {
             console.log('Sending request with body:', requestBody);
         }
 
@@ -95,35 +80,16 @@ async function handleCotToggle(event) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCsrfToken()
+                'X-CSRFToken': getCookie('csrftoken')
             },
             body: JSON.stringify(requestBody)
-        });
-
-        if (fieldOpsConfig.debug) {
-            console.log('Server response:', {
-                status: response.status,
-                statusText: response.statusText,
-                headers: Object.fromEntries(response.headers.entries())
-            });
         }
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
         }
 
-        const data = await response.json();
-
-        if (fieldOpsConfig.debug) {
-            console.log('Response data:', data);
-        }
-
         if (data.status === 'success') {
-            if (fieldOpsConfig.debug) {
-                console.log('Successfully toggled COT status:', {
-                    fieldOpSlug,
-                    newStatus,
-                    response: data
                 });
             }
             updateCotSwitchState(switchInput, newStatus);
@@ -186,16 +152,6 @@ function showStatusMessage(row, message, type = 'info', duration = 15000) {
             setTimeout(() => {
                 alert.classList.add('d-none');
             }, 500); // Wait for fade out animation
-        }, duration);
-    }
-
-    if (fieldOpsConfig.debug) {
-        console.log('Status message shown:', {
-            message,
-            type,
-            duration,
-            container,
-            visible: container.classList.contains('show')
         });
     }
 }
@@ -205,13 +161,6 @@ async function handleTakAlert(event) {
     const fieldOpSlug = button.dataset.fieldOpSlug;
     const markType = button.dataset.markType;
     const row = button.closest('tr');
-    const originalButtonClass = markType === 'field' ? 'btn-success' : 'btn-danger';
-
-    if (fieldOpsConfig.debug) {
-        console.log(`Sending ${markType} TAK alert for ${fieldOpSlug}`, {
-            button,
-            requestUrl: fieldOpsConfig.urls.sendCot(fieldOpSlug)
-        });
     }
 
     // Store original button content
@@ -241,7 +190,7 @@ async function handleTakAlert(event) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCsrfToken()
+                'X-CSRFToken': getCookie('csrftoken')
             },
             body: JSON.stringify({
                 field_op_slug: fieldOpSlug,
@@ -279,10 +228,6 @@ async function handleTakAlert(event) {
             // Check connection status after successful send
             try {
                 const statusData = await checkConnectionStatus(fieldOpSlug);
-
-                // Status message is updated by checkConnectionStatus, no need to do it here
-
-                if (fieldOpsConfig.debug) {
                     console.log('Connection status check complete:', statusData);
                 }
             } catch (statusError) {
@@ -338,10 +283,6 @@ async function handleTakAlert(event) {
         }, 3000);
     }
 }
-
-async function checkConnectionStatus(fieldOpSlug) {
-    if (fieldOpsConfig.debug) {
-        console.log('Starting connection status check for:', fieldOpSlug);
     }
 
     try {
@@ -367,10 +308,6 @@ async function checkConnectionStatus(fieldOpSlug) {
             });
 
             const data = await response.json();
-            finalData = data; // Store the latest data
-
-            if (fieldOpsConfig.debug) {
-                console.log('Connection status check #' + pollCount + ':', data);
             }
 
             // Update UI based on status
@@ -476,13 +413,6 @@ function updateCotSwitchState(switchInput, newStatus) {
         buttons.forEach(button => {
             button.disabled = newStatus === 'disabled';
         });
-    }
-
-    if (fieldOpsConfig.debug) {
-        console.log('Updated COT switch state:', {
-            fieldOpSlug: switchInput.dataset.fieldOpSlug,
-            newStatus,
-            buttonGroupHidden: buttonGroup?.classList.contains('d-none')
         });
     }
 }
@@ -505,10 +435,3 @@ function updateTakAlertButtons(fieldOpSlug, disabled) {
     }
 }
 
-function getCsrfToken() {
-    const csrfInput = document.querySelector('[name="csrfmiddlewaretoken"]');
-    if (!csrfInput) {
-        throw new Error('CSRF token not found');
-    }
-    return csrfInput.value;
-}

@@ -33,8 +33,6 @@
             const originalParent = mapContainer.parentElement;
 
             mapModal.addEventListener('shown.bs.modal', () => {
-                if (SCRIPT_DEBUG) console.log('[Map] Moving map to modal...');
-
                 // Initialize jQuery UI Draggable on the modal DIALOG (the wrapper)
                 // and Resizable on the modal CONTENT
                 if (typeof $ !== 'undefined' && $.ui) {
@@ -86,7 +84,6 @@
             });
 
             mapModal.addEventListener('hidden.bs.modal', () => {
-                if (SCRIPT_DEBUG) console.log('[Map] Moving map back to card...');
                 originalParent.appendChild(mapContainer);
 
                 // Reset map container styles for the card
@@ -165,7 +162,6 @@
                     right: w * 0.1
                 };
 
-                if (SCRIPT_DEBUG) console.log('[Map] Resetting camera with bounds:', bounds, 'and padding:', padding);
                 map.setCamera({
                     bounds: bounds,
                     padding: padding
@@ -205,8 +201,6 @@
         }
     }
 
-    if (SCRIPT_DEBUG) console.log('[Map] Initializing...');
-
     // Initialize the map
     map = new atlas.Map(mapContainerEl, {
         authOptions: {
@@ -220,8 +214,6 @@
 
     // Wait until the map resources are ready.
     map.events.add('ready', async () => {
-        if (SCRIPT_DEBUG) console.log('[Map] Map is ready.');
-
         if (initialBounds) {
             map.setCamera({ bounds: initialBounds, padding: 50 });
         }
@@ -248,20 +240,15 @@
 
         // Apply initial filter - ensure it's not null/empty if passed
         if (initialFilterState) {
-             if (SCRIPT_DEBUG) console.log('[Map] Applying initial filter:', initialFilterState);
              updateMapLayer(initialFilterState);
         }
         setupPopupLogic(requests, aidTypesConfig);
 
-        if (SCRIPT_DEBUG) console.log('[Map] All layers initialized.');
-
         document.body.addEventListener('filterStateChange', (e) => {
-            if (SCRIPT_DEBUG) console.log('[Map] Filter change received.', e.detail);
             updateMapLayer(e.detail);
         });
 
         document.body.addEventListener('mapShouldUpdateFilter', (e) => {
-            if (SCRIPT_DEBUG) console.log('[Map] Should update filter.', e.detail);
             updateMapLayer(e.detail);
         });
 
@@ -269,7 +256,6 @@
         document.body.addEventListener('aidRequestUpdated', function (e) {
             try {
                 const updatedRequest = e.detail.request;
-                if (SCRIPT_DEBUG) console.log('[Map] aidRequestUpdated event received:', updatedRequest);
 
                 if (!updatedRequest || !updatedRequest.id) return;
 
@@ -286,8 +272,6 @@
                         shapeToUpdate.setCoordinates([location.longitude, location.latitude]);
                         const props = shapeToUpdate.getProperties();
 
-                        if (SCRIPT_DEBUG) console.log('[Map] Updating shape properties. Old:', props);
-
                         props.status = updatedRequest.status;
                         props.priority = updatedRequest.priority || 'none';
 
@@ -297,16 +281,13 @@
                         }
 
                         shapeToUpdate.setProperties(props);
-                        if (SCRIPT_DEBUG) console.log(`[Map] Updated shape for request #${updatedRequest.id}. New props:`, props);
                     } else {
                         // No valid location left, remove the point from the map.
                         aidRequestSource.remove(shapeToUpdate);
-                        if (SCRIPT_DEBUG) console.log(`[Map] Removed shape for request #${updatedRequest.id} (no valid location)`);
                     }
 
                     // RE-APPLY FILTER TO UPDATE VISIBILITY
                     if (currentLayerFilterState) {
-                        if (SCRIPT_DEBUG) console.log('[Map] Re-applying filter after update:', currentLayerFilterState);
                         updateMapLayer(currentLayerFilterState);
                     } else {
                         if (SCRIPT_DEBUG) console.warn('[Map] No current filter state to re-apply!');
@@ -424,8 +405,6 @@
 
         const combinedFilter = filters.length > 1 ? ['all', ...filters] : filters[0] || null;
 
-        if (SCRIPT_DEBUG) console.log('[Map] Applying filter:', JSON.stringify(combinedFilter));
-
         try {
             aidRequestLayer.setOptions({ filter: combinedFilter });
 
@@ -468,7 +447,6 @@
 
                 // Close popup if its associated shape is now filtered out
                 if (popupShouldClose && window.aidRequestPopup && window.aidRequestPopup.isOpen()) {
-                    if (SCRIPT_DEBUG) console.log(`[Map] Closing popup for ID ${window.currentPopupRequestId} as it is filtered out.`);
                     window.aidRequestPopup.close();
                 }
             }
@@ -692,13 +670,8 @@
         map.events.add('close', window.aidRequestPopup, () => {
             const closedId = window.currentPopupRequestId;
             if (closedId) {
-                if (SCRIPT_DEBUG) console.log(`[Map] Popup close event fired for ID ${closedId}. Resetting current ID.`);
                 window.currentPopupRequestId = null;
                 document.body.dispatchEvent(new CustomEvent('popupClosedOnMap', { detail: { requestId: closedId } }));
-            } else {
-                 // This happens if the popup was closed programmatically when no request ID was active
-                 // or if it was closed before an ID was assigned.
-                 if (SCRIPT_DEBUG) console.log('[Map] Popup closed (no active Request ID).');
             }
         });
 
@@ -720,8 +693,6 @@
 
         // Add a click event to the layer to show a popup.
         map.events.add('click', aidRequestLayer, function (e) {
-            if (SCRIPT_DEBUG) console.log('[Map] Map click event registered.');
-
             if (e.shapes && e.shapes.length > 0) {
                 const shapeId = e.shapes[0].id;
                 openPopupForRequestId(shapeId);
@@ -766,7 +737,6 @@
 
             // If the click was not on an aid request marker, and the popup is open, close it.
             if (!clickedOnAidRequestMarker && window.aidRequestPopup && window.aidRequestPopup.isOpen()) {
-                if (SCRIPT_DEBUG) console.log('[Map] Click outside a marker detected, closing popup.');
                 window.aidRequestPopup.close();
             }
         });
@@ -777,7 +747,6 @@
             if (copyBtn) {
                 const textToCopy = copyBtn.dataset.copyText;
                 if (textToCopy) {
-                    if (SCRIPT_DEBUG) console.log('[Map] Copy button clicked. Text to copy:', textToCopy);
                     navigator.clipboard.writeText(textToCopy).then(() => {
                         const originalContent = copyBtn.innerHTML;
                         copyBtn.innerHTML = 'Copied!';

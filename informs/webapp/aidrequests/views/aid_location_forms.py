@@ -4,7 +4,6 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.conf import settings
 from django.template.loader import render_to_string
-from icecream import ic
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Fieldset, Hidden, Row, Column, Div, HTML, Field

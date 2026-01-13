@@ -24,6 +24,7 @@ aiohttp
 httpx
 cryptography
 jinja2
+paho-mqtt>=1.6.0
 
 gunicorn
 azure-core
@@ -40,3 +41,5 @@ django-debug-toolbar-template-profiler
 
 loguru
 lxml
+
+paho-mqtt

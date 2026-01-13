@@ -4,7 +4,6 @@ from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST, require_http_methods
 from django.conf import settings
-from icecream import ic
 import os
 import json
 from django.db.models import Case, When, Value
@@ -26,7 +25,6 @@ def add_location(request, field_op, pk):
     if request.method == 'POST':
         form = AidLocationCreateForm(request.POST, field_op_obj=field_op_obj, aid_request_obj=aid_request)
         if form.is_valid():
-            ic(form.cleaned_data)
             location = form.save(commit=False)
             location.aid_request = aid_request
 
@@ -68,8 +66,7 @@ def add_location(request, field_op, pk):
             try:
                 create_static_map(location, synchronous=True)
                 location.refresh_from_db()
-            except Exception as e:
-                ic(f"Error generating static map synchronously: {e}")
+            except Exception:
                 # Proceed without map if generation fails, to avoid 500 error
                 pass
 
@@ -89,9 +86,6 @@ def add_location(request, field_op, pk):
                 )
             ).order_by('sort_order_override', *sorted_locations.query.order_by)
 
-            ic(f"Rendering locations for AidRequest #{aid_request.pk}. Found {len(locations_with_new_on_top)} locations.")
-            ic("Top location in list:", locations_with_new_on_top[0] if locations_with_new_on_top else "None")
-
             context = {
                 'aid_request': aid_request,
                 'locations': locations_with_new_on_top,
@@ -110,7 +104,6 @@ def add_location(request, field_op, pk):
             })
             return response
         else:
-            ic(form.errors)
             # This needs to be a proper HTTP response that can be handled by HTMX on error
             return render(request, 'aidrequests/partials/_add_location_modal_body.html', {'add_location_form': form}, status=400)
 
@@ -238,8 +231,7 @@ def delete_aid_location(request, field_op, pk):
 
     except AidLocation.DoesNotExist:
         return HttpResponseNotFound("The requested location does not exist.")
-    except Exception as e:
-        ic(f"ERROR deleting location pk={pk}: {e}")
+    except Exception:
         # logger.error(f"Error deleting location: {e}") # This line was not in the original file, so it's not added.
         # In case of an error, you might want to return an error message to the user
         # For simplicity, returning a generic server error here.

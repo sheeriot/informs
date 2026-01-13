@@ -2,7 +2,6 @@ from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Row, Column, Submit, Div, Field, HTML
 from crispy_forms.bootstrap import FormActions
-from icecream import ic
 from decimal import Decimal, ROUND_HALF_UP
 
 from ..models import FieldOp, FieldOpNotify, AidType

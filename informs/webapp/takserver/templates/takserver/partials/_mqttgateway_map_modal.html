@@ -1,0 +1,35 @@
+<!-- Mesh Message Map Modal -->
+<div class="modal fade" id="meshMapModal" tabindex="-1" aria-labelledby="meshMapModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light py-2">
+                <h5 class="modal-title" id="meshMapModalLabel">
+                    <i class="bi bi-map me-2"></i>Mesh Positions
+                    <span class="badge bg-primary ms-2" id="modal-point-count">0 points</span>
+                </h5>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button"
+                            class="btn btn-sm bg-secondary-subtle text-dark border-dark"
+                            id="fit-bounds-btn"
+                            title="Fit to all points">
+                        <i class="bi bi-arrows-fullscreen"></i>
+                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Azure Maps Container -->
+                <div id="mesh-map-container"
+                     style="width: 100%; height: 70vh;"
+                     data-azure-maps-key="{{ azure_maps_key }}">
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <small class="text-muted me-auto" id="map-status-text">Select positions and click Map It</small>
+                <button type="button" class="btn btn-sm bg-secondary-subtle text-dark border-dark" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i>Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

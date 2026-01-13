@@ -10,8 +10,6 @@ from django.contrib.auth.decorators import user_passes_test
 
 from django_q.tasks import async_task
 
-from icecream import ic
-
 from ..models import AidRequest, FieldOp, ActionLog, AidLocation, AidType
 from ..tasks import aid_request_postsave
 from ..forms import (
@@ -257,7 +255,6 @@ def change_aid_request_type(request, field_op, pk):
         # ic(new_aid_type_id)
 
         if not new_aid_type_id:
-            ic("new_aid_type_id is missing")
             return JsonResponse({'status': 'error', 'message': 'Aid Type not provided.'}, status=400)
 
         new_aid_type = get_object_or_404(AidType, pk=new_aid_type_id)
@@ -283,5 +280,4 @@ def change_aid_request_type(request, field_op, pk):
         return response
 
     except Exception as e:
-        ic(e)
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

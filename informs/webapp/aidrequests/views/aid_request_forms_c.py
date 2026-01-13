@@ -16,7 +16,6 @@ from ..forms.crispy_map_layout import MapLayoutObject
 from ..context_processors import get_field_op_for_form
 import re
 import json
-from icecream import ic
 
 class AidRequestCreateFormC(forms.ModelForm):
     """ Aid Request - Create Form C """

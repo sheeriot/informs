@@ -1,0 +1,23 @@
+{% if result.success %}
+<div class="alert alert-success py-2 mb-0">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+        <div>
+            <strong class="text-nowrap">Config Synced</strong>
+            <br>
+            <small>{{ result.message }}</small>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning py-2 mb-0">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+        <div>
+            <strong class="text-nowrap">Sync Failed</strong>
+            <br>
+            <small>{{ result.message }}</small>
+        </div>
+    </div>
+</div>
+{% endif %}

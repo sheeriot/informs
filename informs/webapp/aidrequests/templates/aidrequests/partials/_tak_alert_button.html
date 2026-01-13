@@ -3,7 +3,6 @@
         class="btn btn-danger me-1 {{ button_size_class|default:'btn-sm' }}"
         data-action="{{ action }}"
         hx-post="{% url 'htmx_send_tak_alert' field_op=slug %}"
-        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
         hx-target="#send-cot-status"
         hx-swap="innerHTML"
         hx-indicator="#htmx-tak-alert-button"

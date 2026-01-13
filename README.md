@@ -86,3 +86,52 @@ The Aid Request will use the first `Confirmed` or first `New` location as the `l
 ![Aid Request Details](docs/images/informs-aidrequest-details.png)
 
 The Aid Request Details page can also be used to add Activity Logs.
+
+## TAKMesh Gateway
+
+InForms includes integration with Meshtastic mesh radio networks via the TAKMesh Gateway. This allows:
+
+- **Meshtastic → TAK**: Mesh radio positions and messages appear in TAK clients
+- **TAK → Meshtastic**: TAK chat messages are relayed to the mesh network
+
+### Real-Time WebSocket Monitoring
+
+The MQTT Gateway detail page provides real-time monitoring of message traffic:
+
+- **Live Updates**: Messages appear instantly via WebSocket (no page refresh)
+- **Pause/Resume**: Pause the stream to review messages, resume to catch up
+- **Search**: Filter messages by callsign, type, or content
+- **Dual Buffers**: View MQTT (from mesh) and TAK (from server) traffic separately
+
+### WebSocket Features
+
+- **Automatic Reconnection**: Reconnects with exponential backoff if connection drops
+- **Compression**: permessage-deflate compression reduces bandwidth (70-90% for JSON)
+- **Connection Status**: Visual indicator shows WebSocket connection state
+
+### Nginx Configuration for WebSocket
+
+WebSocket connections require nginx to proxy with proper upgrade headers. The `nginx_informs.conf` template (in the webhost project) includes WebSocket proxying:
+
+```nginx
+# WebSocket proxy for TAKMesh Gateway
+location /ws/ {
+    proxy_pass http://takmesh:8090/ws/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+    proxy_buffering off;
+}
+```
+
+**Key Points:**
+
+- WebSocket is proxied through nginx at `/ws/` path
+- Browser connects via `wss://your-domain.com/ws/messages`
+- Nginx handles TLS termination, gateway receives plain WebSocket
+- Extended timeouts (3600s) support long-lived connections
+- Buffering disabled for real-time message delivery
+
+For more details on the TAKMesh Gateway, see `takmesh_gateway/README.md`.

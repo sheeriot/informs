@@ -1,0 +1,80 @@
+<!-- Message Detail Modal -->
+<div class="modal fade" id="messageDetailModal" tabindex="-1" aria-labelledby="messageDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="messageDetailModalLabel">
+                    <i class="bi bi-info-circle me-2"></i>Message Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Basic Info -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-card-text me-2"></i>Basic Information
+                        </h6>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <strong><i class="bi bi-clock me-1"></i>Timestamp:</strong>
+                        <div class="font-monospace small" id="detail-timestamp">-</div>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <strong><i class="bi bi-tag me-1"></i>Type:</strong>
+                        <div id="detail-type">-</div>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <strong><i class="bi bi-arrow-left-right me-1"></i>Source:</strong>
+                        <div id="detail-source">-</div>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <strong><i class="bi bi-signpost me-1"></i>Topic:</strong>
+                        <div class="font-monospace small text-break" id="detail-topic">-</div>
+                    </div>
+                    <div class="col-12 mb-2">
+                        <strong><i class="bi bi-chat-text me-1"></i>Summary:</strong>
+                        <div id="detail-summary">-</div>
+                    </div>
+                </div>
+
+                <!-- Location Info -->
+                <div class="row mb-3" id="location-section" style="display: none;">
+                    <div class="col-12">
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-geo-alt me-2"></i>Location Information
+                        </h6>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <strong><i class="bi bi-geo-alt-fill me-1"></i>Coordinates:</strong>
+                        <div class="font-monospace small" id="detail-coordinates">-</div>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <strong><i class="bi bi-arrow-left-right me-1"></i>Distance from Last:</strong>
+                        <div id="detail-distance">-</div>
+                    </div>
+                    <div class="col-12 mb-2">
+                        <a href="#" target="_blank" id="detail-map-link" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-map me-1"></i>View on Map
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Payload -->
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-code-square me-2"></i>Raw Payload
+                        </h6>
+                        <pre class="bg-light p-3 rounded small" style="max-height: 400px; overflow-y: auto;" id="detail-payload"><code>-</code></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i>Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

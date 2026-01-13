@@ -46,7 +46,6 @@
 
             const subscriptionKey = mapContainer.dataset.azureMapsKey;
             const geocodeUrl = mapContainer.dataset.geocodeUrl;
-            const csrfToken = formContainer.querySelector('[name=csrfmiddlewaretoken]').value; // This can stay global
 
             const latInput = formContainer.querySelector(`#${mapContainer.dataset.latInputId}`);
             const lonInput = formContainer.querySelector(`#${mapContainer.dataset.lonInputId}`);

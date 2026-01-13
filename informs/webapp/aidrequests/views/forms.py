@@ -6,11 +6,8 @@ from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, HTML, Fieldset, Field
 from crispy_forms.bootstrap import FormActions, InlineCheckboxes
-from icecream import ic
 
 from ..models import FieldOp
-
-# from icecream import ic
 
 
 class FieldOpForm(forms.ModelForm):
@@ -78,7 +75,6 @@ class FieldOpForm(forms.ModelForm):
         return ring_size
 
     def __init__(self, *args, action='create', **kwargs):
-        ic("FieldOpForm init - kwargs:", kwargs)
         super(FieldOpForm, self).__init__(*args, **kwargs)
         self.action = action
         self.helper = FormHelper()
@@ -103,8 +99,6 @@ class FieldOpForm(forms.ModelForm):
             button_text = 'Update'
         else:
             button_text = 'Create'
-
-        ic("Form next value:", self.initial.get('next'))
 
         initial_lat = ""
         initial_lon = ""

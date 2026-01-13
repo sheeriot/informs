@@ -1,0 +1,21 @@
+# Takmesh Gateway Dependencies
+
+# Async MQTT client
+gmqtt>=0.6.0
+
+# XML processing (for CoT)
+lxml>=4.9.0
+
+# REST API
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+
+# WebSocket protocol - wsproto doesn't validate Origin headers
+# Required for proxied WebSocket connections through nginx
+wsproto>=1.2.0
+
+# Redis for message buffer caching
+redis>=5.0.0
+
+# Logging enhancement (optional, for debugging)
+icecream

@@ -6,11 +6,7 @@ from django.views.decorators.http import require_POST
 import json
 import logging
 from decimal import Decimal
-from icecream import ic
 from django.template.loader import render_to_string
-
-# Configure icecream output
-ic.configureOutput(prefix='[ic] | ', includeContext=True)
 
 from ..models import AidRequest, FieldOp
 from ..forms import RequesterInformationForm, LocationInformationForm, RequestDetailsForm
@@ -40,13 +36,11 @@ def update_aid_request(request, field_op, pk):
     """
     Update the status or priority of an aid request.
     """
-    ic.enable()
     field_op_obj = get_object_or_404(FieldOp, slug=field_op)
     aid_request = get_object_or_404(AidRequest, pk=pk, field_op=field_op_obj)
 
     try:
         data = json.loads(request.body)
-        ic('Received data for aid request update:', data)
 
         updated = False
         if 'status' in data:
@@ -61,7 +55,6 @@ def update_aid_request(request, field_op, pk):
         if updated:
             note = data.get('note', '')
             note_markdown = data.get('note_markdown', False)
-            ic(f"Saving with note: '{note}' (Markdown: {note_markdown})")
 
             # Correctly pass update_fields to save()
             update_fields = []
@@ -86,5 +79,4 @@ def update_aid_request(request, field_op, pk):
     except json.JSONDecodeError:
         return JsonResponse({'status': 'error', 'message': 'Invalid JSON.'}, status=400)
     except Exception as e:
-        ic('Error updating aid request:', e)
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

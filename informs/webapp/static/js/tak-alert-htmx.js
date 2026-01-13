@@ -10,12 +10,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // htmx.logAll();
     }
 
+    // CSRF token is handled globally by htmx-csrf.js
     document.body.addEventListener('htmx:configRequest', function(evt) {
-        // Add CSRF token to all POST requests
-        if (evt.detail.verb === 'post') {
-            evt.detail.headers['X-CSRFToken'] = getCookie('csrftoken');
-        }
-
         // If the request is from the TAK alert button, handle visibility and dynamic parameters
         if (evt.detail.elt.id === 'htmx-tak-alert-button') {
              if (scriptConfig.debug) {

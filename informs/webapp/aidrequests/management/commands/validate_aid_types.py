@@ -1,7 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.db.models import Count
 from aidrequests.models import FieldOp, AidRequest
-from icecream import ic
 
 class Command(BaseCommand):
     help = 'Validates that all aid types used in aid requests are configured in their respective field operations'

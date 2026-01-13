@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title_prefix %}{{ takserver.name }} - TAK Server - {% endblock %}
+
+{% block header_title %}
+<i class="bi bi-hdd-rack"></i><i class="bi bi-plus-circle me-2"></i>{{ takserver.name }}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'takserver_list' %}">
+                    <i class="bi bi-hdd-rack"></i><i class="bi bi-plus-circle me-1"></i>TAK Servers
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">{{ takserver.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Server Info Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-server me-2"></i>Server Information
+                    </h5>
+                    {% if perms.takserver.change_takserver %}
+                    <a href="{% url 'takserver_update' pk=takserver.pk %}" class="btn btn-warning btn-sm">
+                        <i class="bi bi-pencil me-1"></i>Edit
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">
+                            <i class="bi bi-tag text-primary me-1"></i>Name
+                        </dt>
+                        <dd class="col-sm-8">
+                            <span class="font-monospace fs-5">{{ takserver.name }}</span>
+                        </dd>
+
+                        <dt class="col-sm-4 mt-2">
+                            <i class="bi bi-globe text-info me-1"></i>DNS Name
+                        </dt>
+                        <dd class="col-sm-8 mt-2">
+                            <span class="font-monospace">{{ takserver.dns_name }}</span>
+                        </dd>
+
+                        {% if takserver.notes %}
+                        <dt class="col-sm-4 mt-2">
+                            <i class="bi bi-journal-text text-secondary me-1"></i>Notes
+                        </dt>
+                        <dd class="col-sm-8 mt-2">
+                            {{ takserver.notes|linebreaks }}
+                        </dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Certificates Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-shield-lock me-2"></i>Certificates
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">
+                            <i class="bi bi-file-earmark-lock2 text-success me-1"></i>Trust Cert
+                        </dt>
+                        <dd class="col-sm-8">
+                            {% if takserver.cert_trust %}
+                            <div class="d-flex align-items-center">
+                                {% if cert_trust_exists %}
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                {% else %}
+                                <i class="bi bi-exclamation-triangle-fill text-warning me-2" title="File not found on disk"></i>
+                                {% endif %}
+                                <code class="small">{{ takserver.cert_trust.name }}</code>
+                            </div>
+                            {% else %}
+                            <span class="text-danger">
+                                <i class="bi bi-x-circle me-1"></i>Not uploaded
+                            </span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-4 mt-3">
+                            <i class="bi bi-key text-warning me-1"></i>Private Cert
+                        </dt>
+                        <dd class="col-sm-8 mt-3">
+                            {% if takserver.cert_private %}
+                            <div class="d-flex align-items-center">
+                                {% if cert_private_exists %}
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                {% else %}
+                                <i class="bi bi-exclamation-triangle-fill text-warning me-2" title="File not found on disk"></i>
+                                {% endif %}
+                                <code class="small">{{ takserver.cert_private.name }}</code>
+                            </div>
+                            {% else %}
+                            <span class="text-danger">
+                                <i class="bi bi-x-circle me-1"></i>Not uploaded
+                            </span>
+                            {% endif %}
+                        </dd>
+                    </dl>
+
+                    {% if cert_trust_exists and cert_private_exists %}
+                    <div class="alert alert-success mt-3 mb-0 py-2">
+                        <i class="bi bi-patch-check me-1"></i>
+                        All certificates are present and ready.
+                    </div>
+                    {% elif takserver.cert_trust or takserver.cert_private %}
+                    <div class="alert alert-warning mt-3 mb-0 py-2">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Some certificate files may be missing from disk.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Associated Field Ops Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-truck me-2"></i>Associated Field Ops
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if field_ops %}
+                    <ul class="list-group list-group-flush">
+                        {% for field_op in field_ops %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <div>
+                                <a href="{% url 'field_op_detail' field_op=field_op.slug %}" class="text-decoration-none">
+                                    <i class="bi bi-truck text-primary me-2"></i>
+                                    {{ field_op.name }}
+                                </a>
+                                <small class="text-muted ms-2 font-monospace">({{ field_op.slug }})</small>
+                            </div>
+                            <div>
+                                {% if field_op.disable_cot %}
+                                <span class="badge bg-secondary">
+                                    <i class="bi bi-pause-circle me-1"></i>COT Disabled
+                                </span>
+                                {% else %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-broadcast me-1"></i>COT Active
+                                </span>
+                                {% endif %}
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <div class="text-center py-3 text-muted">
+                        <i class="bi bi-truck display-6"></i>
+                        <p class="mt-2 mb-0">No Field Ops are using this TAK Server.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- COT Test Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-broadcast me-2"></i>Test Connection
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Send a test COT message to verify connectivity with this TAK Server.
+                        Uses the first associated Field Op to send a field marker.
+                    </p>
+
+                    <div class="mb-3">
+                        <label for="test-message" class="form-label">
+                            <i class="bi bi-chat-text me-1"></i>Test Message (optional)
+                        </label>
+                        <input type="text"
+                               class="form-control font-monospace"
+                               id="test-message"
+                               placeholder="Optional test message..."
+                               {% if not field_ops %}disabled{% endif %}>
+                    </div>
+
+                    <button type="button"
+                            class="btn btn-primary w-100"
+                            id="send-test-cot"
+                            data-takserver-pk="{{ takserver.pk }}"
+                            {% if not field_ops %}disabled{% endif %}>
+                        <i class="bi bi-send me-2"></i>Send Test COT
+                    </button>
+
+                    {% if not field_ops %}
+                    <div class="alert alert-info mt-3 mb-0 py-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Assign a Field Op to this TAK Server to enable testing.
+                    </div>
+                    {% endif %}
+
+                    <!-- Status display area -->
+                    <div id="test-status" class="mt-3 d-none">
+                        <div class="alert mb-0 py-2" id="test-status-alert">
+                            <span id="test-status-message"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Back button -->
+    <div class="mt-2 mb-4">
+        <a href="{% url 'takserver_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to TAK Servers
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/takserver-test.js' %}"></script>
+{% endblock %}

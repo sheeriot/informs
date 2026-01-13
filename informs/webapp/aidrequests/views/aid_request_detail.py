@@ -23,7 +23,6 @@ from ..tasks import send_cot_task
 
 from datetime import datetime
 # from time import perf_counter as timer
-from icecream import ic
 
 # logger = logging.getLogger(__name__)
 
@@ -78,7 +77,6 @@ class AidRequestSubmittedView(DetailView):
         if aid_location:
             # If the location doesn't have a map, generate one synchronously.
             if not aid_location.map_filename:
-                ic(f"SubmittedView: Location {aid_location.pk} is missing a map. Generating synchronously.")
                 create_static_map(aid_location, synchronous=True)
                 aid_location.refresh_from_db()
 
@@ -87,7 +85,6 @@ class AidRequestSubmittedView(DetailView):
                 context['map_ready'] = True
             else:
                 context['map_ready'] = False
-                ic(f"SubmittedView: Map generation for {aid_location.pk} failed or did not produce a filename.")
 
         context['MEDIA_URL'] = settings.MEDIA_URL
         return context
@@ -113,7 +110,6 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
 
         # Ensure the location has a map
         if self.aid_location and not self.aid_location.map_filename:
-            ic(f"AR-{self.aid_request.pk}: Location {self.aid_location.pk} is missing a map. Generating one now.")
             staticmap_data = staticmap_aid(
                 width=600, height=600,
                 fieldop_lon=self.aid_request.field_op.longitude,
@@ -128,7 +124,6 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
                     file.write(staticmap_data)
                 self.aid_location.map_filename = map_filename
                 self.aid_location.save()
-                ic(f"AR-{self.aid_request.pk}: Map generated and saved as {map_filename}")
 
     def get_context_data(self, **kwargs):
         try:
@@ -185,14 +180,12 @@ class AidRequestDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
             context['url_add_location'] = reverse('add_location', kwargs={'field_op': self.field_op.slug, 'pk': self.aid_request.pk})
 
             return context
-        except Exception as e:
-            ic(e)
+        except Exception:
             # It's better to raise the exception in debug, or handle it gracefully
             raise
 
     def get_object(self, queryset=None):
         try:
             return super().get_object(queryset)
-        except Exception as e:
-            ic(f"Error getting aid request object: {e}")
+        except Exception:
             raise

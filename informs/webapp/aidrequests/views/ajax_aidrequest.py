@@ -6,11 +6,7 @@ from django.views.decorators.http import require_POST
 import json
 import logging
 from decimal import Decimal
-from icecream import ic
 from django.template.loader import render_to_string
-
-# Configure icecream output
-ic.configureOutput(prefix='[ic] | ', includeContext=True)
 
 from ..models import AidRequest, FieldOp
 from ..forms import RequesterInformationForm, LocationInformationForm, RequestDetailsForm
@@ -85,5 +81,4 @@ def update_aid_request(request, field_op, pk):
     except json.JSONDecodeError:
         return JsonResponse({'status': 'error', 'message': 'Invalid JSON.'}, status=400)
     except Exception as e:
-        ic('Error updating aid request:', e)
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

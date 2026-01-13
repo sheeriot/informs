@@ -483,14 +483,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const configElement = document.getElementById('aid-request-config');
             const url = configElement.dataset.urlPartialUpdate;
-            const csrfToken = configElement.dataset.csrfToken;
 
             fetchWithLogging(url, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken,
-                },
                 body: JSON.stringify(payload)
             }, 'Partial Form Update')
             .then(response => {

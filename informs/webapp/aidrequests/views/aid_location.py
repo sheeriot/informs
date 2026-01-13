@@ -10,7 +10,6 @@ from django.template.loader import render_to_string
 import logging
 import json
 from django.http import HttpResponse
-from icecream import ic
 from django.conf import settings
 from django.http import HttpResponseBadRequest
 
@@ -60,10 +59,8 @@ def aid_location_status_update(request, field_op, pk):
     Update the status of an AidLocation (e.g., confirm, reject).
     This view is called via HTMX from a modal confirmation.
     """
-    ic("In aid_location_status_update")
     try:
         data = json.loads(request.body)
-        ic(data)
     except json.JSONDecodeError:
         return HttpResponseBadRequest("Invalid JSON")
 

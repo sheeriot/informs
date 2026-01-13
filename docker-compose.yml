@@ -43,10 +43,48 @@ services:
     profiles:
       - test
 
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    # Persist message cache to volume
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  takmesh:
+    build:
+      context: ./takmesh_gateway
+    image: takmesh-gateway
+    env_file:
+      - takmesh_gateway/env/takmesh.env
+    restart: unless-stopped
+    # REST API and WebSocket port (published for browser access)
+    ports:
+      - "8090:8090"
+    volumes:
+      - certs:/opt/app/certs:ro
+      - takmesh_config:/opt/app/data
+    depends_on:
+      - informs
+      - redis
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
 volumes:
   local-db:
   certs:
   informs_staticfiles:
+  takmesh_config:
+  redis_data:
 
 networks:
   default:

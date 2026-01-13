@@ -154,6 +154,15 @@
   </footer>
   {% endif %}
 
+  <!-- HTMX Modal Container -->
+  <div id="modal-container" class="modal fade" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" id="modal-content">
+        <!-- HTMX will swap modal content here -->
+      </div>
+    </div>
+  </div>
+
   {% tz_detect %}
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
     integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
@@ -163,6 +172,13 @@
   <!-- JavaScript files -->
   <script type="text/javascript" src="{% static 'js/time-helper.js' %}"></script>
   <script type="text/javascript" src="{% static 'js/informs-utils.js' %}?v={{ static_version }}"></script>
+
+  <!-- HTMX (after informs-utils.js which defines getCookie used by htmx-csrf.js) -->
+  <script src="https://unpkg.com/htmx.org@2.0.4"
+    integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
+    crossorigin="anonymous">
+  </script>
+  <script type="text/javascript" src="{% static 'js/htmx-csrf.js' %}"></script>
   <!-- Export tables to CSV -->
   <script type="text/javascript" src="{% static 'js/export_csv.js' %}"></script>
   <!-- JQuery Support -->

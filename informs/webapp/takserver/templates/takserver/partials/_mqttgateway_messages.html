@@ -1,0 +1,67 @@
+{% if error %}
+<div class="alert alert-warning py-2 px-3 mb-0 small">
+    <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
+</div>
+{% elif messages %}
+<div class="table-responsive">
+    <table class="table table-sm table-hover mb-0 align-middle">
+        <thead class="table-light">
+            <tr>
+                <th class="text-nowrap py-1" style="width: 130px;">
+                    <i class="bi bi-clock me-1"></i>Time
+                </th>
+                <th class="py-1" style="width: 30px;"></th>
+                <th class="py-1">Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for msg in messages %}
+            <tr class="message-row"
+                data-summary="{{ msg.summary|default:'' }}"
+                data-msg-type="{{ msg.msg_type|default:'' }}"
+                data-timestamp="{{ msg.timestamp|default:'' }}"
+                data-callsign="{{ msg.callsign|default:'' }}"
+                data-lat="{{ msg.lat|default:'' }}"
+                data-lon="{{ msg.lon|default:'' }}">
+                <td class="text-nowrap small font-monospace text-muted py-1">
+                    {{ msg.timestamp|slice:"11:19"|default:"-" }}
+                </td>
+                <td class="py-1">
+                    {% if msg.msg_type == 'position' %}
+                    <i class="bi bi-geo-alt-fill text-primary" title="Position"></i>
+                    {% elif msg.msg_type == 'text' %}
+                    <i class="bi bi-chat-fill text-secondary" title="Text"></i>
+                    {% elif msg.msg_type == 'chat' %}
+                    <i class="bi bi-chat-dots-fill text-warning" title="Chat"></i>
+                    {% else %}
+                    <i class="bi bi-question-circle text-muted" title="Other"></i>
+                    {% endif %}
+                </td>
+                <td class="small py-1">
+                    <span class="fw-medium">{{ msg.callsign|default:"Unknown" }}</span>
+                    {% if msg.lat and msg.lon %}
+                    <span class="font-monospace text-muted ms-2" style="font-size: 0.75rem;">{{ msg.lat|floatformat:5 }}, {{ msg.lon|floatformat:5 }}</span>
+                    <a href="https://www.google.com/maps?q={{ msg.lat }},{{ msg.lon }}"
+                       target="_blank"
+                       rel="noopener"
+                       class="btn btn-link btn-sm p-0 ms-1"
+                       title="Open in Google Maps">
+                        <i class="bi bi-pin-map text-primary"></i>
+                    </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<div class="d-flex justify-content-between align-items-center px-2 py-1 bg-light border-top small text-muted">
+    <span><i class="bi bi-database me-1"></i><span class="buffer-size">{{ stats.buffer_size|default:0 }}</span>/{{ stats.buffer_max|default:1000 }}</span>
+    <span><i class="bi bi-hash me-1"></i>Total: <span class="total-count">{{ stats.total_messages|default:0 }}</span></span>
+</div>
+{% else %}
+<div class="text-center py-3 text-muted">
+    <i class="bi bi-inbox"></i>
+    <span class="small ms-2">No messages yet</span>
+</div>
+{% endif %}

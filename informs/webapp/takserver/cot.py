@@ -17,7 +17,6 @@ from datetime import datetime
 from tempfile import NamedTemporaryFile
 from lxml import etree
 import ssl
-from icecream import ic # Re-added icecream
 # from pytak import TCPClientWorker, TLSClientWorker # Reverting this import
 
 # import time

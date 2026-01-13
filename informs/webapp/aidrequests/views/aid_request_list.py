@@ -12,7 +12,6 @@ import pandas as pd
 from django.views.generic import ListView
 import logging
 from ..context_processors import get_field_op_from_kwargs
-from icecream import ic
 # from django_q.tasks import async_task
 # from .aid_request_forms_a import RequestStatusForm
 # from ..forms import AidRequestStatusUpdateForm, AidRequestPriorityUpdateForm

@@ -13,9 +13,6 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 import configparser
-from icecream import ic
-# from icecream import ic
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -43,8 +40,6 @@ else:
 DEBUG_TOOLBAR = False
 if DEBUG and os.environ.get('DEBUG_TOOLBAR', 'False').lower() == 'true':
     DEBUG_TOOLBAR = True
-
-ic(DEBUG, DEBUG_TOOLBAR)
 
 SERVERNAME1 = os.environ.get('SERVERNAME1', 'localhost')
 SERVERNAME2 = os.environ.get('SERVERNAME2', 'localhost')
@@ -231,6 +226,7 @@ TEMPLATES = [
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
+                'django.template.context_processors.csrf',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'django.template.context_processors.static',
@@ -303,6 +299,9 @@ STATICFILES_DIRS = [
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
+
+# Certificate storage for TAK Servers (Docker volume mount)
+CERTIFICATE_STORAGE_ROOT = '/opt/app/certs'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -454,3 +453,6 @@ FIELD_OP_ICON_DEFAULT = 'blob_dot_yellow'
 STATIC_VERSION = '0.0.14'
 
 # PYTAK_FLUSH_TIMEOUT = 40 # seconds
+
+# TAKMesh Gateway API URL (internal Docker network)
+TAKMESH_API_URL = os.environ.get('TAKMESH_API_URL', 'http://takmesh:8090')

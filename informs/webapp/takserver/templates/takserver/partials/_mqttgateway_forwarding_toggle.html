@@ -1,0 +1,22 @@
+<div class="d-flex align-items-center gap-2">
+    <div class="form-check form-switch mb-0">
+        <input class="form-check-input" 
+               type="checkbox" 
+               role="switch" 
+               id="forwarding-toggle-{{ direction }}"
+               {% if enabled %}checked{% endif %}
+               hx-post="{% url 'mqttgateway_forwarding' pk=gateway.pk %}?direction={{ direction }}"
+               hx-target="#forwarding-controls-{{ direction }}"
+               hx-swap="innerHTML"
+               hx-indicator="#forwarding-spinner-{{ direction }}">
+        <label class="form-check-label small text-nowrap" for="forwarding-toggle-{{ direction }}">
+            {{ label }}
+        </label>
+        <span id="forwarding-spinner-{{ direction }}" class="htmx-indicator spinner-border spinner-border-sm ms-1"></span>
+    </div>
+    {% if error %}
+    <span class="text-danger small" title="{{ error }}">
+        <i class="bi bi-exclamation-triangle"></i>
+    </span>
+    {% endif %}
+</div>

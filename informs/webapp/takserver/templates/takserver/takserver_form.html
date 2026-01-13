@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title_prefix %}{{ action }} TAK Server - {% endblock %}
+
+{% block header_title %}
+<i class="bi bi-hdd-rack"></i><i class="bi bi-plus-circle me-2"></i>{{ action }} TAK Server
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'takserver_list' %}">
+                    <i class="bi bi-hdd-rack"></i><i class="bi bi-plus-circle me-1"></i>TAK Servers
+                </a>
+            </li>
+            {% if object %}
+            <li class="breadcrumb-item">
+                <a href="{% url 'takserver_detail' pk=object.pk %}">{{ object.name }}</a>
+            </li>
+            {% endif %}
+            <li class="breadcrumb-item active" aria-current="page">{{ action }}</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        {% if action == 'Create' %}
+                        <i class="bi bi-plus-lg me-2"></i>Add New TAK Server
+                        {% else %}
+                        <i class="bi bi-pencil me-2"></i>Edit TAK Server
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <!-- Server Identity Section -->
+                        <div class="mb-4">
+                            <h6 class="text-muted border-bottom pb-2">
+                                <i class="bi bi-server me-1"></i>Server Identity
+                            </h6>
+
+                            <div class="mb-3">
+                                <label for="id_name" class="form-label">
+                                    <i class="bi bi-tag text-primary me-1"></i>Name (Slug)
+                                </label>
+                                {{ form.name }}
+                                {% if form.name.help_text %}
+                                <div class="form-text">{{ form.name.help_text }}</div>
+                                {% endif %}
+                                {% if form.name.errors %}
+                                <div class="invalid-feedback d-block">{{ form.name.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="id_dns_name" class="form-label">
+                                    <i class="bi bi-globe text-info me-1"></i>DNS Name
+                                </label>
+                                {{ form.dns_name }}
+                                {% if form.dns_name.help_text %}
+                                <div class="form-text">{{ form.dns_name.help_text }}</div>
+                                {% endif %}
+                                {% if form.dns_name.errors %}
+                                <div class="invalid-feedback d-block">{{ form.dns_name.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Certificates Section -->
+                        <div class="mb-4">
+                            <h6 class="text-muted border-bottom pb-2">
+                                <i class="bi bi-shield-lock me-1"></i>Certificates
+                            </h6>
+
+                            <div class="mb-3">
+                                <label for="id_cert_trust" class="form-label">
+                                    <i class="bi bi-file-earmark-lock2 text-success me-1"></i>Trust Certificate (CA)
+                                </label>
+                                {% if object.cert_trust %}
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        Current: <code>{{ object.cert_trust.name }}</code>
+                                    </small>
+                                </div>
+                                {% endif %}
+                                {{ form.cert_trust }}
+                                {% if form.cert_trust.help_text %}
+                                <div class="form-text">{{ form.cert_trust.help_text }}</div>
+                                {% endif %}
+                                {% if form.cert_trust.errors %}
+                                <div class="invalid-feedback d-block">{{ form.cert_trust.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="id_cert_private" class="form-label">
+                                    <i class="bi bi-key text-warning me-1"></i>Private Certificate
+                                </label>
+                                {% if object.cert_private %}
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        Current: <code>{{ object.cert_private.name }}</code>
+                                    </small>
+                                </div>
+                                {% endif %}
+                                {{ form.cert_private }}
+                                {% if form.cert_private.help_text %}
+                                <div class="form-text">{{ form.cert_private.help_text }}</div>
+                                {% endif %}
+                                {% if form.cert_private.errors %}
+                                <div class="invalid-feedback d-block">{{ form.cert_private.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Notes Section -->
+                        <div class="mb-4">
+                            <h6 class="text-muted border-bottom pb-2">
+                                <i class="bi bi-journal-text me-1"></i>Additional Information
+                            </h6>
+
+                            <div class="mb-3">
+                                <label for="id_notes" class="form-label">
+                                    <i class="bi bi-sticky text-secondary me-1"></i>Notes
+                                </label>
+                                {{ form.notes }}
+                                {% if form.notes.help_text %}
+                                <div class="form-text">{{ form.notes.help_text }}</div>
+                                {% endif %}
+                                {% if form.notes.errors %}
+                                <div class="invalid-feedback d-block">{{ form.notes.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% if object %}{% url 'takserver_detail' pk=object.pk %}{% else %}{% url 'takserver_list' %}{% endif %}"
+                               class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-lg me-1"></i>
+                                {% if action == 'Create' %}Create TAK Server{% else %}Save Changes{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

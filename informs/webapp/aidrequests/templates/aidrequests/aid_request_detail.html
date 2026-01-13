@@ -9,7 +9,6 @@ Aid Request #{{ aid_request.pk }} for {{ field_op.name }}
 
 {% block content %}
 <div id="aid-request-config"
-    data-csrf-token="{{ csrf_token }}"
     data-field-op="{{ field_op.slug }}"
     data-field-op-name="{{ field_op.name }}"
     data-aid-request-id="{{ aid_request.pk }}"

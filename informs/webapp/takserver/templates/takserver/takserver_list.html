@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title_prefix %}TAK Servers - {% endblock %}
+
+{% block header_title %}
+<i class="bi bi-hdd-rack"></i><i class="bi bi-plus-circle me-2"></i>TAK Servers
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">
+                <i class="bi bi-hdd-rack"></i><i class="bi bi-plus-circle me-2"></i>TAK Servers
+            </h5>
+            {% if perms.takserver.add_takserver %}
+            <a href="{% url 'takserver_create' %}" class="btn btn-success btn-sm">
+                <i class="bi bi-plus-lg me-1"></i>Add TAK Server
+            </a>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            {% if takservers %}
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">
+                            <i class="bi bi-tag me-1"></i>Name
+                        </th>
+                        <th>
+                            <i class="bi bi-globe me-1"></i>DNS Name
+                        </th>
+                        <th>
+                            <i class="bi bi-shield-check me-1"></i>Certificates
+                        </th>
+                        <th>
+                            <i class="bi bi-truck me-1"></i>Field Ops
+                        </th>
+                        <th class="text-end pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for server in takservers %}
+                    <tr>
+                        <td class="ps-3">
+                            <a href="{% url 'takserver_detail' pk=server.pk %}" class="text-decoration-none">
+                                <i class="bi bi-hdd-rack text-primary"></i><i class="bi bi-plus-circle text-primary me-2"></i>
+                                <span class="font-monospace">{{ server.name }}</span>
+                            </a>
+                        </td>
+                        <td>
+                            <span class="font-monospace text-muted">{{ server.dns_name }}</span>
+                        </td>
+                        <td>
+                            {% if server.cert_trust %}
+                            <i class="bi bi-file-earmark-lock text-success" title="Trust certificate uploaded"></i>
+                            {% else %}
+                            <i class="bi bi-file-earmark-x text-danger" title="Trust certificate missing"></i>
+                            {% endif %}
+                            {% if server.cert_private %}
+                            <i class="bi bi-key text-success ms-2" title="Private certificate uploaded"></i>
+                            {% else %}
+                            <i class="bi bi-key text-danger ms-2" title="Private certificate missing"></i>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% with field_op_count=server.field_ops.count %}
+                            {% if field_op_count > 0 %}
+                            <span class="badge bg-info">
+                                <i class="bi bi-truck me-1"></i>{{ field_op_count }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">None</span>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="text-end pe-3">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'takserver_detail' pk=server.pk %}"
+                                   class="btn btn-info"
+                                   title="View Details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if perms.takserver.change_takserver %}
+                                <a href="{% url 'takserver_update' pk=server.pk %}"
+                                   class="btn btn-warning"
+                                   title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-hdd-rack display-4 text-muted"></i>
+                <p class="text-muted mt-3">No TAK Servers configured yet.</p>
+                {% if perms.takserver.add_takserver %}
+                <a href="{% url 'takserver_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-1"></i>Add Your First TAK Server
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

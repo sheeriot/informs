@@ -23,7 +23,6 @@ import logging
 import os
 # import json
 import time
-from icecream import ic
 
 # Get the main application logger
 logger = logging.getLogger(__name__)
@@ -89,9 +88,6 @@ def generate_static_map_for_location(location_pk):
 
 
 def aid_request_postsave(aid_request_pk, **kwargs):
-    ic("--- aid_request_postsave task started ---")
-    ic(kwargs)
-
     try:
         aid_request = AidRequest.objects.get(pk=aid_request_pk)
     except AidRequest.DoesNotExist:

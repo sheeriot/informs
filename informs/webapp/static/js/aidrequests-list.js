@@ -8,9 +8,6 @@
     'use strict';
 
     const SCRIPT_DEBUG = false;
-    if (SCRIPT_DEBUG) {
-        console.log('AidRequests List Script v 0.0.1');
-    }
     let allAidRequests = [];
     let listScriptConfig = {};
     let isInitialized = false;
@@ -32,8 +29,6 @@
     function initialize() {
         if (isInitialized) return;
         isInitialized = true;
-
-        if (SCRIPT_DEBUG) console.log('[List Script] Initialization started.');
 
         // Load the config data from the page
         const configEl = document.getElementById('aid-requests-config-json');
@@ -72,8 +67,6 @@
              initialFilterState = getFilterStateFromDOM();
         }
 
-        if (SCRIPT_DEBUG) console.log('[List Script] Initial filter state:', initialFilterState);
-
         // Apply the initial filter to set the correct visibility and get initial counts
         // On page load, we want standard visibility handling (hide d-none immediately), NOT fading.
         runFilterAndUpdates(initialFilterState, true);
@@ -87,7 +80,6 @@
 
         // The map component depends on this script to be initialized first.
         if (typeof window.initializeAidRequestMap === 'function') {
-            if (SCRIPT_DEBUG) console.log('[List Script] Calling window.initializeAidRequestMap...');
             window.initializeAidRequestMap(allAidRequests, initialFilterState);
         } else {
             console.error('[List Script] Map initialization function not found. Ensure map_aidrequests.js is loaded.');
@@ -119,8 +111,6 @@
             currentSort.key = key;
             currentSort.direction = 'asc';
         }
-
-        if (SCRIPT_DEBUG) console.log(`[List Script] Sorting by ${currentSort.key} (${currentSort.direction})`);
 
         sortAidRequests();
         // Re-apply filter/visibility logic which essentially re-renders the order by manipulating the DOM
@@ -242,7 +232,6 @@
     function addPageEventListeners() {
         // Listen for filter changes from the filter script (i.e., user clicks)
         document.body.addEventListener('filterStateChange', function (e) {
-            if (SCRIPT_DEBUG) console.log('[List Script] Filter change received.', e.detail);
             // User changed a filter: Apply immediately, no fade animation.
             runFilterAndUpdates(e.detail, true);
         });
@@ -295,16 +284,12 @@
                 requesterName: request.requester_name
             });
 
-            if (SCRIPT_DEBUG) console.log('[List Script] Triggering modal for:', triggerButton.dataset);
-
             // Programmatically click the hidden button to show the modal
             triggerButton.click();
         });
 
         // Listen for successful updates from the modal action script
         document.body.addEventListener('aidRequestUpdated', function (e) {
-            if (SCRIPT_DEBUG) console.log('[List Script] aidRequestUpdated received.', e.detail);
-
             const updatedRequest = e.detail.request;
             if (!updatedRequest) return;
 
@@ -351,7 +336,6 @@
                             const newRow = document.getElementById(`aid-request-row-${updatedRequest.id}`);
                             if (newRow) {
                                 const isVisible = isRequestVisible(updatedRequest, currentFilterState);
-                                if (SCRIPT_DEBUG) console.log(`[List Script] Row ${updatedRequest.id} visible after swap? ${isVisible}`);
 
                                 // Apply visibility logic to THIS ROW ONLY
                                 updateRowVisibility(newRow, isVisible, false); // immediate=false to allow fade
@@ -469,8 +453,6 @@
             updateRowVisibility(row, shouldBeVisible, immediate);
         });
 
-        if (SCRIPT_DEBUG) console.log(`[List Script] Filter applied. Visible rows: ${visibleCount}`);
-
         updateResultsCounters(visibleCount);
         updateFilterCounts(filterState);
         updateFilterSummary(filterState);
@@ -518,8 +500,6 @@
                 counts.byAidType[aidType]++;
         }
         });
-
-        if (SCRIPT_DEBUG) console.log('[List Script] Counts updated.', counts);
 
         updateCountUI('status', counts.byStatus);
         updateCountUI('priority', counts.byPriority);

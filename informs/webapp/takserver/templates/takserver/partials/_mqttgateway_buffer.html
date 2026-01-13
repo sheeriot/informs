@@ -1,0 +1,413 @@
+{% if error %}
+<div class="alert alert-warning m-3">
+    <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+</div>
+{% else %}
+<!-- Buffer Controls -->
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-2 bg-light border-bottom">
+    <!-- Forwarding Toggle -->
+    <div class="form-check form-switch">
+        <input class="form-check-input"
+               type="checkbox"
+               role="switch"
+               id="fwd-{{ buffer }}"
+               {% if buffer == 'mqtt' and forwarding.mesh2tak_enabled %}checked{% endif %}
+               {% if buffer == 'tak' and forwarding.tak2mesh_enabled %}checked{% endif %}
+               hx-post="{% url 'mqttgateway_forwarding' pk=gateway.pk %}"
+               hx-vals='js:{"direction": "{% if buffer == "mqtt" %}mesh2tak{% else %}tak2mesh{% endif %}", "enabled": event.target.checked ? "true" : "false"}'
+               hx-target="#fwd-status-{{ buffer }}"
+               hx-swap="innerHTML">
+        <label class="form-check-label small" for="fwd-{{ buffer }}">
+            {% if buffer == 'mqtt' %}Forward to TAK{% else %}Forward to Mesh{% endif %}
+        </label>
+    </div>
+    <span id="fwd-status-{{ buffer }}" class="small text-muted"></span>
+
+    {% if buffer == 'mqtt' %}
+    <!-- Map It Button (MQTT only) -->
+    <button type="button"
+            class="btn btn-sm bg-success-subtle text-dark border-dark"
+            id="map-it-btn"
+            disabled
+            data-bs-toggle="modal"
+            data-bs-target="#meshMapModal">
+        <i class="bi bi-map me-1"></i>Map It
+        <span class="badge bg-dark ms-1" id="map-selection-count">0</span>
+    </button>
+    {% endif %}
+
+    <!-- Limit Buttons -->
+    <div class="btn-group btn-group-sm" role="group">
+        <button type="button"
+                class="btn {% if current_limit == 100 or not current_limit %}bg-primary-subtle{% else %}bg-light{% endif %} text-dark border-dark"
+                hx-get="{% url 'mqttgateway_messages' pk=gateway.pk buffer=buffer %}?limit=100"
+                hx-target="#buffer-content-{{ buffer }}"
+                hx-swap="innerHTML">100</button>
+        <button type="button"
+                class="btn {% if current_limit == 250 %}bg-primary-subtle{% else %}bg-light{% endif %} text-dark border-dark"
+                hx-get="{% url 'mqttgateway_messages' pk=gateway.pk buffer=buffer %}?limit=250"
+                hx-target="#buffer-content-{{ buffer }}"
+                hx-swap="innerHTML">250</button>
+        <button type="button"
+                class="btn {% if current_limit == 500 %}bg-primary-subtle{% else %}bg-light{% endif %} text-dark border-dark"
+                hx-get="{% url 'mqttgateway_messages' pk=gateway.pk buffer=buffer %}?limit=500"
+                hx-target="#buffer-content-{{ buffer }}"
+                hx-swap="innerHTML">500</button>
+        <button type="button"
+                class="btn {% if not current_limit and current_limit != 100 %}bg-primary-subtle{% else %}bg-light{% endif %} text-dark border-dark"
+                hx-get="{% url 'mqttgateway_messages' pk=gateway.pk buffer=buffer %}"
+                hx-target="#buffer-content-{{ buffer }}"
+                hx-swap="innerHTML">All</button>
+    </div>
+
+    <!-- Refresh Button -->
+    <button type="button"
+            class="btn btn-sm bg-secondary-subtle text-dark border-dark"
+            hx-get="{% url 'mqttgateway_messages' pk=gateway.pk buffer=buffer %}{% if current_limit %}?limit={{ current_limit }}{% endif %}"
+            hx-target="#buffer-content-{{ buffer }}"
+            hx-swap="innerHTML"
+            hx-indicator="#refresh-spinner-{{ buffer }}">
+        <span id="refresh-spinner-{{ buffer }}" class="htmx-indicator spinner-border spinner-border-sm me-1"></span>
+        <i class="bi bi-arrow-clockwise"></i>
+    </button>
+</div>
+
+<!-- Messages Table -->
+{% if messages %}
+<!-- Date Display Above Table -->
+{% if display_date %}
+<div class="px-2 py-1 bg-light border-bottom" data-azure-maps-key="{{ azure_maps_key }}">
+    <strong class="text-muted small">{{ display_date }} {{ display_time }} {{ display_tz }} {{ display_offset }}</strong>
+</div>
+{% endif %}
+
+<div class="table-responsive">
+    <table class="table table-sm table-hover mb-0" id="messages-table-{{ buffer }}">
+        <thead class="table-light">
+            <tr>
+                <th class="text-center" style="width: 30px;"></th>
+                <th class="text-center" style="width: 30px;">
+                    <input type="checkbox" class="form-check-input" id="select-all-messages" title="Select all messages">
+                </th>
+                {% if buffer == 'mqtt' %}
+                <th class="text-center" style="width: 40px;">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           id="select-all-positions"
+                           title="Select all positions">
+                </th>
+                {% endif %}
+                <th class="text-nowrap" style="width: 140px;">
+                    <i class="bi bi-clock me-1"></i>Time
+                </th>
+                <th class="text-nowrap" style="width: 80px;">
+                    <i class="bi bi-tag me-1"></i>Type
+                </th>
+                <th class="callsign-filter-header" style="cursor: pointer;" title="Click to filter by CallSign">
+                    <i class="bi bi-chat-text me-1"></i>Summary
+                    <i class="bi bi-funnel ms-1 small"></i>
+                </th>
+                {% if buffer == 'mqtt' %}
+                <th class="text-nowrap" style="width: 150px;">
+                    <i class="bi bi-geo-alt me-1"></i>Location
+                </th>
+                <th class="text-nowrap" style="width: 100px;">
+                    <i class="bi bi-arrow-left-right me-1"></i>Distance
+                </th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for msg in messages %}
+            {% if msg.date_changed %}
+            <tr class="date-separator-row">
+                <td colspan="{% if buffer == 'mqtt' %}9{% else %}6{% endif %}" class="bg-secondary-subtle py-1 border-top border-secondary">
+                    <strong class="text-muted small">{{ msg.timestamp_date }}</strong>
+                </td>
+            </tr>
+            {% endif %}
+            <tr class="message-row {% if msg.msg_type == 'position' %}position-row{% endif %}"
+                data-msg-type="{{ msg.msg_type }}"
+                data-timestamp="{{ msg.timestamp }}"
+                data-summary="{{ msg.summary }}"
+                data-callsign="{{ msg.callsign|default:'' }}"
+                {% if msg.device_id %}data-device-id="{{ msg.device_id }}"{% endif %}
+                {% if msg.gateway_id %}data-gateway-id="{{ msg.gateway_id }}"{% endif %}
+                {% if msg.has_location %}data-latitude="{{ msg.latitude }}" data-longitude="{{ msg.longitude }}"{% endif %}
+                {% if msg.msg_type == 'position' %}data-has-position="true"{% endif %}>
+                <td class="py-1 text-center" style="width: 30px;">
+                    <button type="button" class="btn btn-link btn-sm p-0 text-muted expand-row-btn"
+                        data-bs-toggle="collapse" data-bs-target="#detail-{{ forloop.counter0 }}"
+                        title="Show raw data">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </td>
+                <td class="py-1 text-center" style="width: 30px;">
+                    <input type="checkbox" class="form-check-input message-checkbox"
+                        data-summary="{{ msg.summary|default:'' }}"
+                        data-timestamp="{{ msg.timestamp|default:'' }}">
+                </td>
+                {% if buffer == 'mqtt' %}
+                <td class="text-center" style="width: 30px;">
+                    {% if msg.msg_type == 'position' %}
+                    <input type="checkbox"
+                           class="form-check-input position-checkbox"
+                           data-summary="{{ msg.summary }}"
+                           data-timestamp="{{ msg.timestamp }}">
+                    {% endif %}
+                </td>
+                {% endif %}
+                <td class="text-nowrap small font-monospace text-muted" title="{% if msg.timestamp_dt %}{{ msg.timestamp_iso }} {{ msg.timestamp_tz }} {{ msg.timestamp_offset }}{% else %}{{ msg.timestamp }}{% endif %}">
+                    <div>{{ msg.timestamp_hms|default:"-" }}</div>
+                    {% if msg.time_diff_str %}
+                    <small class="text-muted">Δ{{ msg.time_diff_str }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if msg.msg_type == 'position' %}
+                    {% if msg.has_location %}
+                    <a href="https://www.google.com/maps?q={{ msg.latitude }},{{ msg.longitude }}"
+                       target="_blank"
+                       rel="noopener"
+                       class="btn btn-sm p-0 border-0 bg-transparent"
+                       title="Open in Google Maps">
+                        <span class="badge bg-primary text-nowrap">
+                            <i class="bi bi-geo-alt"></i>
+                        </span>
+                    </a>
+                    {% else %}
+                    <span class="badge bg-primary text-nowrap">
+                        <i class="bi bi-geo-alt"></i>
+                    </span>
+                    {% endif %}
+                    {% elif msg.msg_type == 'text' %}
+                    <span class="badge bg-success text-nowrap">
+                        <i class="bi bi-chat-dots"></i>
+                    </span>
+                    {% elif msg.msg_type == 'chat' %}
+                    <span class="badge bg-warning text-dark text-nowrap">
+                        <i class="bi bi-chat-dots"></i>
+                    </span>
+                    {% elif msg.msg_type == 'nodeinfo' %}
+                    <span class="badge bg-info text-nowrap">
+                        <i class="bi bi-info-circle"></i>
+                    </span>
+                    {% elif msg.msg_type == 'telemetry' %}
+                    <span class="badge bg-success text-nowrap">
+                        <i class="bi bi-speedometer2"></i>
+                    </span>
+                    {% else %}
+                    <span class="badge bg-light text-dark text-nowrap">
+                        <i class="bi bi-question"></i>
+                    </span>
+                    {% endif %}
+                </td>
+                <td class="small text-truncate" style="max-width: 400px;" title="{{ msg.summary|striptags }}" data-callsign="{{ msg.callsign|default:'' }}" data-device-id="{{ msg.device_id|default:'' }}" data-gateway-id="{{ msg.gateway_id|default:'' }}">
+                    <div>
+                        {% if msg.summary_html %}
+                            {{ msg.summary|safe|truncatechars:80 }}
+                        {% else %}
+                            {{ msg.summary|default:"(no summary)"|truncatechars:80 }}
+                        {% endif %}
+                    </div>
+                    {% if msg.msg_type == 'position' and msg.has_location %}
+                    <div class="font-monospace text-muted" style="font-size: 0.75rem;">
+                        {{ msg.latitude|floatformat:5 }}, {{ msg.longitude|floatformat:5 }}
+                    </div>
+                    {% endif %}
+                </td>
+                {% if buffer == 'mqtt' %}
+                <td class="small">
+                    {% if msg.has_location %}
+                    <span class="text-muted font-monospace" title="Lat: {{ msg.latitude|floatformat:5 }}, Lon: {{ msg.longitude|floatformat:5 }}">
+                        {{ msg.latitude|floatformat:5 }}, {{ msg.longitude|floatformat:5 }}
+                    </span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td class="small">
+                    {% if msg.distance_km is not None %}
+                    <span class="badge bg-info-subtle text-dark">
+                        {{ msg.distance_m|floatformat:0 }}m
+                    </span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                {% endif %}
+            </tr>
+            <!-- Collapsible Details Row -->
+            <tr class="collapse" id="detail-{{ forloop.counter0 }}">
+                <td colspan="{% if buffer == 'mqtt' %}9{% else %}6{% endif %}" class="bg-light p-2">
+                    <div class="row g-2">
+                        <!-- Basic Information Column -->
+                        <div class="col-md-6">
+                            <h6 class="border-bottom pb-1 mb-2 small">
+                                <i class="bi bi-card-text me-1"></i>Basic Information
+                            </h6>
+                            <div class="d-flex flex-column gap-2 small">
+                                <div>
+                                    <div class="text-muted mb-1">
+                                        <i class="bi bi-clock me-1"></i><strong>Timestamp</strong>
+                                    </div>
+                                    <div class="font-monospace">
+                                        {% if msg.timestamp_dt %}
+                                        <div>{{ msg.timestamp_iso }}</div>
+                                        <small class="text-muted">{{ msg.timestamp_tz }} {{ msg.timestamp_offset }}</small>
+                                        {% else %}
+                                        {{ msg.timestamp|default:"-" }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="text-muted mb-1">
+                                        <i class="bi bi-tag me-1"></i><strong>Type</strong>
+                                    </div>
+                                    <div>
+                                        {% if msg.msg_type == 'position' %}
+                                        <span class="badge bg-primary"><i class="bi bi-geo-alt"></i> Position</span>
+                                        {% elif msg.msg_type == 'text' %}
+                                        <span class="badge bg-success"><i class="bi bi-chat-dots"></i> Text</span>
+                                        {% elif msg.msg_type == 'chat' %}
+                                        <span class="badge bg-warning text-dark"><i class="bi bi-chat-dots"></i> Chat</span>
+                                        {% elif msg.msg_type == 'nodeinfo' %}
+                                        <span class="badge bg-info"><i class="bi bi-info-circle"></i> Node Info</span>
+                                        {% elif msg.msg_type == 'telemetry' %}
+                                        <span class="badge bg-success"><i class="bi bi-speedometer2"></i> Telemetry</span>
+                                        {% else %}
+                                        <span class="badge bg-light text-dark"><i class="bi bi-question"></i> {{ msg.msg_type|default:"Unknown" }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="text-muted mb-1">
+                                        <i class="bi bi-arrow-left-right me-1"></i><strong>Source</strong>
+                                    </div>
+                                    <div>
+                                        {% if msg.source == 'mqtt' %}
+                                        <span class="badge bg-info"><i class="bi bi-broadcast"></i> MQTT</span>
+                                        {% else %}
+                                        <span class="badge bg-success"><i class="bi bi-hdd-rack"></i> TAK</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                {% if msg.topic %}
+                                <div>
+                                    <div class="text-muted mb-1">
+                                        <i class="bi bi-signpost me-1"></i><strong>Topic</strong>
+                                    </div>
+                                    <div class="font-monospace small text-break">
+                                        {{ msg.topic }}
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <div>
+                                    <div class="text-muted mb-1">
+                                        <i class="bi bi-chat-text me-1"></i><strong>Summary</strong>
+                                    </div>
+                                    <div>
+                                        {{ msg.summary|default:"(no summary)" }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Location & Payload Column -->
+                        <div class="col-md-6">
+                            {% if msg.has_location %}
+                            <h6 class="border-bottom pb-1 mb-2 small">
+                                <i class="bi bi-geo-alt me-1"></i>Location Information
+                            </h6>
+                            <div class="d-flex flex-column gap-2 mb-2 small">
+                                <div>
+                                    <div class="text-muted mb-1">
+                                        <i class="bi bi-geo-alt-fill me-1"></i><strong>Coordinates</strong>
+                                    </div>
+                                    <div class="font-monospace">
+                                        {{ msg.latitude|floatformat:5 }}, {{ msg.longitude|floatformat:5 }}
+                                    </div>
+                                </div>
+
+                                {% if msg.distance_km is not None %}
+                                <div>
+                                    <div class="text-muted mb-1">
+                                        <i class="bi bi-arrow-left-right me-1"></i><strong>Distance from Last</strong>
+                                    </div>
+                                    <div>
+                                        {% if msg.distance_km < 1 %}
+                                        <span class="badge bg-info-subtle text-dark">{{ msg.distance_m|floatformat:0 }}m</span>
+                                        {% elif msg.distance_km < 10 %}
+                                        <span class="badge bg-info-subtle text-dark">{{ msg.distance_km|floatformat:2 }}km</span>
+                                        {% else %}
+                                        <span class="badge bg-info-subtle text-dark">{{ msg.distance_km|floatformat:0 }}km</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <div>
+                                    <div class="text-muted mb-1">
+                                        <i class="bi bi-map me-1"></i><strong>Map Link</strong>
+                                    </div>
+                                    <div>
+                                        <a href="https://www.google.com/maps?q={{ msg.latitude }},{{ msg.longitude }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-map me-1"></i>View on Google Maps
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if msg.text_content %}
+                            <h6 class="border-bottom pb-1 mb-2 small">
+                                <i class="bi bi-chat-dots me-1"></i>Message
+                            </h6>
+                            <div class="mb-2">
+                                <div class="bg-primary text-white p-2 rounded" style="max-width: 80%; border-radius: 1rem 1rem 1rem 0.25rem;">
+                                    <div class="small">{{ msg.text_content }}</div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <h6 class="border-bottom pb-1 mb-2 small">
+                                <i class="bi bi-code-square me-1"></i>Raw Payload
+                            </h6>
+                            <pre class="bg-white p-2 rounded border small mb-0" style="max-height: 75vh; overflow-y: auto; overflow-x: visible; white-space: pre-wrap; word-wrap: break-word; word-break: break-word; font-size: 0.75rem; font-family: 'Courier New', monospace; width: 100%;"><code style="white-space: pre-wrap; word-wrap: break-word; word-break: break-word;">{{ msg.payload_json }}</code></pre>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-4 text-muted">
+    <i class="bi bi-inbox display-6"></i>
+    <p class="mt-2 mb-0">No messages in buffer</p>
+    <small>Messages will appear here as they flow through the gateway</small>
+</div>
+{% endif %}
+
+<!-- Buffer Stats Footer -->
+{% if stats %}
+<div class="bg-light py-2 px-3 border-top">
+    <div class="d-flex flex-wrap justify-content-between small text-muted">
+        <span class="text-nowrap">
+            <i class="bi bi-database me-1"></i>Buffer: {{ stats.buffer_size }}/{{ stats.buffer_max }}
+        </span>
+        <span class="text-nowrap">
+            <i class="bi bi-hash me-1"></i>Total: {{ stats.total_messages }}
+        </span>
+        <span class="text-nowrap">
+            <i class="bi bi-eye me-1"></i>Showing: {{ messages|length }}
+        </span>
+    </div>
+</div>
+{% endif %}
+{% endif %}

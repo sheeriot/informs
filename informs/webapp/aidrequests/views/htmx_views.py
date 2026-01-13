@@ -4,7 +4,6 @@ from dateutil import parser
 from django.utils import timezone
 import json
 from django.db.models import Case, When, Value
-from icecream import ic
 from django_q.tasks import async_task, fetch
 
 from ..models import AidRequest, ActionLog, FieldOp
@@ -28,7 +27,6 @@ from ..forms.aidrequest_update_forms import RequesterAndGroupSizeForm
 from ..forms.aidrequest_generic_forms import GenericDetailFieldForm
 from ..forms.address_forms import AddressForm
 from auditlog.models import LogEntry
-from icecream import ic
 from django.template.defaultfilters import linebreaks
 from django.utils.html import escape
 from django.urls import NoReverseMatch
@@ -406,8 +404,6 @@ def get_locations_list_partial(request, field_op, pk):
     locations = aid_request.locations.sorted_for_display()
     current_location = aid_request.location  # This is the property that gets the confirmed or newest
 
-    ic(locations.values_list('pk', 'status'))
-
     new_location_id = None
     new_location_id_str = request.GET.get('new')
     if new_location_id_str:
@@ -417,7 +413,6 @@ def get_locations_list_partial(request, field_op, pk):
             # Sort to bring the new location to the top
             locations_list.sort(key=lambda x: x.pk == new_location_id, reverse=True)
             locations = locations_list
-            ic([l.pk for l in locations])
         except (ValueError, TypeError):
             new_location_id = None  # Ignore if 'new' is not a valid int
 
@@ -467,14 +462,12 @@ def htmx_send_tak_alert(request, field_op):
     """
     Receives an HTMX POST request to send a TAK alert.
     """
-    ic(request.POST)
     field_op_obj = get_object_or_404(FieldOp, slug=field_op)
     mark_type = request.POST.get('mark_type', 'field_op_only')
     task_name = f"Send_CoT_HTMX_{field_op_obj.slug}_{mark_type}"
 
     task_id = None
     if mark_type == 'field_op_only':
-        ic(f"Creating send_cot_task for FieldOp {field_op_obj.slug}")
         task_id = async_task(
             'aidrequests.tasks.send_cot_task',
             field_op_slug=field_op_obj.slug,
@@ -484,7 +477,6 @@ def htmx_send_tak_alert(request, field_op):
     elif mark_type == 'aid':
         aid_request_id = request.POST.get('aid_request_id')
         if aid_request_id:
-            ic(f"Creating send_cot_task for FieldOp {field_op_obj.slug} and Aid Request {aid_request_id}")
             task_id = async_task(
                 'aidrequests.tasks.send_cot_task',
                 field_op_slug=field_op_obj.slug,
@@ -499,13 +491,11 @@ def htmx_send_tak_alert(request, field_op):
             aid_request_ids = json.loads(aid_request_ids_json)
         except json.JSONDecodeError:
             aid_request_ids = []
-            ic(f"Failed to parse aidrequests JSON: {aid_request_ids_json}")
 
         # Filter out empty strings if any made it through
         aid_request_ids = [id for id in aid_request_ids if id]
 
         if aid_request_ids:
-            ic(f"Creating send_cot_task for FieldOp {field_op_obj.slug} and {len(aid_request_ids)} Aid Requests")
             task_id = async_task(
                 'aidrequests.tasks.send_cot_task',
                 field_op_slug=field_op_obj.slug,
@@ -513,8 +503,6 @@ def htmx_send_tak_alert(request, field_op):
                 aidrequests=aid_request_ids,
                 task_name=task_name
             )
-        else:
-            ic("No valid aid request IDs found for aid_request_list action.")
             # Return a user-friendly error or status
             return HttpResponse("No active aid requests visible to send.", status=400)
 
@@ -533,7 +521,6 @@ def htmx_check_tak_status(request, field_op, task_id):
     Checks the status of a Django Q task and returns a partial with the result.
     If the task is still running, it returns the polling partial again.
     """
-    ic.enable()
     task = fetch(task_id)
     context = {'task_id': task_id, 'slug': field_op}
 

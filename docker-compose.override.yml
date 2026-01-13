@@ -11,3 +11,7 @@ services:
   queues:
     volumes:
       - $PWD/informs/webapp:/opt/app/informs
+
+  takmesh:
+    volumes:
+      - $PWD/takmesh_gateway/app:/opt/app

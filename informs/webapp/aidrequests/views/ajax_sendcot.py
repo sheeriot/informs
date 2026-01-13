@@ -6,7 +6,6 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required, permission_required
 
 from ..models import AidRequest, FieldOp
-from icecream import ic
 from datetime import datetime
 import re
 
@@ -27,9 +26,7 @@ def send_cot(request, field_op=None):
     """
     try:
         data = json.loads(request.body)
-        ic(data)
-    except Exception as e:
-        # ic(e)
+    except Exception:
         return JsonResponse({"status": "error", "message": "Could not parse JSON request body."})
 
     # Validate field_op exists
@@ -71,7 +68,6 @@ def send_cot(request, field_op=None):
                 if aidrequests:  # Only add if we have actual IDs
                     task_kwargs['aidrequests'] = aidrequests
 
-        ic(task_kwargs)
         sendcot_id = async_task(
             'aidrequests.tasks.send_cot_task',
             task_name=task_title,
@@ -85,7 +81,6 @@ def send_cot(request, field_op=None):
         })
 
     except Exception as e:
-        # ic(e)
         return JsonResponse({
             "status": "error",
             "message": f"Error processing request: {str(e)}"

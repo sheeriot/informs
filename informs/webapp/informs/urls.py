@@ -136,6 +136,7 @@ urlpatterns = [
     path('', home, name='home'),
     path('admin/', admin.site.urls),
     path('accounts/', include('accounts.urls')),
+    path('takservers/', include('takserver.urls')),
     # path('select2/', include('django_select2.urls')),
     path('tz_detect/', include('tz_detect.urls')),
     path('about/', TemplateView.as_view(template_name='pages/about.html'), name='about'),

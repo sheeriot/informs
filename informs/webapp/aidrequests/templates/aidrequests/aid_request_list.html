@@ -89,9 +89,6 @@
     {{ status_choices_json|default:'[]'|json_script:'status-choices-data' }}
     {{ priority_choices_json|default:'[]'|json_script:'priority-choices-data' }}
 </div>
-
-<!-- CSRF Token for AJAX requests -->
-{% csrf_token %}
 {% endblock %}
 
 {% block extra_css %}

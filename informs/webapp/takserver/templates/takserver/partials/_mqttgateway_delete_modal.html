@@ -1,0 +1,36 @@
+<div class="modal-header bg-danger text-white">
+    <h5 class="modal-title text-nowrap">
+        <i class="bi bi-exclamation-triangle me-2"></i>Delete Gateway
+    </h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+    <p>Are you sure you want to delete the MQTT Gateway:</p>
+    <div class="alert alert-secondary">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-router text-primary me-2 fs-4"></i>
+            <div>
+                <strong>{{ object.name }}</strong>
+                <br>
+                <small class="text-muted">{{ object.mqtt_broker_display }}</small>
+            </div>
+        </div>
+    </div>
+    <p class="text-danger mb-0">
+        <i class="bi bi-exclamation-circle me-1"></i>
+        This action cannot be undone.
+    </p>
+</div>
+<form method="post"
+      hx-post="{% url 'mqttgateway_delete' pk=object.pk %}"
+      hx-swap="none">
+    {% csrf_token %}
+    <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-lg me-1"></i>Cancel
+        </button>
+        <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash me-1"></i>Delete Gateway
+        </button>
+    </div>
+</form>

@@ -1,0 +1,76 @@
+<!-- Gateway Status Badges (for Gateway Info card header) - OOB swap -->
+<div id="gateway-status-badges" hx-swap-oob="true">
+    {% if gateway_status %}
+    {% if not gateway_status.config_valid %}
+    <span class="badge bg-warning text-dark text-nowrap">
+        <i class="bi bi-gear me-1"></i>Config Needed
+    </span>
+    {% elif gateway_status.running %}
+    <span class="badge bg-success text-nowrap">
+        <i class="bi bi-broadcast me-1"></i>Running
+    </span>
+    <span class="badge bg-{% if gateway_status.tak_connected %}success{% else %}danger{% endif %} text-nowrap">
+        <i class="bi bi-{% if gateway_status.tak_connected %}check{% else %}x{% endif %}-circle me-1"></i>TAK
+    </span>
+    {% else %}
+    <span class="badge bg-secondary text-nowrap">
+        <i class="bi bi-pause-circle me-1"></i>Stopped
+    </span>
+    {% endif %}
+    {% else %}
+    <span class="badge bg-warning text-dark text-nowrap">
+        <i class="bi bi-exclamation-triangle me-1"></i>Unavailable
+    </span>
+    {% endif %}
+</div>
+
+<!-- MQTT Status Badges (for MQTT Broker card header) - OOB swap -->
+<div id="mqtt-status-badges" hx-swap-oob="true">
+    {% if gateway_status %}
+    {% if gateway_status.running %}
+    <span class="badge bg-{% if gateway_status.mqtt_connected %}success{% else %}danger{% endif %} text-nowrap">
+        <i class="bi bi-{% if gateway_status.mqtt_connected %}check{% else %}x{% endif %}-circle me-1"></i>MQTT
+    </span>
+    <span class="badge bg-info text-nowrap">
+        {{ gateway_status.message_stats.mqtt.buffer_size|default:0 }}/{{ gateway_status.message_stats.mqtt.buffer_max|default:1000 }}
+    </span>
+    {% else %}
+    <span class="badge bg-secondary text-nowrap">
+        <i class="bi bi-pause-circle me-1"></i>Stopped
+    </span>
+    {% endif %}
+    {% else %}
+    <span class="badge bg-warning text-dark text-nowrap">
+        <i class="bi bi-exclamation-triangle me-1"></i>Unavailable
+    </span>
+    {% endif %}
+</div>
+
+<!-- Scripts for message buffer visibility (OOB swap into a hidden div) -->
+<div id="status-scripts" hx-swap-oob="true" style="display: none;">
+    {% if gateway_status and gateway_status.running %}
+    <script>
+    (function() {
+        var container = document.getElementById('message-buffers-container');
+        if (container) container.style.display = '';
+        if (window.mqttgatewayWebSocket && window.mqttgatewayWebSocket.isConnected && !window.mqttgatewayWebSocket.isConnected()) {
+            setTimeout(function() {
+                if (window.mqttgatewayWebSocket && typeof window.mqttgatewayWebSocket.connect === 'function') {
+                    window.mqttgatewayWebSocket.connect();
+                }
+            }, 500);
+        }
+    })();
+    </script>
+    {% else %}
+    <script>
+    (function() {
+        var container = document.getElementById('message-buffers-container');
+        if (container) container.style.display = 'none';
+        if (window.mqttgatewayWebSocket && window.mqttgatewayWebSocket.isConnected && window.mqttgatewayWebSocket.isConnected()) {
+            window.mqttgatewayWebSocket.disconnect();
+        }
+    })();
+    </script>
+    {% endif %}
+</div>

@@ -11,7 +11,6 @@ from django_q.tasks import async_task
 from geopy.distance import geodesic
 from django_countries.fields import CountryField
 import json
-from icecream import ic
 from django.template.loader import render_to_string
 from django.db.models import Case, When, Value
 from django.forms.models import model_to_dict

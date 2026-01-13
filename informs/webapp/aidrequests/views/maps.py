@@ -7,7 +7,6 @@ from django.contrib.auth.decorators import login_required
 from django.http import Http404, JsonResponse, FileResponse
 from django_q.tasks import async_task, fetch, result
 from geopy.distance import geodesic
-from icecream import ic
 
 from ..models import AidRequest, AidLocation
 
@@ -154,7 +153,6 @@ def create_static_map(location, wait_with_timeout: int = None, synchronous: bool
         try:
             task_result_obj = result(task_name, wait=wait_with_timeout)
             if task_result_obj:
-                ic(f"Map generation task {task_name} result after waiting: {task_result_obj}")
                 return task_result_obj.get('map_filename')
             else:
                 logger.warning(f"Map generation task for L-{location.pk} did not complete in time.")

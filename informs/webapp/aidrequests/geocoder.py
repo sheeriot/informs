@@ -7,8 +7,6 @@ from azure.maps.search import MapsSearchClient
 
 from geopy.distance import geodesic
 
-from icecream import ic
-
 
 class AidLocationError(Exception):
     pass

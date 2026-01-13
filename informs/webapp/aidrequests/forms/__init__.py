@@ -6,7 +6,6 @@ from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Row, Column, Submit, Hidden, HTML, Div, Field
 from crispy_forms.bootstrap import FormActions, InlineCheckboxes
-from icecream import ic
 from django.urls import reverse
 from django.utils.html import format_html
 from django.contrib import admin

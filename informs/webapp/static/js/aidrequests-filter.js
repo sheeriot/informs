@@ -117,9 +117,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // --- Dispatch Event ---
         const newFilterState = getFilterStateFromDOM();
-        if (SCRIPT_DEBUG) {
-            console.log('[Filter Script] User change detected. Dispatching new filter state:', newFilterState);
-        }
         document.body.dispatchEvent(new CustomEvent('filterStateChange', {
             detail: newFilterState,
             bubbles: true
@@ -128,8 +125,4 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Attach a single delegated event listener to the filter card.
     filterCard.addEventListener('change', handleFilterChange);
-
-    if (SCRIPT_DEBUG) {
-        console.log(`[Filter Script] Loaded. Delegated event listener attached to filter card.`);
-    }
     });

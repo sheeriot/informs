@@ -1,0 +1,100 @@
+<div class="modal-header">
+    <h5 class="modal-title text-nowrap">
+        {% if action == 'Create' %}
+        <i class="bi bi-plus-lg me-2"></i>Add MQTT Gateway
+        {% else %}
+        <i class="bi bi-pencil me-2"></i>Edit {{ object.name }}
+        {% endif %}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<form method="post"
+      hx-post="{% if object %}{% url 'mqttgateway_update' pk=object.pk %}{% else %}{% url 'mqttgateway_create' %}{% endif %}"
+      hx-target="#modal-content"
+      hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="modal-body">
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <label for="id_name" class="form-label text-nowrap">
+                    <i class="bi bi-tag text-primary me-1"></i>Name
+                </label>
+                {{ form.name }}
+            </div>
+            <div class="col-12 col-md-6">
+                <label for="id_takserver" class="form-label text-nowrap">
+                    <i class="bi bi-hdd-rack text-success me-1"></i>TAK Server
+                </label>
+                {{ form.takserver }}
+            </div>
+            <div class="col-12 col-md-8">
+                <label for="id_mqtt_host" class="form-label text-nowrap">
+                    <i class="bi bi-broadcast text-info me-1"></i>MQTT Host
+                </label>
+                {{ form.mqtt_host }}
+            </div>
+            <div class="col-12 col-md-4">
+                <label for="id_mqtt_port" class="form-label text-nowrap">
+                    <i class="bi bi-ethernet me-1"></i>Port
+                </label>
+                {{ form.mqtt_port }}
+            </div>
+            <div class="col-12 col-md-6">
+                <label for="id_mqtt_username" class="form-label text-nowrap">
+                    <i class="bi bi-person me-1"></i>Username
+                </label>
+                {{ form.mqtt_username }}
+            </div>
+            <div class="col-12 col-md-6">
+                <label for="id_mqtt_password" class="form-label text-nowrap">
+                    <i class="bi bi-key me-1"></i>Password
+                </label>
+                {{ form.mqtt_password }}
+            </div>
+            <div class="col-12 col-md-4">
+                <label for="id_mesh_channel" class="form-label text-nowrap">
+                    <i class="bi bi-hash text-success me-1"></i>Channel
+                </label>
+                {{ form.mesh_channel }}
+            </div>
+            <div class="col-12 col-md-4">
+                <label for="id_gateway_callsign" class="form-label text-nowrap">
+                    <i class="bi bi-person-badge me-1"></i>Callsign
+                </label>
+                {{ form.gateway_callsign }}
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="form-check mt-4">
+                    {{ form.is_enabled }}
+                    <label class="form-check-label" for="id_is_enabled">Enabled</label>
+                </div>
+            </div>
+        </div>
+
+        {% if form.errors %}
+        <div class="alert alert-danger mt-3 mb-0">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            Please correct the errors below.
+            <ul class="mb-0 mt-2">
+                {% for field in form %}
+                    {% for error in field.errors %}
+                    <li>{{ field.label }}: {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-lg me-1"></i>Cancel
+        </button>
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-lg me-1"></i>
+            {% if action == 'Create' %}Create{% else %}Save{% endif %}
+        </button>
+    </div>
+</form>

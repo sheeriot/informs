@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title_prefix %}{{ action }} MQTT Gateway - {% endblock %}
+
+{% block header_title %}
+<i class="bi bi-router me-2"></i>{{ action }} MQTT Gateway
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4 mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb flex-nowrap overflow-auto">
+            <li class="breadcrumb-item text-nowrap">
+                <a href="{% url 'mqttgateway_list' %}">
+                    <i class="bi bi-router me-1"></i>MQTT Gateways
+                </a>
+            </li>
+            {% if object %}
+            <li class="breadcrumb-item text-nowrap">
+                <a href="{% url 'mqttgateway_detail' pk=object.pk %}">{{ object.name }}</a>
+            </li>
+            {% endif %}
+            <li class="breadcrumb-item active text-nowrap" aria-current="page">{{ action }}</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10 col-xl-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0 text-nowrap">
+                        {% if action == 'Create' %}
+                        <i class="bi bi-plus-lg me-2"></i>Add New MQTT Gateway
+                        {% else %}
+                        <i class="bi bi-pencil me-2"></i>Edit MQTT Gateway
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <!-- Gateway Identity Section -->
+                        <div class="mb-4">
+                            <h6 class="text-muted border-bottom pb-2">
+                                <i class="bi bi-tag me-1"></i>Gateway Identity
+                            </h6>
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                    <label for="id_name" class="form-label text-nowrap">
+                                        <i class="bi bi-tag text-primary me-1"></i>Name (Slug)
+                                    </label>
+                                    {{ form.name }}
+                                    {% if form.name.help_text %}
+                                    <div class="form-text">{{ form.name.help_text }}</div>
+                                    {% endif %}
+                                    {% if form.name.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.name.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label for="id_takserver" class="form-label text-nowrap">
+                                        <i class="bi bi-hdd-rack text-success me-1"></i>TAK Server
+                                    </label>
+                                    {{ form.takserver }}
+                                    {% if form.takserver.help_text %}
+                                    <div class="form-text">{{ form.takserver.help_text }}</div>
+                                    {% endif %}
+                                    {% if form.takserver.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.takserver.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MQTT Broker Section -->
+                        <div class="mb-4">
+                            <h6 class="text-muted border-bottom pb-2">
+                                <i class="bi bi-broadcast me-1"></i>MQTT Broker
+                            </h6>
+                            <div class="row g-3">
+                                <div class="col-12 col-md-8">
+                                    <label for="id_mqtt_host" class="form-label text-nowrap">
+                                        <i class="bi bi-globe text-info me-1"></i>Host
+                                    </label>
+                                    {{ form.mqtt_host }}
+                                    {% if form.mqtt_host.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.mqtt_host.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label for="id_mqtt_port" class="form-label text-nowrap">
+                                        <i class="bi bi-ethernet text-secondary me-1"></i>Port
+                                    </label>
+                                    {{ form.mqtt_port }}
+                                    {% if form.mqtt_port.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.mqtt_port.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label for="id_mqtt_username" class="form-label text-nowrap">
+                                        <i class="bi bi-person text-warning me-1"></i>Username (optional)
+                                    </label>
+                                    {{ form.mqtt_username }}
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label for="id_mqtt_password" class="form-label text-nowrap">
+                                        <i class="bi bi-key text-danger me-1"></i>Password (optional)
+                                    </label>
+                                    {{ form.mqtt_password }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Meshtastic Section -->
+                        <div class="mb-4">
+                            <h6 class="text-muted border-bottom pb-2">
+                                <i class="bi bi-diagram-3 me-1"></i>Meshtastic Settings
+                            </h6>
+                            <div class="row g-3">
+                                <div class="col-12 col-md-4">
+                                    <label for="id_mesh_channel" class="form-label text-nowrap">
+                                        <i class="bi bi-hash text-success me-1"></i>Channel
+                                    </label>
+                                    {{ form.mesh_channel }}
+                                    <div class="form-text">Meshtastic channel to bridge</div>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label for="id_gateway_uid" class="form-label text-nowrap">
+                                        <i class="bi bi-fingerprint text-info me-1"></i>Gateway UID
+                                    </label>
+                                    {{ form.gateway_uid }}
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label for="id_gateway_callsign" class="form-label text-nowrap">
+                                        <i class="bi bi-person-badge text-primary me-1"></i>Callsign
+                                    </label>
+                                    {{ form.gateway_callsign }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Options Section -->
+                        <div class="mb-4">
+                            <h6 class="text-muted border-bottom pb-2">
+                                <i class="bi bi-gear me-1"></i>Options
+                            </h6>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        {{ form.is_enabled }}
+                                        <label class="form-check-label" for="id_is_enabled">
+                                            <i class="bi bi-power text-success me-1"></i>Enable this gateway
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label for="id_notes" class="form-label text-nowrap">
+                                        <i class="bi bi-sticky text-secondary me-1"></i>Notes
+                                    </label>
+                                    {{ form.notes }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex flex-wrap justify-content-between gap-2">
+                            <a href="{% if object %}{% url 'mqttgateway_detail' pk=object.pk %}{% else %}{% url 'mqttgateway_list' %}{% endif %}"
+                               class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-lg me-1"></i>
+                                {% if action == 'Create' %}Create Gateway{% else %}Save Changes{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
