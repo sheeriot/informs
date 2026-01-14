@@ -1,0 +1,12 @@
+services:
+  informs:
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - informs_media:/opt/app/informs/media
+
+  queues:
+    volumes:
+      - informs_media:/opt/app/informs/media
+
+volumes:
+  informs_media: 
