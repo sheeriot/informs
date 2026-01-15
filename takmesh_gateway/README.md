@@ -8,7 +8,7 @@ Bidirectional protocol gateway between Meshtastic mesh network (via MQTT) and TA
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              Django Web App                                  │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐              │
-│  │ MQTTGateway     │  │  HTMX Views     │  │  Bootstrap5     │              │
+│  │ MQTTGateway     │  │  Django Views   │  │  Bootstrap5     │              │
 │  │ Model (Config)  │  │  (CRUD/Test)    │  │  Templates      │              │
 │  └────────┬────────┘  └────────┬────────┘  └─────────────────┘              │
 │           │                    │                                             │

@@ -42,7 +42,7 @@ services:
     volumes:
       - informs_staticfiles:/opt/app/static_files
       - local-db:/opt/app/db
-      - certs:/opt/app/certs:ro
+      - certs:/opt/app/certs:z
       - informs_media:/opt/app/informs/media
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/', timeout=5)"]
@@ -53,9 +53,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 2G
         reservations:
-          memory: 256M
+          memory: 512M
 
   queues:
     image: informs-app
@@ -66,7 +66,7 @@ services:
     volumes:
       - informs_staticfiles:/opt/app/static_files
       - local-db:/opt/app/db
-      - certs:/opt/app/certs:ro
+      - certs:/opt/app/certs:z
       - informs_media:/opt/app/informs/media
     # django-q2 uses ORM broker (SQLite), not Redis
     # Wait for informs to complete migrations before starting
@@ -76,9 +76,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 1G
         reservations:
-          memory: 128M
+          memory: 256M
 
   test:
     build:
@@ -105,6 +105,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
 
   takmesh:
     build:
@@ -130,6 +136,12 @@ services:
       start_period: 10s
     profiles:
       - takmesh
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
 
 volumes:
   local-db:

@@ -12,6 +12,9 @@
     <span class="badge bg-{% if gateway_status.tak_connected %}success{% else %}danger{% endif %} text-nowrap">
         <i class="bi bi-{% if gateway_status.tak_connected %}check{% else %}x{% endif %}-circle me-1"></i>TAK
     </span>
+    <span class="badge bg-{% if gateway_status.redis_connected %}success{% else %}danger{% endif %} text-nowrap">
+        <i class="bi bi-{% if gateway_status.redis_connected %}check{% else %}x{% endif %}-circle me-1"></i>Redis
+    </span>
     {% else %}
     <span class="badge bg-secondary text-nowrap">
         <i class="bi bi-pause-circle me-1"></i>Stopped

@@ -21,6 +21,8 @@ from .views import (
     mqttgateway_toggle,
     mqttgateway_sync_config,
     mqttgateway_forwarding,
+    mqttgateway_verify_message,
+    validate_websocket_session,
 )
 
 urlpatterns = [
@@ -45,4 +47,8 @@ urlpatterns = [
     path('mqtt/<int:pk>/toggle/', mqttgateway_toggle, name='mqttgateway_toggle'),
     path('mqtt/<int:pk>/sync/', mqttgateway_sync_config, name='mqttgateway_sync'),
     path('mqtt/<int:pk>/forwarding/', mqttgateway_forwarding, name='mqttgateway_forwarding'),
+    path('mqtt/<int:pk>/verify/<str:correlation_id>/', mqttgateway_verify_message, name='mqttgateway_verify_message'),
+    
+    # WebSocket session validation (for FastAPI/TAKMesh Gateway)
+    path('api/validate-session/', validate_websocket_session, name='validate_websocket_session'),
 ]

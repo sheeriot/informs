@@ -236,6 +236,15 @@
                             <span id="current-datetime" class="small text-muted"></span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
+                            <!-- Forwarding toggles in header -->
+                            <div id="forwarding-controls-mqtt"
+                                 hx-get="{% url 'mqttgateway_forwarding' pk=gateway.pk %}?direction=mqtt"
+                                 hx-trigger="load" hx-swap="innerHTML">
+                            </div>
+                            <div id="forwarding-controls-tak" class="d-none"
+                                 hx-get="{% url 'mqttgateway_forwarding' pk=gateway.pk %}?direction=tak"
+                                 hx-trigger="load" hx-swap="innerHTML">
+                            </div>
                             <div class="input-group input-group-sm" style="width: 200px;">
                                 <input type="text" id="message-search" class="form-control form-control-sm" placeholder="Search..." autocomplete="off">
                                 <button type="button" id="clear-search" class="btn btn-outline-secondary btn-sm" title="Clear"><i class="bi bi-x"></i></button>
@@ -246,31 +255,31 @@
                 </div>
                 <div class="card-body p-0">
                     <!-- Tabs + Controls in one row -->
-                    <ul class="nav nav-tabs px-2 pt-2 border-bottom-0" role="tablist">
+                    <ul class="nav nav-tabs px-2 pt-2" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active d-flex align-items-center gap-1 py-1 px-2"
+                            <button class="nav-link active d-flex align-items-center gap-2 py-2 px-3 border border-bottom-0"
                                     id="mesh2tak-tab"
                                     data-bs-toggle="tab"
                                     data-bs-target="#mesh2tak-pane"
                                     data-buffer="mqtt"
                                     type="button" role="tab">
-                                <i class="bi bi-broadcast"></i>MeshMQTT
-                                <span class="badge bg-secondary-subtle text-dark ms-1">0</span>
+                                <i class="bi bi-broadcast"></i><span class="fw-medium">MeshMQTT</span>
+                                <span class="badge bg-primary ms-1">0</span>
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link d-flex align-items-center gap-1 py-1 px-2"
+                            <button class="nav-link d-flex align-items-center gap-2 py-2 px-3 border border-bottom-0"
                                     id="tak2mesh-tab"
                                     data-bs-toggle="tab"
                                     data-bs-target="#tak2mesh-pane"
                                     data-buffer="tak"
                                     type="button" role="tab">
-                                <i class="bi bi-hdd-rack"></i>TAK-COT
-                                <span class="badge bg-secondary-subtle text-dark ms-1">0</span>
+                                <i class="bi bi-hdd-rack"></i><span class="fw-medium">TAK-COT</span>
+                                <span class="badge bg-primary ms-1">0</span>
                             </button>
                         </li>
-                        <!-- Controls on same row as tabs -->
-                        <li class="nav-item ms-auto d-flex align-items-center gap-2">
+                        <!-- Stream controls on same row as tabs -->
+                        <li class="nav-item ms-auto d-flex align-items-center gap-2 py-1">
                             <div class="btn-group btn-group-sm" role="group" id="stream-controls-mqtt">
                                 <button type="button" id="live-btn-mqtt" class="btn btn-success active btn-sm" data-buffer="mqtt" title="Live">
                                     <i class="bi bi-broadcast"></i>
@@ -289,14 +298,6 @@
                             </div>
                             <span id="stream-status-mqtt" class="small text-muted"></span>
                             <span id="stream-status-tak" class="small text-muted d-none"></span>
-                            <div id="forwarding-controls-mqtt"
-                                 hx-get="{% url 'mqttgateway_forwarding' pk=gateway.pk %}?direction=mqtt"
-                                 hx-trigger="load" hx-swap="innerHTML">
-                            </div>
-                            <div id="forwarding-controls-tak" class="d-none"
-                                 hx-get="{% url 'mqttgateway_forwarding' pk=gateway.pk %}?direction=tak"
-                                 hx-trigger="load" hx-swap="innerHTML">
-                            </div>
                         </li>
                     </ul>
                     <div class="tab-content">
@@ -383,6 +384,8 @@
 {% block extra_js %}
 <!-- Azure Maps JavaScript -->
 <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+<!-- ReconnectingWebSocket Library (CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/reconnecting-websocket@4.4.0/dist/reconnecting-websocket.min.js"></script>
 <!-- WebSocket Client -->
 <script src="{% static 'js/mqttgateway-websocket.js' %}?v={{ static_version }}"></script>
 <!-- Message Handler (handles all formatting from WebSocket JSON) -->

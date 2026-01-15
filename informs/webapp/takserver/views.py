@@ -6,10 +6,13 @@ import httpx
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.sessions.models import Session
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.response import TemplateResponse
 from django.urls import reverse_lazy, reverse
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django_q.tasks import async_task, fetch
@@ -858,6 +861,21 @@ def mqttgateway_messages(request, pk, buffer):
                 messages = data.get('messages', [])
                 stats = data.get('stats', {})
 
+                # Fetch output buffer to correlate with input messages
+                output_messages = {}
+                try:
+                    output_resp = client.get(f"{TAKMESH_API_URL}/messages/output", timeout=5.0)
+                    if output_resp.status_code == 200:
+                        output_data = output_resp.json()
+                        # Index output messages by correlation_id for fast lookup
+                        for out_msg in output_data.get('messages', []):
+                            corr_id = out_msg.get('correlation_id')
+                            if corr_id:
+                                output_messages[corr_id] = out_msg
+                except Exception as e:
+                    # If output fetch fails, continue without it
+                    pass
+
                 # Process messages in chronological order (oldest first) for time diff calculation
                 # Messages come newest first, so reverse for processing, then reverse back
                 messages_reversed = list(reversed(messages))
@@ -1053,6 +1071,32 @@ def mqttgateway_messages(request, pk, buffer):
                         msg['distance_km'] = None
                         msg['distance_m'] = None
 
+                    # Link output data using correlation_id
+                    corr_id = msg.get('correlation_id')
+                    if corr_id and corr_id in output_messages:
+                        out = output_messages[corr_id]
+                        msg['output'] = out
+                        msg['output_filtered'] = out.get('filtered', False)
+                        msg['output_filtered_reason'] = out.get('filtered_reason')
+                        msg['output_sent'] = out.get('sent', False)
+                        msg['output_send_result'] = out.get('send_result')
+                        msg['output_channel'] = out.get('outbound_channel')
+                        msg['output_cot'] = out.get('generated_cot')
+                        msg['output_cot_uid'] = out.get('cot_uid')
+                        msg['output_cot_type'] = out.get('cot_type')
+                        msg['output_send_timestamp'] = out.get('send_timestamp')
+                    else:
+                        msg['output'] = None
+                        msg['output_filtered'] = None
+                        msg['output_filtered_reason'] = None
+                        msg['output_sent'] = None
+                        msg['output_send_result'] = None
+                        msg['output_channel'] = None
+                        msg['output_cot'] = None
+                        msg['output_cot_uid'] = None
+                        msg['output_cot_type'] = None
+                        msg['output_send_timestamp'] = None
+
                 # Reverse messages back to newest-first for display
                 messages = list(reversed(messages_reversed))
 
@@ -1175,6 +1219,114 @@ def mqttgateway_sync_config(request, pk):
         'gateway': gateway,
         'result': result
     })
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def validate_websocket_session(request):
+    """
+    Validate Django session for WebSocket authentication.
+    Called by FastAPI/TAKMesh Gateway before accepting WebSocket connections.
+    
+    Accepts sessionid as query parameter or cookie.
+    
+    CSRF exempt because this is an internal API call from FastAPI (not from browser).
+    
+    Returns:
+        JsonResponse with 'valid': True/False and 'user_id' if valid
+    """
+    # Get session key from query param (FastAPI will pass it) or cookie
+    session_key = request.GET.get('sessionid') or request.COOKIES.get('sessionid')
+    
+    if not session_key:
+        return JsonResponse({
+            'valid': False,
+            'error': 'No session ID provided'
+        }, status=401)
+    
+    try:
+        # Use Django's session framework to validate
+        from django.contrib.sessions.backends.file import SessionStore
+        session_store = SessionStore(session_key=session_key)
+        
+        # Check if session exists and is valid
+        if session_store.exists(session_key):
+            # Load session data
+            session_data = session_store.load()
+            
+            # Check if session has user_id (logged in)
+            user_id = session_data.get('_auth_user_id')
+            
+            if user_id:
+                # Session is valid and user is authenticated
+                return JsonResponse({
+                    'valid': True,
+                    'user_id': user_id,
+                    'session_key': session_key
+                })
+            else:
+                return JsonResponse({
+                    'valid': False,
+                    'error': 'Session not authenticated'
+                }, status=401)
+        else:
+            return JsonResponse({
+                'valid': False,
+                'error': 'Session not found'
+            }, status=401)
+            
+    except Exception as e:
+        # Log full error details for debugging
+        logger.error(f"Session validation error: {e}", exc_info=True)
+        return JsonResponse({
+            'valid': False,
+            'error': f'Session validation failed: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@permission_required('takserver.view_mqttgateway')
+@require_http_methods(["POST"])
+def mqttgateway_verify_message(request, pk, correlation_id):
+    """HTMX endpoint to verify a COT message by correlation_id."""
+    gateway = get_object_or_404(MQTTGateway, pk=pk)
+
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            # Call TAKMesh API verification endpoint
+            response = client.post(
+                f"{TAKMESH_API_URL}/messages/verify/{correlation_id}",
+                timeout=10.0
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                return JsonResponse({
+                    'status': 'success',
+                    'verified': data.get('verified', False),
+                    'method': data.get('method'),
+                    'timestamp': data.get('timestamp') or data.get('cot_received_timestamp'),
+                    'message': 'Verification completed'
+                })
+            else:
+                return JsonResponse({
+                    'status': 'error',
+                    'verified': False,
+                    'message': f"API error: {response.status_code}"
+                }, status=response.status_code)
+
+    except httpx.ConnectError:
+        return JsonResponse({
+            'status': 'error',
+            'verified': False,
+            'message': 'Cannot connect to TAKMesh gateway service'
+        }, status=503)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'verified': False,
+            'message': str(e)
+        }, status=500)
 
 
 @login_required

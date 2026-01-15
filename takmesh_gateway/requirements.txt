@@ -10,6 +10,9 @@ lxml>=4.9.0
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 
+# HTTP client for Django session validation
+httpx>=0.27.0
+
 # WebSocket protocol - wsproto doesn't validate Origin headers
 # Required for proxied WebSocket connections through nginx
 wsproto>=1.2.0

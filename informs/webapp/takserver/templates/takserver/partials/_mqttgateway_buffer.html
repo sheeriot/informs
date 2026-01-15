@@ -164,43 +164,51 @@
                     {% endif %}
                 </td>
                 <td>
-                    {% if msg.msg_type == 'position' %}
-                    {% if msg.has_location %}
-                    <a href="https://www.google.com/maps?q={{ msg.latitude }},{{ msg.longitude }}"
-                       target="_blank"
-                       rel="noopener"
-                       class="btn btn-sm p-0 border-0 bg-transparent"
-                       title="Open in Google Maps">
+                    <div class="d-flex align-items-center gap-1">
+                        {% if msg.msg_type == 'position' %}
+                        {% if msg.has_location %}
+                        <a href="https://www.google.com/maps?q={{ msg.latitude }},{{ msg.longitude }}"
+                           target="_blank"
+                           rel="noopener"
+                           class="btn btn-sm p-0 border-0 bg-transparent"
+                           title="Open in Google Maps">
+                            <span class="badge bg-primary text-nowrap">
+                                <i class="bi bi-geo-alt"></i>
+                            </span>
+                        </a>
+                        {% else %}
                         <span class="badge bg-primary text-nowrap">
                             <i class="bi bi-geo-alt"></i>
                         </span>
-                    </a>
-                    {% else %}
-                    <span class="badge bg-primary text-nowrap">
-                        <i class="bi bi-geo-alt"></i>
-                    </span>
-                    {% endif %}
-                    {% elif msg.msg_type == 'text' %}
-                    <span class="badge bg-success text-nowrap">
-                        <i class="bi bi-chat-dots"></i>
-                    </span>
-                    {% elif msg.msg_type == 'chat' %}
-                    <span class="badge bg-warning text-dark text-nowrap">
-                        <i class="bi bi-chat-dots"></i>
-                    </span>
-                    {% elif msg.msg_type == 'nodeinfo' %}
-                    <span class="badge bg-info text-nowrap">
-                        <i class="bi bi-info-circle"></i>
-                    </span>
-                    {% elif msg.msg_type == 'telemetry' %}
-                    <span class="badge bg-success text-nowrap">
-                        <i class="bi bi-speedometer2"></i>
-                    </span>
-                    {% else %}
-                    <span class="badge bg-light text-dark text-nowrap">
-                        <i class="bi bi-question"></i>
-                    </span>
-                    {% endif %}
+                        {% endif %}
+                        {% elif msg.msg_type == 'text' %}
+                        <span class="badge bg-success text-nowrap">
+                            <i class="bi bi-chat-dots"></i>
+                        </span>
+                        {% elif msg.msg_type == 'chat' %}
+                        <span class="badge bg-warning text-dark text-nowrap">
+                            <i class="bi bi-chat-dots"></i>
+                        </span>
+                        {% elif msg.msg_type == 'nodeinfo' %}
+                        <span class="badge bg-info text-nowrap">
+                            <i class="bi bi-info-circle"></i>
+                        </span>
+                        {% elif msg.msg_type == 'telemetry' %}
+                        <span class="badge bg-success text-nowrap">
+                            <i class="bi bi-speedometer2"></i>
+                        </span>
+                        {% else %}
+                        <span class="badge bg-light text-dark text-nowrap">
+                            <i class="bi bi-question"></i>
+                        </span>
+                        {% endif %}
+                        <!-- Output status indicator -->
+                        {% if msg.output_sent %}
+                        <i class="bi bi-arrow-right-circle-fill text-success" title="Sent to {{ msg.output_channel|default:'TAK' }}" style="font-size: 0.7rem;"></i>
+                        {% elif msg.output_filtered %}
+                        <i class="bi bi-funnel-fill text-warning" title="Filtered: {{ msg.output_filtered_reason|default:'unknown' }}" style="font-size: 0.7rem;"></i>
+                        {% endif %}
+                    </div>
                 </td>
                 <td class="small text-truncate" style="max-width: 400px;" title="{{ msg.summary|striptags }}" data-callsign="{{ msg.callsign|default:'' }}" data-device-id="{{ msg.device_id|default:'' }}" data-gateway-id="{{ msg.gateway_id|default:'' }}">
                     <div>
@@ -377,9 +385,92 @@
                             <h6 class="border-bottom pb-1 mb-2 small">
                                 <i class="bi bi-code-square me-1"></i>Raw Payload
                             </h6>
-                            <pre class="bg-white p-2 rounded border small mb-0" style="max-height: 75vh; overflow-y: auto; overflow-x: visible; white-space: pre-wrap; word-wrap: break-word; word-break: break-word; font-size: 0.75rem; font-family: 'Courier New', monospace; width: 100%;"><code style="white-space: pre-wrap; word-wrap: break-word; word-break: break-word;">{{ msg.payload_json }}</code></pre>
+                            <pre class="bg-white p-2 rounded border small mb-0" style="max-height: 40vh; overflow-y: auto; overflow-x: visible; white-space: pre-wrap; word-wrap: break-word; word-break: break-word; font-size: 0.75rem; font-family: 'Courier New', monospace; width: 100%;"><code style="white-space: pre-wrap; word-wrap: break-word; word-break: break-word;">{{ msg.payload_json }}</code></pre>
                         </div>
                     </div>
+
+                    <!-- Output/COT Generation Section -->
+                    {% if msg.output is not None or msg.correlation_id %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6 class="border-bottom pb-1 mb-2 small">
+                                <i class="bi bi-arrow-right-circle me-1"></i>Output / COT Generation
+                            </h6>
+                            <div class="d-flex flex-wrap gap-3 mb-2 small">
+                                <!-- Status Badge -->
+                                <div>
+                                    <span class="text-muted me-1">Status:</span>
+                                    {% if msg.output_sent %}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Sent</span>
+                                    {% elif msg.output_filtered %}
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-funnel me-1"></i>Filtered</span>
+                                    {% elif msg.output is None %}
+                                    <span class="badge bg-secondary"><i class="bi bi-question-circle me-1"></i>No Output</span>
+                                    {% else %}
+                                    <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Not Sent</span>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Filter Reason -->
+                                {% if msg.output_filtered and msg.output_filtered_reason %}
+                                <div>
+                                    <span class="text-muted me-1">Reason:</span>
+                                    <span class="badge bg-light text-dark">{{ msg.output_filtered_reason }}</span>
+                                </div>
+                                {% endif %}
+
+                                <!-- Channel -->
+                                {% if msg.output_channel %}
+                                <div>
+                                    <span class="text-muted me-1">Channel:</span>
+                                    {% if msg.output_channel == 'tak' %}
+                                    <span class="badge bg-info"><i class="bi bi-hdd-rack me-1"></i>TAK</span>
+                                    {% else %}
+                                    <span class="badge bg-primary"><i class="bi bi-broadcast me-1"></i>Mesh</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+
+                                <!-- COT UID -->
+                                {% if msg.output_cot_uid %}
+                                <div>
+                                    <span class="text-muted me-1">COT UID:</span>
+                                    <code class="small">{{ msg.output_cot_uid }}</code>
+                                </div>
+                                {% endif %}
+
+                                <!-- COT Type -->
+                                {% if msg.output_cot_type %}
+                                <div>
+                                    <span class="text-muted me-1">COT Type:</span>
+                                    <code class="small">{{ msg.output_cot_type }}</code>
+                                </div>
+                                {% endif %}
+
+                                <!-- Send Timestamp -->
+                                {% if msg.output_send_timestamp %}
+                                <div>
+                                    <span class="text-muted me-1">Sent:</span>
+                                    <span class="font-monospace small">{{ msg.output_send_timestamp|slice:"11:19" }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Generated COT XML -->
+                            {% if msg.output_cot %}
+                            <div class="mt-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted small"><i class="bi bi-file-code me-1"></i>Generated COT</span>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="navigator.clipboard.writeText(this.closest('.mt-2').querySelector('code').textContent)" title="Copy COT">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                                <pre class="bg-dark text-light p-2 rounded small mb-0" style="max-height: 30vh; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; font-size: 0.7rem;"><code>{{ msg.output_cot }}</code></pre>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}

@@ -96,9 +96,14 @@ class CotBuilder:
             if position.ground_track is not None:
                 track.set("course", str(position.ground_track))
 
-        # Remarks with source info
+        # Remarks with source info - tag as MeshMQTT for verification and loop prevention
         remarks = ET.SubElement(detail, "remarks")
+        remarks.set("source", "MeshMQTT")
         remarks.text = f"Meshtastic node: {position.node.node_id}"
+
+        # Custom tag for fast identification of MeshMQTT-originated messages
+        mesh_mqtt_tag = ET.SubElement(detail, "MeshMQTT")
+        mesh_mqtt_tag.text = "true"
 
         # Archive for persistence
         ET.SubElement(detail, "archive")
@@ -176,13 +181,17 @@ class CotBuilder:
         link.set("type", self.COT_TYPE_FRIENDLY_GROUND)
         link.set("relation", "p-p")
 
-        # Remarks with the actual message
+        # Remarks with the actual message - tag as MeshMQTT for verification and loop prevention
         remarks = ET.SubElement(detail, "remarks")
-        remarks.set("source", "Meshtastic")
+        remarks.set("source", "MeshMQTT")
         remarks.set("sourceID", message.node.cot_uid)
         remarks.set("to", chat_room)
         remarks.set("time", now)
         remarks.text = message.text
+
+        # Custom tag for fast identification of MeshMQTT-originated messages
+        mesh_mqtt_tag = ET.SubElement(detail, "MeshMQTT")
+        mesh_mqtt_tag.text = "true"
 
         # Server destination
         serverdest = ET.SubElement(detail, "__serverdestination")
@@ -229,8 +238,13 @@ class CotBuilder:
         status = ET.SubElement(detail, "status")
         status.set("readiness", "true")
 
+        # Custom tag for fast identification of MeshMQTT-originated messages
+        mesh_mqtt_tag = ET.SubElement(detail, "MeshMQTT")
+        mesh_mqtt_tag.text = "true"
+
         remarks = ET.SubElement(detail, "remarks")
-        remarks.text = "Takmesh Gateway - Meshtastic to TAK Bridge"
+        remarks.set("source", "MeshMQTT")
+        remarks.text = f"Takmesh Gateway - Meshtastic to TAK Bridge (UID: {config.gateway_uid})"
 
         ET.SubElement(detail, "archive")
 
@@ -280,6 +294,11 @@ def parse_cot_event(xml_bytes: bytes) -> Optional[dict]:
                     event["contact_phone"] = contact.get("phone")
                 if contact.get("endpoint"):
                     event["contact_endpoint"] = contact.get("endpoint")
+
+            # Custom MeshMQTT tag - fast check for gateway-originated messages
+            mesh_mqtt = detail.find("MeshMQTT")
+            if mesh_mqtt is not None and mesh_mqtt.text and mesh_mqtt.text.lower() == "true":
+                event["mesh_mqtt"] = True
 
             # Remarks - extract text and attributes
             remarks = detail.find("remarks")

@@ -17,6 +17,7 @@ import logging
 import signal
 import sys
 import threading
+import uuid
 from datetime import datetime, UTC
 from typing import Optional
 from icecream import ic
@@ -28,7 +29,7 @@ from mqtt_client import MeshtasticMQTTClient
 from meshtastic_decode import MeshtasticDecoder, PositionMessage, TextMessage
 from cot_builder import CotBuilder
 from tak_client import TAKClient
-from message_buffer import mqtt_buffer, tak_buffer, save_all_buffers
+from message_buffer import mqtt_buffer, tak_buffer, output_buffer, save_all_buffers
 from node_store import node_store
 from api import app as api_app, set_gateway_instance
 
@@ -66,6 +67,10 @@ class TakmeshGateway:
 
     async def _on_mesh_message(self, topic: str, payload: dict):
         """Handle incoming Meshtastic message from MQTT."""
+        # Generate correlation ID at the start to link input and output
+        correlation_id = str(uuid.uuid4())
+        input_timestamp = datetime.now(UTC).isoformat()
+
         # Log raw payload keys for debugging
         if config.debug:
             logger.debug(f"[MQTT Raw] Topic: {topic}, Payload keys: {list(payload.keys())}")
@@ -90,6 +95,12 @@ class TakmeshGateway:
                     device_id = f"!{int(from_id):08X}"
                 except (ValueError, TypeError):
                     pass
+
+            # Look up short_name from node_store if device_id is available
+            short_name = None
+            if device_id:
+                node = node_store.get_node(device_id)
+                short_name = node.short_name if node else None
 
             # Extract gateway ID from sender field (the gateway that sent it to MQTT)
             gateway_id = payload.get("sender") or ""
@@ -119,6 +130,7 @@ class TakmeshGateway:
                 payload=payload,
                 summary=summary,
                 device_id=device_id,
+                short_name=short_name,
                 gateway_id=gateway_id if gateway_id else None,
                 hops_away=hops_away,
                 rf_gateway=rf_gateway,
@@ -126,7 +138,22 @@ class TakmeshGateway:
                 snr=snr,
                 latitude=latitude,
                 longitude=longitude,
-                altitude=altitude
+                altitude=altitude,
+                correlation_id=correlation_id
+            )
+
+            # Record output: filtered because unknown/unhandled type
+            output_buffer.add_output(
+                correlation_id=correlation_id,
+                input_buffer="mqtt",
+                input_timestamp=input_timestamp,
+                input_summary=summary,
+                input_device_id=device_id,
+                input_msg_type=msg_type,
+                filtered=True,
+                filtered_reason="unknown_type",
+                sent=False,
+                send_result="not_sent"
             )
             return
 
@@ -182,6 +209,7 @@ class TakmeshGateway:
                 payload=payload,
                 summary=summary,
                 device_id=device_id,
+                short_name=short_name,
                 gateway_id=gateway_id if gateway_id else None,
                 hops_away=hops_away,
                 rf_gateway=rf_gateway,
@@ -189,19 +217,71 @@ class TakmeshGateway:
                 snr=snr,
                 latitude=message.latitude,
                 longitude=message.longitude,
-                altitude=message.altitude
+                altitude=message.altitude,
+                correlation_id=correlation_id
             )
 
             # Forward to TAK if enabled and valid position
             if forwarding.mesh2tak_enabled and message.has_valid_position:
                 cot = self.cot_builder.build_position_cot(message)
-                await self.tak_client.send(cot)
-                logger.info(f"Sent position to TAK: {message.node.callsign}")
+                send_success = await self.tak_client.send(cot)
+                logger.info(f"[FORWARD MQTT->TAK] Position: {message.node.callsign} ({device_id}) @ {message.latitude:.5f},{message.longitude:.5f} | result={'OK' if send_success else 'FAILED'}")
+
+                # Record output: successfully generated and sent COT
+                output_buffer.add_output(
+                    correlation_id=correlation_id,
+                    input_buffer="mqtt",
+                    input_timestamp=input_timestamp,
+                    input_summary=summary,
+                    input_device_id=device_id,
+                    input_msg_type="position",
+                    filtered=False,
+                    sent=True,
+                    send_result="success" if send_success else "failed",
+                    outbound_channel="tak",
+                    generated_cot=cot.decode('utf-8') if cot else None,
+                    cot_uid=message.node.cot_uid,
+                    cot_type=self.cot_builder.COT_TYPE_FRIENDLY_GROUND
+                )
+            elif not forwarding.mesh2tak_enabled:
+                logger.debug(f"[FILTERED MQTT->TAK] Position: {device_id} | reason=forwarding_disabled")
+                # Record output: filtered because forwarding disabled
+                output_buffer.add_output(
+                    correlation_id=correlation_id,
+                    input_buffer="mqtt",
+                    input_timestamp=input_timestamp,
+                    input_summary=summary,
+                    input_device_id=device_id,
+                    input_msg_type="position",
+                    filtered=True,
+                    filtered_reason="forwarding_disabled",
+                    sent=False,
+                    send_result="not_sent"
+                )
+            elif not message.has_valid_position:
+                logger.debug(f"[FILTERED MQTT->TAK] Position: {device_id} | reason=no_valid_position (0,0)")
+                # Record output: filtered because no valid position
+                output_buffer.add_output(
+                    correlation_id=correlation_id,
+                    input_buffer="mqtt",
+                    input_timestamp=input_timestamp,
+                    input_summary=summary,
+                    input_device_id=device_id,
+                    input_msg_type="position",
+                    filtered=True,
+                    filtered_reason="no_position",
+                    sent=False,
+                    send_result="not_sent"
+                )
 
         elif isinstance(message, TextMessage):
             # Buffer the text message
             # Use node_id from message.node (already hex-converted by _extract_node_id)
             device_id = message.node.node_id
+
+            # Look up short_name from node_store
+            node = node_store.get_node(device_id)
+            short_name = node.short_name if node else None
 
             # Extract gateway ID from sender field (the gateway that sent it to MQTT)
             gateway_id = payload.get("sender") or ""
@@ -246,18 +326,52 @@ class TakmeshGateway:
                 payload=payload,
                 summary=summary,
                 device_id=device_id,
+                short_name=short_name,
                 gateway_id=gateway_id if gateway_id else None,
                 hops_away=hops_away,
                 rf_gateway=rf_gateway,
                 rssi=rssi,
-                snr=snr
+                snr=snr,
+                correlation_id=correlation_id
             )
 
             # Forward to TAK if enabled
             if forwarding.mesh2tak_enabled:
                 cot = self.cot_builder.build_chat_cot(message)
-                await self.tak_client.send(cot)
-                logger.info(f"Sent chat to TAK: {message.node.callsign}: {message.text[:30]}...")
+                send_success = await self.tak_client.send(cot)
+                logger.info(f"[FORWARD MQTT->TAK] Chat: {message.node.callsign} ({device_id}): \"{message.text[:50]}\" | result={'OK' if send_success else 'FAILED'}")
+
+                # Record output: successfully generated and sent COT
+                output_buffer.add_output(
+                    correlation_id=correlation_id,
+                    input_buffer="mqtt",
+                    input_timestamp=input_timestamp,
+                    input_summary=summary,
+                    input_device_id=device_id,
+                    input_msg_type="text",
+                    filtered=False,
+                    sent=True,
+                    send_result="success" if send_success else "failed",
+                    outbound_channel="tak",
+                    generated_cot=cot.decode('utf-8') if cot else None,
+                    cot_uid=message.node.cot_uid,
+                    cot_type="b-t-f"  # Chat type
+                )
+            else:
+                logger.debug(f"[FILTERED MQTT->TAK] Chat: {device_id} | reason=forwarding_disabled")
+                # Record output: filtered because forwarding disabled
+                output_buffer.add_output(
+                    correlation_id=correlation_id,
+                    input_buffer="mqtt",
+                    input_timestamp=input_timestamp,
+                    input_summary=summary,
+                    input_device_id=device_id,
+                    input_msg_type="text",
+                    filtered=True,
+                    filtered_reason="forwarding_disabled",
+                    sent=False,
+                    send_result="not_sent"
+                )
 
     def _summarize_mqtt_payload(self, payload: dict, topic: str = "") -> str:
         """Build a human-readable summary from raw MQTT payload.
@@ -290,12 +404,19 @@ class TakmeshGateway:
         if hops_away is not None:
             hop_info = f"h{hops_away}"
 
-        # Build summary with device_id as primary identifier (matches node database)
-        # Format: "device_id @ gateway_id hN" or "device_id @ gateway_id hN @ coords"
-        # Use device_id as primary identifier to match node database
+        # Build summary with short_name as primary identifier if available, fallback to device_id
+        # Format: "short_name @ gateway_id hN" or "device_id @ gateway_id hN @ coords"
+        # Use short_name from node_store if available, otherwise device_id
         if device_id:
-            summary_parts = [device_id]
-            ic(f"[_summarize_mqtt_payload] Using device_id as primary identifier: {device_id}")
+            # Look up short_name from node_store
+            node = node_store.get_node(device_id)
+            short_name = node.short_name if node else None
+            if short_name:
+                summary_parts = [short_name]
+                ic(f"[_summarize_mqtt_payload] Using short_name as primary identifier: {short_name}")
+            else:
+                summary_parts = [device_id]
+                ic(f"[_summarize_mqtt_payload] Using device_id as primary identifier: {device_id}")
         else:
             # Fallback: try to get sender name
             sender_info = payload.get("sender_info", {})
@@ -411,8 +532,19 @@ class TakmeshGateway:
 
     async def _on_tak_message(self, event: dict):
         """Handle incoming CoT event from TAK server."""
+        # Generate correlation ID at the start to link input and output
+        correlation_id = str(uuid.uuid4())
+        input_timestamp = datetime.now(UTC).isoformat()
+
         # Extract device_id from UID (for Meshtastic messages, UID is like "meshtastic-XXXX")
         uid = event.get("uid", "")
+        
+        # Fast verification check: If message has MeshMQTT tag, it's from us - verify immediately
+        # Also check for ping verification (automatic health check)
+        # Manual verification for other messages is done via API endpoint
+        if event.get("mesh_mqtt", False) or uid == config.gateway_uid:
+            asyncio.create_task(self._check_tak_message_for_verification(uid, event))
+        
         device_id = None
         if uid.startswith("meshtastic-"):
             # Extract hex device ID from UID (remove prefix)
@@ -446,15 +578,85 @@ class TakmeshGateway:
                 latitude=lat if lat and lat != 0.0 else None,
                 longitude=lon if lon and lon != 0.0 else None,
                 altitude=alt,
-                is_chat=True
+                is_chat=True,
+                correlation_id=correlation_id
             )
 
             # Forward to Meshtastic if enabled
             if forwarding.tak2mesh_enabled and remarks:
-                # Don't echo messages that came from Meshtastic
-                if not uid.startswith("meshtastic-"):
+                # CRITICAL: Prevent forwarding loops - never forward messages that originated from MQTT
+                # Fast check: Custom MeshMQTT tag (fastest - direct XML tag check)
+                # Then fallback to other indicators for safety
+                is_mqtt_origin = (
+                    event.get("mesh_mqtt", False) or  # Fastest check - custom tag
+                    uid.startswith("meshtastic-") or  # UID pattern
+                    uid == config.gateway_uid or      # Gateway ping
+                    (device_id is not None and device_id.startswith("!"))  # Device ID pattern
+                )
+                
+                if not is_mqtt_origin:
                     await self.mqtt_client.publish_to_mesh(remarks, from_callsign=sender)
-                    logger.info(f"Forwarded TAK chat to Meshtastic: [{sender}] {remarks[:30]}...")
+                    logger.info(f"[FORWARD TAK->MQTT] Chat: [{sender}] \"{remarks[:50]}\" | uid={uid}")
+
+                    # Record output: successfully forwarded to mesh
+                    output_buffer.add_output(
+                        correlation_id=correlation_id,
+                        input_buffer="tak",
+                        input_timestamp=input_timestamp,
+                        input_summary=summary,
+                        input_device_id=device_id,
+                        input_msg_type="chat",
+                        filtered=False,
+                        sent=True,
+                        send_result="success",
+                        outbound_channel="mesh",
+                        generated_cot=f"[{sender}] {remarks}"  # Store the text sent to mesh
+                    )
+                else:
+                    logger.warning(f"[FILTERED TAK->MQTT] Chat: uid={uid}, device_id={device_id} | reason=MQTT_origin_prevent_loop")
+                    # Record output: filtered because it originated from MQTT (prevent loop)
+                    output_buffer.add_output(
+                        correlation_id=correlation_id,
+                        input_buffer="tak",
+                        input_timestamp=input_timestamp,
+                        input_summary=summary,
+                        input_device_id=device_id,
+                        input_msg_type="chat",
+                        filtered=True,
+                        filtered_reason="mqtt_origin_prevent_loop",
+                        sent=False,
+                        send_result="not_sent"
+                    )
+            elif not forwarding.tak2mesh_enabled:
+                logger.debug(f"[FILTERED TAK->MQTT] Chat: uid={uid} | reason=forwarding_disabled")
+                # Record output: filtered because forwarding disabled
+                output_buffer.add_output(
+                    correlation_id=correlation_id,
+                    input_buffer="tak",
+                    input_timestamp=input_timestamp,
+                    input_summary=summary,
+                    input_device_id=device_id,
+                    input_msg_type="chat",
+                    filtered=True,
+                    filtered_reason="forwarding_disabled",
+                    sent=False,
+                    send_result="not_sent"
+                )
+            elif not remarks:
+                logger.debug(f"[FILTERED TAK->MQTT] Chat: uid={uid} | reason=no_text_content")
+                # Record output: filtered because no remarks/text
+                output_buffer.add_output(
+                    correlation_id=correlation_id,
+                    input_buffer="tak",
+                    input_timestamp=input_timestamp,
+                    input_summary=summary,
+                    input_device_id=device_id,
+                    input_msg_type="chat",
+                    filtered=True,
+                    filtered_reason="no_text_content",
+                    sent=False,
+                    send_result="not_sent"
+                )
         else:
             # Build comprehensive summary for position/other events
             type_desc = self._describe_cot_type(cot_type)
@@ -492,7 +694,23 @@ class TakmeshGateway:
                 longitude=lon if lon and lon != 0.0 else None,
                 altitude=alt,
                 cot_type=cot_type,
-                is_chat=False
+                is_chat=False,
+                correlation_id=correlation_id
+            )
+
+            # TAK position messages are not forwarded to Mesh (only chat is)
+            # Record output: not applicable for position messages
+            output_buffer.add_output(
+                correlation_id=correlation_id,
+                input_buffer="tak",
+                input_timestamp=input_timestamp,
+                input_summary=summary,
+                input_device_id=device_id,
+                input_msg_type=msg_type,
+                filtered=True,
+                filtered_reason="position_not_forwarded",
+                sent=False,
+                send_result="not_sent"
             )
 
     def _describe_cot_type(self, cot_type: str) -> str:
@@ -521,15 +739,135 @@ class TakmeshGateway:
         # Fallback: return the type code
         return f"CoT: {cot_type}"
 
+    async def _check_cot_verification(self, correlation_id: str, cot_uid: str):
+        """
+        Check COT verification using multiple strategies.
+        
+        Args:
+            correlation_id: Correlation ID linking input to output
+            cot_uid: COT UID that was sent
+        """
+        # Strategy 1: Check TAK buffer for echo (already handled in _on_tak_message)
+        # Strategy 2: Query TAK Server API (if available) - placeholder for future implementation
+        # Strategy 3: TAK buffer matching happens in _on_tak_message
+        
+        # For now, we rely on Strategy 3 (TAK buffer matching) which happens automatically
+        # when TAK messages are received. This method can be extended for API queries.
+        pass
+
+    async def _check_tak_message_for_verification(self, uid: str, event: dict = None):
+        """
+        Check if a received TAK message UID matches any sent COT and mark as verified.
+        This implements Verification Strategy 3: TAK Buffer Matching.
+        Optimized to use MeshMQTT tag for fast "hear-self" detection.
+        
+        Args:
+            uid: COT UID from received TAK message
+            event: Full event dict (optional, for MeshMQTT tag check)
+        """
+        try:
+            # Fast path: If event has MeshMQTT tag, it's definitely from us
+            # This allows quick verification without scanning output buffer
+            if event and event.get("mesh_mqtt", False):
+                # Only check recent output messages (last 50) for this fast path
+                output_messages = output_buffer.get_messages(limit=50)
+                
+                for output_msg in output_messages:
+                    output_cot_uid = output_msg.get("cot_uid")
+                    correlation_id = output_msg.get("correlation_id")
+                    already_verified = output_msg.get("cot_received", False)
+                    
+                    # Skip if already verified or no COT UID
+                    if already_verified or not output_cot_uid:
+                        continue
+                    
+                    # Check if UID matches (exact match or partial match for chat messages)
+                    if uid == output_cot_uid or uid.startswith(output_cot_uid):
+                        # Mark as verified
+                        output_buffer.update_output_verification(
+                            correlation_id=correlation_id,
+                            cot_received=True,
+                            cot_verification_method="buffer_match_meshmqtt_tag"
+                        )
+                        logger.debug(f"[VERIFICATION] COT verified via MeshMQTT tag: uid={uid}, correlation={correlation_id}")
+                        return  # Found match, exit early
+            
+            # Standard path: Check recent output messages (last 100) that were sent but not yet verified
+            # This prevents scanning through thousands of messages
+            output_messages = output_buffer.get_messages(limit=100)
+            
+            for output_msg in output_messages:
+                output_cot_uid = output_msg.get("cot_uid")
+                correlation_id = output_msg.get("correlation_id")
+                already_verified = output_msg.get("cot_received", False)
+                
+                # Skip if already verified or no COT UID
+                if already_verified or not output_cot_uid:
+                    continue
+                
+                # Check if UID matches (exact match or partial match for chat messages)
+                if uid == output_cot_uid or uid.startswith(output_cot_uid):
+                    # Mark as verified
+                    output_buffer.update_output_verification(
+                        correlation_id=correlation_id,
+                        cot_received=True,
+                        cot_verification_method="buffer_match"
+                    )
+                    logger.debug(f"[VERIFICATION] COT verified via buffer match: uid={uid}, correlation={correlation_id}")
+                    return  # Found match, exit early
+                    
+                # Also check gateway UID for ping COT verification
+                if uid == config.gateway_uid:
+                    # This might be a ping echo - check if we have a recent ping output
+                    output_timestamp = output_msg.get("timestamp", "")
+                    if output_timestamp:
+                        try:
+                            output_dt = datetime.fromisoformat(output_timestamp.replace('Z', '+00:00'))
+                            now = datetime.now(UTC)
+                            # If output was within last minute, consider it verified
+                            if (now - output_dt).total_seconds() < 60:
+                                output_buffer.update_output_verification(
+                                    correlation_id=correlation_id,
+                                    cot_received=True,
+                                    cot_verification_method="buffer_match"
+                                )
+                                logger.debug(f"[VERIFICATION] Ping COT verified via buffer match: uid={uid}")
+                                return  # Found match, exit early
+                        except (ValueError, AttributeError):
+                            pass
+        except Exception as e:
+            logger.error(f"Error checking TAK message for verification: {e}")
+
     async def _ping_loop(self):
         """Send periodic ping/presence to TAK server."""
         while self._running:
             try:
                 if self.tak_client.is_connected:
                     ping = self.cot_builder.build_ping_cot()
-                    await self.tak_client.send(ping)
+                    send_success = await self.tak_client.send(ping)
                     if config.debug:
-                        logger.debug("Sent gateway ping to TAK")
+                        logger.debug(f"Sent gateway ping to TAK (success={send_success})")
+                    
+                    # Track ping COT for verification (create a correlation_id for ping)
+                    ping_correlation_id = str(uuid.uuid4())
+                    output_buffer.add_output(
+                        correlation_id=ping_correlation_id,
+                        input_buffer="mqtt",  # Ping is generated by gateway, treat as mqtt-side
+                        input_timestamp=datetime.now(UTC).isoformat(),
+                        input_summary=f"Gateway ping (UID: {config.gateway_uid})",
+                        input_device_id=None,
+                        input_msg_type="ping",
+                        filtered=False,
+                        sent=send_success,
+                        send_result="success" if send_success else "failed",
+                        outbound_channel="tak",
+                        generated_cot=ping.decode('utf-8') if ping else None,
+                        cot_uid=config.gateway_uid,
+                        cot_type="a-f-G-U-C-I"
+                    )
+                    # Schedule verification check
+                    if send_success:
+                        asyncio.create_task(self._check_cot_verification(ping_correlation_id, config.gateway_uid))
 
                 # Ping every 5 minutes
                 await asyncio.sleep(300)

@@ -49,9 +49,13 @@ class MQTTBufferedMessage:
     topic: Optional[str] = None  # MQTT topic
     payload: dict = field(default_factory=dict)  # Original full payload
 
+    # Correlation ID to link input to output
+    correlation_id: Optional[str] = None  # UUID linking to output buffer
+
     # Enriched fields for display and processing
     summary: str = ""  # Human-readable summary (computed on backend)
     device_id: Optional[str] = None  # Hex device ID (from 'from' field)
+    short_name: Optional[str] = None  # Device short name from node_store
     gateway_id: Optional[str] = None  # Gateway ID (sender field from MQTT)
 
     # RF/Mesh-specific fields
@@ -80,6 +84,9 @@ class TAKBufferedMessage:
     source: Literal["tak"] = "tak"
     payload: dict = field(default_factory=dict)  # Original full CoT event dict
 
+    # Correlation ID to link input to output
+    correlation_id: Optional[str] = None  # UUID linking to output buffer
+
     # Enriched fields for display and processing
     summary: str = ""  # Human-readable summary (computed on backend)
     device_id: Optional[str] = None  # Device ID extracted from UID (for Meshtastic-originated messages)
@@ -100,6 +107,45 @@ class TAKBufferedMessage:
 
     # Formatted payload JSON (computed once when message is added)
     formatted_payload_json: Optional[str] = None  # Pre-formatted JSON with break points
+
+
+@dataclass
+class OutputBufferedMessage:
+    """
+    Output message tracking for each processed input message.
+    Links to input via correlation_id and tracks what was generated/sent.
+    """
+    timestamp: str  # ISO format when output was created
+    correlation_id: str  # UUID linking to input message
+    input_buffer: Literal["mqtt", "tak"]  # Which input buffer the source came from
+    input_timestamp: str  # When the input message was received
+
+    # Processing result
+    filtered: bool = False  # Was the message filtered out?
+    filtered_reason: Optional[str] = None  # Why it was filtered (if filtered)
+
+    # Send status
+    sent: bool = False  # Was it actually sent?
+    send_result: Literal["success", "failed", "not_sent"] = "not_sent"
+    send_timestamp: Optional[str] = None  # When it was sent (if sent)
+
+    # Output channel
+    outbound_channel: Optional[Literal["tak", "mesh"]] = None  # Where it was sent
+
+    # Generated output (for debugging)
+    generated_cot: Optional[str] = None  # Full COT XML string
+    cot_uid: Optional[str] = None  # Extracted UID from generated COT
+    cot_type: Optional[str] = None  # Extracted type from generated COT
+
+    # Input message summary for quick reference
+    input_summary: str = ""
+    input_device_id: Optional[str] = None
+    input_msg_type: Optional[str] = None
+
+    # TAK Server Verification
+    cot_received: Optional[bool] = None  # Was COT verified as received by TAK server?
+    cot_received_timestamp: Optional[str] = None  # When verification occurred
+    cot_verification_method: Optional[str] = None  # How it was verified (echo, api_query, buffer_match)
 
 
 class MessageBuffer:
@@ -125,6 +171,7 @@ class MessageBuffer:
         payload: Optional[dict] = None,
         summary: str = "",
         device_id: Optional[str] = None,
+        short_name: Optional[str] = None,
         gateway_id: Optional[str] = None,
         hops_away: Optional[int] = None,
         rf_gateway: Optional[str] = None,
@@ -133,6 +180,7 @@ class MessageBuffer:
         latitude: Optional[float] = None,
         longitude: Optional[float] = None,
         altitude: Optional[float] = None,
+        correlation_id: Optional[str] = None,
     ) -> None:
         """Add an MQTT message to the buffer with all enriched fields."""
         now = datetime.now(UTC)
@@ -165,8 +213,10 @@ class MessageBuffer:
             msg_type=msg_type,
             topic=topic,
             payload=payload or {},
+            correlation_id=correlation_id,
             summary=summary,
             device_id=device_id,
+            short_name=short_name,
             gateway_id=gateway_id,
             hops_away=hops_away,
             rf_gateway=rf_gateway,
@@ -194,6 +244,7 @@ class MessageBuffer:
         altitude: Optional[float] = None,
         cot_type: Optional[str] = None,
         is_chat: bool = False,
+        correlation_id: Optional[str] = None,
     ) -> None:
         """Add a TAK message to the buffer with all enriched fields."""
         now = datetime.now(UTC)
@@ -226,6 +277,7 @@ class MessageBuffer:
             source="tak",
             msg_type=msg_type,
             payload=payload or {},
+            correlation_id=correlation_id,
             summary=summary,
             device_id=device_id,
             callsign=callsign,
@@ -237,6 +289,57 @@ class MessageBuffer:
             is_chat=is_chat,
             time_delta_seconds=time_delta,
             formatted_payload_json=formatted_json
+        )
+
+        self._add_message(msg)
+
+    def add_output(
+        self,
+        correlation_id: str,
+        input_buffer: Literal["mqtt", "tak"],
+        input_timestamp: str,
+        input_summary: str = "",
+        input_device_id: Optional[str] = None,
+        input_msg_type: Optional[str] = None,
+        filtered: bool = False,
+        filtered_reason: Optional[str] = None,
+        sent: bool = False,
+        send_result: Literal["success", "failed", "not_sent"] = "not_sent",
+        outbound_channel: Optional[Literal["tak", "mesh"]] = None,
+        generated_cot: Optional[str] = None,
+        cot_uid: Optional[str] = None,
+        cot_type: Optional[str] = None,
+        cot_received: Optional[bool] = None,
+        cot_received_timestamp: Optional[str] = None,
+        cot_verification_method: Optional[str] = None,
+    ) -> None:
+        """Add an output message to the buffer tracking what was generated for an input."""
+        now = datetime.now(UTC)
+        timestamp_str = now.isoformat()
+
+        # Set send_timestamp if actually sent
+        send_timestamp = timestamp_str if sent else None
+
+        msg = OutputBufferedMessage(
+            timestamp=timestamp_str,
+            correlation_id=correlation_id,
+            input_buffer=input_buffer,
+            input_timestamp=input_timestamp,
+            filtered=filtered,
+            filtered_reason=filtered_reason,
+            sent=sent,
+            send_result=send_result,
+            send_timestamp=send_timestamp,
+            outbound_channel=outbound_channel,
+            generated_cot=generated_cot,
+            cot_uid=cot_uid,
+            cot_type=cot_type,
+            input_summary=input_summary,
+            input_device_id=input_device_id,
+            input_msg_type=input_msg_type,
+            cot_received=cot_received,
+            cot_received_timestamp=cot_received_timestamp,
+            cot_verification_method=cot_verification_method,
         )
 
         self._add_message(msg)
@@ -258,21 +361,14 @@ class MessageBuffer:
             logger.error(f"Redis error adding message to {self.name}: {e}")
             return
 
-        # Get stats for broadcast
-        stats = self.get_stats()
-
-        # Broadcast to WebSocket clients if callback is set
+        # Queue message for batched WebSocket broadcast (synchronous call)
         if _websocket_broadcast_callback:
             try:
                 msg_dict = asdict(msg)
-                import asyncio
-                try:
-                    loop = asyncio.get_running_loop()
-                    asyncio.create_task(_websocket_broadcast_callback(self.name, msg_dict, stats))
-                except RuntimeError:
-                    logger.debug("No running event loop for WebSocket broadcast")
+                stats = self.get_stats()
+                _websocket_broadcast_callback(self.name, msg_dict, stats)
             except Exception as e:
-                logger.debug(f"Error broadcasting message via WebSocket: {e}")
+                logger.debug(f"Error queuing message for broadcast: {e}")
 
     def get_messages(
         self,
@@ -406,6 +502,123 @@ class MessageBuffer:
         """Maximum buffer capacity."""
         return self._max_size
 
+    def get_output_for_correlation(self, correlation_id: str) -> Optional[dict]:
+        """
+        Get output message for a given correlation_id.
+        
+        Args:
+            correlation_id: UUID linking input and output messages
+            
+        Returns:
+            Output message dict or None if not found
+        """
+        try:
+            r = self._get_redis()
+            messages_json = r.lrange(self._list_key, 0, -1)
+            
+            for msg_json in messages_json:
+                try:
+                    msg = json.loads(msg_json)
+                    if msg.get("correlation_id") == correlation_id:
+                        return msg
+                except json.JSONDecodeError:
+                    continue
+                    
+            return None
+        except redis.RedisError as e:
+            logger.error(f"Redis error getting output for correlation {correlation_id}: {e}")
+            return None
+
+    def get_outputs_by_correlation_ids(self, correlation_ids: list[str]) -> dict[str, dict]:
+        """
+        Batch fetch multiple output messages by correlation_ids.
+        More efficient than individual lookups.
+        
+        Args:
+            correlation_ids: List of correlation IDs to fetch
+            
+        Returns:
+            Dictionary mapping correlation_id -> output message dict
+        """
+        if not correlation_ids:
+            return {}
+        
+        result = {}
+        try:
+            r = self._get_redis()
+            messages_json = r.lrange(self._list_key, 0, -1)
+            
+            # Build set for fast lookup
+            correlation_set = set(correlation_ids)
+            
+            for msg_json in messages_json:
+                try:
+                    msg = json.loads(msg_json)
+                    corr_id = msg.get("correlation_id")
+                    if corr_id and corr_id in correlation_set:
+                        result[corr_id] = msg
+                        correlation_set.discard(corr_id)
+                        # Early exit if we found all requested IDs
+                        if not correlation_set:
+                            break
+                except json.JSONDecodeError:
+                    continue
+                    
+        except redis.RedisError as e:
+            logger.error(f"Redis error batch getting outputs: {e}")
+        
+        return result
+
+    def update_output_verification(
+        self,
+        correlation_id: str,
+        cot_received: bool,
+        cot_received_timestamp: Optional[str] = None,
+        cot_verification_method: Optional[str] = None,
+    ) -> bool:
+        """
+        Update COT verification status for an output message.
+        
+        Args:
+            correlation_id: UUID linking input and output messages
+            cot_received: Whether COT was verified as received
+            cot_received_timestamp: When verification occurred (defaults to now)
+            cot_verification_method: How it was verified (echo, api_query, buffer_match)
+            
+        Returns:
+            True if update was successful, False otherwise
+        """
+        try:
+            r = self._get_redis()
+            messages_json = r.lrange(self._list_key, 0, -1)
+            
+            for i, msg_json in enumerate(messages_json):
+                try:
+                    msg = json.loads(msg_json)
+                    if msg.get("correlation_id") == correlation_id:
+                        # Update the message
+                        msg["cot_received"] = cot_received
+                        msg["cot_received_timestamp"] = cot_received_timestamp or datetime.now(UTC).isoformat()
+                        if cot_verification_method:
+                            msg["cot_verification_method"] = cot_verification_method
+                        
+                        # Replace in Redis list
+                        updated_json = json.dumps(msg)
+                        pipe = r.pipeline()
+                        pipe.lset(self._list_key, i, updated_json)
+                        pipe.execute()
+                        
+                        logger.debug(f"Updated verification for correlation {correlation_id}: received={cot_received}")
+                        return True
+                except json.JSONDecodeError:
+                    continue
+                    
+            logger.warning(f"Output message with correlation_id {correlation_id} not found")
+            return False
+        except redis.RedisError as e:
+            logger.error(f"Redis error updating verification for correlation {correlation_id}: {e}")
+            return False
+
 
 # Separate buffers for each direction
 # mqtt_buffer: Meshtastic MQTT messages received (mesh2tak inspection)
@@ -414,12 +627,16 @@ mqtt_buffer = MessageBuffer("mqtt", max_size=1000)
 # tak_buffer: TAK CoT messages received (tak2mesh inspection)
 tak_buffer = MessageBuffer("tak", max_size=1000)
 
+# output_buffer: Generated output messages (COT/Mesh) with correlation to input
+output_buffer = MessageBuffer("output", max_size=1000)
+
 
 def get_combined_stats() -> dict:
-    """Get stats for both buffers."""
+    """Get stats for all buffers."""
     return {
         "mqtt": mqtt_buffer.get_stats(),
-        "tak": tak_buffer.get_stats()
+        "tak": tak_buffer.get_stats(),
+        "output": output_buffer.get_stats()
     }
 
 

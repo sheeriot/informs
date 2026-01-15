@@ -3,6 +3,7 @@ Meshtastic JSON message decoder.
 Parses position, text, and telemetry messages from Meshtastic MQTT JSON format.
 """
 import logging
+from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime, UTC
 from typing import Optional
@@ -11,6 +12,9 @@ from config import config
 from node_store import node_store
 
 logger = logging.getLogger(__name__)
+
+# Maximum number of nodes to keep in memory cache (LRU eviction)
+MAX_NODE_CACHE_SIZE = 500
 
 
 @dataclass
@@ -70,8 +74,10 @@ class MeshtasticDecoder:
     """Decodes Meshtastic JSON messages from MQTT."""
 
     def __init__(self):
-        # In-memory cache backed by persistent node_store
-        self._node_cache: dict[str, MeshNode] = {}
+        # In-memory LRU cache backed by persistent node_store
+        # Uses OrderedDict for O(1) LRU operations - most recently used at end
+        self._node_cache: OrderedDict[str, MeshNode] = OrderedDict()
+        self._max_cache_size = MAX_NODE_CACHE_SIZE
         # Load existing nodes from persistent store
         self._load_from_store()
 
@@ -159,8 +165,10 @@ class MeshtasticDecoder:
             logger.info(f"Loaded {len(self._node_cache)} nodes from persistent store")
 
     def _get_or_create_node(self, node_id: str, payload: dict) -> MeshNode:
-        """Get node from cache or create new one."""
+        """Get node from cache or create new one. Uses LRU eviction."""
         if node_id in self._node_cache:
+            # Move to end (most recently used) for LRU
+            self._node_cache.move_to_end(node_id)
             # Touch the node in persistent store to update last_seen
             node_store.update_node(node_id)
             return self._node_cache[node_id]
@@ -176,6 +184,13 @@ class MeshtasticDecoder:
             short_name=short_name,
             long_name=long_name
         )
+
+        # Evict oldest entries if cache is full (LRU eviction)
+        while len(self._node_cache) >= self._max_cache_size:
+            evicted_id, _ = self._node_cache.popitem(last=False)
+            if config.debug:
+                logger.debug(f"LRU evicted node from cache: {evicted_id}")
+
         self._node_cache[node_id] = node
 
         # Persist to store

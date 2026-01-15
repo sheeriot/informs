@@ -44,7 +44,7 @@ if DEBUG and os.environ.get('DEBUG_TOOLBAR', 'False').lower() == 'true':
 SERVERNAME1 = os.environ.get('SERVERNAME1', 'localhost')
 SERVERNAME2 = os.environ.get('SERVERNAME2', 'localhost')
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", SERVERNAME1, SERVERNAME2]
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", SERVERNAME1, SERVERNAME2, "informs"]
 
 SITE_ID = 1
 
