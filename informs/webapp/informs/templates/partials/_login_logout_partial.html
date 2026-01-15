@@ -1,53 +1,37 @@
 {% if user.is_authenticated %}
-    {# Hiding auth items based on hide_auth_header_items context variable #}
     {% if not hide_auth_header_items %}
-        <div class="col-auto">
-            <div class="dropdown">
-                <a class="nav-link dropdown-toggle text-nowrap {% if navbar_theme == 'navbar-light' %}text-dark{% endif %}"
-                   href="#"
-                   role="button"
-                   data-bs-toggle="dropdown"
-                   aria-expanded="false">
-                    <i class="bi bi-person-fill text-success me-1"></i>{{ user.username }}
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    {% if perms.takserver.view_takserver %}
-                    <li class="dropdown-header">Configuration</li>
-                    <li>
-                        <a class="dropdown-item" href="{% url 'takserver_list' %}">
-                            <i class="bi bi-hdd-rack me-2"></i>TAK Servers
-                        </a>
-                    </li>
-                    {% if perms.takserver.view_mqttgateway %}
-                    <li>
-                        <a class="dropdown-item" href="{% url 'mqttgateway_list' %}">
-                            <i class="bi bi-router me-2"></i>MQTT Gateways
-                        </a>
-                    </li>
-                    {% endif %}
-                    <li><hr class="dropdown-divider"></li>
-                    {% endif %}
-                    <li>
-                        <button type="submit" form="logout-form" class="dropdown-item text-danger">
-                            <i class="bi bi-box-arrow-right me-2"></i>Logout
-                        </button>
-                    </li>
-                </ul>
-            </div>
-            <form id="logout-form" method="POST" action="{% url 'logout' %}" class="d-none">
-                {% csrf_token %}
-            </form>
+        <div class="dropdown">
+            <a class="nav-link dropdown-toggle text-nowrap text-warning fs-5 py-0" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-person-fill me-1"></i>{{ user.username }}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+                {% if perms.takserver.view_takserver %}
+                <li class="dropdown-header">Configuration</li>
+                <li><a class="dropdown-item" href="{% url 'takserver_list' %}"><i class="bi bi-hdd-rack me-2"></i>TAK Servers</a></li>
+                {% if perms.takserver.view_mqttgateway %}
+                <li><a class="dropdown-item" href="{% url 'mqttgateway_list' %}"><i class="bi bi-router me-2"></i>MQTT Gateways</a></li>
+                {% endif %}
+                <li><hr class="dropdown-divider"></li>
+                {% endif %}
+                <li>
+                    <button type="submit" form="logout-form" class="dropdown-item text-danger">
+                        <i class="bi bi-box-arrow-right me-2"></i>Logout
+                    </button>
+                </li>
+            </ul>
         </div>
+        <form id="logout-form" method="POST" action="{% url 'logout' %}" class="d-none">
+            {% csrf_token %}
+        </form>
     {% endif %}
 {% else %}
     {% if request.resolver_match.url_name == 'home' %}
-        <div class="col-4"></div>
-        <div class="col-2 d-flex flex-column align-items-start">
-            <a class="nav-banner-link text-nowrap" href="{% url 'login' %}">
+        <div class="d-flex gap-3">
+            <a class="nav-link text-white fs-5 py-0" href="{% url 'login' %}">
                 <i class="bi bi-box-arrow-in-right text-success me-1"></i>Login
             </a>
-            <a class="nav-banner-link text-nowrap join-text" href="{% url 'signup'%}">
-                <i class="bi bi-person-plus-fill text-warning me-1"></i>Join</span>
+            <a class="nav-link text-white-50 fs-6 py-0" href="{% url 'signup'%}">
+                <i class="bi bi-person-plus-fill text-warning me-1"></i>Join
             </a>
         </div>
     {% endif %}

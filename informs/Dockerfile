@@ -10,7 +10,8 @@ ARG UID=1000 \
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PATH="/opt/app/.local/bin:$PATH"
 
 ## mount points
 RUN mkdir -p /opt/app/db

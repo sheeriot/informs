@@ -8,27 +8,45 @@ let map;
 function initFieldOpsMap() {
     const mapElement = document.getElementById('fieldops-map');
     if (!mapElement) {
-        console.error('Map container with id "fieldops-map" not found');
-        return;
-    }
-
-    // Construct the fieldOpsData from the map element's data attributes
-    const fieldOpsData = [{
-        id: mapElement.dataset.fieldOpId || null, // Assuming an ID might be useful
-        name: mapElement.dataset.fieldOpName,
-        slug: mapElement.dataset.fieldOpSlug,
-        latitude: parseFloat(mapElement.dataset.centerLat),
-        longitude: parseFloat(mapElement.dataset.centerLon)
-    }];
-
-    if (!fieldOpsData[0].name || !fieldOpsData[0].slug) {
-        console.error('Field op data (name, slug) not found in data attributes');
+        if (mapFieldOpsConfig.debug) console.log('Map container with id "fieldops-map" not found');
         return;
     }
 
     const azureMapsKey = mapElement.dataset.azureMapsKey;
     if (!azureMapsKey) {
         console.error('Azure Maps key not found in data attributes');
+        return;
+    }
+
+    // Determine data source: JSON array (list page) or single field op (detail page)
+    let fieldOpsData = [];
+
+    if (mapElement.dataset.fieldopsJson) {
+        // List page: parse JSON array of field ops
+        try {
+            fieldOpsData = JSON.parse(mapElement.dataset.fieldopsJson);
+            if (mapFieldOpsConfig.debug) console.log('Loaded field ops from JSON:', fieldOpsData.length);
+        } catch (e) {
+            console.error('Failed to parse fieldops JSON:', e);
+            return;
+        }
+    } else if (mapElement.dataset.fieldOpName && mapElement.dataset.fieldOpSlug) {
+        // Detail page: single field op from data attributes
+        fieldOpsData = [{
+            id: mapElement.dataset.fieldOpId || null,
+            name: mapElement.dataset.fieldOpName,
+            slug: mapElement.dataset.fieldOpSlug,
+            latitude: parseFloat(mapElement.dataset.centerLat) || 0,
+            longitude: parseFloat(mapElement.dataset.centerLon) || 0
+        }];
+        if (mapFieldOpsConfig.debug) console.log('Loaded single field op from attributes:', fieldOpsData[0].name);
+    } else {
+        if (mapFieldOpsConfig.debug) console.log('No field op data found - map will not initialize');
+        return;
+    }
+
+    if (fieldOpsData.length === 0) {
+        if (mapFieldOpsConfig.debug) console.log('No field ops to display');
         return;
     }
 
@@ -56,8 +74,8 @@ function initFieldOpsMap() {
     // Wait for the map to be ready before adding data
     map.events.add('ready', function() {
         try {
-            // --- Draw the Operational Ring ---
-            const ringSize = parseFloat(mapElement.dataset.ringSize) || 10;
+            // --- Draw the Operational Ring (detail page only) ---
+            const ringSize = parseFloat(mapElement.dataset.ringSize) || 0;
             const centerLon = parseFloat(mapElement.dataset.centerLon);
             const centerLat = parseFloat(mapElement.dataset.centerLat);
 
@@ -79,10 +97,11 @@ function initFieldOpsMap() {
                     strokeColor: 'red',
                     strokeWidth: 2
                 }));
-                 // Set camera to focus on the ring
-                 map.setCamera({
+
+                // Set camera to focus on the ring
+                map.setCamera({
                     center: [centerLon, centerLat],
-                    zoom: 8, // Adjust zoom as needed
+                    zoom: 8,
                     type: 'fly'
                 });
             }
@@ -94,16 +113,22 @@ function initFieldOpsMap() {
             map.sources.add(dataSource);
 
             // Add field ops to the data source
+            const bounds = [];
             fieldOpsData.forEach(fieldOp => {
-                const point = new atlas.data.Feature(
-                    new atlas.data.Point([fieldOp.longitude, fieldOp.latitude]),
-                    {
-                        name: fieldOp.name,
-                        slug: fieldOp.slug,
-                        id: fieldOp.id
-                    }
-                );
-                dataSource.add(point);
+                const lon = parseFloat(fieldOp.longitude) || 0;
+                const lat = parseFloat(fieldOp.latitude) || 0;
+                if (lon !== 0 || lat !== 0) {
+                    const point = new atlas.data.Feature(
+                        new atlas.data.Point([lon, lat]),
+                        {
+                            name: fieldOp.name,
+                            slug: fieldOp.slug,
+                            id: fieldOp.id
+                        }
+                    );
+                    dataSource.add(point);
+                    bounds.push([lon, lat]);
+                }
             });
 
             // Add a cluster layer
@@ -159,19 +184,31 @@ function initFieldOpsMap() {
                         allowOverlap: true,
                         ignorePlacement: false
                     },
-                    filter: ['!', ['has', 'point_count']], // Only show individual points
+                    filter: ['!', ['has', 'point_count']],
                     minZoom: 0,
                     maxZoom: 24
                 }
             );
             map.layers.add(symbolLayer);
 
+            // Fit bounds for list view (multiple points, no ring)
+            if (bounds.length > 1 && ringSize === 0) {
+                map.setCamera({
+                    bounds: atlas.data.BoundingBox.fromPositions(bounds),
+                    padding: 50
+                });
+            } else if (bounds.length === 1 && ringSize === 0) {
+                // Single point without ring
+                map.setCamera({
+                    center: bounds[0],
+                    zoom: 10
+                });
+            }
+
             // Add click events for clusters
             map.events.add('click', clusterLayer, (e) => {
                 if (e.shapes && e.shapes[0].properties.cluster) {
-                    // Get the cluster expansion zoom level
                     dataSource.getClusterExpansionZoom(e.shapes[0].properties.cluster_id).then((zoom) => {
-                        // Update the map camera to zoom into the cluster
                         map.setCamera({
                             center: e.position,
                             zoom: zoom,
@@ -214,6 +251,26 @@ function initFieldOpsMap() {
                 }
             });
 
+            // Zoom to fit button
+            const zoomToFitBtn = document.getElementById('zoom-to-fit');
+            if (zoomToFitBtn && bounds.length > 0) {
+                zoomToFitBtn.addEventListener('click', function() {
+                    if (bounds.length > 1) {
+                        map.setCamera({
+                            bounds: atlas.data.BoundingBox.fromPositions(bounds),
+                            padding: 50,
+                            type: 'fly'
+                        });
+                    } else {
+                        map.setCamera({
+                            center: bounds[0],
+                            zoom: 10,
+                            type: 'fly'
+                        });
+                    }
+                });
+            }
+
         } catch (error) {
             console.error('Error in map ready handler:', error);
         }
@@ -221,7 +278,6 @@ function initFieldOpsMap() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if the map container exists on the page before trying to initialize
     if (document.getElementById('fieldops-map')) {
         initFieldOpsMap();
     }

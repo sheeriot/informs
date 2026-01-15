@@ -13,20 +13,20 @@
 
   <link rel="icon" href="{% static 'images/bi-person-raised-hand.svg' %}">
   <!-- Bootstrap core CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
     rel="stylesheet"
-    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+    integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
     crossorigin="anonymous">
 
   <!-- Bootstrap icons -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
   <!-- <link rel="stylesheet" href="{% static 'css/custom-bootstrap.css' %}?v={{ static_version }}" type="text/css"> -->
 
   <!-- Base.css -->
   <link rel="stylesheet" href="{% static 'css/base.css' %}?v={{ static_version }}" type="text/css">
   <!-- more customizations? -->
   <link rel="stylesheet" href="{% static 'css/custom.css' %}?v={{ static_version }}" type="text/css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@11.2.0/public/assets/styles/choices.min.css"/>
   <style>
     :root {
       {% if banner_color %}
@@ -46,65 +46,47 @@
 
 <body {{ body_data_attributes|safe }}>
   <header>
-    <nav class="navbar navbar-expand-sm {{ navbar_theme }}">
-      <div class="container mx-1">
-        <div class="col-3 text-center d-inline fw-bold lh-1 navbar-brand">
-          <div class="d-inline" id="logo">
-            <img src="{% static site_image_url %}" alt="site image logo" class="me-1">
+    <nav class="navbar navbar-expand-sm {{ navbar_theme }} py-1">
+      <div class="container-fluid px-2">
+        <div class="d-flex align-items-center navbar-brand">
+          <div id="logo">
+            <img src="{% static site_image_url %}" alt="site image logo">
           </div>
         </div>
 
-        <div class="navbar-text mx-auto {% if navbar_theme == 'navbar-dark' %}text-light{% else %}text-dark{% endif %}">
-            <h4 class="mb-0">
-              {% block header_title %}
-              {% endblock %}
-            </h4>
-        </div>
-
         {% if user.is_authenticated %}
-          {# Hiding auth items based on hide_auth_header_items context variable #}
           {% if not hide_auth_header_items %}
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup"
-            aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-          </button>
           {% if perms.aidrequests.view_fieldop %}
-            <div class="collapse navbar-collapse col-4" id="navbarNavAltMarkup">
-              <div>
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                  <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {% if navbar_theme == 'navbar-light' %}text-dark{% endif %}" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
-                      aria-expanded="false">
-                      <div class="d-inline-block float-left">Field Ops</div>
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                      <li>
-                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_list' %}'; return false;">
-                          <i class="bi bi-truck"></i> <i class="bi bi-truck"></i>  All Field Ops
-                        </button>
-                      </li>
-                      <li>
-                        <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'field_op_create' %}'; return false;">
-                          <i class="bi bi-plus-circle"></i> New Field Op <i class="bi bi-truck"></i>
-                        </button>
-                      </li>
-                      {% for fieldop in fieldops_active %}
-                        <li>
-                            <button class="dropdown-item btn btn-primary" onclick="location.href='{% url 'aid_request_list' field_op=fieldop.slug %}'; return false;">
-                              <i class="bi life-preserver text-danger"></i>  {{ fieldop.name }} - Aid Requests
-                            </button>
-                        </li>
-                      {% endfor %}
-                      <li><hr class="dropdown-divider"></li>
-                      <li class="dropdown-header">Beta...</li>
-                    </ul>
-                  </li>
+            <ul class="navbar-nav">
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle text-white fs-5 py-0" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  Field Ops
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                  <li><a class="dropdown-item" href="{% url 'field_op_list' %}"><i class="bi bi-truck me-1"></i><i class="bi bi-truck me-2"></i>All Field Ops</a></li>
+                  <li><a class="dropdown-item" href="{% url 'field_op_create' %}"><i class="bi bi-plus-circle me-2"></i>New Field Op</a></li>
+                  {% for fieldop in fieldops_active %}
+                  <li><a class="dropdown-item" href="{% url 'aid_request_list' field_op=fieldop.slug %}"><i class="bi bi-life-preserver text-danger me-2"></i>{{ fieldop.name }}</a></li>
+                  {% endfor %}
+                  <li><hr class="dropdown-divider"></li>
+                  <li class="dropdown-header">Beta...</li>
                 </ul>
-              </div>
-            </div>
+              </li>
+            </ul>
           {% endif %}
           {% endif %}
         {% endif %}
+
+        <div class="navbar-text mx-auto text-white">
+          <h5 class="mb-0 fw-semibold">
+            {% block header_title %}{% endblock %}
+          </h5>
+        </div>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup"
+          aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
 
         {% include 'partials/_login_logout_partial.html' %}
       </div>
@@ -164,8 +146,8 @@
   </div>
 
   {% tz_detect %}
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
     crossorigin="anonymous">
   </script>
 
@@ -174,8 +156,8 @@
   <script type="text/javascript" src="{% static 'js/informs-utils.js' %}?v={{ static_version }}"></script>
 
   <!-- HTMX (after informs-utils.js which defines getCookie used by htmx-csrf.js) -->
-  <script src="https://unpkg.com/htmx.org@2.0.4"
-    integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
+  <script src="https://unpkg.com/htmx.org@2.0.7"
+    integrity="sha384-ZBXiYtYQ6hJ2Y0ZNoYuI+Nq5MqWBr+chMrS/RkXpNzQCApHEhOt2aY8EJgqwHLkJ"
     crossorigin="anonymous">
   </script>
   <script type="text/javascript" src="{% static 'js/htmx-csrf.js' %}"></script>
@@ -183,7 +165,7 @@
   <script type="text/javascript" src="{% static 'js/export_csv.js' %}"></script>
   <!-- JQuery Support -->
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/choices.js@11.2.0/public/assets/scripts/choices.min.js"></script>
 
   {% block extra_js %}
   <!-- Page-specific JavaScript will be inserted here -->

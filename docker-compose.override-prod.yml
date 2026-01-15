@@ -1,12 +1,21 @@
+# Production override - activate with: ln -sf docker-compose.override-prod.yml docker-compose.override.yml
+# Uses gunicorn (from base), with production-specific settings
+
 services:
   informs:
-    command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - informs_media:/opt/app/informs/media
+    # Production uses gunicorn from base config
+    # Uncomment below to enable debug logging (requires rebuild: docker compose build)
+    # environment:
+    #   - DEBUG=True
+    #   - DJANGO_DEBUG_TOOLBAR=False
 
   queues:
-    volumes:
-      - informs_media:/opt/app/informs/media
+    # Uncomment to enable debug logging for queue workers
+    # environment:
+    #   - DEBUG=True
 
-volumes:
-  informs_media: 
+  takmesh:
+    # TAKMesh gateway disabled in production until needed
+    # To enable: docker compose --profile takmesh up -d takmesh
+    profiles:
+      - takmesh

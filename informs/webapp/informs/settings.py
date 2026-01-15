@@ -72,7 +72,7 @@ else:
 #         APP_VERSION = f.read().strip()
 # except FileNotFoundError:
 #     APP_VERSION = '1.0'
-APP_VERSION = os.environ.get('STATIC_VERSION', '1.0.0')
+# APP_VERSION is set later with STATIC_VERSION timestamp
 
 # CSRF settings
 CSRF_TRUSTED_ORIGINS = []
@@ -448,9 +448,10 @@ COT_ICONS = {key: value for key, value in icons_config.items('Icons')}
 FIELD_OP_ICON_DEFAULT = 'blob_dot_yellow'
 # ic(COT_ICONS)
 
-# Static Version information
-# This is a fallback. A real implementation would not have this.
-STATIC_VERSION = '0.0.14'
+# Static Version - timestamp generated at startup for cache busting
+from datetime import datetime
+STATIC_VERSION = datetime.now().strftime('%Y%m%d%H%M%S')
+APP_VERSION = STATIC_VERSION
 
 # PYTAK_FLUSH_TIMEOUT = 40 # seconds
 

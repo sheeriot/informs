@@ -1,4 +1,6 @@
 # Base docker-compose file.
+# Production-ready defaults. Use override files for environment-specific settings.
+# Activate with: ln -sf docker-compose.override-{env}.yml docker-compose.override.yml
 
 services:
 
@@ -10,14 +12,50 @@ services:
       - informs/env/django.env
     # entrypoint: export static_files, migrate DB, then run "command"
     entrypoint: /opt/app/docker-entrypoint.sh
-    command: gunicorn --bind=0.0.0.0:8000 --workers=${WORKERS:-3} informs.wsgi
+    # Gunicorn production config:
+    #   --workers: CPU cores * 2 + 1 (default 3 for small VMs)
+    #   --threads: 2-4 threads per worker for I/O bound apps
+    #   --worker-class: gthread for thread-based concurrency
+    #   --timeout: graceful worker timeout (default 30s)
+    #   --keep-alive: match nginx proxy_read_timeout
+    #   --max-requests: recycle workers to prevent memory leaks
+    #   --max-requests-jitter: stagger worker recycling
+    #   --forwarded-allow-ips: trust nginx proxy headers
+    command: >-
+      gunicorn
+      --bind=0.0.0.0:8000
+      --workers=${WORKERS:-3}
+      --threads=${THREADS:-2}
+      --worker-class=gthread
+      --timeout=30
+      --keep-alive=65
+      --max-requests=1000
+      --max-requests-jitter=50
+      --forwarded-allow-ips="*"
+      --access-logfile=-
+      --error-logfile=-
+      --capture-output
+      informs.wsgi
     restart: unless-stopped
     ports:
      - 8000:8000
     volumes:
       - informs_staticfiles:/opt/app/static_files
       - local-db:/opt/app/db
-      - certs:/opt/app/certs:z
+      - certs:/opt/app/certs:ro
+      - informs_media:/opt/app/informs/media
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
 
   queues:
     image: informs-app
@@ -28,7 +66,19 @@ services:
     volumes:
       - informs_staticfiles:/opt/app/static_files
       - local-db:/opt/app/db
-      - certs:/opt/app/certs:z
+      - certs:/opt/app/certs:ro
+      - informs_media:/opt/app/informs/media
+    # django-q2 uses ORM broker (SQLite), not Redis
+    # Wait for informs to complete migrations before starting
+    depends_on:
+      informs:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
 
   test:
     build:
@@ -62,7 +112,7 @@ services:
     image: takmesh-gateway
     env_file:
       - takmesh_gateway/env/takmesh.env
-    restart: unless-stopped
+    restart: "no"
     # REST API and WebSocket port (published for browser access)
     ports:
       - "8090:8090"
@@ -78,11 +128,14 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    profiles:
+      - takmesh
 
 volumes:
   local-db:
   certs:
   informs_staticfiles:
+  informs_media:
   takmesh_config:
   redis_data:
 
